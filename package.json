@@ -1,0 +1,13 @@
+{
+  "name": "loracue",
+  "version": "1.0.0",
+  "description": "Enterprise-grade LoRa presentation clicker",
+  "scripts": {
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.0.0",
+    "@commitlint/config-conventional": "^17.0.0",
+    "husky": "^8.0.0"
+  }
+}

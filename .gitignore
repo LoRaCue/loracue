@@ -1,0 +1,22 @@
+# ESP-IDF build artifacts
+build/
+sdkconfig.old
+.vscode/
+.devcontainer/
+
+# Dependencies
+dependencies.lock
+managed_components/
+
+# IDE files
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node.js (for commitlint/husky)
+node_modules/
+package-lock.json
