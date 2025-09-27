@@ -59,8 +59,15 @@ esp_err_t power_mgmt_init(const power_config_t *config)
     
     esp_err_t ret = esp_pm_configure(&pm_config);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure power management: %s", esp_err_to_name(ret));
-        return ret;
+        if (ret == ESP_ERR_NOT_SUPPORTED) {
+            ESP_LOGW(TAG, "Power management not supported (simulator mode)");
+            // Continue initialization for simulator compatibility
+        } else {
+            ESP_LOGE(TAG, "Failed to configure power management: %s", esp_err_to_name(ret));
+            return ret;
+        }
+    } else {
+        ESP_LOGI(TAG, "Power management configured successfully");
     }
     
     // Configure GPIO wake sources (buttons)

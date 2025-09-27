@@ -2,25 +2,3 @@
 version = 1
 firmware = "build/loracue.bin"
 elf = "build/loracue.elf"
-
-# Project metadata
-[project]
-name = "LoRaCue - Enterprise LoRa Presentation Clicker"
-description = "Wireless presentation remote with ESP32-S3, OLED display, and LoRa communication"
-author = "LoRaCue Project"
-license = "MIT"
-version = "1.0.0"
-
-# Board configuration
-[board]
-type = "esp32-s3-devkitc-1"
-frequency = "240MHz"
-
-# Simulation settings
-[simulation]
-# Enable serial monitor by default
-serial = true
-# Longer timeout for development
-timeout = 300000  # 5 minutes
-# Enable all logging levels
-log_level = "debug"
