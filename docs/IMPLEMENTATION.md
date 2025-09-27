@@ -387,6 +387,14 @@ ota_1,    app,  ota_1,   0x210000,0x100000,
 - Power management transitions
 - Web configuration interface
 
+**Wokwi Simulation**:
+- Complete system simulation without hardware
+- OLED UI testing with visual feedback
+- Button input simulation with timing
+- Battery voltage simulation via potentiometer
+- Component integration validation
+- See `docs/SIMULATOR.md` for detailed usage
+
 ## Memory Usage
 
 **Flash Usage**: ~1.5MB (estimated)

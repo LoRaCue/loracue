@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "author": "LoRaCue Project",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-s3",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {
+        "psramSize": "8",
+        "flashSize": "16"
+      }
+    },
+    {
+      "type": "wokwi-ssd1306",
+      "id": "oled",
+      "top": -150,
+      "left": 300,
+      "attrs": {
+        "width": "128",
+        "height": "64"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_prev",
+      "top": 150,
+      "left": -150,
+      "attrs": {
+        "color": "red",
+        "label": "PREV"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton", 
+      "id": "btn_next",
+      "top": 150,
+      "left": -50,
+      "attrs": {
+        "color": "green",
+        "label": "NEXT"
+      }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "battery",
+      "top": 250,
+      "left": -100,
+      "attrs": {
+        "value": "75000",
+        "label": "Battery 3.7V"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_power",
+      "top": -50,
+      "left": 400,
+      "attrs": {
+        "color": "green",
+        "label": "PWR"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_tx", 
+      "top": -20,
+      "left": 400,
+      "attrs": {
+        "color": "blue",
+        "label": "TX"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_rx",
+      "top": 10,
+      "left": 400,
+      "attrs": {
+        "color": "yellow",
+        "label": "RX"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": -50,
+      "left": 350,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": -20,
+      "left": 350,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r3",
+      "top": 10,
+      "left": 350,
+      "attrs": {
+        "value": "220"
+      }
+    }
+  ],
+  "connections": [
+    [ "esp:GPIO17", "oled:SDA", "blue", [ "h20", "v-100", "h100" ] ],
+    [ "esp:GPIO18", "oled:SCL", "yellow", [ "h30", "v-110", "h90" ] ],
+    [ "esp:3V3", "oled:VCC", "red", [ "h40", "v-120", "h80" ] ],
+    [ "esp:GND", "oled:GND", "black", [ "h50", "v-130", "h70" ] ],
+    
+    [ "esp:GPIO45", "btn_prev:1.l", "red", [ "h-50", "v100" ] ],
+    [ "esp:3V3", "btn_prev:2.r", "red", [ "h-40", "v90", "h-60" ] ],
+    
+    [ "esp:GPIO46", "btn_next:1.l", "green", [ "h-30", "v110" ] ],
+    [ "esp:3V3", "btn_next:2.r", "green", [ "h-20", "v100", "h-40" ] ],
+    
+    [ "esp:GPIO1", "battery:SIG", "orange", [ "h-60", "v200" ] ],
+    [ "esp:3V3", "battery:VCC", "red", [ "h-50", "v190", "h-50" ] ],
+    [ "esp:GND", "battery:GND", "black", [ "h-40", "v180", "h-60" ] ],
+    
+    [ "esp:GPIO2", "r1:1", "green", [ "h100", "v-30" ] ],
+    [ "r1:2", "led_power:A", "green", [ "h0" ] ],
+    [ "esp:GND", "led_power:C", "black", [ "h110", "v-40", "h40" ] ],
+    
+    [ "esp:GPIO3", "r2:1", "blue", [ "h90", "v-10" ] ],
+    [ "r2:2", "led_tx:A", "blue", [ "h0" ] ],
+    [ "esp:GND", "led_tx:C", "black", [ "h100", "v-20", "h50" ] ],
+    
+    [ "esp:GPIO4", "r3:1", "yellow", [ "h80", "v10" ] ],
+    [ "r3:2", "led_rx:A", "yellow", [ "h0" ] ],
+    [ "esp:GND", "led_rx:C", "black", [ "h90", "v0", "h60" ] ]
+  ],
+  "dependencies": {}
+}

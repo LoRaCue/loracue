@@ -1,7 +1,7 @@
-# LoRaCue Makefile with ESP-IDF Auto-Detection
+# LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 # Automatically finds and sets up ESP-IDF environment
 
-.PHONY: build clean flash monitor menuconfig size erase help check-idf setup-env
+.PHONY: build clean flash monitor menuconfig size erase help check-idf setup-env sim-build sim-web sim sim-debug sim-screenshot check-wokwi
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -129,6 +129,87 @@ setup-env:
 	@echo "2. Run 'make build' to build firmware"
 	@echo "3. Run 'make flash-monitor' to flash and monitor"
 
+# Wokwi CLI detection
+WOKWI_CLI := $(shell which wokwi-cli 2>/dev/null)
+
+# Check Wokwi CLI installation
+check-wokwi:
+ifndef WOKWI_CLI
+	@echo "❌ Wokwi CLI not found!"
+	@echo ""
+	@echo "Please install Wokwi CLI to run local simulation:"
+	@echo "https://docs.wokwi.com/wokwi-ci/cli-installation"
+	@echo ""
+	@echo "Quick install options:"
+	@echo "• npm install -g wokwi-cli"
+	@echo "• curl -L https://wokwi.com/ci/install.sh | sh"
+	@false
+else
+	@echo "✅ Wokwi CLI found: $(WOKWI_CLI)"
+endif
+
+# Wokwi Simulator targets
+sim-build: check-idf
+	@echo "🎮 Building for Wokwi simulator..."
+	$(IDF_SETUP) idf.py build
+
+sim: check-wokwi sim-build
+	@echo "🚀 Starting Wokwi simulation..."
+	@echo "💡 Press Ctrl+C to stop simulation"
+	@echo "📺 Serial output will appear below..."
+	@echo ""
+	wokwi-cli --timeout 0 --serial-log-file -
+
+sim-screenshot: check-wokwi sim-build
+	@echo "📸 Taking OLED screenshot after 5 seconds..."
+	wokwi-cli --timeout 5000 --screenshot-part oled --screenshot-time 4500 --timeout-exit-code 0
+	@echo "✅ Screenshot saved as screenshot.png"
+
+sim-debug: check-wokwi sim-build
+	@echo "🐛 Starting debug simulation with interactive serial..."
+	@echo "💡 You can type commands that will be sent to the ESP32"
+	@echo "📺 Press Ctrl+C to stop"
+	@echo ""
+	wokwi-cli --timeout 0 --interactive --serial-log-file -
+
+sim-web:
+	@echo "🌐 For VISUAL simulation with clickable buttons and OLED display:"
+	@echo ""
+	@echo "1. Go to https://wokwi.com/projects/new/esp32"
+	@echo "2. Upload the diagram.json file"
+	@echo "3. Upload the firmware binary from build/loracue.bin"
+	@echo "4. Click 'Start Simulation'"
+	@echo ""
+	@echo "In the web simulator you can:"
+	@echo "• Click buttons with your mouse"
+	@echo "• See the OLED display update in real-time"
+	@echo "• Adjust the battery potentiometer"
+	@echo "• Watch status LEDs blink"
+	@echo ""
+	@echo "CLI simulation (make sim) only shows serial output, no visual interface."
+
+sim-info:
+	@echo "🎮 Wokwi Simulator Information"
+	@echo ""
+	@echo "📋 Simulated Hardware:"
+	@echo "  • ESP32-S3 microcontroller"
+	@echo "  • SSD1306 OLED display (128x64)"
+	@echo "  • Two pushbuttons (PREV/NEXT)"
+	@echo "  • Battery voltage potentiometer"
+	@echo "  • Status LEDs (Power, TX, RX)"
+	@echo ""
+	@echo "🔌 Pin Connections:"
+	@echo "  • OLED: SDA=GPIO17, SCL=GPIO18"
+	@echo "  • Buttons: PREV=GPIO45, NEXT=GPIO46"
+	@echo "  • Battery: ADC=GPIO1"
+	@echo "  • LEDs: Power=GPIO2, TX=GPIO3, RX=GPIO4"
+	@echo ""
+	@echo "🚀 Usage:"
+	@echo "  1. make sim-build    # Build firmware"
+	@echo "  2. make sim-web      # Instructions for web simulator"
+	@echo "  3. Use buttons to navigate OLED menu"
+	@echo "  4. Adjust potentiometer to simulate battery"
+
 # Show environment info
 env-info: check-idf
 	@echo "🔍 Environment Information:"
@@ -142,7 +223,7 @@ env-info: check-idf
 help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
-	@echo "📋 Available targets:"
+	@echo "📋 Hardware targets:"
 	@echo "  build         - Build the project"
 	@echo "  clean         - Clean build artifacts"
 	@echo "  flash         - Flash firmware to device"
@@ -154,6 +235,15 @@ help:
 	@echo "  rebuild       - Clean and rebuild"
 	@echo "  dev           - Build, flash, and monitor"
 	@echo ""
+	@echo "🎮 Simulator targets:"
+	@echo "  sim-build     - Build for Wokwi simulator"
+	@echo "  sim           - Run simulation with serial output"
+	@echo "  sim-debug     - Run with interactive serial input"
+	@echo "  sim-screenshot- Take OLED screenshot after 5 seconds"
+	@echo "  sim-web       - Instructions for web simulator"
+	@echo "  sim-info      - Show simulator information"
+	@echo "  check-wokwi   - Check Wokwi CLI installation"
+	@echo ""
 	@echo "🔧 Setup targets:"
 	@echo "  setup-env     - Setup development environment"
 	@echo "  set-target    - Set target to ESP32-S3 (run once)"
@@ -164,3 +254,7 @@ help:
 	@echo "  make setup-env    # First time setup"
 	@echo "  make set-target   # Set ESP32-S3 target"
 	@echo "  make dev          # Build, flash, and monitor"
+	@echo ""
+	@echo "🎮 Simulator quick start:"
+	@echo "  make sim          # Run local Wokwi simulation"
+	@echo "  make sim-web      # Use web simulator instead"
