@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "main.c" "lora_driver.c" "display_ui.c"
+    SRCS "main.c"
     INCLUDE_DIRS "."
-    REQUIRES bsp
+    REQUIRES bsp lora usb_hid device_registry oled_ui button_manager power_mgmt usb_pairing web_config nvs_flash
 )
