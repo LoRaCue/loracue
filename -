@@ -1,0 +1,135 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce3808,len:0x370
+load:0x403c9700,len:0x900
+load:0x403cc700,len:0x2364
+entry 0x403c98ac
+I (34) cpu_start: Multicore app
+I (44) cpu_start: Pro cpu start user code
+I (45) cpu_start: cpu freq: 160000000 Hz
+I (46) app_init: Application information:
+I (46) app_init: Project name:     loracue
+I (48) app_init: App version:      945ba51-dirty
+I (52) app_init: Compile time:     Sep 28 2025 09:20:54
+I (57) app_init: ELF file SHA256:  bf4fcc170...
+I (62) app_init: ESP-IDF:          v5.5-dirty
+I (66) efuse_init: Min chip rev:     v0.0
+I (69) efuse_init: Max chip rev:     v0.99 
+I (73) efuse_init: Chip rev:         v0.0
+I (77) heap_init: Initializing. RAM available for dynamic allocation:
+I (84) heap_init: At 3FCA68C8 len 00042E48 (267 KiB): RAM
+I (88) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (94) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (99) heap_init: At 600FE08C len 00001F5C (7 KiB): RTCRAM
+I (106) spi_flash: detected chip: gd
+I (107) spi_flash: flash io: dio
+I (113) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (117) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (124) main_task: Started on CPU0
+I (134) main_task: Calling app_main()
+I (134) LORACUE_MAIN: LoRaCue starting - Enterprise presentation clicker
+I (164) LORACUE_MAIN: Initializing power management...
+I (164) POWER_MGMT: Initializing power management
+W (164) POWER_MGMT: Power management not supported (simulator mode)
+E (164) sleep: Not an RTC IO: GPIO45
+I (164) POWER_MGMT: Cold boot or reset
+I (174) POWER_MGMT: Power management initialized (CPU: 80MHz, Light sleep: ON, Deep sleep: ON)
+I (184) LORACUE_MAIN: Initializing Board Support Package...
+I (184) BSP_HELTEC_V3: Initializing Heltec LoRa V3 BSP
+I (194) BSP_HELTEC_V3: Configuring buttons GPIO46 (PREV) and GPIO45 (NEXT)
+I (194) BSP_HELTEC_V3: Buttons configured successfully
+I (204) BSP_HELTEC_V3: Initializing battery monitoring on GPIO1 (ADC) with GPIO37 (control)
+I (214) BSP_HELTEC_V3: Battery monitoring initialized
+I (214) BSP_HELTEC_V3: Initializing SPI bus for SX1262 LoRa
+I (224) BSP_HELTEC_V3: SPI bus initialized successfully
+I (224) BSP_HELTEC_V3: Initializing I2C bus for SH1106 OLED
+I (234) BSP_HELTEC_V3: I2C bus initialized successfully
+I (234) BSP_HELTEC_V3: BSP initialization complete
+I (244) LORACUE_MAIN: Initializing web configuration system...
+I (244) WEB_CONFIG: Initializing web configuration system (placeholder)
+I (254) WEB_CONFIG: Web configuration initialized
+I (254) LORACUE_MAIN: Initializing USB pairing system...
+I (264) USB_PAIRING: Initializing USB pairing system
+I (264) USB_PAIRING: USB pairing initialized (Device ID: 0x7DF8)
+I (274) LORACUE_MAIN: Initializing OLED UI...
+I (274) OLED_UI: Initializing OLED UI system
+I (284) BSP_HELTEC_V3: Initializing SH1106 OLED display
+I (294) BSP_HELTEC_V3: SH1106 OLED initialized successfully
+I (294) OLED_UI: OLED UI initialized successfully
+I (294) BSP_HELTEC_V3: Clearing OLED display
+I (334) OLED_UI: Line 1: [ ]    LoRaCue
+I (334) OLED_UI: Line 2: [ ] STAGE Remote
+I (334) OLED_UI: Line 3: [ ]   Starting...
+I (2334) LORACUE_MAIN: Initializing button manager...
+I (2334) BUTTON_MGR: Initializing button manager
+I (2334) BUTTON_MGR: Button manager initialized
+I (2334) BUTTON_MGR: Button manager task started
+I (2334) BUTTON_MGR: Button manager started
+I (2344) LORACUE_MAIN: Initializing device registry...
+I (2344) DEVICE_REGISTRY: Initializing device registry
+I (2354) DEVICE_REGISTRY: Device registry initialized successfully
+I (2354) LORACUE_MAIN: Initializing USB HID interface...
+I (2364) USB_HID: Initializing USB HID (placeholder implementation)
+I (2364) USB_HID: USB HID initialized successfully (placeholder)
+I (2374) LORACUE_MAIN: Initializing LoRa driver...
+I (2374) LORA_DRIVER: 🌐 Simulator mode: Initializing WiFi UDP transport
+I (2384) LORA_DRIVER: 🌐 Skipping SX1262 hardware initialization (simulated)
+I (2394) LORA_DRIVER: 🌐 Starting LoRa WiFi simulation
+I (2394) LORA_DRIVER: Initializing new WiFi AP for simulation
+I (2404) pp: pp rom version: e7ae62f
+I (2404) net80211: net80211 rom version: e7ae62f
+I (2424) wifi:wifi driver task: 3fced438, prio:23, stack:6656, core=0
+I (2434) wifi:wifi firmware version: f3dbad7
+I (2444) wifi:wifi certification version: v7.0
+I (2444) wifi:config NVS flash: enabled
+I (2444) wifi:config nano formatting: disabled
+I (2444) wifi:Init data frame dynamic rx buffer num: 32
+I (2454) wifi:Init static rx mgmt buffer num: 5
+I (2454) wifi:Init management short buffer num: 32
+I (2454) wifi:Init dynamic tx buffer num: 32
+I (2464) wifi:Init static tx FG buffer num: 2
+I (2464) wifi:Init static rx buffer size: 1600
+I (2474) wifi:Init static rx buffer num: 10
+I (2474) wifi:Init dynamic rx buffer num: 32
+I (2484) wifi_init: rx ba win: 6
+I (2484) wifi_init: accept mbox: 6
+I (2484) wifi_init: tcpip mbox: 32
+I (2484) wifi_init: udp mbox: 6
+I (2494) wifi_init: tcp mbox: 6
+I (2494) wifi_init: tcp tx win: 5760
+I (2494) wifi_init: tcp rx win: 5760
+I (2504) wifi_init: tcp mss: 1440
+I (2504) wifi_init: WiFi IRAM OP enabled
+I (2504) wifi_init: WiFi RX IRAM OP enabled
+I (2514) LORA_DRIVER: Creating custom WiFi AP netif
+I (3484) phy_init: phy_version 701,f4f1da3a,Mar  3 2025,15:50:10
+W (3484) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (3534) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+E (3584) wifi:failed to post WiFi event=43 ret=259
+I (3594) wifi:mode : softAP (24:0a:c4:00:01:11)
+I (3594) wifi:Total power save buffer number: 16
+I (3604) wifi:Init max length of beacon: 752/752
+I (3604) wifi:Init max length of beacon: 752/752
+E (3604) wifi:failed to post WiFi event=12 ret=259
+I (5684) LORA_DRIVER: ✅ LoRa WiFi simulation ready - Broadcasting on 192.168.4.255:8080
+I (5684) LORACUE_MAIN: Initializing LoRa protocol with PC device ID: 0xAC4E
+I (5694) LORA_PROTOCOL: Initializing LoRa protocol for device 0xAC4E
+I (5694) LORA_PROTOCOL: LoRa protocol initialized successfully
+I (5704) LORACUE_MAIN: Running hardware validation...
+I (5704) BSP_HELTEC_V3: Validating Heltec LoRa V3 hardware
+I (5714) BSP_HELTEC_V3: Testing SH1106 OLED display...
+I (5714) BSP_HELTEC_V3: Initializing SH1106 OLED display
+I (5734) BSP_HELTEC_V3: SH1106 OLED initialized successfully
+I (5734) BSP_HELTEC_V3: ✓ SH1106 OLED initialized successfully
+I (5734) BSP_HELTEC_V3: Clearing OLED display
+I (5944) BSP_HELTEC_V3: ✓ OLED display cleared
+I (5954) BSP_HELTEC_V3: ✓ Battery monitoring working: 16.17V
+I (5954) BSP_HELTEC_V3: BSP initialization complete
+I (5954) BSP_HELTEC_V3: Clearing OLED display
+I (5984) OLED_UI: Line 0: [ ] LoRaCue-STAGE
+I (5994) OLED_UI: Line 1: [ ] Bat:58% Sig:85%
+I (5994) OLED_UI: Line 2: [ ] Paired: 0 devices
+I (6164) OLED_UI: Line 3: [ ] Hold both for menu

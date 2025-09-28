@@ -1,10 +1,10 @@
 /**
  * @file main.c
- * @brief LoRaCue main application - Web configuration interface test
+ * @brief LoRaCue main application
  * 
- * CONTEXT: Testing Ticket 6.1 - Web Configuration Interface
+ * CONTEXT: LoRaCue enterprise presentation clicker
  * HARDWARE: Heltec LoRa V3 (ESP32-S3 + SX1262 + SH1106)
- * TEST: Wi-Fi AP mode with HTTP server for device configuration
+ * PURPOSE: Main application entry point and system initialization
  */
 
 #include <stdio.h>
@@ -73,7 +73,7 @@ static void pairing_result_callback(bool success, uint16_t device_id, const char
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "LoRaCue starting - Web configuration interface test");
+    ESP_LOGI(TAG, "LoRaCue starting - Enterprise presentation clicker");
     
     // Check wake cause
     esp_sleep_wakeup_cause_t wake_cause = esp_sleep_get_wakeup_cause();
@@ -197,11 +197,6 @@ void app_main(void)
     
     // Transition to main UI state
     oled_ui_set_state(UI_STATE_MAIN);
-    
-    ESP_LOGI(TAG, "Starting web configuration test");
-    ESP_LOGI(TAG, "Navigate to System > Web Config to start Wi-Fi AP");
-    ESP_LOGI(TAG, "Connect to 'LoRaCue-Config' with password 'loracue123'");
-    ESP_LOGI(TAG, "Open browser to 192.168.4.1 for configuration");
     
     // Set to receive mode initially
     lora_set_receive_mode();

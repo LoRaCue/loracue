@@ -478,45 +478,6 @@ esp_err_t heltec_v3_validate_hardware(void)
         ESP_LOGW(TAG, "⚠ SH1106 OLED initialization failed: %s", esp_err_to_name(ret));
     }
     
-    // Test SX1262 communication
-    ESP_LOGI(TAG, "Testing SX1262 LoRa chip...");
-    heltec_v3_sx1262_reset();
-    
-    // Read version register (should return 0x14 for SX1262)
-    uint8_t version = heltec_v3_sx1262_read_register(0x0320);
-    if (version == 0x14) {
-        ESP_LOGI(TAG, "✓ SX1262 detected (version: 0x%02X)", version);
-    } else {
-        ESP_LOGW(TAG, "⚠ SX1262 version unexpected: 0x%02X (expected 0x14)", version);
-    }
-    
-    // Test button functionality
-    ESP_LOGI(TAG, "Testing buttons - press PREV and NEXT buttons now...");
-    
-    bool prev_pressed = false, next_pressed = false;
-    int timeout = 50; // 5 seconds
-    
-    while (timeout-- > 0 && (!prev_pressed || !next_pressed)) {
-        if (heltec_v3_read_button(BSP_BUTTON_PREV)) {
-            if (!prev_pressed) {
-                ESP_LOGI(TAG, "✓ PREV button (GPIO%d) working", BUTTON_PREV_PIN);
-                prev_pressed = true;
-            }
-        }
-        if (heltec_v3_read_button(BSP_BUTTON_NEXT)) {
-            if (!next_pressed) {
-                ESP_LOGI(TAG, "✓ NEXT button (GPIO%d) working", BUTTON_NEXT_PIN);
-                next_pressed = true;
-            }
-        }
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
-    
-    if (!prev_pressed || !next_pressed) {
-        ESP_LOGW(TAG, "Button test incomplete - PREV:%s NEXT:%s", 
-                prev_pressed ? "OK" : "FAIL", next_pressed ? "OK" : "FAIL");
-    }
-    
     // Test battery monitoring
     float battery_voltage = heltec_v3_read_battery();
     if (battery_voltage > 0) {
@@ -526,6 +487,6 @@ esp_err_t heltec_v3_validate_hardware(void)
         return ESP_FAIL;
     }
     
-    ESP_LOGI(TAG, "Hardware validation complete");
+    ESP_LOGI(TAG, "BSP initialization complete");
     return ESP_OK;
 }

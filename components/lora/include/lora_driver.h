@@ -72,6 +72,29 @@ int16_t lora_get_rssi(void);
  */
 esp_err_t lora_set_receive_mode(void);
 
+#ifdef SIMULATOR_BUILD
+/**
+ * @brief Disable LoRa WiFi simulation (for config mode)
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t lora_driver_disable_sim_wifi(void);
+
+/**
+ * @brief Enable LoRa WiFi simulation (after config mode)
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t lora_driver_enable_sim_wifi(void);
+
+/**
+ * @brief Check if LoRa WiFi simulation is enabled
+ * 
+ * @return true if enabled, false otherwise
+ */
+bool lora_driver_is_sim_wifi_enabled(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
