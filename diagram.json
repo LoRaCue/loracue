@@ -6,15 +6,15 @@
     {
       "type": "board-esp32-s3-devkitc-1",
       "id": "esp",
-      "top": 0,
+      "top": 50,
       "left": 0,
       "attrs": {}
     },
     {
-      "type": "wokwi-ssd1306",
+      "type": "board-ssd1306",
       "id": "oled",
-      "top": -200,
-      "left": 400,
+      "top": 330,
+      "left": -98,
       "attrs": {
         "width": "128",
         "height": "64"
@@ -23,8 +23,9 @@
     {
       "type": "wokwi-pushbutton",
       "id": "btn_prev",
-      "top": 200,
-      "left": -200,
+      "top": 130,
+      "left": 143,
+      "rotate": -90,
       "attrs": {
         "color": "red",
         "label": "PREV"
@@ -33,8 +34,9 @@
     {
       "type": "wokwi-pushbutton",
       "id": "btn_next",
-      "top": 200,
-      "left": -100,
+      "top": 130,
+      "left": -140,
+      "rotate": 270,
       "attrs": {
         "color": "green",
         "label": "NEXT"
@@ -43,8 +45,9 @@
     {
       "type": "wokwi-potentiometer",
       "id": "battery_sim",
-      "top": 300,
-      "left": -150,
+      "top": 0,
+      "left": 130,
+      "rotate": 0,
       "attrs": {
         "value": "75000",
         "label": "Battery"
@@ -53,53 +56,19 @@
     {
       "type": "wokwi-led",
       "id": "led_power",
-      "top": -100,
-      "left": 500,
+      "top": 240,
+      "left": 100,
       "attrs": {
-        "color": "green"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_tx",
-      "top": -50,
-      "left": 500,
-      "attrs": {
-        "color": "blue"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_rx",
-      "top": 0,
-      "left": 500,
-      "attrs": {
-        "color": "yellow"
+        "color": "blue",
+        "label": "Power"
       }
     },
     {
       "type": "wokwi-resistor",
       "id": "r_power",
-      "top": -100,
-      "left": 450,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_tx",
-      "top": -50,
-      "left": 450,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_rx",
-      "top": 0,
-      "left": 450,
+      "top": 242,
+      "left": 110,
+      "rotate": 90,
       "attrs": {
         "value": "220"
       }
@@ -109,32 +78,24 @@
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
     
-    [ "esp:17", "oled:SDA", "blue", [ "h100", "v-150" ] ],
-    [ "esp:18", "oled:SCL", "yellow", [ "h110", "v-160" ] ],
-    [ "esp:3V3", "oled:VCC", "red", [ "h120", "v-170" ] ],
-    [ "esp:GND.1", "oled:GND", "black", [ "h130", "v-180" ] ],
+    [ "esp:17", "oled:SDA", "blue", [  ] ],
+    [ "esp:18", "oled:SCL", "yellow", [  ] ],
+    [ "esp:3V3.2", "oled:VCC", "red", [ ] ],
+    [ "esp:GND.1", "oled:GND", "black", [  ] ],
     
-    [ "esp:45", "btn_prev:1.l", "red", [ "h-100", "v150" ] ],
-    [ "esp:3V3", "btn_prev:2.r", "red", [ "h-90", "v140", "h-110" ] ],
+    [ "esp:45", "btn_prev:2.l", "yellow", [ ] ],
+    [ "battery_sim:VCC", "btn_prev:2.r", "red", [  ] ],
     
-    [ "esp:46", "btn_next:1.l", "green", [ "h-80", "v160" ] ],
-    [ "esp:3V3", "btn_next:2.r", "green", [ "h-70", "v150", "h-90" ] ],
+    [ "esp:46", "btn_next:2.l", "green", [  ] ],
+    [ "esp:3V3.1", "btn_next:2.r", "red", [  ] ],
     
-    [ "esp:1", "battery_sim:SIG", "orange", [ "h-120", "v250" ] ],
-    [ "esp:3V3", "battery_sim:VCC", "red", [ "h-110", "v240", "h-40" ] ],
-    [ "esp:GND.2", "battery_sim:GND", "black", [ "h-100", "v230", "h-50" ] ],
+    [ "esp:1", "battery_sim:SIG", "orange", [ ] ],
+    [ "esp:3V3.1", "battery_sim:VCC", "red", [ "v-100", "h220", "v100" ] ],
+    [ "esp:GND.2", "battery_sim:GND", "black", [  ] ],
     
-    [ "esp:2", "r_power:1", "green", [ "h200", "v-80" ] ],
-    [ "r_power:2", "led_power:A", "green", [ "h0" ] ],
-    [ "esp:GND.1", "led_power:C", "black", [ "h210", "v-90", "h40" ] ],
-    
-    [ "esp:3", "r_tx:1", "blue", [ "h190", "v-30" ] ],
-    [ "r_tx:2", "led_tx:A", "blue", [ "h0" ] ],
-    [ "esp:GND.1", "led_tx:C", "black", [ "h200", "v-40", "h50" ] ],
-    
-    [ "esp:4", "r_rx:1", "yellow", [ "h180", "v20" ] ],
-    [ "r_rx:2", "led_rx:A", "yellow", [ "h0" ] ],
-    [ "esp:GND.1", "led_rx:C", "black", [ "h190", "v10", "h60" ] ]
+    [ "esp:35", "r_power:1", "yellow", [  ] ],
+    [ "r_power:2", "led_power:A", "yellow", [ "v22" ] ],
+    [ "esp:GND.4", "led_power:C", "black", [  ] ]
   ],
   "dependencies": {}
 }

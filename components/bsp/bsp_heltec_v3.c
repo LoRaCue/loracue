@@ -38,6 +38,7 @@ static const char *TAG = "BSP_HELTEC_V3";
 // OLED SH1106 Pins
 #define OLED_SDA_PIN           GPIO_NUM_17
 #define OLED_SCL_PIN           GPIO_NUM_18
+#define OLED_RST_PIN           GPIO_NUM_21
 
 // Static handles
 static adc_oneshot_unit_handle_t adc_handle = NULL;
@@ -190,6 +191,22 @@ esp_err_t heltec_v3_oled_write_command(uint8_t cmd)
 esp_err_t heltec_v3_oled_init(void)
 {
     ESP_LOGI(TAG, "Initializing SH1106 OLED display");
+    
+    // Configure and pulse reset pin
+    gpio_config_t rst_config = {
+        .pin_bit_mask = (1ULL << OLED_RST_PIN),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    gpio_config(&rst_config);
+    
+    // Reset sequence: LOW -> HIGH
+    gpio_set_level(OLED_RST_PIN, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    gpio_set_level(OLED_RST_PIN, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
     
     // SH1106 initialization sequence
     esp_err_t ret;
