@@ -67,7 +67,7 @@ static void draw_text_line(int line, const char* text, bool inverted)
 
 static void clear_display(void)
 {
-    heltec_v3_oled_clear();
+    bsp_oled_clear();
     ESP_LOGD(TAG, "Display cleared");
 }
 
@@ -277,7 +277,7 @@ esp_err_t oled_ui_init(void)
     ESP_LOGI(TAG, "Initializing OLED UI system");
     
     // Initialize OLED display
-    esp_err_t ret = heltec_v3_oled_init();
+    esp_err_t ret = bsp_oled_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize OLED: %s", esp_err_to_name(ret));
         return ret;

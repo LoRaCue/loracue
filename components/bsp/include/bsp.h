@@ -40,7 +40,7 @@ esp_err_t bsp_init(void);
  * 
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t heltec_v3_init_buttons(void);
+esp_err_t bsp_init_buttons(void);
 
 /**
  * @brief Initialize battery monitoring system
@@ -49,18 +49,18 @@ esp_err_t heltec_v3_init_buttons(void);
  * 
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t heltec_v3_init_battery(void);
+esp_err_t bsp_init_battery(void);
 
 /**
  * @brief Set status LED state
  * @param state true = LED on, false = LED off
  */
-void heltec_v3_set_led(bool state);
+void bsp_set_led(bool state);
 
 /**
  * @brief Toggle status LED state
  */
-void heltec_v3_toggle_led(void);
+void bsp_toggle_led(void);
 
 /**
  * @brief Read button state
@@ -68,7 +68,7 @@ void heltec_v3_toggle_led(void);
  * @param button Button to read (BSP_BUTTON_PREV or BSP_BUTTON_NEXT)
  * @return true if button is pressed, false otherwise
  */
-bool heltec_v3_read_button(bsp_button_t button);
+bool bsp_read_button(bsp_button_t button);
 
 /**
  * @brief Read battery voltage
@@ -78,7 +78,7 @@ bool heltec_v3_read_button(bsp_button_t button);
  * 
  * @return Battery voltage in volts, or -1.0 on error
  */
-float heltec_v3_read_battery(void);
+float bsp_read_battery(void);
 
 /**
  * @brief Enter deep sleep mode with button wake-up
@@ -88,7 +88,7 @@ float heltec_v3_read_battery(void);
  * 
  * @return ESP_OK (should not return in normal operation)
  */
-esp_err_t heltec_v3_enter_sleep(void);
+esp_err_t bsp_enter_sleep(void);
 
 /**
  * @brief Initialize I2C bus for OLED communication
@@ -97,7 +97,7 @@ esp_err_t heltec_v3_enter_sleep(void);
  * 
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t heltec_v3_init_i2c(void);
+esp_err_t bsp_init_i2c(void);
 
 /**
  * @brief Initialize SH1106 OLED display
@@ -106,7 +106,7 @@ esp_err_t heltec_v3_init_i2c(void);
  * 
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t heltec_v3_oled_init(void);
+esp_err_t bsp_oled_init(void);
 
 /**
  * @brief Clear OLED display
@@ -115,7 +115,7 @@ esp_err_t heltec_v3_oled_init(void);
  * 
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t heltec_v3_oled_clear(void);
+esp_err_t bsp_oled_clear(void);
 
 /**
  * @brief Write command to OLED
@@ -123,7 +123,7 @@ esp_err_t heltec_v3_oled_clear(void);
  * @param cmd Command byte to send
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t heltec_v3_oled_write_command(uint8_t cmd);
+esp_err_t bsp_oled_write_command(uint8_t cmd);
 
 /**
  * @brief Initialize SPI bus for LoRa communication
@@ -132,7 +132,7 @@ esp_err_t heltec_v3_oled_write_command(uint8_t cmd);
  * 
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t heltec_v3_init_spi(void);
+esp_err_t bsp_init_spi(void);
 
 /**
  * @brief Read SX1262 register via SPI
@@ -140,7 +140,7 @@ esp_err_t heltec_v3_init_spi(void);
  * @param reg Register address to read
  * @return Register value, or 0 on error
  */
-uint8_t heltec_v3_sx1262_read_register(uint16_t reg);
+uint8_t bsp_sx1262_read_register(uint16_t reg);
 
 /**
  * @brief Reset SX1262 chip
@@ -149,7 +149,7 @@ uint8_t heltec_v3_sx1262_read_register(uint16_t reg);
  * 
  * @return ESP_OK on success
  */
-esp_err_t heltec_v3_sx1262_reset(void);
+esp_err_t bsp_sx1262_reset(void);
 
 /**
  * @brief Validate hardware functionality
@@ -158,7 +158,7 @@ esp_err_t heltec_v3_sx1262_reset(void);
  * 
  * @return ESP_OK if hardware validation passes, ESP_FAIL otherwise
  */
-esp_err_t heltec_v3_validate_hardware(void);
+esp_err_t bsp_validate_hardware(void);
 
 #ifdef __cplusplus
 }

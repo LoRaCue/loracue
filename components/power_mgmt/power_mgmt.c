@@ -283,7 +283,7 @@ esp_err_t power_mgmt_restore_wake(void)
     ESP_LOGD(TAG, "Restoring system after wake");
     
     // TODO: Re-enable and reinitialize peripherals after wake
-    // - Reinitialize I2C bus for OLED (call heltec_v3_init_i2c())
+    // - Reinitialize I2C bus for OLED (call bsp_init_i2c())
     // - Reinitialize SPI for LoRa
     // - Restore peripheral configurations
     // CRITICAL: Without this, I2C operations crash with semaphore assertion failures

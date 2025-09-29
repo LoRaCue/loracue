@@ -47,7 +47,7 @@ static spi_device_handle_t spi_handle = NULL;
 static i2c_master_bus_handle_t i2c_bus_handle = NULL;
 static i2c_master_dev_handle_t oled_dev_handle = NULL;
 
-esp_err_t heltec_v3_init_spi(void)
+esp_err_t bsp_init_spi(void)
 {
     ESP_LOGI(TAG, "Initializing SPI bus for SX1262 LoRa");
     
@@ -111,7 +111,7 @@ esp_err_t heltec_v3_init_spi(void)
     return ESP_OK;
 }
 
-uint8_t heltec_v3_sx1262_read_register(uint16_t reg)
+uint8_t bsp_sx1262_read_register(uint16_t reg)
 {
     if (spi_handle == NULL) {
         ESP_LOGE(TAG, "SPI not initialized");
@@ -141,7 +141,7 @@ uint8_t heltec_v3_sx1262_read_register(uint16_t reg)
     return rx_data[3]; // Register value is in the 4th byte
 }
 
-esp_err_t heltec_v3_init_i2c(void)
+esp_err_t bsp_init_i2c(void)
 {
     ESP_LOGI(TAG, "Initializing I2C bus for SH1106 OLED");
     
@@ -178,7 +178,7 @@ esp_err_t heltec_v3_init_i2c(void)
     return ESP_OK;
 }
 
-esp_err_t heltec_v3_oled_write_command(uint8_t cmd)
+esp_err_t bsp_oled_write_command(uint8_t cmd)
 {
     if (oled_dev_handle == NULL) {
         ESP_LOGE(TAG, "I2C not initialized");
@@ -189,7 +189,7 @@ esp_err_t heltec_v3_oled_write_command(uint8_t cmd)
     return i2c_master_transmit(oled_dev_handle, data, 2, 1000);
 }
 
-esp_err_t heltec_v3_oled_init(void)
+esp_err_t bsp_oled_init(void)
 {
     ESP_LOGI(TAG, "Initializing SH1106 OLED display");
     
@@ -212,90 +212,90 @@ esp_err_t heltec_v3_oled_init(void)
     // SH1106 initialization sequence
     esp_err_t ret;
     
-    ret = heltec_v3_oled_write_command(0xAE); // Display OFF
+    ret = bsp_oled_write_command(0xAE); // Display OFF
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0x02); // Set lower column address
+    ret = bsp_oled_write_command(0x02); // Set lower column address
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0x10); // Set higher column address
+    ret = bsp_oled_write_command(0x10); // Set higher column address
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0x40); // Set display start line
+    ret = bsp_oled_write_command(0x40); // Set display start line
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0x81); // Set contrast control
+    ret = bsp_oled_write_command(0x81); // Set contrast control
     if (ret != ESP_OK) return ret;
-    ret = heltec_v3_oled_write_command(0xCF); // Contrast value
-    if (ret != ESP_OK) return ret;
-    
-    ret = heltec_v3_oled_write_command(0xA1); // Set segment re-map
+    ret = bsp_oled_write_command(0xCF); // Contrast value
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0xC8); // Set COM output scan direction
+    ret = bsp_oled_write_command(0xA1); // Set segment re-map
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0xA6); // Set normal display
+    ret = bsp_oled_write_command(0xC8); // Set COM output scan direction
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0xA8); // Set multiplex ratio
-    if (ret != ESP_OK) return ret;
-    ret = heltec_v3_oled_write_command(0x3F); // 64 lines
+    ret = bsp_oled_write_command(0xA6); // Set normal display
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0xA4); // Set entire display ON/OFF
+    ret = bsp_oled_write_command(0xA8); // Set multiplex ratio
+    if (ret != ESP_OK) return ret;
+    ret = bsp_oled_write_command(0x3F); // 64 lines
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0xD3); // Set display offset
-    if (ret != ESP_OK) return ret;
-    ret = heltec_v3_oled_write_command(0x00); // No offset
+    ret = bsp_oled_write_command(0xA4); // Set entire display ON/OFF
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0xD5); // Set display clock
+    ret = bsp_oled_write_command(0xD3); // Set display offset
     if (ret != ESP_OK) return ret;
-    ret = heltec_v3_oled_write_command(0x80); // Default clock
-    if (ret != ESP_OK) return ret;
-    
-    ret = heltec_v3_oled_write_command(0xD9); // Set pre-charge period
-    if (ret != ESP_OK) return ret;
-    ret = heltec_v3_oled_write_command(0xF1); // Pre-charge value
+    ret = bsp_oled_write_command(0x00); // No offset
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0xDA); // Set COM pins configuration
+    ret = bsp_oled_write_command(0xD5); // Set display clock
     if (ret != ESP_OK) return ret;
-    ret = heltec_v3_oled_write_command(0x12); // COM pins config
-    if (ret != ESP_OK) return ret;
-    
-    ret = heltec_v3_oled_write_command(0xDB); // Set VCOM deselect level
-    if (ret != ESP_OK) return ret;
-    ret = heltec_v3_oled_write_command(0x40); // VCOM level
+    ret = bsp_oled_write_command(0x80); // Default clock
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0x20); // Set memory addressing mode
+    ret = bsp_oled_write_command(0xD9); // Set pre-charge period
     if (ret != ESP_OK) return ret;
-    ret = heltec_v3_oled_write_command(0x02); // Page addressing mode
+    ret = bsp_oled_write_command(0xF1); // Pre-charge value
     if (ret != ESP_OK) return ret;
     
-    ret = heltec_v3_oled_write_command(0xAF); // Display ON
+    ret = bsp_oled_write_command(0xDA); // Set COM pins configuration
+    if (ret != ESP_OK) return ret;
+    ret = bsp_oled_write_command(0x12); // COM pins config
+    if (ret != ESP_OK) return ret;
+    
+    ret = bsp_oled_write_command(0xDB); // Set VCOM deselect level
+    if (ret != ESP_OK) return ret;
+    ret = bsp_oled_write_command(0x40); // VCOM level
+    if (ret != ESP_OK) return ret;
+    
+    ret = bsp_oled_write_command(0x20); // Set memory addressing mode
+    if (ret != ESP_OK) return ret;
+    ret = bsp_oled_write_command(0x02); // Page addressing mode
+    if (ret != ESP_OK) return ret;
+    
+    ret = bsp_oled_write_command(0xAF); // Display ON
     if (ret != ESP_OK) return ret;
     
     ESP_LOGI(TAG, "SH1106 OLED initialized successfully");
     return ESP_OK;
 }
 
-esp_err_t heltec_v3_oled_clear(void)
+esp_err_t bsp_oled_clear(void)
 {
     ESP_LOGI(TAG, "Clearing OLED display");
     
     for (int page = 0; page < 8; page++) {
         // Set page address
-        esp_err_t ret = heltec_v3_oled_write_command(0xB0 + page);
+        esp_err_t ret = bsp_oled_write_command(0xB0 + page);
         if (ret != ESP_OK) return ret;
         
         // Set column address
-        ret = heltec_v3_oled_write_command(0x02); // Lower column
+        ret = bsp_oled_write_command(0x02); // Lower column
         if (ret != ESP_OK) return ret;
-        ret = heltec_v3_oled_write_command(0x10); // Higher column
+        ret = bsp_oled_write_command(0x10); // Higher column
         if (ret != ESP_OK) return ret;
         
         // Clear page data
@@ -316,7 +316,7 @@ esp_err_t bsp_init(void)
     esp_err_t ret = ESP_OK;
     
     // Initialize GPIO for buttons
-    ret = heltec_v3_init_buttons();
+    ret = bsp_init_buttons();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize buttons: %s", esp_err_to_name(ret));
         return ret;
@@ -336,24 +336,24 @@ esp_err_t bsp_init(void)
         ESP_LOGE(TAG, "Failed to configure LED GPIO: %s", esp_err_to_name(ret));
         return ret;
     }
-    heltec_v3_set_led(false); // Turn off LED initially
+    bsp_set_led(false); // Turn off LED initially
     
     // Initialize battery monitoring
-    ret = heltec_v3_init_battery();
+    ret = bsp_init_battery();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize battery monitoring: %s", esp_err_to_name(ret));
         return ret;
     }
     
     // Initialize SPI for LoRa
-    ret = heltec_v3_init_spi();
+    ret = bsp_init_spi();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI: %s", esp_err_to_name(ret));
         return ret;
     }
     
     // Initialize I2C for OLED
-    ret = heltec_v3_init_i2c();
+    ret = bsp_init_i2c();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize I2C: %s", esp_err_to_name(ret));
         return ret;
@@ -363,7 +363,7 @@ esp_err_t bsp_init(void)
     return ESP_OK;
 }
 
-esp_err_t heltec_v3_init_buttons(void)
+esp_err_t bsp_init_buttons(void)
 {
     ESP_LOGI(TAG, "Configuring buttons GPIO%d (PREV) and GPIO%d (NEXT)", BUTTON_PREV_PIN, BUTTON_NEXT_PIN);
     
@@ -385,7 +385,7 @@ esp_err_t heltec_v3_init_buttons(void)
     return ESP_OK;
 }
 
-esp_err_t heltec_v3_init_battery(void)
+esp_err_t bsp_init_battery(void)
 {
     ESP_LOGI(TAG, "Initializing battery monitoring on GPIO%d (ADC) with GPIO%d (control)", BATTERY_ADC_PIN, BATTERY_CTRL_PIN);
     
@@ -425,25 +425,25 @@ esp_err_t heltec_v3_init_battery(void)
     return ESP_OK;
 }
 
-void heltec_v3_set_led(bool state)
+void bsp_set_led(bool state)
 {
     gpio_set_level(STATUS_LED_PIN, state ? 1 : 0);
 }
 
-void heltec_v3_toggle_led(void)
+void bsp_toggle_led(void)
 {
     static bool led_state = false;
     led_state = !led_state;
-    heltec_v3_set_led(led_state);
+    bsp_set_led(led_state);
 }
 
-bool heltec_v3_read_button(bsp_button_t button)
+bool bsp_read_button(bsp_button_t button)
 {
     gpio_num_t pin = (button == BSP_BUTTON_PREV) ? BUTTON_PREV_PIN : BUTTON_NEXT_PIN;
     return gpio_get_level(pin) == 0; // Active low (pulled up, pressed = low)
 }
 
-float heltec_v3_read_battery(void)
+float bsp_read_battery(void)
 {
     if (adc_handle == NULL) {
         ESP_LOGE(TAG, "Battery monitoring not initialized");
@@ -479,7 +479,7 @@ float heltec_v3_read_battery(void)
     return voltage;
 }
 
-esp_err_t heltec_v3_enter_sleep(void)
+esp_err_t bsp_enter_sleep(void)
 {
     ESP_LOGI(TAG, "Entering deep sleep, wake on button press");
     
@@ -493,7 +493,7 @@ esp_err_t heltec_v3_enter_sleep(void)
     return ESP_OK;
 }
 
-esp_err_t heltec_v3_sx1262_reset(void)
+esp_err_t bsp_sx1262_reset(void)
 {
     ESP_LOGI(TAG, "Resetting SX1262");
     
@@ -509,23 +509,23 @@ esp_err_t heltec_v3_sx1262_reset(void)
 }
 
 // Hardware validation function
-esp_err_t heltec_v3_validate_hardware(void)
+esp_err_t bsp_validate_hardware(void)
 {
     ESP_LOGI(TAG, "Validating Heltec LoRa V3 hardware");
     
     // Test SH1106 OLED display
     ESP_LOGI(TAG, "Testing SH1106 OLED display...");
-    esp_err_t ret = heltec_v3_oled_init();
+    esp_err_t ret = bsp_oled_init();
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "✓ SH1106 OLED initialized successfully");
-        heltec_v3_oled_clear();
+        bsp_oled_clear();
         ESP_LOGI(TAG, "✓ OLED display cleared");
     } else {
         ESP_LOGW(TAG, "⚠ SH1106 OLED initialization failed: %s", esp_err_to_name(ret));
     }
     
     // Test battery monitoring
-    float battery_voltage = heltec_v3_read_battery();
+    float battery_voltage = bsp_read_battery();
     if (battery_voltage > 0) {
         ESP_LOGI(TAG, "✓ Battery monitoring working: %.2fV", battery_voltage);
     } else {

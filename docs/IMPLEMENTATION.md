@@ -131,10 +131,10 @@ loracue/
 
 **Key Functions**:
 - `bsp_init()`: Initialize all hardware peripherals
-- `heltec_v3_validate_hardware()`: Hardware self-test
-- `heltec_v3_read_battery()`: Battery voltage monitoring
-- `heltec_v3_read_button()`: Button state reading
-- `heltec_v3_oled_*()`: OLED display control
+- `bsp_validate_hardware()`: Hardware self-test
+- `bsp_read_battery()`: Battery voltage monitoring
+- `bsp_read_button()`: Button state reading
+- `bsp_oled_*()`: OLED display control
 
 ### Phase 2: Core Communication ✅
 

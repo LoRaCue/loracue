@@ -277,14 +277,14 @@ esp_err_t lora_driver_init(void)
     ESP_LOGI(TAG, "📻 Hardware mode: Initializing SX1262 LoRa");
     
     // Reset SX1262
-    esp_err_t ret = heltec_v3_sx1262_reset();
+    esp_err_t ret = bsp_sx1262_reset();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "SX1262 reset failed: %s", esp_err_to_name(ret));
         return ret;
     }
     
     // Read version to verify communication
-    uint8_t version = heltec_v3_sx1262_read_register(0x0320);
+    uint8_t version = bsp_sx1262_read_register(0x0320);
     if (version != 0x14) {
         ESP_LOGE(TAG, "SX1262 version check failed: 0x%02x (expected 0x14)", version);
         return ESP_ERR_NOT_FOUND;

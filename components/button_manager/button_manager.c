@@ -73,8 +73,8 @@ static void button_manager_task(void *pvParameters)
         uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
         
         // Read button states
-        bool prev_pressed = heltec_v3_read_button(BSP_BUTTON_PREV);
-        bool next_pressed = heltec_v3_read_button(BSP_BUTTON_NEXT);
+        bool prev_pressed = bsp_read_button(BSP_BUTTON_PREV);
+        bool next_pressed = bsp_read_button(BSP_BUTTON_NEXT);
         
         // Control LED based on button state
         static bool any_button_was_pressed = false;

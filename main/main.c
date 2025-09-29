@@ -207,7 +207,7 @@ void app_main(void)
     
     // Validate hardware
     ESP_LOGI(TAG, "Running hardware validation...");
-    ret = heltec_v3_validate_hardware();
+    ret = bsp_validate_hardware();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Hardware validation failed");
     }
@@ -239,7 +239,7 @@ void app_main(void)
         usb_pairing_process();
         
         // Update device status
-        status.battery_voltage = heltec_v3_read_battery();
+        status.battery_voltage = bsp_read_battery();
         status.usb_connected = usb_hid_is_connected() || usb_pairing_is_connected();
         status.paired_count = device_registry_get_count();
         
