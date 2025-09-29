@@ -105,6 +105,21 @@ static void button_manager_task(void *pvParameters)
                 next_button.long_press_sent = true;
             }
         }
+        // Check if both buttons were pressed recently (within 100ms of each other)
+        else if (!prev_button.current_state && !next_button.current_state && 
+                 prev_button.press_start_time > 0 && next_button.press_start_time > 0 &&
+                 !prev_button.long_press_sent && !next_button.long_press_sent) {
+            uint32_t time_diff = (prev_button.press_start_time > next_button.press_start_time) ?
+                                 prev_button.press_start_time - next_button.press_start_time :
+                                 next_button.press_start_time - prev_button.press_start_time;
+            
+            if (time_diff <= 100) { // Both pressed within 100ms
+                ESP_LOGI(TAG, "Both buttons short press");
+                // Clear press times to prevent individual processing
+                prev_button.press_start_time = 0;
+                next_button.press_start_time = 0;
+            }
+        }
         // Check individual button events
         else {
             // PREV button events

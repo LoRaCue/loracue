@@ -54,6 +54,28 @@
       }
     },
     {
+      "type": "wokwi-led",
+      "id": "led_both_next",
+      "top": 430,
+      "left": 100,
+      "rotate": 0,
+      "attrs": {
+        "color": "red",
+        "label": "next"
+      }
+    },
+        {
+      "type": "wokwi-led",
+      "id": "led_both_prev",
+      "top": 430,
+      "left": -50,
+      "rotate": 0,
+      "attrs": {
+        "color": "green",
+        "label": "prev"
+      }
+    },
+    {
       "type": "wokwi-potentiometer",
       "id": "battery_sim",
       "top": 0,
@@ -101,8 +123,11 @@
     [ "esp:GND.1", "btn_prev:2.r", "black", [  ] ],
 
     [ "esp:GND.4", "btn_both:1.r", "black", [  ] ],
-    [ "btn_both:2.r", "btn_next:2.r", "black", [ "h125", "v-100" ] ],
-    [ "btn_both:2.l", "btn_prev:1.l", "black", [ "h-160", "v-100" ] ],
+    [ "led_both_next:A", "btn_next:2.r", "black", [ "h125", "v-100" ] ],
+    [ "led_both_prev:A", "btn_prev:1.l", "black", [ "h-160", "v-100" ] ],
+
+    [ "btn_both:2.l", "led_both_prev:A", "black", [ ] ],
+    [ "btn_both:2.r", "led_both_next:A", "black", [ ] ],
 
     [ "esp:1", "battery_sim:SIG", "orange", [ ] ],
     [ "esp:3V3.1", "battery_sim:VCC", "red", [ "v-85", "h208", "v85" ] ],

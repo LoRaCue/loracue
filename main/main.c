@@ -289,6 +289,8 @@ void app_main(void)
     xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &status, 5, NULL);
     
     // Main task now just handles events
+    ESP_LOGI(TAG, "Main loop starting - should have low CPU usage when idle");
+    
     while (1) {
         // Wait for any system event
         EventBits_t events = xEventGroupWaitBits(system_events, 
