@@ -43,6 +43,17 @@
       }
     },
     {
+      "type": "wokwi-pushbutton",
+      "id": "btn_both",
+      "top": 440,
+      "left": 10,
+      "rotate": 0,
+      "attrs": {
+        "color": "orange",
+        "label": "BOTH"
+      }
+    },
+    {
       "type": "wokwi-potentiometer",
       "id": "battery_sim",
       "top": 0,
@@ -88,7 +99,11 @@
     
     [ "esp:46", "btn_prev:1.r", "yellow", [  ] ],
     [ "esp:GND.1", "btn_prev:2.r", "black", [  ] ],
-    
+
+    [ "esp:GND.4", "btn_both:1.r", "black", [  ] ],
+    [ "btn_both:2.r", "btn_next:2.r", "black", [ "h125", "v-100" ] ],
+    [ "btn_both:2.l", "btn_prev:1.l", "black", [ "h-160", "v-100" ] ],
+
     [ "esp:1", "battery_sim:SIG", "orange", [ ] ],
     [ "esp:3V3.1", "battery_sim:VCC", "red", [ "v-85", "h208", "v85" ] ],
     [ "esp:GND.2", "battery_sim:GND", "black", [  ] ],
