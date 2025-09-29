@@ -227,22 +227,4 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
 
-```
-LoRaCue - Enterprise LoRa Presentation Clicker
-Copyright (C) 2024 MetaNeutrons
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-```
-
 ## 🏙️ **Made with ❤️ in Hannover**
-
-Developed with passion in Hannover, Germany by the MetaNeutrons team. We believe in open-source hardware and software that empowers creators and presenters worldwide.
-
----
-
-**🔗 Links**: [Documentation](docs/) | [Issues](https://github.com/metaneutrons/LoRaCue/issues) | [Discussions](https://github.com/metaneutrons/LoRaCue/discussions) | [Wokwi Simulation](https://wokwi.com/projects/new/esp32)
-
-**📧 Contact**: [hello@metaneutrons.com](mailto:hello@metaneutrons.com) | **🐦 Twitter**: [@metaneutrons](https://twitter.com/metaneutrons)
