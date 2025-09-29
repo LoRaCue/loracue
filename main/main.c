@@ -14,6 +14,7 @@
 #include "esp_log.h"
 #include "esp_random.h"
 #include "nvs_flash.h"
+#include "version.h"
 #include "bsp.h"
 #include "lora_driver.h"
 #include "lora_protocol.h"
@@ -75,6 +76,9 @@ static void pairing_result_callback(bool success, uint16_t device_id, const char
 void app_main(void)
 {
     ESP_LOGI(TAG, "LoRaCue starting - Enterprise presentation clicker");
+    ESP_LOGI(TAG, "Version: %s", LORACUE_VERSION_FULL);
+    ESP_LOGI(TAG, "Build: %s (%s)", LORACUE_BUILD_COMMIT_SHORT, LORACUE_BUILD_BRANCH);
+    ESP_LOGI(TAG, "Date: %s", LORACUE_BUILD_DATE);
     
     // Check wake cause
     esp_sleep_wakeup_cause_t wake_cause = esp_sleep_get_wakeup_cause();
