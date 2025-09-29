@@ -52,6 +52,17 @@ esp_err_t heltec_v3_init_buttons(void);
 esp_err_t heltec_v3_init_battery(void);
 
 /**
+ * @brief Set status LED state
+ * @param state true = LED on, false = LED off
+ */
+void heltec_v3_set_led(bool state);
+
+/**
+ * @brief Toggle status LED state
+ */
+void heltec_v3_toggle_led(void);
+
+/**
  * @brief Read button state
  * 
  * @param button Button to read (BSP_BUTTON_PREV or BSP_BUTTON_NEXT)

@@ -8,6 +8,7 @@
 
 #include "button_manager.h"
 #include "bsp.h"
+#include "led_manager.h"
 #include "power_mgmt.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -74,6 +75,19 @@ static void button_manager_task(void *pvParameters)
         // Read button states
         bool prev_pressed = heltec_v3_read_button(BSP_BUTTON_PREV);
         bool next_pressed = heltec_v3_read_button(BSP_BUTTON_NEXT);
+        
+        // Control LED based on button state
+        static bool any_button_was_pressed = false;
+        bool any_button_pressed = prev_pressed || next_pressed;
+        
+        if (any_button_pressed && !any_button_was_pressed) {
+            // Button just pressed - go solid
+            led_manager_solid(true);
+        } else if (!any_button_pressed && any_button_was_pressed) {
+            // Button just released - resume fading
+            led_manager_fade(3000);
+        }
+        any_button_was_pressed = any_button_pressed;
         
         // Update button states
         update_button_state(&prev_button, prev_pressed, current_time);
@@ -193,7 +207,7 @@ esp_err_t button_manager_start(void)
     BaseType_t ret = xTaskCreate(
         button_manager_task,
         "button_mgr",
-        2048,
+        4096,  // Increased from 2048 to prevent stack overflow
         NULL,
         5, // Priority
         &button_task_handle

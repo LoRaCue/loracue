@@ -149,23 +149,23 @@ else
 endif
 
 # Wokwi Simulator targets
-sim-build: check-idf
+sim: check-idf
 	@echo "🎮 Building for Wokwi simulator..."
 	$(IDF_SETUP) idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
 
-sim: check-wokwi sim-build
+sim-run: check-wokwi sim
 	@echo "🚀 Starting Wokwi simulation..."
 	@echo "💡 Press Ctrl+C to stop simulation"
 	@echo "📺 Serial output will appear below..."
 	@echo ""
 	wokwi-cli --timeout 0 --serial-log-file -
 
-sim-screenshot: check-wokwi sim-build
+sim-screenshot: check-wokwi sim
 	@echo "📸 Taking OLED screenshot after 5 seconds..."
 	wokwi-cli --timeout 5000 --screenshot-part oled --screenshot-time 4500 --timeout-exit-code 0
 	@echo "✅ Screenshot saved as screenshot.png"
 
-sim-debug: check-wokwi sim-build
+sim-debug: check-wokwi sim
 	@echo "🐛 Starting debug simulation with interactive serial..."
 	@echo "💡 You can type commands that will be sent to the ESP32"
 	@echo "📺 Press Ctrl+C to stop"

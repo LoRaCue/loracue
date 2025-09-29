@@ -21,6 +21,7 @@
 #include "device_registry.h"
 #include "oled_ui.h"
 #include "button_manager.h"
+#include "led_manager.h"
 #include "power_mgmt.h"
 #include "usb_pairing.h"
 #include "web_config.h"
@@ -92,10 +93,17 @@ void app_main(void)
     // Initialize power management first
     ESP_LOGI(TAG, "Initializing power management...");
     power_config_t power_config = {
-        .light_sleep_timeout_ms = 30000,    // 30 seconds
+#ifdef SIMULATOR_BUILD
+        .light_sleep_timeout_ms = 0,         // Disabled in simulator
+        .deep_sleep_timeout_ms = 0,          // Disabled in simulator  
+        .enable_auto_light_sleep = false,    // No sleep in simulator
+        .enable_auto_deep_sleep = false,     // No sleep in simulator
+#else
+        .light_sleep_timeout_ms = 0,         // TODO: Re-enable after implementing I2C restoration
         .deep_sleep_timeout_ms = 300000,    // 5 minutes
-        .enable_auto_light_sleep = true,
+        .enable_auto_light_sleep = false,   // FIXME: Disabled due to I2C corruption after wake
         .enable_auto_deep_sleep = true,
+#endif
         .cpu_freq_mhz = 80,                 // 80MHz for power efficiency
     };
     ret = power_mgmt_init(&power_config);
@@ -111,6 +119,15 @@ void app_main(void)
         ESP_LOGE(TAG, "BSP initialization failed: %s", esp_err_to_name(ret));
         return;
     }
+    
+    // Initialize LED manager and turn on status LED
+    ESP_LOGI(TAG, "Initializing LED manager...");
+    ret = led_manager_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "LED manager initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    led_manager_solid(true); // Turn on LED during startup
     
     // Initialize web configuration
     ESP_LOGI(TAG, "Initializing web configuration system...");
@@ -197,6 +214,10 @@ void app_main(void)
     
     // Transition to main UI state
     oled_ui_set_state(UI_STATE_MAIN);
+    
+    // Start LED fading after initialization complete
+    ESP_LOGI(TAG, "Starting LED fade pattern");
+    led_manager_fade(3000); // 3 second fade cycle
     
     // Set to receive mode initially
     lora_set_receive_mode();

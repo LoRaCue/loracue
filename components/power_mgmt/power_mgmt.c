@@ -270,9 +270,10 @@ esp_err_t power_mgmt_prepare_sleep(void)
 {
     ESP_LOGD(TAG, "Preparing system for sleep");
     
-    // Disable unnecessary peripherals
-    // Note: In a full implementation, we'd disable SPI, I2C, etc.
-    // For now, just log the preparation
+    // TODO: Disable unnecessary peripherals before sleep
+    // - Deinitialize I2C bus (oled_dev_handle, i2c_bus_handle)
+    // - Disable SPI for LoRa
+    // - Save peripheral states for restoration
     
     return ESP_OK;
 }
@@ -281,8 +282,11 @@ esp_err_t power_mgmt_restore_wake(void)
 {
     ESP_LOGD(TAG, "Restoring system after wake");
     
-    // Re-enable peripherals
-    // Note: In a full implementation, we'd re-initialize SPI, I2C, etc.
+    // TODO: Re-enable and reinitialize peripherals after wake
+    // - Reinitialize I2C bus for OLED (call heltec_v3_init_i2c())
+    // - Reinitialize SPI for LoRa
+    // - Restore peripheral configurations
+    // CRITICAL: Without this, I2C operations crash with semaphore assertion failures
     // For now, just update activity timestamp
     
     power_mgmt_update_activity();

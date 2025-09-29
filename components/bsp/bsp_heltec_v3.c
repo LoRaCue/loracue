@@ -23,6 +23,7 @@ static const char *TAG = "BSP_HELTEC_V3";
 // Heltec LoRa V3 Pin Definitions
 #define BUTTON_PREV_PIN         GPIO_NUM_46
 #define BUTTON_NEXT_PIN         GPIO_NUM_45
+#define STATUS_LED_PIN          GPIO_NUM_35
 #define BATTERY_ADC_PIN         GPIO_NUM_1
 #define BATTERY_CTRL_PIN        GPIO_NUM_37
 
@@ -321,6 +322,22 @@ esp_err_t bsp_init(void)
         return ret;
     }
     
+    // Initialize status LED
+    ESP_LOGI(TAG, "Configuring status LED on GPIO%d", STATUS_LED_PIN);
+    gpio_config_t led_config = {
+        .pin_bit_mask = (1ULL << STATUS_LED_PIN),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ret = gpio_config(&led_config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure LED GPIO: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    heltec_v3_set_led(false); // Turn off LED initially
+    
     // Initialize battery monitoring
     ret = heltec_v3_init_battery();
     if (ret != ESP_OK) {
@@ -406,6 +423,18 @@ esp_err_t heltec_v3_init_battery(void)
     
     ESP_LOGI(TAG, "Battery monitoring initialized");
     return ESP_OK;
+}
+
+void heltec_v3_set_led(bool state)
+{
+    gpio_set_level(STATUS_LED_PIN, state ? 1 : 0);
+}
+
+void heltec_v3_toggle_led(void)
+{
+    static bool led_state = false;
+    led_state = !led_state;
+    heltec_v3_set_led(led_state);
 }
 
 bool heltec_v3_read_button(bsp_button_t button)

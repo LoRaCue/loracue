@@ -16,7 +16,7 @@
 ## Hardware-Architektur
 
 ### Hauptkomponenten
-- **MCU**: ESP32-S3 (Dual-Core, 240MHz, 8MB PSRAM, 16MB Flash)
+- **MCU**: ESP32-S3 (Dual-Core, 240MHz, 8MB PSRAM, 8MB SPI-Flash)
 - **LoRa**: SX1262 Transceiver (Sub-GHz, bis zu +22dBm)
 - **Display**: SH1106 OLED 128x64 (I2C)
 - **Interface**: 2x Taster für Navigation
@@ -312,14 +312,17 @@ make test-power           # Energieverwaltung
 
 ### Speicher-Layout
 ```
-Flash Partitionen (16MB):
+Flash Partitionen (8MB):
 ├── Bootloader (32KB)
 ├── Partition Table (4KB) 
 ├── NVS (24KB)
+├── PHY Init (4KB)
+├── Factory App (2MB)
+├── OTA App 0 (2MB)
+├── OTA App 1 (2MB)
 ├── OTA Data (8KB)
-├── Factory App (6MB)
-├── OTA App (6MB)
-└── SPIFFS (4MB)
+├── SPIFFS (1.9MB)
+└── Coredump (56KB)
 ```
 
 ## Fazit
