@@ -281,7 +281,6 @@ void app_main(void)
     };
     strcpy(status.device_name, "LoRaCue-STAGE");
     
-    uint32_t stats_counter = 0;
     // Create event group for system events
     EventGroupHandle_t system_events = xEventGroupCreate();
     
@@ -305,58 +304,5 @@ void app_main(void)
         if (events & (1 << 1)) { // USB status changed
             oled_ui_update_status(&status);
         }
-        
-        // Process USB pairing (still needs polling for now)
-        usb_pairing_process();
-        
-        vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to prevent tight loop
     }
-        
-        // Log system statistics every 30 seconds
-        if (++stats_counter >= 300) { // 300 * 100ms = 30s
-            power_stats_t power_stats;
-            if (power_mgmt_get_stats(&power_stats) == ESP_OK) {
-                ESP_LOGI(TAG, "⚡ Power Stats - Active: %dms, Light Sleep: %dms, Deep Sleep: %dms",
-                         power_stats.active_time_ms, power_stats.light_sleep_time_ms, 
-                         power_stats.deep_sleep_time_ms);
-                ESP_LOGI(TAG, "🔋 Estimated battery life: %.1f hours", 
-                         power_stats.estimated_battery_hours);
-            }
-            
-            ESP_LOGI(TAG, "🔗 Pairing Status: USB connected: %s, State: %d", 
-                     status.usb_connected ? "Yes" : "No", usb_pairing_get_state());
-            
-            ESP_LOGI(TAG, "🌐 Web Config: State=%d, Clients=%d", 
-                     web_config_get_state(), web_config_get_client_count());
-            
-            stats_counter = 0;
-        }
-        
-        // Check for incoming LoRa packets (non-blocking)
-        lora_packet_data_t received_packet;
-        ret = lora_protocol_receive_packet(&received_packet, 10); // 10ms timeout
-        
-        if (ret == ESP_OK) {
-            // Get device info for logging
-            paired_device_t sender_device;
-            if (device_registry_get(received_packet.device_id, &sender_device) == ESP_OK) {
-                ESP_LOGI(TAG, "🔓 Command from %s (0x%04X): cmd=0x%02X", 
-                         sender_device.device_name, received_packet.device_id, 
-                         received_packet.command);
-            }
-            
-            // Execute received command via USB HID
-            handle_lora_command(received_packet.command, received_packet.device_id);
-            
-            // Send ACK
-            lora_protocol_send_ack(received_packet.device_id, received_packet.sequence_num);
-            
-            lora_set_receive_mode();
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            ESP_LOGD(TAG, "Packet from unpaired device ignored");
-        } else if (ret != ESP_ERR_TIMEOUT) {
-            ESP_LOGW(TAG, "Receive error: %s", esp_err_to_name(ret));
-        }
-        
-        vTaskDelay(pdMS_TO_TICKS(100)); // 10Hz update rate
-    }
+}
