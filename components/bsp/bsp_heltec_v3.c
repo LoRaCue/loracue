@@ -16,6 +16,7 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
+#include "u8g2.h"
 #include <string.h>
 
 static const char *TAG = "BSP_HELTEC_V3";
@@ -534,5 +535,80 @@ esp_err_t bsp_validate_hardware(void)
     }
     
     ESP_LOGI(TAG, "BSP initialization complete");
+    return ESP_OK;
+}
+
+// u8g2 HAL callbacks for SH1106
+uint8_t u8g2_esp32_i2c_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
+{
+    switch (msg) {
+        case U8X8_MSG_BYTE_SEND:
+            if (oled_dev_handle != NULL) {
+                uint8_t *data = (uint8_t *)arg_ptr;
+                esp_err_t ret = i2c_master_transmit(oled_dev_handle, data, arg_int, 1000);
+                return (ret == ESP_OK) ? 1 : 0;
+            }
+            return 0;
+            
+        case U8X8_MSG_BYTE_INIT:
+            return 1;
+            
+        case U8X8_MSG_BYTE_SET_DC:
+            return 1;
+            
+        case U8X8_MSG_BYTE_START_TRANSFER:
+            return 1;
+            
+        case U8X8_MSG_BYTE_END_TRANSFER:
+            return 1;
+            
+        default:
+            return 0;
+    }
+}
+
+uint8_t u8g2_esp32_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
+{
+    switch (msg) {
+        case U8X8_MSG_GPIO_AND_DELAY_INIT:
+            return 1;
+            
+        case U8X8_MSG_DELAY_MILLI:
+            vTaskDelay(pdMS_TO_TICKS(arg_int));
+            return 1;
+            
+        case U8X8_MSG_GPIO_RESET:
+            gpio_set_level(OLED_RST_PIN, arg_int);
+            return 1;
+            
+        default:
+            return 0;
+    }
+}
+
+esp_err_t bsp_u8g2_init(void *u8g2_ptr)
+{
+    u8g2_t *u8g2 = (u8g2_t *)u8g2_ptr;
+    
+    ESP_LOGI(TAG, "Initializing u8g2 with SH1106 for Heltec V3");
+    
+    // Initialize I2C if not already done
+    if (i2c_bus_handle == NULL) {
+        esp_err_t ret = bsp_init_i2c();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize I2C for u8g2");
+            return ret;
+        }
+    }
+    
+    // Initialize u8g2 with SH1106 128x64 display
+    u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2, U8G2_R0, u8g2_esp32_i2c_byte_cb, u8g2_esp32_gpio_and_delay_cb);
+    
+    // Initialize display
+    u8g2_InitDisplay(u8g2);
+    u8g2_SetPowerSave(u8g2, 0);
+    u8g2_ClearDisplay(u8g2);
+    
+    ESP_LOGI(TAG, "u8g2 initialized successfully for SH1106");
     return ESP_OK;
 }

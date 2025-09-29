@@ -93,8 +93,6 @@ static void button_manager_task(void *pvParameters)
         update_button_state(&prev_button, prev_pressed, current_time);
         update_button_state(&next_button, next_pressed, current_time);
         
-        ui_event_t event = UI_EVENT_NONE;
-        
         // Check for both buttons pressed (highest priority)
         if (prev_button.current_state && next_button.current_state) {
             uint32_t both_press_duration = current_time - 
@@ -102,10 +100,9 @@ static void button_manager_task(void *pvParameters)
                  prev_button.press_start_time : next_button.press_start_time);
                  
             if (both_press_duration >= BOTH_PRESS_TIME_MS && !prev_button.long_press_sent) {
-                event = UI_EVENT_BOTH_LONG;
+                ESP_LOGI(TAG, "Both buttons long press - Menu");
                 prev_button.long_press_sent = true;
                 next_button.long_press_sent = true;
-                ESP_LOGI(TAG, "Both buttons long press");
             }
         }
         // Check individual button events
@@ -114,43 +111,37 @@ static void button_manager_task(void *pvParameters)
             if (prev_button.current_state) {
                 uint32_t press_duration = current_time - prev_button.press_start_time;
                 if (press_duration >= LONG_PRESS_TIME_MS && !prev_button.long_press_sent) {
-                    event = UI_EVENT_PREV_LONG;
-                    prev_button.long_press_sent = true;
                     ESP_LOGI(TAG, "PREV long press");
+                    prev_button.long_press_sent = true;
                 }
             } else if (!prev_button.current_state && prev_button.press_start_time > 0) {
                 // Button was released
                 uint32_t press_duration = current_time - prev_button.press_start_time;
                 if (press_duration < LONG_PRESS_TIME_MS && !prev_button.long_press_sent) {
-                    event = UI_EVENT_PREV_SHORT;
                     ESP_LOGI(TAG, "PREV short press");
                 }
                 prev_button.press_start_time = 0;
             }
             
-            // NEXT button events (only if no PREV event)
-            if (event == UI_EVENT_NONE) {
-                if (next_button.current_state) {
+            // NEXT button events
+            if (next_button.current_state) {
                     uint32_t press_duration = current_time - next_button.press_start_time;
                     if (press_duration >= LONG_PRESS_TIME_MS && !next_button.long_press_sent) {
-                        event = UI_EVENT_NEXT_LONG;
-                        next_button.long_press_sent = true;
                         ESP_LOGI(TAG, "NEXT long press");
+                        next_button.long_press_sent = true;
                     }
                 } else if (!next_button.current_state && next_button.press_start_time > 0) {
                     // Button was released
                     uint32_t press_duration = current_time - next_button.press_start_time;
                     if (press_duration < LONG_PRESS_TIME_MS && !next_button.long_press_sent) {
-                        event = UI_EVENT_NEXT_SHORT;
                         ESP_LOGI(TAG, "NEXT short press");
                     }
                     next_button.press_start_time = 0;
                 }
-            }
         }
         
         // Check for inactivity timeout and power management
-        if (event == UI_EVENT_NONE) {
+        {
             // Check if system should enter sleep mode
             power_mode_t recommended_mode = power_mgmt_get_recommended_mode();
             
@@ -165,15 +156,9 @@ static void button_manager_task(void *pvParameters)
             
             uint32_t inactive_time = current_time - last_activity_time;
             if (inactive_time >= INACTIVITY_TIMEOUT_MS) {
-                event = UI_EVENT_TIMEOUT;
                 last_activity_time = current_time; // Reset to prevent repeated timeouts
                 ESP_LOGI(TAG, "Inactivity timeout");
             }
-        }
-        
-        // Send event to UI
-        if (event != UI_EVENT_NONE) {
-            oled_ui_handle_event(event);
         }
         
         vTaskDelay(pdMS_TO_TICKS(DEBOUNCE_TIME_MS));

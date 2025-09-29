@@ -61,6 +61,44 @@ static esp_err_t handle_lora_command(lora_command_t command, uint16_t sender_id)
     }
 }
 
+static EventGroupHandle_t system_events;
+
+static void battery_monitor_task(void *pvParameters)
+{
+    oled_status_t *status = (oled_status_t *)pvParameters;
+    uint8_t prev_battery = 0;
+    
+    while (1) {
+        uint8_t current_battery = (uint8_t)(bsp_read_battery() * 100 / 4.2f);
+        
+        if (current_battery != prev_battery) {
+            status->battery_level = current_battery;
+            xEventGroupSetBits(system_events, (1 << 0)); // Battery event
+            prev_battery = current_battery;
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(5000)); // Check every 5 seconds
+    }
+}
+
+static void usb_monitor_task(void *pvParameters)
+{
+    oled_status_t *status = (oled_status_t *)pvParameters;
+    bool prev_usb = false;
+    
+    while (1) {
+        bool current_usb = usb_hid_is_connected() || usb_pairing_is_connected();
+        
+        if (current_usb != prev_usb) {
+            status->usb_connected = current_usb;
+            xEventGroupSetBits(system_events, (1 << 1)); // USB event
+            prev_usb = current_usb;
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(500)); // Check every 500ms
+    }
+}
+
 static void pairing_result_callback(bool success, uint16_t device_id, const char* device_name)
 {
     if (success) {
@@ -70,7 +108,7 @@ static void pairing_result_callback(bool success, uint16_t device_id, const char
     }
     
     // Return to main UI
-    oled_ui_set_state(UI_STATE_MAIN);
+    oled_ui_set_screen(OLED_SCREEN_MAIN);
 }
 
 void app_main(void)
@@ -158,7 +196,7 @@ void app_main(void)
     }
     
     // Show boot logo
-    oled_ui_show_boot_logo();
+    oled_ui_set_screen(OLED_SCREEN_BOOT);
     vTaskDelay(pdMS_TO_TICKS(2000));
     
     // Initialize button manager
@@ -216,8 +254,15 @@ void app_main(void)
         ESP_LOGE(TAG, "Hardware validation failed");
     }
     
+    // Create event group for system events
+    system_events = xEventGroupCreate();
+    if (!system_events) {
+        ESP_LOGE(TAG, "Failed to create system event group");
+        return;
+    }
+    
     // Transition to main UI state
-    oled_ui_set_state(UI_STATE_MAIN);
+    oled_ui_set_screen(OLED_SCREEN_MAIN);
     
     // Start LED fading after initialization complete
     ESP_LOGI(TAG, "Starting LED fade pattern");
@@ -227,28 +272,45 @@ void app_main(void)
     lora_set_receive_mode();
     
     // Main status update loop
-    device_status_t status = {
-        .battery_voltage = 3.7f,
-        .signal_strength = 85,
-        .usb_connected = usb_hid_is_connected(),
-        .is_charging = false,
-        .paired_count = device_registry_get_count()
+    oled_status_t status = {
+        .battery_level = 85,
+        .lora_connected = false,
+        .lora_signal = 0,
+        .usb_connected = false,
+        .device_id = 0x1234
     };
     strcpy(status.device_name, "LoRaCue-STAGE");
     
     uint32_t stats_counter = 0;
+    // Create event group for system events
+    EventGroupHandle_t system_events = xEventGroupCreate();
     
+    // Start periodic tasks
+    xTaskCreate(battery_monitor_task, "battery_monitor", 2048, &status, 5, NULL);
+    xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &status, 5, NULL);
+    
+    // Main task now just handles events
     while (1) {
-        // Process USB pairing
+        // Wait for any system event
+        EventBits_t events = xEventGroupWaitBits(system_events, 
+                                                0xFF, // Wait for any event
+                                                pdTRUE, // Clear on exit
+                                                pdFALSE, // Wait for any bit
+                                                portMAX_DELAY);
+        
+        if (events & (1 << 0)) { // Battery changed
+            oled_ui_update_status(&status);
+        }
+        
+        if (events & (1 << 1)) { // USB status changed
+            oled_ui_update_status(&status);
+        }
+        
+        // Process USB pairing (still needs polling for now)
         usb_pairing_process();
         
-        // Update device status
-        status.battery_voltage = bsp_read_battery();
-        status.usb_connected = usb_hid_is_connected() || usb_pairing_is_connected();
-        status.paired_count = device_registry_get_count();
-        
-        // Update UI with current status
-        oled_ui_update_status(&status);
+        vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to prevent tight loop
+    }
         
         // Log system statistics every 30 seconds
         if (++stats_counter >= 300) { // 300 * 100ms = 30s
@@ -261,8 +323,8 @@ void app_main(void)
                          power_stats.estimated_battery_hours);
             }
             
-            ESP_LOGI(TAG, "🔗 Pairing Status: %d paired devices, State: %d", 
-                     status.paired_count, usb_pairing_get_state());
+            ESP_LOGI(TAG, "🔗 Pairing Status: USB connected: %s, State: %d", 
+                     status.usb_connected ? "Yes" : "No", usb_pairing_get_state());
             
             ESP_LOGI(TAG, "🌐 Web Config: State=%d, Clients=%d", 
                      web_config_get_state(), web_config_get_client_count());
@@ -298,4 +360,3 @@ void app_main(void)
         
         vTaskDelay(pdMS_TO_TICKS(100)); // 10Hz update rate
     }
-}
