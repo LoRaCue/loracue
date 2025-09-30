@@ -51,7 +51,7 @@ esp_err_t power_mgmt_init(const power_config_t *config)
     }
     
     // Configure power management
-    esp_pm_config_esp32s3_t pm_config = {
+    esp_pm_config_t pm_config = {
         .max_freq_mhz = current_config.cpu_freq_mhz,
         .min_freq_mhz = 10,  // Minimum frequency for power saving
         .light_sleep_enable = current_config.enable_auto_light_sleep
@@ -245,7 +245,7 @@ esp_err_t power_mgmt_set_cpu_freq(uint8_t freq_mhz)
     
     current_config.cpu_freq_mhz = freq_mhz;
     
-    esp_pm_config_esp32s3_t pm_config = {
+    esp_pm_config_t pm_config = {
         .max_freq_mhz = freq_mhz,
         .min_freq_mhz = 10,
         .light_sleep_enable = current_config.enable_auto_light_sleep
