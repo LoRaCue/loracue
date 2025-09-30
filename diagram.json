@@ -8,7 +8,9 @@
       "id": "esp",
       "top": 50,
       "left": 0,
-      "attrs": {}
+      "attrs": {
+        "i2cAddress": "0x3C"
+      }
     },
     {
       "type": "board-ssd1306",

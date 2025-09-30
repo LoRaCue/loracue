@@ -4,12 +4,12 @@
  */
 
 #include "oled_ui.h"
-#include "bsp.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "version.h"
 #include "u8g2.h"
+#include "u8g2_esp32_hal.h"
 #include <string.h>
 
 static const char *TAG = "OLED_UI";
@@ -18,21 +18,31 @@ static u8g2_t u8g2;
 static bool initialized = false;
 static oled_screen_t current_screen = OLED_SCREEN_BOOT;
 static oled_status_t current_status = {0};
-static oled_status_t last_status = {0};
 
 esp_err_t oled_ui_init(void)
 {
-    ESP_LOGI(TAG, "Initializing u8g2 OLED UI");
+    ESP_LOGI(TAG, "Initializing u8g2 OLED UI - PROPER HAL");
     
-    // Initialize u8g2 with BSP callbacks
-    esp_err_t ret = bsp_u8g2_init(&u8g2);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "u8g2 init failed: %s", esp_err_to_name(ret));
-        return ret;
-    }
+    // Configure u8g2 HAL for I2C
+    u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
+    u8g2_esp32_hal.bus.i2c.sda = GPIO_NUM_17;
+    u8g2_esp32_hal.bus.i2c.scl = GPIO_NUM_18;
+    u8g2_esp32_hal_init(u8g2_esp32_hal);
+    
+    // Initialize u8g2 with proper HAL
+    u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, 
+                                           u8g2_esp32_i2c_byte_cb, 
+                                           u8g2_esp32_gpio_and_delay_cb);
+    
+    // Set I2C address (0x3C shifted left = 0x78)
+    u8x8_SetI2CAddress(&u8g2.u8x8, 0x78);
+    
+    u8g2_InitDisplay(&u8g2);
+    u8g2_SetPowerSave(&u8g2, 0);
+    u8g2_ClearDisplay(&u8g2);
     
     initialized = true;
-    ESP_LOGI(TAG, "u8g2 OLED UI initialized successfully");
+    ESP_LOGI(TAG, "u8g2 OLED UI initialized successfully - PROPER HAL");
     
     // Show boot screen
     oled_ui_set_screen(OLED_SCREEN_BOOT);
@@ -47,6 +57,7 @@ esp_err_t oled_ui_set_screen(oled_screen_t screen)
         return ESP_ERR_INVALID_STATE;
     }
     
+    ESP_LOGI(TAG, "Setting screen to: %d", screen);
     current_screen = screen;
     
     u8g2_ClearBuffer(&u8g2);
@@ -54,13 +65,17 @@ esp_err_t oled_ui_set_screen(oled_screen_t screen)
     switch (screen) {
         case OLED_SCREEN_BOOT:
             // Boot screen with logo and version
+            ESP_LOGI(TAG, "Rendering boot screen");
+            
             u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-            u8g2_DrawStr(&u8g2, 20, 20, "LoRaCue");
+            u8g2_DrawStr(&u8g2, 10, 25, "LoRaCue");
             
             u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
-            u8g2_DrawStr(&u8g2, 25, 35, "Enterprise Remote");
-            u8g2_DrawStr(&u8g2, 35, 50, LORACUE_VERSION_STRING);
-            u8g2_DrawStr(&u8g2, 30, 62, "Initializing...");
+            u8g2_DrawStr(&u8g2, 15, 40, LORACUE_VERSION_STRING);
+            u8g2_DrawStr(&u8g2, 20, 55, "Initializing...");
+            
+            // Draw a frame around the screen
+            u8g2_DrawFrame(&u8g2, 0, 0, 128, 64);
             break;
             
         case OLED_SCREEN_MAIN:
@@ -112,7 +127,9 @@ esp_err_t oled_ui_set_screen(oled_screen_t screen)
             break;
     }
     
+    ESP_LOGI(TAG, "Sending buffer to display");
     u8g2_SendBuffer(&u8g2);
+    ESP_LOGI(TAG, "Buffer sent successfully");
     return ESP_OK;
 }
 
