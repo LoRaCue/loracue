@@ -19,6 +19,30 @@ static bool initialized = false;
 static oled_screen_t current_screen = OLED_SCREEN_BOOT;
 static oled_status_t current_status = {0};
 
+// Menu system state
+static int menu_selected_item = 0;
+static int submenu_selected_item = 0;
+
+// Menu items
+typedef enum {
+    MENU_DEVICE_MODE = 0,
+    MENU_BATTERY_STATUS,
+    MENU_LORA_SETTINGS,
+    MENU_CONFIG_MODE,
+    MENU_DEVICE_INFO,
+    MENU_SYSTEM_INFO,
+    MENU_COUNT
+} menu_item_t;
+
+static const char* menu_items[] = {
+    "Device Mode (PC/STAGE)",
+    "Battery Status",
+    "LoRa Settings",
+    "Configuration Mode", 
+    "Device Info",
+    "System Info"
+};
+
 esp_err_t oled_ui_init(void)
 {
     ESP_LOGI(TAG, "Initializing u8g2 OLED UI - PROPER HAL");
@@ -50,6 +74,70 @@ esp_err_t oled_ui_init(void)
     return ESP_OK;
 }
 
+void oled_ui_handle_button(oled_button_t button, bool long_press)
+{
+    if (!initialized) return;
+    
+    switch (current_screen) {
+        case OLED_SCREEN_MAIN:
+            if (button == OLED_BUTTON_BOTH && long_press) {
+                // Enter menu
+                current_screen = OLED_SCREEN_MENU;
+                menu_selected_item = 0;
+                oled_ui_set_screen(OLED_SCREEN_MENU);
+            }
+            break;
+            
+        case OLED_SCREEN_MENU:
+            if (button == OLED_BUTTON_PREV) {
+                // Navigate up
+                if (menu_selected_item > 0) {
+                    menu_selected_item--;
+                    oled_ui_set_screen(OLED_SCREEN_MENU);
+                }
+            } else if (button == OLED_BUTTON_NEXT) {
+                // Navigate down
+                if (menu_selected_item < MENU_COUNT - 1) {
+                    menu_selected_item++;
+                    oled_ui_set_screen(OLED_SCREEN_MENU);
+                }
+            } else if (button == OLED_BUTTON_BOTH) {
+                // Select menu item
+                switch (menu_selected_item) {
+                    case MENU_DEVICE_MODE:
+                        current_screen = OLED_SCREEN_DEVICE_MODE;
+                        break;
+                    case MENU_BATTERY_STATUS:
+                        current_screen = OLED_SCREEN_BATTERY;
+                        break;
+                    case MENU_LORA_SETTINGS:
+                        current_screen = OLED_SCREEN_LORA_SETTINGS;
+                        break;
+                    case MENU_CONFIG_MODE:
+                        current_screen = OLED_SCREEN_CONFIG_MODE;
+                        break;
+                    case MENU_DEVICE_INFO:
+                        current_screen = OLED_SCREEN_DEVICE_INFO;
+                        break;
+                    case MENU_SYSTEM_INFO:
+                        current_screen = OLED_SCREEN_SYSTEM_INFO;
+                        break;
+                }
+                submenu_selected_item = 0;
+                oled_ui_set_screen(current_screen);
+            }
+            break;
+            
+        default:
+            // Back to menu from any submenu
+            if (button == OLED_BUTTON_PREV) {
+                current_screen = OLED_SCREEN_MENU;
+                oled_ui_set_screen(OLED_SCREEN_MENU);
+            }
+            break;
+    }
+}
+
 esp_err_t oled_ui_set_screen(oled_screen_t screen)
 {
     if (!initialized) {
@@ -64,18 +152,72 @@ esp_err_t oled_ui_set_screen(oled_screen_t screen)
     
     switch (screen) {
         case OLED_SCREEN_BOOT:
-            // Boot screen with logo and version
+            // Professional boot screen with Helvetica typography
             ESP_LOGI(TAG, "Rendering boot screen");
             
-            u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-            u8g2_DrawStr(&u8g2, 10, 25, "LoRaCue");
+            // Main title "LoRaCue" (14pt Helvetica Bold, centered)
+            u8g2_SetFont(&u8g2, u8g2_font_helvB14_tr);
+            int title_width = u8g2_GetStrWidth(&u8g2, "LoRaCue");
+            u8g2_DrawStr(&u8g2, (128 - title_width) / 2, 32, "LoRaCue");
             
-            u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
-            u8g2_DrawStr(&u8g2, 15, 40, LORACUE_VERSION_STRING);
-            u8g2_DrawStr(&u8g2, 20, 55, "Initializing...");
+            // Subtitle "Enterprise Remote" (8pt Helvetica Regular, centered)
+            u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+            int subtitle_width = u8g2_GetStrWidth(&u8g2, "Enterprise Remote");
+            u8g2_DrawStr(&u8g2, (128 - subtitle_width) / 2, 45, "Enterprise Remote");
             
-            // Draw a frame around the screen
-            u8g2_DrawFrame(&u8g2, 0, 0, 128, 64);
+            // Version and status (6pt Helvetica Regular, corners)
+            u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+            u8g2_DrawStr(&u8g2, 2, 60, LORACUE_VERSION_STRING);
+            u8g2_DrawStr(&u8g2, 85, 60, "Initializing...");
+            break;
+            
+        case OLED_SCREEN_MENU:
+            // Main menu with scrollable items
+            ESP_LOGI(TAG, "Rendering menu screen");
+            
+            // Title
+            u8g2_SetFont(&u8g2, u8g2_font_helvB10_tr);
+            u8g2_DrawStr(&u8g2, 2, 12, "MENU");
+            u8g2_DrawHLine(&u8g2, 0, 15, 128);
+            
+            // Menu items (show 4 items max, scroll if needed)
+            u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+            int start_item = (menu_selected_item > 3) ? menu_selected_item - 3 : 0;
+            
+            for (int i = 0; i < 4 && (start_item + i) < MENU_COUNT; i++) {
+                int item_index = start_item + i;
+                int y_pos = 28 + (i * 10);
+                
+                // Draw selection indicator
+                if (item_index == menu_selected_item) {
+                    u8g2_DrawStr(&u8g2, 2, y_pos, ">");
+                }
+                
+                // Draw menu item text
+                u8g2_DrawStr(&u8g2, 12, y_pos, menu_items[item_index]);
+            }
+            
+            // Navigation hint
+            u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+            u8g2_DrawStr(&u8g2, 2, 60, "[<] Back");
+            u8g2_DrawStr(&u8g2, 45, 60, "[^v] Navigate");
+            u8g2_DrawStr(&u8g2, 100, 60, "[*] OK");
+            break;
+            
+        case OLED_SCREEN_DEVICE_MODE:
+        case OLED_SCREEN_BATTERY:
+        case OLED_SCREEN_LORA_SETTINGS:
+        case OLED_SCREEN_CONFIG_MODE:
+        case OLED_SCREEN_CONFIG_ACTIVE:
+        case OLED_SCREEN_DEVICE_INFO:
+        case OLED_SCREEN_SYSTEM_INFO:
+        case OLED_SCREEN_LOW_BATTERY:
+        case OLED_SCREEN_CONNECTION_LOST:
+            // Placeholder screens - to be implemented
+            u8g2_SetFont(&u8g2, u8g2_font_helvB10_tr);
+            u8g2_DrawStr(&u8g2, 2, 20, "Coming Soon");
+            u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+            u8g2_DrawStr(&u8g2, 2, 60, "[<] Back");
             break;
             
         case OLED_SCREEN_MAIN:

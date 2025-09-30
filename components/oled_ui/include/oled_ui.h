@@ -22,12 +22,28 @@ extern "C" {
  * @brief OLED UI screen types
  */
 typedef enum {
-    OLED_SCREEN_BOOT,       ///< Boot/startup screen
-    OLED_SCREEN_MAIN,       ///< Main status screen
-    OLED_SCREEN_MENU,       ///< Settings menu
-    OLED_SCREEN_PAIRING,    ///< Device pairing screen
-    OLED_SCREEN_ERROR,      ///< Error display screen
+    OLED_SCREEN_BOOT,           ///< Boot/startup screen
+    OLED_SCREEN_MAIN,           ///< Main status screen
+    OLED_SCREEN_MENU,           ///< Settings menu
+    OLED_SCREEN_DEVICE_MODE,    ///< Device mode selection
+    OLED_SCREEN_BATTERY,        ///< Battery status
+    OLED_SCREEN_LORA_SETTINGS,  ///< LoRa configuration
+    OLED_SCREEN_CONFIG_MODE,    ///< Configuration mode
+    OLED_SCREEN_CONFIG_ACTIVE,  ///< Config mode active
+    OLED_SCREEN_DEVICE_INFO,    ///< Device information
+    OLED_SCREEN_SYSTEM_INFO,    ///< System information
+    OLED_SCREEN_LOW_BATTERY,    ///< Low battery warning
+    OLED_SCREEN_CONNECTION_LOST ///< Connection lost
 } oled_screen_t;
+
+/**
+ * @brief Button types for navigation
+ */
+typedef enum {
+    OLED_BUTTON_PREV = 0,   ///< Previous/Back button
+    OLED_BUTTON_NEXT,       ///< Next/Forward button
+    OLED_BUTTON_BOTH        ///< Both buttons pressed
+} oled_button_t;
 
 /**
  * @brief Device status for display
@@ -50,6 +66,14 @@ typedef struct {
  * @return ESP_OK on success, error code otherwise
  */
 esp_err_t oled_ui_init(void);
+
+/**
+ * @brief Handle button press events
+ * 
+ * @param button Button that was pressed
+ * @param long_press True if long press detected
+ */
+void oled_ui_handle_button(oled_button_t button, bool long_press);
 
 /**
  * @brief Update device status and refresh display
