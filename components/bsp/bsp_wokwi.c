@@ -46,6 +46,30 @@ esp_err_t bsp_init(void)
     return ESP_OK;
 }
 
+esp_err_t bsp_init_buttons(void)
+{
+    ESP_LOGI(TAG, "Buttons initialized (simulated)");
+    return ESP_OK;
+}
+
+esp_err_t bsp_init_i2c(void)
+{
+    ESP_LOGI(TAG, "I2C initialized (simulated)");
+    return ESP_OK;
+}
+
+esp_err_t bsp_init_spi(void)
+{
+    ESP_LOGI(TAG, "SPI initialized (simulated)");
+    return ESP_OK;
+}
+
+esp_err_t bsp_init_battery(void)
+{
+    ESP_LOGI(TAG, "Battery monitoring initialized (simulated)");
+    return ESP_OK;
+}
+
 bool bsp_read_button(bsp_button_t button)
 {
     gpio_num_t pin = (button == BSP_BUTTON_PREV) ? BUTTON_PREV_PIN : BUTTON_NEXT_PIN;
@@ -63,11 +87,31 @@ float bsp_read_battery(void)
     return 75.0f;
 }
 
+float bsp_read_battery_voltage(void)
+{
+    // Simulate 3.7V battery
+    return 3.7f;
+}
+
+void bsp_lora_reset(void)
+{
+    ESP_LOGI(TAG, "LoRa reset (simulated)");
+}
+
 esp_err_t bsp_validate_hardware(void)
 {
     ESP_LOGI(TAG, "Validating Wokwi simulator hardware...");
     ESP_LOGI(TAG, "✓ Buttons configured (GPIO46, GPIO45)");
     ESP_LOGI(TAG, "✓ Status LED working (GPIO35)");
     ESP_LOGI(TAG, "✅ Wokwi hardware validation complete");
+    return ESP_OK;
+}
+
+esp_err_t bsp_u8g2_init(void *u8g2_ptr)
+{
+    ESP_LOGI(TAG, "u8g2 initialized (simulated for Wokwi)");
+    // For Wokwi simulation, we don't initialize the actual hardware
+    // The u8g2 structure will be set up by the simulation environment
+    // Just return success to avoid the crash
     return ESP_OK;
 }
