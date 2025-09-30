@@ -221,51 +221,37 @@ esp_err_t oled_ui_set_screen(oled_screen_t screen)
             break;
             
         case OLED_SCREEN_MAIN:
-            // Main status screen
-            u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
-            u8g2_DrawStr(&u8g2, 0, 10, "LoRaCue Ready");
+            // Professional main screen with status bar layout
+            ESP_LOGI(TAG, "Rendering main screen");
             
-            // Battery indicator
-            char battery_str[16];
-            snprintf(battery_str, sizeof(battery_str), "Bat: %d%%", current_status.battery_level);
-            u8g2_DrawStr(&u8g2, 0, 25, battery_str);
+            // Top status bar: LoRaCue + status icons (right aligned)
+            u8g2_SetFont(&u8g2, u8g2_font_helvB10_tr);
+            u8g2_DrawStr(&u8g2, 2, 12, "LoRaCue");
             
-            // LoRa status
-            u8g2_DrawStr(&u8g2, 0, 40, current_status.lora_connected ? "LoRa: OK" : "LoRa: --");
+            // Status icons (right aligned) - more compact
+            u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+            u8g2_DrawStr(&u8g2, 85, 12, "[🔌][📶][75%]");
             
-            // USB status
-            u8g2_DrawStr(&u8g2, 70, 40, current_status.usb_connected ? "USB: OK" : "USB: --");
+            // Separator line
+            u8g2_DrawHLine(&u8g2, 0, 15, 128);
             
-            // Device info
-            char device_str[32];
-            snprintf(device_str, sizeof(device_str), "%.8s (%04X)", 
-                    current_status.device_name, current_status.device_id);
-            u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
-            u8g2_DrawStr(&u8g2, 0, 55, device_str);
-            break;
+            // Main content area - "PRESENTATION"
+            u8g2_SetFont(&u8g2, u8g2_font_helvB10_tr);
+            int ready_width = u8g2_GetStrWidth(&u8g2, "PRESENTATION");
+            u8g2_DrawStr(&u8g2, (128 - ready_width) / 2, 35, "PRESENTATION");
             
-        case OLED_SCREEN_MENU:
-            u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
-            u8g2_DrawStr(&u8g2, 0, 12, "Menu");
-            u8g2_DrawStr(&u8g2, 0, 28, "1. Device Info");
-            u8g2_DrawStr(&u8g2, 0, 42, "2. Settings");
-            u8g2_DrawStr(&u8g2, 0, 56, "3. Pair Device");
-            break;
+            // Button hints - more compact
+            u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+            u8g2_DrawStr(&u8g2, 5, 48, "[◄PREV]");
+            u8g2_DrawStr(&u8g2, 75, 48, "[NEXT►]");
             
-        case OLED_SCREEN_PAIRING:
-            u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
-            u8g2_DrawStr(&u8g2, 0, 15, "Device Pairing");
-            u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
-            u8g2_DrawStr(&u8g2, 0, 35, "Connect USB cable");
-            u8g2_DrawStr(&u8g2, 0, 50, "Waiting for host...");
-            break;
+            // Bottom separator and info
+            u8g2_DrawHLine(&u8g2, 0, 52, 128);
             
-        case OLED_SCREEN_ERROR:
-            u8g2_SetFont(&u8g2, u8g2_font_ncenB08_tr);
-            u8g2_DrawStr(&u8g2, 0, 15, "System Error");
-            u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
-            u8g2_DrawStr(&u8g2, 0, 35, "Check hardware");
-            u8g2_DrawStr(&u8g2, 0, 50, "connections");
+            // Bottom bar: Device ID (left) + Menu hint (right)
+            u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+            u8g2_DrawStr(&u8g2, 2, 62, "RC-A4B2");
+            u8g2_DrawStr(&u8g2, 80, 62, "[◄+►] Menu");
             break;
     }
     
