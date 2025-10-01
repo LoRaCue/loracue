@@ -65,18 +65,18 @@ void device_mode_screen_draw(void) {
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
     // Left: Back arrow
-    u8g2_DrawXBM(&u8g2, 2, 57, track_prev_width, track_prev_height, track_prev_bits);
+    u8g2_DrawXBM(&u8g2, 2, 56, track_prev_width, track_prev_height, track_prev_bits);
     u8g2_DrawStr(&u8g2, 8, 64, "Back");
     
     // Middle: Next arrow
-    u8g2_DrawXBM(&u8g2, 40, 57, track_next_width, track_next_height, track_next_bits);
+    u8g2_DrawXBM(&u8g2, 40, 56, track_next_width, track_next_height, track_next_bits);
     u8g2_DrawStr(&u8g2, 46, 64, "Next");
     
     // Right: Select with both buttons icon
     const char* select_text = "Select";
     int select_text_width = u8g2_GetStrWidth(&u8g2, select_text);
     int select_x = DISPLAY_WIDTH - both_buttons_width - select_text_width - 2;
-    u8g2_DrawXBM(&u8g2, select_x, 57, both_buttons_width, both_buttons_height, both_buttons_bits);
+    u8g2_DrawXBM(&u8g2, select_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
     u8g2_DrawStr(&u8g2, select_x + both_buttons_width + 2, 64, select_text);
     
     u8g2_SendBuffer(&u8g2);

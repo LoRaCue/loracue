@@ -20,7 +20,7 @@ static void draw_info_header(const char* title) {
 static void draw_info_footer(void) {
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);  // Use config constant
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);  // Same as main screen
-    u8g2_DrawXBM(&u8g2, 2, 57, track_prev_width, track_prev_height, track_prev_bits);
+    u8g2_DrawXBM(&u8g2, 2, 56, track_prev_width, track_prev_height, track_prev_bits);
     u8g2_DrawStr(&u8g2, 8, 64, "Back");
 }
 

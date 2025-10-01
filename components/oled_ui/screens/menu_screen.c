@@ -57,7 +57,7 @@ void menu_screen_draw(void) {
     // Navigation hints with icons (compact bottom bar)
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     u8g2_DrawXBM(&u8g2, 2, 56, updown_nav_width, updown_nav_height, updown_nav_bits);
-    u8g2_DrawStr(&u8g2, 17, 62, "Up/Down");
+    u8g2_DrawStr(&u8g2, 17, 64, "Move");
     
     // Move Select to rightmost position
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);  // Explicitly set font again
@@ -65,7 +65,7 @@ void menu_screen_draw(void) {
     int select_text_width = u8g2_GetStrWidth(&u8g2, select_text);
     int select_x = DISPLAY_WIDTH - both_buttons_width - select_text_width - 2;
     u8g2_DrawXBM(&u8g2, select_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-    u8g2_DrawStr(&u8g2, select_x + both_buttons_width + 2, 62, select_text);
+    u8g2_DrawStr(&u8g2, select_x + both_buttons_width + 2, 64, select_text);
     
     u8g2_SendBuffer(&u8g2);
 }
