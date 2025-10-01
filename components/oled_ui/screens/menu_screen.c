@@ -51,11 +51,21 @@ void menu_screen_draw(void) {
         u8g2_DrawXBM(&u8g2, 118, 5, scroll_up_width, scroll_up_height, scroll_up_bits);
     }
     if (visible_end < menu_item_count) {
-        u8g2_DrawXBM(&u8g2, 118, 47, scroll_down_width, scroll_down_height, scroll_down_bits);
+        u8g2_DrawXBM(&u8g2, 118, 45, scroll_down_width, scroll_down_height, scroll_down_bits);
     }
     
-    // Navigation hints (compact)
-    u8g2_DrawStr(&u8g2, 2, 62, "[</>] Up/Down  [<+>] Select");
+    // Navigation hints with icons (compact bottom bar)
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+    u8g2_DrawXBM(&u8g2, 2, 56, updown_nav_width, updown_nav_height, updown_nav_bits);
+    u8g2_DrawStr(&u8g2, 17, 62, "Up/Down");
+    
+    // Move Select to rightmost position
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);  // Explicitly set font again
+    const char* select_text = "Select";
+    int select_text_width = u8g2_GetStrWidth(&u8g2, select_text);
+    int select_x = DISPLAY_WIDTH - both_buttons_width - select_text_width - 2;
+    u8g2_DrawXBM(&u8g2, select_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
+    u8g2_DrawStr(&u8g2, select_x + both_buttons_width + 2, 62, select_text);
     
     u8g2_SendBuffer(&u8g2);
 }

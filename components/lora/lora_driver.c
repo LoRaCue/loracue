@@ -11,6 +11,8 @@
 #include "lora_driver.h"
 #include "bsp.h"
 #include "esp_log.h"
+#include "nvs_flash.h"
+#include "nvs.h"
 #include <string.h>
 
 #ifdef SIMULATOR_BUILD
@@ -269,6 +271,14 @@ bool lora_driver_is_sim_wifi_enabled(void)
 
 esp_err_t lora_driver_init(void)
 {
+    // Load LoRa config from NVS (or use defaults)
+    lora_config_t config;
+    lora_get_config(&config);
+    current_config = config;
+    
+    ESP_LOGI(TAG, "LoRa config: %lu Hz, SF%d, %d kHz, %d dBm", 
+             config.frequency, config.spreading_factor, config.bandwidth, config.tx_power);
+    
 #ifdef SIMULATOR_BUILD
     ESP_LOGI(TAG, "🌐 Simulator mode: Initializing WiFi UDP transport");
     ESP_LOGI(TAG, "🌐 Skipping SX1262 hardware initialization (simulated)");
@@ -334,6 +344,69 @@ int16_t lora_get_rssi(void)
     // Hardware RSSI - placeholder
     return -80; // dBm
 #endif
+}
+
+uint32_t lora_get_frequency(void)
+{
+    return current_config.frequency;
+}
+
+esp_err_t lora_get_config(lora_config_t *config)
+{
+    if (!config) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    // Try to load from NVS
+    nvs_handle_t nvs_handle;
+    esp_err_t ret = nvs_open("lora", NVS_READONLY, &nvs_handle);
+    if (ret == ESP_OK) {
+        size_t required_size = sizeof(lora_config_t);
+        ret = nvs_get_blob(nvs_handle, "config", config, &required_size);
+        nvs_close(nvs_handle);
+        
+        if (ret == ESP_OK) {
+            ESP_LOGD(TAG, "LoRa config loaded from NVS");
+            return ESP_OK;
+        }
+    }
+    
+    // Use current config if NVS read failed
+    *config = current_config;
+    ESP_LOGD(TAG, "Using current LoRa configuration");
+    return ESP_OK;
+}
+
+esp_err_t lora_set_config(const lora_config_t *config)
+{
+    if (!config) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    // Save to NVS
+    nvs_handle_t nvs_handle;
+    esp_err_t ret = nvs_open("lora", NVS_READWRITE, &nvs_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open LoRa NVS: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    ret = nvs_set_blob(nvs_handle, "config", config, sizeof(lora_config_t));
+    if (ret == ESP_OK) {
+        ret = nvs_commit(nvs_handle);
+    }
+    
+    nvs_close(nvs_handle);
+    
+    if (ret == ESP_OK) {
+        // Update current config
+        current_config = *config;
+        ESP_LOGI(TAG, "LoRa configuration saved to NVS");
+    } else {
+        ESP_LOGE(TAG, "Failed to save LoRa config: %s", esp_err_to_name(ret));
+    }
+    
+    return ret;
 }
 
 esp_err_t lora_set_receive_mode(void)

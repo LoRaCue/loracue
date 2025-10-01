@@ -66,6 +66,29 @@ esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received
 int16_t lora_get_rssi(void);
 
 /**
+ * @brief Get current LoRa frequency
+ * 
+ * @return Frequency in Hz
+ */
+uint32_t lora_get_frequency(void);
+
+/**
+ * @brief Get current LoRa configuration
+ * 
+ * @param config Output LoRa configuration
+ * @return ESP_OK on success
+ */
+esp_err_t lora_get_config(lora_config_t *config);
+
+/**
+ * @brief Set LoRa configuration and save to NVS
+ * 
+ * @param config New LoRa configuration
+ * @return ESP_OK on success
+ */
+esp_err_t lora_set_config(const lora_config_t *config);
+
+/**
  * @brief Set LoRa to receive mode
  * 
  * @return ESP_OK on success

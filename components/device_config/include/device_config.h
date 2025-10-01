@@ -4,7 +4,7 @@
  * 
  * CONTEXT: Device configuration and settings management
  * PURPOSE: Store and retrieve device configuration from NVS
- * FEATURES: Settings management, NVS persistence, device status
+ * FEATURES: Settings management, NVS persistence, device behavior
  */
 
 #pragma once
@@ -17,75 +17,39 @@
 extern "C" {
 #endif
 
-#define WEB_CONFIG_SSID_MAX_LEN     32
-#define WEB_CONFIG_PASSWORD_MAX_LEN 64
-#define WEB_CONFIG_DEFAULT_SSID     "LoRaCue-Config"
-#define WEB_CONFIG_DEFAULT_PASSWORD "loracue123"
-#define WEB_CONFIG_SERVER_PORT      80
-
 /**
- * @brief Web configuration state
+ * @brief Device mode enumeration
  */
 typedef enum {
-    WEB_CONFIG_STOPPED,     ///< Web config not running
-    WEB_CONFIG_STARTING,    ///< Starting Wi-Fi AP and HTTP server
-    WEB_CONFIG_RUNNING,     ///< Web config active and accessible
-    WEB_CONFIG_ERROR,       ///< Error state
-} web_config_state_t;
+    DEVICE_MODE_PRESENTER = 0,
+    DEVICE_MODE_PC = 1
+} device_mode_t;
 
 /**
- * @brief Web configuration settings
+ * @brief Get string representation of device mode
+ * 
+ * @param mode Device mode enum value
+ * @return String representation of the mode
  */
-typedef struct {
-    char ap_ssid[WEB_CONFIG_SSID_MAX_LEN];         ///< AP SSID
-    char ap_password[WEB_CONFIG_PASSWORD_MAX_LEN]; ///< AP password
-    uint8_t ap_channel;                            ///< AP channel (1-13)
-    uint8_t max_connections;                       ///< Max concurrent connections
-    uint16_t server_port;                          ///< HTTP server port
-    bool enable_ota;                               ///< Enable OTA updates
-} web_config_settings_t;
+const char* device_mode_to_string(device_mode_t mode);
 
 /**
- * @brief Device configuration structure
+ * @brief Device configuration structure (UI and behavior settings)
  */
 typedef struct {
     char device_name[32];           ///< Device name
-    uint8_t lora_power;             ///< LoRa TX power (0-22 dBm)
-    uint32_t lora_frequency;        ///< LoRa frequency in Hz
-    uint8_t lora_spreading_factor;  ///< LoRa spreading factor (7-12)
+    device_mode_t device_mode;      ///< Current device mode (PRESENTER/PC)
     uint32_t sleep_timeout_ms;      ///< Sleep timeout in milliseconds
     bool auto_sleep_enabled;        ///< Auto sleep enabled
     uint8_t display_brightness;     ///< Display brightness (0-255)
 } device_config_t;
 
 /**
- * @brief Initialize web configuration system
- * 
- * @param settings Web config settings (NULL for defaults)
- * @return ESP_OK on success
- */
-esp_err_t web_config_init(const web_config_settings_t *settings);
-
-/**
- * @brief Start web configuration mode
+ * @brief Initialize device configuration system
  * 
  * @return ESP_OK on success
  */
-esp_err_t web_config_start(void);
-
-/**
- * @brief Stop web configuration mode
- * 
- * @return ESP_OK on success
- */
-esp_err_t web_config_stop(void);
-
-/**
- * @brief Get current web config state
- * 
- * @return Current state
- */
-web_config_state_t web_config_get_state(void);
+esp_err_t device_config_init(void);
 
 /**
  * @brief Get current device configuration
@@ -93,7 +57,7 @@ web_config_state_t web_config_get_state(void);
  * @param config Output device configuration
  * @return ESP_OK on success
  */
-esp_err_t web_config_get_device_config(device_config_t *config);
+esp_err_t device_config_get(device_config_t *config);
 
 /**
  * @brief Set device configuration
@@ -101,24 +65,7 @@ esp_err_t web_config_get_device_config(device_config_t *config);
  * @param config New device configuration
  * @return ESP_OK on success
  */
-esp_err_t web_config_set_device_config(const device_config_t *config);
-
-/**
- * @brief Get AP connection info
- * 
- * @param ssid Output SSID buffer (min 33 bytes)
- * @param password Output password buffer (min 65 bytes)
- * @param ip_address Output IP address string (min 16 bytes)
- * @return ESP_OK on success
- */
-esp_err_t web_config_get_ap_info(char *ssid, char *password, char *ip_address);
-
-/**
- * @brief Check if clients are connected
- * 
- * @return Number of connected clients
- */
-uint8_t web_config_get_client_count(void);
+esp_err_t device_config_set(const device_config_t *config);
 
 #ifdef __cplusplus
 }

@@ -1,6 +1,9 @@
 #include "info_screens.h"
 #include "ui_config.h"
 #include "ui_data_provider.h"
+#include "ui_icons.h"
+#include "device_mode_screen.h"
+#include "lora_driver.h"
 #include "version.h"
 #include "esp_mac.h"
 #include "esp_system.h"
@@ -9,9 +12,16 @@
 extern u8g2_t u8g2;
 
 static void draw_info_header(const char* title) {
-    u8g2_SetFont(&u8g2, u8g2_font_helvB10_tr);
-    u8g2_DrawStr(&u8g2, 2, 12, title);
-    u8g2_DrawHLine(&u8g2, 0, 15, DISPLAY_WIDTH);
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);  // Same as main screen
+    u8g2_DrawStr(&u8g2, 2, 8, title);  // Move down to y=8 to avoid clipping
+    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);  // Use config constant
+}
+
+static void draw_info_footer(void) {
+    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);  // Use config constant
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);  // Same as main screen
+    u8g2_DrawXBM(&u8g2, 2, 57, track_prev_width, track_prev_height, track_prev_bits);
+    u8g2_DrawStr(&u8g2, 8, 64, "Back");
 }
 
 void system_info_screen_draw(void) {
@@ -22,15 +32,19 @@ void system_info_screen_draw(void) {
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
     // Firmware version
-    u8g2_DrawStr(&u8g2, 2, 26, "Firmware: ");
-    u8g2_DrawStr(&u8g2, 55, 26, LORACUE_VERSION_STRING);
+    u8g2_DrawStr(&u8g2, 2, 20, "Firmware: ");
+    u8g2_DrawStr(&u8g2, 55, 20, LORACUE_VERSION_STRING);
     
-    // Hardware
-    u8g2_DrawStr(&u8g2, 2, 36, "Hardware: Heltec LoRa V3");
+    // Hardware (dynamic based on build)
+#ifdef SIMULATOR_BUILD
+    u8g2_DrawStr(&u8g2, 2, 30, "Hardware: Wokwi Simulator");
+#else
+    u8g2_DrawStr(&u8g2, 2, 30, "Hardware: Heltec LoRa V3");
+#endif
     
     // ESP-IDF version
-    u8g2_DrawStr(&u8g2, 2, 46, "ESP-IDF: ");
-    u8g2_DrawStr(&u8g2, 50, 46, IDF_VER);
+    u8g2_DrawStr(&u8g2, 2, 40, "ESP-IDF: ");
+    u8g2_DrawStr(&u8g2, 50, 40, IDF_VER);
     
     // Free heap memory - simple conversion
     uint32_t heap_kb = esp_get_free_heap_size() / 1024;
@@ -50,10 +64,9 @@ void system_info_screen_draw(void) {
     *p++ = 'B';
     *p = '\0';
     
-    u8g2_DrawStr(&u8g2, 2, 56, heap_str);
+    u8g2_DrawStr(&u8g2, 2, 50, heap_str);
     
-    // Navigation hint
-    u8g2_DrawStr(&u8g2, 2, 62, "[<] Back");
+    draw_info_footer();
     
     u8g2_SendBuffer(&u8g2);
 }
@@ -66,14 +79,54 @@ void device_info_screen_draw(const ui_status_t* status) {
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
     // Device name
-    u8g2_DrawStr(&u8g2, 2, 26, "Device: ");
-    u8g2_DrawStr(&u8g2, 45, 26, status->device_name);
+    u8g2_DrawStr(&u8g2, 2, 20, "Device: ");
+    u8g2_DrawStr(&u8g2, 45, 20, status->device_name);
     
-    // Mode
-    u8g2_DrawStr(&u8g2, 2, 36, "Mode: STAGE Remote");
+    // Mode (dynamic based on current device mode)
+    device_mode_t current_mode = device_mode_get_current();
+    if (current_mode == DEVICE_MODE_PRESENTER) {
+        u8g2_DrawStr(&u8g2, 2, 30, "Mode: PRESENTER");
+    } else {
+        u8g2_DrawStr(&u8g2, 2, 30, "Mode: PC");
+    }
     
-    // LoRa channel
-    u8g2_DrawStr(&u8g2, 2, 46, "LoRa: 868.1 MHz");
+    // LoRa frequency (dynamic from driver)
+#ifdef SIMULATOR_BUILD
+    u8g2_DrawStr(&u8g2, 2, 40, "LoRa: Simulated");
+#else
+    uint32_t freq_hz = lora_get_frequency();
+    uint32_t freq_mhz = freq_hz / 1000000;
+    uint32_t freq_decimal = (freq_hz % 1000000) / 100000;
+    
+    char freq_str[20] = "LoRa: ";
+    char *p = freq_str + 6;
+    
+    // Convert MHz part
+    if (freq_mhz >= 1000) {
+        *p++ = '0' + (freq_mhz / 1000);
+        freq_mhz %= 1000;
+    }
+    if (freq_mhz >= 100) {
+        *p++ = '0' + (freq_mhz / 100);
+        freq_mhz %= 100;
+    }
+    *p++ = '0' + (freq_mhz / 10);
+    *p++ = '0' + (freq_mhz % 10);
+    
+    // Add decimal if needed
+    if (freq_decimal > 0) {
+        *p++ = '.';
+        *p++ = '0' + freq_decimal;
+    }
+    
+    *p++ = ' ';
+    *p++ = 'M';
+    *p++ = 'H';
+    *p++ = 'z';
+    *p = '\0';
+    
+    u8g2_DrawStr(&u8g2, 2, 40, freq_str);
+#endif
     
     // Device ID (from MAC)
     uint8_t mac[6];
@@ -84,10 +137,9 @@ void device_info_screen_draw(const ui_status_t* status) {
     device_id[6] = "0123456789ABCDEF"[mac[5] >> 4];
     device_id[7] = "0123456789ABCDEF"[mac[5] & 0xF];
     device_id[8] = '\0';
-    u8g2_DrawStr(&u8g2, 2, 56, device_id);
+    u8g2_DrawStr(&u8g2, 2, 50, device_id);
     
-    // Navigation hint
-    u8g2_DrawStr(&u8g2, 2, 62, "[<] Back");
+    draw_info_footer();
     
     u8g2_SendBuffer(&u8g2);
 }
@@ -120,7 +172,7 @@ void battery_status_screen_draw(const ui_status_t* status) {
         }
         *p++ = '%';
         *p = '\0';
-        u8g2_DrawStr(&u8g2, 2, 26, level_str);
+        u8g2_DrawStr(&u8g2, 2, 20, level_str);
         
         // Real battery voltage
         char voltage_str[20] = "Voltage: ";
@@ -131,13 +183,13 @@ void battery_status_screen_draw(const ui_status_t* status) {
         *p++ = '0' + ((voltage_mv % 1000) / 100);
         *p++ = 'V';
         *p = '\0';
-        u8g2_DrawStr(&u8g2, 2, 36, voltage_str);
+        u8g2_DrawStr(&u8g2, 2, 30, voltage_str);
         
         // Charging/USB status
         if (battery_info.usb_connected) {
-            u8g2_DrawStr(&u8g2, 2, 46, battery_info.charging ? "Status: Charging" : "Status: USB Power");
+            u8g2_DrawStr(&u8g2, 2, 40, battery_info.charging ? "Status: Charging" : "Status: USB Power");
         } else {
-            u8g2_DrawStr(&u8g2, 2, 46, "Status: Battery");
+            u8g2_DrawStr(&u8g2, 2, 40, "Status: Battery");
         }
         
         // Health based on voltage
@@ -151,17 +203,16 @@ void battery_status_screen_draw(const ui_status_t* status) {
         char *h = health_str + 8;
         while (*health) *h++ = *health++;
         *h = '\0';
-        u8g2_DrawStr(&u8g2, 2, 56, health_str);
+        u8g2_DrawStr(&u8g2, 2, 50, health_str);
     } else {
         // Fallback to basic status
-        u8g2_DrawStr(&u8g2, 2, 26, "Level: --");
-        u8g2_DrawStr(&u8g2, 2, 36, "Voltage: --");
-        u8g2_DrawStr(&u8g2, 2, 46, "Status: Unknown");
-        u8g2_DrawStr(&u8g2, 2, 56, "Health: --");
+        u8g2_DrawStr(&u8g2, 2, 20, "Level: --");
+        u8g2_DrawStr(&u8g2, 2, 30, "Voltage: --");
+        u8g2_DrawStr(&u8g2, 2, 40, "Status: Unknown");
+        u8g2_DrawStr(&u8g2, 2, 50, "Health: --");
     }
     
-    // Navigation hint
-    u8g2_DrawStr(&u8g2, 2, 62, "[<] Back");
+    draw_info_footer();
     
     u8g2_SendBuffer(&u8g2);
 }

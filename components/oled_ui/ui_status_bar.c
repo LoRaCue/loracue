@@ -1,5 +1,6 @@
 #include "ui_status_bar.h"
 #include "ui_config.h"
+#include "ui_icons.h"
 #include "icons/ui_battery.h"
 #include "icons/ui_usb.h"
 #include "icons/ui_rf.h"
@@ -28,8 +29,15 @@ void ui_bottom_bar_draw(const ui_status_t* status) {
     // Device name on left
     u8g2_DrawStr(&u8g2, TEXT_MARGIN_LEFT - 1, DISPLAY_HEIGHT - 1, status->device_name);
     
-    // Menu hint on right
-    const char* menu_text = "3s [<+>] Menu";
-    int menu_width = u8g2_GetStrWidth(&u8g2, menu_text);
-    u8g2_DrawStr(&u8g2, DISPLAY_WIDTH - menu_width - TEXT_MARGIN_RIGHT, DISPLAY_HEIGHT - 1, menu_text);
+    // Menu hint on right with icon
+    const char* menu_text = "3s ";
+    const char* menu_suffix = " Menu";
+    int text_width = u8g2_GetStrWidth(&u8g2, menu_text);
+    int suffix_width = u8g2_GetStrWidth(&u8g2, menu_suffix);
+    int total_width = text_width + both_buttons_width + suffix_width;
+    
+    int start_x = DISPLAY_WIDTH - total_width - TEXT_MARGIN_RIGHT;
+    u8g2_DrawStr(&u8g2, start_x, DISPLAY_HEIGHT - 1, menu_text);
+    u8g2_DrawXBM(&u8g2, start_x + text_width, DISPLAY_HEIGHT - both_buttons_height - 1, both_buttons_width, both_buttons_height, both_buttons_bits);
+    u8g2_DrawStr(&u8g2, start_x + text_width + both_buttons_width, DISPLAY_HEIGHT - 1, menu_suffix);
 }

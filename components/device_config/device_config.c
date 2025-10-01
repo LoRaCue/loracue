@@ -1,9 +1,9 @@
 /**
- * @file web_config.c
- * @brief Minimal web configuration implementation
+ * @file device_config.c
+ * @brief Device configuration management with NVS persistence
  * 
- * CONTEXT: Simplified implementation for Ticket 6.1 validation
- * PURPOSE: Basic web interface placeholder
+ * CONTEXT: Clean device configuration management
+ * PURPOSE: Store and retrieve device settings from NVS
  */
 
 #include "device_config.h"
@@ -12,89 +12,24 @@
 #include "nvs.h"
 #include <string.h>
 
-static const char *TAG = "WEB_CONFIG";
+static const char *TAG = "DEVICE_CONFIG";
 
-// Web config state
-static bool web_config_initialized = false;
-static web_config_state_t current_state = WEB_CONFIG_STOPPED;
-static web_config_settings_t config_settings;
-static device_config_t device_config;
-static uint8_t connected_clients = 0;
-
-// Default settings
-static const web_config_settings_t default_settings = {
-    .ap_ssid = WEB_CONFIG_DEFAULT_SSID,
-    .ap_password = WEB_CONFIG_DEFAULT_PASSWORD,
-    .ap_channel = 6,
-    .max_connections = 4,
-    .server_port = WEB_CONFIG_SERVER_PORT,
-    .enable_ota = true,
-};
-
-// Default device config
-static const device_config_t default_device_config = {
+// Default device configuration
+static const device_config_t default_config = {
     .device_name = "LoRaCue-Device",
-    .lora_power = 14,
-    .lora_frequency = 915000000,
-    .lora_spreading_factor = 7,
-    .sleep_timeout_ms = 300000,
+    .device_mode = DEVICE_MODE_PRESENTER,
+    .sleep_timeout_ms = 300000,     // 5 minutes
     .auto_sleep_enabled = true,
-    .display_brightness = 128,
+    .display_brightness = 128,      // 50% brightness
 };
 
-esp_err_t web_config_init(const web_config_settings_t *settings)
+esp_err_t device_config_init(void)
 {
-    ESP_LOGI(TAG, "Initializing web configuration system (placeholder)");
-    
-    if (settings) {
-        config_settings = *settings;
-    } else {
-        config_settings = default_settings;
-    }
-    
-    // Load device config from NVS or use defaults
-    device_config = default_device_config;
-    web_config_get_device_config(&device_config);
-    
-    web_config_initialized = true;
-    ESP_LOGI(TAG, "Web configuration initialized");
-    
+    ESP_LOGI(TAG, "Initializing device configuration system");
     return ESP_OK;
 }
 
-esp_err_t web_config_start(void)
-{
-    if (!web_config_initialized) {
-        return ESP_ERR_INVALID_STATE;
-    }
-    
-    ESP_LOGI(TAG, "Starting web configuration mode (placeholder)");
-    current_state = WEB_CONFIG_RUNNING;
-    
-    ESP_LOGI(TAG, "Web configuration started - Connect to '%s' with password '%s'", 
-             config_settings.ap_ssid, config_settings.ap_password);
-    ESP_LOGI(TAG, "Open browser to 192.168.4.1 for configuration");
-    
-    return ESP_OK;
-}
-
-esp_err_t web_config_stop(void)
-{
-    ESP_LOGI(TAG, "Stopping web configuration mode");
-    
-    connected_clients = 0;
-    current_state = WEB_CONFIG_STOPPED;
-    
-    ESP_LOGI(TAG, "Web configuration stopped");
-    return ESP_OK;
-}
-
-web_config_state_t web_config_get_state(void)
-{
-    return current_state;
-}
-
-esp_err_t web_config_get_device_config(device_config_t *config)
+esp_err_t device_config_get(device_config_t *config)
 {
     if (!config) {
         return ESP_ERR_INVALID_ARG;
@@ -102,23 +37,43 @@ esp_err_t web_config_get_device_config(device_config_t *config)
     
     // Try to load from NVS
     nvs_handle_t nvs_handle;
-    esp_err_t ret = nvs_open("device_config", NVS_READONLY, &nvs_handle);
+    esp_err_t ret = nvs_open("general", NVS_READONLY, &nvs_handle);
     if (ret == ESP_OK) {
         size_t required_size = sizeof(device_config_t);
         ret = nvs_get_blob(nvs_handle, "config", config, &required_size);
         nvs_close(nvs_handle);
         
         if (ret == ESP_OK) {
+            ESP_LOGI(TAG, "Device config loaded from NVS - mode: %s", 
+                     device_mode_to_string(config->device_mode));
             return ESP_OK;
+        } else {
+            ESP_LOGW(TAG, "Failed to read config from NVS: %s", esp_err_to_name(ret));
         }
+    } else {
+        ESP_LOGW(TAG, "Failed to open NVS: %s", esp_err_to_name(ret));
     }
     
     // Use defaults if NVS read failed
-    *config = default_device_config;
+    *config = default_config;
+    ESP_LOGI(TAG, "Using default device configuration - mode: %s", 
+             device_mode_to_string(config->device_mode));
     return ESP_OK;
 }
 
-esp_err_t web_config_set_device_config(const device_config_t *config)
+const char* device_mode_to_string(device_mode_t mode)
+{
+    switch (mode) {
+        case DEVICE_MODE_PRESENTER:
+            return "PRESENTER";
+        case DEVICE_MODE_PC:
+            return "PC";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+esp_err_t device_config_set(const device_config_t *config)
 {
     if (!config) {
         return ESP_ERR_INVALID_ARG;
@@ -126,8 +81,9 @@ esp_err_t web_config_set_device_config(const device_config_t *config)
     
     // Save to NVS
     nvs_handle_t nvs_handle;
-    esp_err_t ret = nvs_open("device_config", NVS_READWRITE, &nvs_handle);
+    esp_err_t ret = nvs_open("general", NVS_READWRITE, &nvs_handle);
     if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(ret));
         return ret;
     }
     
@@ -139,27 +95,11 @@ esp_err_t web_config_set_device_config(const device_config_t *config)
     nvs_close(nvs_handle);
     
     if (ret == ESP_OK) {
-        device_config = *config;
-        ESP_LOGI(TAG, "Device configuration saved");
+        ESP_LOGI(TAG, "Device configuration saved to NVS - mode: %s", 
+                 device_mode_to_string(config->device_mode));
+    } else {
+        ESP_LOGE(TAG, "Failed to save device config: %s", esp_err_to_name(ret));
     }
     
     return ret;
-}
-
-esp_err_t web_config_get_ap_info(char *ssid, char *password, char *ip_address)
-{
-    if (!ssid || !password || !ip_address) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    
-    strcpy(ssid, config_settings.ap_ssid);
-    strcpy(password, config_settings.ap_password);
-    strcpy(ip_address, "192.168.4.1"); // Default AP IP
-    
-    return ESP_OK;
-}
-
-uint8_t web_config_get_client_count(void)
-{
-    return connected_clients;
 }

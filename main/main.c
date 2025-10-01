@@ -13,6 +13,7 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "esp_mac.h"
 #include "nvs_flash.h"
 #include "version.h"
 #include "bsp.h"
@@ -28,6 +29,8 @@
 #include "device_config.h"
 
 static const char *TAG = "LORACUE_MAIN";
+static device_mode_t current_device_mode = DEVICE_MODE_PRESENTER;
+static EventGroupHandle_t system_events;
 
 // Demo AES keys for different devices
 static const uint8_t demo_aes_key_1[16] = {
@@ -41,6 +44,16 @@ static esp_err_t handle_lora_command(lora_command_t command, uint16_t sender_id)
     
     // Update power management activity on LoRa command
     power_mgmt_update_activity();
+    
+    // Get device mode to determine behavior
+    device_config_t config;
+    device_config_get(&config);
+    
+    // Only PC mode handles commands
+    if (config.device_mode != DEVICE_MODE_PC) {
+        ESP_LOGD(TAG, "Ignoring command - device in PRESENTER mode");
+        return ESP_OK;
+    }
     
     switch (command) {
         case CMD_NEXT_SLIDE:
@@ -62,6 +75,19 @@ static esp_err_t handle_lora_command(lora_command_t command, uint16_t sender_id)
 }
 
 static EventGroupHandle_t system_events;
+
+static void check_device_mode_change(void)
+{
+    device_config_t config;
+    device_config_get(&config);
+    
+    if (config.device_mode != current_device_mode) {
+        ESP_LOGI(TAG, "Device mode changed from %s to %s", 
+                 device_mode_to_string(current_device_mode),
+                 device_mode_to_string(config.device_mode));
+        current_device_mode = config.device_mode;
+    }
+}
 
 static void battery_monitor_task(void *pvParameters)
 {
@@ -171,11 +197,11 @@ void app_main(void)
     }
     led_manager_solid(true); // Turn on LED during startup
     
-    // Initialize web configuration
-    ESP_LOGI(TAG, "Initializing web configuration system...");
-    ret = web_config_init(NULL); // Use default settings
+    // Initialize device configuration
+    ESP_LOGI(TAG, "Initializing device configuration system...");
+    ret = device_config_init();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Web config initialization failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Device config initialization failed: %s", esp_err_to_name(ret));
         return;
     }
     
@@ -238,9 +264,19 @@ void app_main(void)
         return;
     }
     
-    // Initialize LoRa protocol
-    uint16_t device_id = 0xAC00 | (esp_random() & 0xFF); // PC device ID (AC = LoRaCue)
-    ESP_LOGI(TAG, "Initializing LoRa protocol with PC device ID: 0x%04X", device_id);
+    // Get device mode from NVS
+    device_config_t config;
+    device_config_get(&config);
+    current_device_mode = config.device_mode;
+    
+    // Generate device ID from MAC address (static identity)
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    uint16_t device_id = (mac[4] << 8) | mac[5]; // Use last 2 bytes of MAC
+    
+    ESP_LOGI(TAG, "Device mode: %s, Static ID: 0x%04X", 
+             device_mode_to_string(config.device_mode), device_id);
+    
     ret = lora_protocol_init(device_id, demo_aes_key_1);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "LoRa protocol initialization failed: %s", esp_err_to_name(ret));
@@ -282,7 +318,7 @@ void app_main(void)
     strcpy(status.device_name, "LoRaCue-STAGE");
     
     // Create event group for system events
-    EventGroupHandle_t system_events = xEventGroupCreate();
+    system_events = xEventGroupCreate();
     
     // Start periodic tasks
     xTaskCreate(battery_monitor_task, "battery_monitor", 2048, &status, 5, NULL);
@@ -306,5 +342,8 @@ void app_main(void)
         if (events & (1 << 1)) { // USB status changed
             oled_ui_update_status(&status);
         }
+        
+        // Check for device mode changes when not in menu
+        check_device_mode_change();
     }
 }
