@@ -66,7 +66,7 @@ void config_mode_screen_draw(void) {
     // Bottom bar
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawXBM(&u8g2, 2, 56, track_prev_width, track_prev_height, track_prev_bits);
+    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
     u8g2_DrawStr(&u8g2, 8, DISPLAY_HEIGHT - 1, "Back");
     
     u8g2_SendBuffer(&u8g2);

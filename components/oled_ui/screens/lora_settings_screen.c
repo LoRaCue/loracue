@@ -125,12 +125,30 @@ void lora_settings_screen_draw(void) {
     if (preset_count > VIEWPORT_SIZE) {
         // Up arrow if not at top (positioned in first item area)
         if (scroll_offset > 0) {
-            u8g2_DrawXBM(&u8g2, 118, 15, scroll_up_width, scroll_up_height, scroll_up_bits);
+            // Check if scroll up arrow overlaps with lightbar
+            int selected_y_base = 21 + ((selected_preset - scroll_offset) * 20);
+            int lightbar_top = selected_y_base - 10;
+            int lightbar_bottom = selected_y_base + 10;
+            
+            if (15 >= lightbar_top && 15 + scroll_up_height <= lightbar_bottom) {
+                u8g2_SetDrawColor(&u8g2, 0);  // Invert for lightbar
+            }
+            u8g2_DrawXBM(&u8g2, 119, 15, scroll_up_width, scroll_up_height, scroll_up_bits);
+            u8g2_SetDrawColor(&u8g2, 1);  // Reset color
         }
         
         // Down arrow if not at bottom (positioned in second item area)
         if (scroll_offset + VIEWPORT_SIZE < preset_count) {
-            u8g2_DrawXBM(&u8g2, 118, 35, scroll_down_width, scroll_down_height, scroll_down_bits);
+            // Check if scroll down arrow overlaps with lightbar
+            int selected_y_base = 21 + ((selected_preset - scroll_offset) * 20);
+            int lightbar_top = selected_y_base - 10;
+            int lightbar_bottom = selected_y_base + 10;
+            
+            if (35 >= lightbar_top && 35 + scroll_down_height <= lightbar_bottom) {
+                u8g2_SetDrawColor(&u8g2, 0);  // Invert for lightbar
+            }
+            u8g2_DrawXBM(&u8g2, 119, 35, scroll_down_width, scroll_down_height, scroll_down_bits);
+            u8g2_SetDrawColor(&u8g2, 1);  // Reset color
         }
     }
     
@@ -139,7 +157,7 @@ void lora_settings_screen_draw(void) {
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
     // Left: Back arrow
-    u8g2_DrawXBM(&u8g2, 2, 56, track_prev_width, track_prev_height, track_prev_bits);
+    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
     u8g2_DrawStr(&u8g2, 8, 64, "Back");
     
     // Middle: Next arrow

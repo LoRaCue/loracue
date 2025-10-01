@@ -48,10 +48,28 @@ void menu_screen_draw(void) {
     
     // Scroll indicators (custom bitmaps)
     if (scroll_offset > 0) {
-        u8g2_DrawXBM(&u8g2, 118, 5, scroll_up_width, scroll_up_height, scroll_up_bits);
+        // Check if scroll up arrow overlaps with lightbar
+        int selected_y = 12 + ((selected_item - scroll_offset) * 10);
+        int lightbar_top = selected_y - 8;
+        int lightbar_bottom = selected_y + 1;
+        
+        if (5 >= lightbar_top && 5 + scroll_up_height <= lightbar_bottom) {
+            u8g2_SetDrawColor(&u8g2, 0);  // Invert for lightbar
+        }
+        u8g2_DrawXBM(&u8g2, 119, 5, scroll_up_width, scroll_up_height, scroll_up_bits);
+        u8g2_SetDrawColor(&u8g2, 1);  // Reset color
     }
     if (visible_end < menu_item_count) {
-        u8g2_DrawXBM(&u8g2, 118, 45, scroll_down_width, scroll_down_height, scroll_down_bits);
+        // Check if scroll down arrow overlaps with lightbar
+        int selected_y = 12 + ((selected_item - scroll_offset) * 10);
+        int lightbar_top = selected_y - 8;
+        int lightbar_bottom = selected_y + 1;
+        
+        if (45 >= lightbar_top && 45 + scroll_down_height <= lightbar_bottom) {
+            u8g2_SetDrawColor(&u8g2, 0);  // Invert for lightbar
+        }
+        u8g2_DrawXBM(&u8g2, 119, 45, scroll_down_width, scroll_down_height, scroll_down_bits);
+        u8g2_SetDrawColor(&u8g2, 1);  // Reset color
     }
     
     // Navigation hints with icons (compact bottom bar)

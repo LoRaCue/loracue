@@ -19,8 +19,8 @@ void presenter_main_screen_draw(const ui_status_t* status) {
     
     // Button hints with compact arrows
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawXBM(&u8g2, BUTTON_MARGIN, 35, track_prev_width, track_prev_height, track_prev_bits);
-    u8g2_DrawStr(&u8g2, BUTTON_MARGIN + track_prev_width + 2, 43, "PREV");
+    u8g2_DrawXBM(&u8g2, BUTTON_MARGIN, 35, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
+    u8g2_DrawStr(&u8g2, BUTTON_MARGIN + arrow_prev_width + 2, 43, "PREV");
     
     int next_x = DISPLAY_WIDTH - BUTTON_MARGIN - track_next_width - u8g2_GetStrWidth(&u8g2, "NEXT") - 2;
     u8g2_DrawStr(&u8g2, next_x, 43, "NEXT");

@@ -13,20 +13,20 @@ extern "C" {
 #endif
 
 // Scroll arrows for menu navigation
-#define scroll_up_width 8
-#define scroll_up_height 8
+#define scroll_up_width 7
+#define scroll_up_height 7
 static const unsigned char scroll_up_bits[] = {
-   0x18, 0x3c, 0x7e, 0xff, 0x18, 0x18, 0x18, 0x00 };
+   0x88, 0x9c, 0xbe, 0xff, 0x9c, 0x9c, 0x9c };
 
-#define scroll_down_width 8
-#define scroll_down_height 8
+#define scroll_down_width 7
+#define scroll_down_height 7
 static const unsigned char scroll_down_bits[] = {
-   0x00, 0x18, 0x18, 0x18, 0xff, 0x7e, 0x3c, 0x18 };
+   0x9c, 0x9c, 0x9c, 0xff, 0xbe, 0x9c, 0x88 };
 
 // Media player track navigation icons (4x7 pixels)
-#define track_prev_width 4
-#define track_prev_height 7
-static const unsigned char track_prev_bits[] = {
+#define arrow_prev_width 4
+#define arrow_prev_height 7
+static const unsigned char arrow_prev_bits[] = {
    0xf8, 0xfc, 0xfe, 0xff, 0xfe, 0xfc, 0xf8 };
 
 #define track_next_width 4
