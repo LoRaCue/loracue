@@ -5,6 +5,7 @@
 #include "info_screens.h"
 #include "menu_screen.h"
 #include "device_mode_screen.h"
+#include "lora_settings_screen.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -77,6 +78,10 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
             device_mode_screen_draw();
             break;
             
+        case OLED_SCREEN_LORA_SETTINGS:
+            lora_settings_screen_draw();
+            break;
+            
         default:
             ESP_LOGW(TAG, "Screen %d not implemented, showing main", screen);
             main_screen_draw(status);
@@ -146,6 +151,10 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                         device_mode_screen_reset();
                         ui_screen_controller_set(OLED_SCREEN_DEVICE_MODE, NULL);
                         break;
+                    case MENU_LORA_SETTINGS:
+                        lora_settings_screen_reset();
+                        ui_screen_controller_set(OLED_SCREEN_LORA_SETTINGS, NULL);
+                        break;
                     case MENU_BATTERY_STATUS:
                         ui_screen_controller_set(OLED_SCREEN_BATTERY, NULL);
                         break;
@@ -181,6 +190,19 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
             } else if (button == OLED_BUTTON_BOTH) {
                 device_mode_screen_select();
                 device_mode_screen_draw();
+            }
+            break;
+            
+        case OLED_SCREEN_LORA_SETTINGS:
+            if (button == OLED_BUTTON_PREV) {
+                // Back to menu
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+            } else if (button == OLED_BUTTON_NEXT) {
+                lora_settings_screen_navigate(MENU_DOWN);
+                lora_settings_screen_draw();
+            } else if (button == OLED_BUTTON_BOTH) {
+                lora_settings_screen_select();
+                lora_settings_screen_draw();
             }
             break;
             
