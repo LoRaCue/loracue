@@ -59,7 +59,7 @@ u8g2_DrawStr(&u8g2, (128 - subtitle_width) / 2, 45, "Enterprise Remote");
 // Version and status (6pt font ≈ 8px height)
 u8g2_SetFont(&u8g2, u8g2_font_helvR06_tr);
 u8g2_DrawStr(&u8g2, 2, 60, "v1.2.3");
-u8g2_DrawStr(&u8g2, 85, 60, "Initializing...");
+// u8g2_DrawStr(&u8g2, 85, 60, "Initializing.");
 ```
 
 ### Boot Sequence Behavior

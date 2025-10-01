@@ -1,7 +1,7 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 # Automatically finds and sets up ESP-IDF environment
 
-.PHONY: build clean flash monitor menuconfig size erase help check-idf setup-env sim-build sim-web sim sim-debug sim-screenshot check-wokwi
+.PHONY: build clean flash monitor menuconfig size erase help check-idf setup-env sim-build sim-web sim sim-debug sim-screenshot check-wokwi web-build web-dev
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -112,8 +112,18 @@ set-target: check-idf
 # Full clean rebuild
 rebuild: clean build
 
+# Web Interface Commands
+web-dev:
+	@echo "🌐 Starting web interface development server..."
+	@cd web-interface && npm run dev
+
+web-build:
+	@echo "🏗️  Building web interface for production..."
+	@cd web-interface && npm install && npm run build-spiffs
+	@echo "✅ Web interface built and ready for SPIFFS"
+
 # Development cycle: build, flash, monitor
-dev: build flash monitor
+dev: web-build build flash monitor
 
 # Setup development environment
 setup-env:

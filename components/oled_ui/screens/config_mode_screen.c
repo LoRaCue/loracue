@@ -3,6 +3,7 @@
 #include "ui_config.h"
 #include "ui_icons.h"
 #include "device_config.h"
+#include "config_wifi_server.h"
 #include "esp_log.h"
 #include "esp_crc.h"
 #include "esp_mac.h"
@@ -44,6 +45,11 @@ void config_mode_screen_draw(void) {
         generate_credentials();
     }
     
+    // Start WiFi server if not running
+    if (!config_wifi_server_is_running()) {
+        config_wifi_server_start();
+    }
+    
     // Header
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     u8g2_DrawStr(&u8g2, 2, 8, "CONFIGURATION MODE");
@@ -76,6 +82,9 @@ void config_mode_screen_reset(void) {
     // Reset credentials to force regeneration
     device_ssid[0] = '\0';
     device_password[0] = '\0';
+    
+    // Stop WiFi server when leaving config mode
+    config_wifi_server_stop();
 }
 
 void config_mode_screen_toggle_display(void) {
