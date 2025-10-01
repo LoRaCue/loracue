@@ -1,5 +1,6 @@
 #include "menu_screen.h"
 #include "ui_config.h"
+#include "ui_icons.h"
 #include "u8g2.h"
 
 extern u8g2_t u8g2;
@@ -15,21 +16,24 @@ static const char* menu_items[] = {
 
 static const int menu_item_count = sizeof(menu_items) / sizeof(menu_items[0]);
 static int selected_item = 0;
+static int scroll_offset = 0;
+
+#define MAX_VISIBLE_ITEMS 5  // Items fit exactly: 12+10*4=52, bottom bar at 62
 
 void menu_screen_draw(void) {
     u8g2_ClearBuffer(&u8g2);
     
-    // Title
-    u8g2_SetFont(&u8g2, u8g2_font_helvB10_tr);
-    u8g2_DrawStr(&u8g2, 2, 12, "MENU");
-    u8g2_DrawHLine(&u8g2, 0, 15, DISPLAY_WIDTH);
-    
-    // Menu items
+    // Menu items (no title bar for space)
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
-    for (int i = 0; i < menu_item_count; i++) {
-        int y = 28 + (i * 10);
-        if (y > 55) break;  // Don't draw items that won't fit
+    // Calculate visible range
+    int visible_start = scroll_offset;
+    int visible_end = scroll_offset + MAX_VISIBLE_ITEMS;
+    if (visible_end > menu_item_count) visible_end = menu_item_count;
+    
+    for (int i = visible_start; i < visible_end; i++) {
+        int display_index = i - visible_start;
+        int y = 12 + (display_index * 10);
         
         if (i == selected_item) {
             // Highlight selected item
@@ -42,8 +46,16 @@ void menu_screen_draw(void) {
         }
     }
     
-    // Navigation hints
-    u8g2_DrawStr(&u8g2, 2, 62, "[<] Up  [>] Down  [<+>] Select");
+    // Scroll indicators (custom bitmaps)
+    if (scroll_offset > 0) {
+        u8g2_DrawXBM(&u8g2, 118, 5, scroll_up_width, scroll_up_height, scroll_up_bits);
+    }
+    if (visible_end < menu_item_count) {
+        u8g2_DrawXBM(&u8g2, 118, 47, scroll_down_width, scroll_down_height, scroll_down_bits);
+    }
+    
+    // Navigation hints (compact)
+    u8g2_DrawStr(&u8g2, 2, 62, "[</>] Up/Down  [<+>] Select");
     
     u8g2_SendBuffer(&u8g2);
 }
@@ -52,9 +64,26 @@ void menu_screen_navigate(menu_direction_t direction) {
     switch (direction) {
         case MENU_UP:
             selected_item = (selected_item - 1 + menu_item_count) % menu_item_count;
+            // Handle wrap-around from top to bottom
+            if (selected_item == menu_item_count - 1) {
+                // Wrapped to last item - scroll to show it
+                scroll_offset = menu_item_count - MAX_VISIBLE_ITEMS;
+                if (scroll_offset < 0) scroll_offset = 0;
+            } else if (selected_item < scroll_offset) {
+                // Normal scroll up
+                scroll_offset = selected_item;
+            }
             break;
         case MENU_DOWN:
             selected_item = (selected_item + 1) % menu_item_count;
+            // Handle wrap-around from bottom to top
+            if (selected_item == 0) {
+                // Wrapped to first item - scroll to top
+                scroll_offset = 0;
+            } else if (selected_item >= scroll_offset + MAX_VISIBLE_ITEMS) {
+                // Normal scroll down
+                scroll_offset = selected_item - MAX_VISIBLE_ITEMS + 1;
+            }
             break;
     }
 }
@@ -65,4 +94,5 @@ int menu_screen_get_selected(void) {
 
 void menu_screen_reset(void) {
     selected_item = 0;
+    scroll_offset = 0;
 }
