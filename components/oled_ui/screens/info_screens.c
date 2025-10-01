@@ -1,5 +1,6 @@
 #include "info_screens.h"
 #include "ui_config.h"
+#include "ui_data_provider.h"
 #include "version.h"
 #include "esp_mac.h"
 #include "esp_system.h"
@@ -84,6 +85,80 @@ void device_info_screen_draw(const ui_status_t* status) {
     device_id[7] = "0123456789ABCDEF"[mac[5] & 0xF];
     device_id[8] = '\0';
     u8g2_DrawStr(&u8g2, 2, 56, device_id);
+    
+    // Navigation hint
+    u8g2_DrawStr(&u8g2, 2, 62, "[<] Back");
+    
+    u8g2_SendBuffer(&u8g2);
+}
+
+void battery_status_screen_draw(const ui_status_t* status) {
+    u8g2_ClearBuffer(&u8g2);
+    
+    draw_info_header("BATTERY STATUS");
+    
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+    
+    // Get detailed battery info
+    battery_info_t battery_info;
+    esp_err_t ret = ui_data_provider_get_battery_info(&battery_info);
+    
+    if (ret == ESP_OK) {
+        // Battery level with percentage
+        char level_str[20] = "Level: ";
+        char *p = level_str + 7;
+        uint8_t level = battery_info.percentage;
+        if (level >= 100) {
+            *p++ = '1';
+            *p++ = '0';
+            *p++ = '0';
+        } else if (level >= 10) {
+            *p++ = '0' + (level / 10);
+            *p++ = '0' + (level % 10);
+        } else {
+            *p++ = '0' + level;
+        }
+        *p++ = '%';
+        *p = '\0';
+        u8g2_DrawStr(&u8g2, 2, 26, level_str);
+        
+        // Real battery voltage
+        char voltage_str[20] = "Voltage: ";
+        p = voltage_str + 9;
+        uint16_t voltage_mv = (uint16_t)(battery_info.voltage * 1000);
+        *p++ = '0' + (voltage_mv / 1000);
+        *p++ = '.';
+        *p++ = '0' + ((voltage_mv % 1000) / 100);
+        *p++ = 'V';
+        *p = '\0';
+        u8g2_DrawStr(&u8g2, 2, 36, voltage_str);
+        
+        // Charging/USB status
+        if (battery_info.usb_connected) {
+            u8g2_DrawStr(&u8g2, 2, 46, battery_info.charging ? "Status: Charging" : "Status: USB Power");
+        } else {
+            u8g2_DrawStr(&u8g2, 2, 46, "Status: Battery");
+        }
+        
+        // Health based on voltage
+        const char* health = "Good";
+        if (battery_info.voltage < 3.2f) {
+            health = "Critical";
+        } else if (battery_info.voltage < 3.5f) {
+            health = "Low";
+        }
+        char health_str[20] = "Health: ";
+        char *h = health_str + 8;
+        while (*health) *h++ = *health++;
+        *h = '\0';
+        u8g2_DrawStr(&u8g2, 2, 56, health_str);
+    } else {
+        // Fallback to basic status
+        u8g2_DrawStr(&u8g2, 2, 26, "Level: --");
+        u8g2_DrawStr(&u8g2, 2, 36, "Voltage: --");
+        u8g2_DrawStr(&u8g2, 2, 46, "Status: Unknown");
+        u8g2_DrawStr(&u8g2, 2, 56, "Health: --");
+    }
     
     // Navigation hint
     u8g2_DrawStr(&u8g2, 2, 62, "[<] Back");

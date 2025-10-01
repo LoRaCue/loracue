@@ -14,6 +14,7 @@ static const char *TAG = "BSP_WOKWI";
 // GPIO pin definitions for Wokwi
 #define BUTTON_PREV_PIN        GPIO_NUM_46
 #define BUTTON_NEXT_PIN        GPIO_NUM_45
+#define BUTTON_BOTH_PIN        GPIO_NUM_21  // Wokwi "BOTH" button
 #define STATUS_LED_PIN         GPIO_NUM_35
 
 esp_err_t bsp_init(void)
@@ -22,7 +23,7 @@ esp_err_t bsp_init(void)
     
     // Initialize GPIO for buttons
     gpio_config_t button_config = {
-        .pin_bit_mask = (1ULL << BUTTON_PREV_PIN) | (1ULL << BUTTON_NEXT_PIN),
+        .pin_bit_mask = (1ULL << BUTTON_PREV_PIN) | (1ULL << BUTTON_NEXT_PIN) | (1ULL << BUTTON_BOTH_PIN),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -72,7 +73,20 @@ esp_err_t bsp_init_battery(void)
 
 bool bsp_read_button(bsp_button_t button)
 {
-    gpio_num_t pin = (button == BSP_BUTTON_PREV) ? BUTTON_PREV_PIN : BUTTON_NEXT_PIN;
+    gpio_num_t pin;
+    switch (button) {
+        case BSP_BUTTON_PREV:
+            pin = BUTTON_PREV_PIN;
+            break;
+        case BSP_BUTTON_NEXT:
+            pin = BUTTON_NEXT_PIN;
+            break;
+        case BSP_BUTTON_BOTH:
+            pin = BUTTON_BOTH_PIN;
+            break;
+        default:
+            return false;
+    }
     return gpio_get_level(pin) == 0; // Active low
 }
 
@@ -83,8 +97,8 @@ void bsp_set_led(bool state)
 
 float bsp_read_battery(void)
 {
-    // Simulate 75% battery for Wokwi
-    return 75.0f;
+    // Return voltage for Wokwi (3.7V = healthy battery)
+    return 3.7f;
 }
 
 float bsp_read_battery_voltage(void)

@@ -1,0 +1,131 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce3808,len:0x370
+load:0x403c9700,len:0x900
+load:0x403cc700,len:0x2364
+entry 0x403c98ac
+I (34) cpu_start: Multicore app
+I (44) cpu_start: Pro cpu start user code
+I (45) cpu_start: cpu freq: 160000000 Hz
+I (46) app_init: Application information:
+I (46) app_init: Project name:     loracue
+I (48) app_init: App version:      d78f498-dirty
+I (52) app_init: Compile time:     Oct  1 2025 06:59:39
+I (57) app_init: ELF file SHA256:  28d1cedc3...
+I (62) app_init: ESP-IDF:          v5.5-dirty
+I (66) efuse_init: Min chip rev:     v0.0
+I (69) efuse_init: Max chip rev:     v0.99 
+I (73) efuse_init: Chip rev:         v0.0
+I (77) heap_init: Initializing. RAM available for dynamic allocation:
+I (84) heap_init: At 3FCA6680 len 00043090 (268 KiB): RAM
+I (88) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (94) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (99) heap_init: At 600FE08C len 00001F5C (7 KiB): RTCRAM
+I (106) spi_flash: detected chip: gd
+I (107) spi_flash: flash io: dio
+W (110) i2c: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+I (121) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (127) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (134) main_task: Started on CPU0
+I (144) main_task: Calling app_main()
+I (144) LORACUE_MAIN: LoRaCue starting - Enterprise presentation clicker
+I (144) LORACUE_MAIN: Version: 0.1.0-alpha.26
+I (154) LORACUE_MAIN: Build: d78f498 (develop)
+I (154) LORACUE_MAIN: Date: 2025-09-30
+I (184) LORACUE_MAIN: Initializing power management...
+I (184) POWER_MGMT: Initializing power management
+W (184) POWER_MGMT: Power management not supported (simulator mode)
+E (184) sleep: Not an RTC IO: GPIO45
+I (194) POWER_MGMT: Cold boot or reset
+I (194) POWER_MGMT: Power management initialized (CPU: 80MHz, Light sleep: OFF, Deep sleep: OFF)
+I (204) LORACUE_MAIN: Initializing Board Support Package...
+I (204) BSP_WOKWI: Initializing Wokwi Simulator BSP
+I (214) BSP_WOKWI: Wokwi BSP initialization complete
+I (214) LORACUE_MAIN: Initializing LED manager...
+I (224) LED_MANAGER: Initializing LED manager
+I (224) LED_MANAGER: LED manager initialized
+I (224) LORACUE_MAIN: Initializing web configuration system...
+I (234) WEB_CONFIG: Initializing web configuration system (placeholder)
+I (244) WEB_CONFIG: Web configuration initialized
+I (244) LORACUE_MAIN: Initializing USB pairing system...
+I (254) USB_PAIRING: Initializing USB pairing system
+I (254) USB_PAIRING: USB pairing initialized (Device ID: 0xAFF4)
+I (264) LORACUE_MAIN: Initializing OLED UI...
+I (264) oled_ui: Initializing OLED UI
+I (264) u8g2_hal: sda_io_num 17
+I (274) u8g2_hal: scl_io_num 18
+I (274) u8g2_hal: clk_speed 50000
+I (274) u8g2_hal: i2c_param_config 1
+I (284) u8g2_hal: i2c_driver_install 1
+I (934) ui_screen_controller: Initializing screen controller
+I (934) ui_data_provider: Initializing UI data provider
+I (934) ui_data_provider: Data provider initialized for device: RC-0110
+I (944) ui_screen_controller: Screen controller initialized
+I (944) oled_ui: OLED UI initialized successfully
+I (954) ui_screen_controller: Setting screen: 0
+I (3324) LORACUE_MAIN: Initializing button manager...
+I (3324) BUTTON_MGR: Initializing button manager
+I (3324) BUTTON_MGR: Button manager initialized
+I (3324) BUTTON_MGR: Button manager task started
+I (3324) BUTTON_MGR: Button manager started
+I (3334) LORACUE_MAIN: Initializing device registry...
+I (3334) DEVICE_REGISTRY: Initializing device registry
+I (3344) DEVICE_REGISTRY: Device registry initialized successfully
+I (3344) LORACUE_MAIN: Initializing USB HID interface...
+I (3354) USB_HID: Initializing USB HID (placeholder implementation)
+I (3354) USB_HID: USB HID initialized successfully (placeholder)
+I (3364) LORACUE_MAIN: Initializing LoRa driver...
+I (3364) LORA_DRIVER: 🌐 Simulator mode: Initializing WiFi UDP transport
+I (3374) LORA_DRIVER: 🌐 Skipping SX1262 hardware initialization (simulated)
+I (3384) LORA_DRIVER: 🌐 Starting LoRa WiFi simulation
+I (3384) LORA_DRIVER: Initializing new WiFi AP for simulation
+I (3394) pp: pp rom version: e7ae62f
+I (3394) net80211: net80211 rom version: e7ae62f
+I (3414) wifi:wifi driver task: 3fcab418, prio:23, stack:6656, core=0
+I (3424) wifi:wifi firmware version: f3dbad7
+I (3434) wifi:wifi certification version: v7.0
+I (3434) wifi:config NVS flash: enabled
+I (3434) wifi:config nano formatting: disabled
+I (3434) wifi:Init data frame dynamic rx buffer num: 32
+I (3444) wifi:Init static rx mgmt buffer num: 5
+I (3444) wifi:Init management short buffer num: 32
+I (3444) wifi:Init dynamic tx buffer num: 32
+I (3454) wifi:Init static tx FG buffer num: 2
+I (3454) wifi:Init static rx buffer size: 1600
+I (3464) wifi:Init static rx buffer num: 10
+I (3464) wifi:Init dynamic rx buffer num: 32
+I (3474) wifi_init: rx ba win: 6
+I (3474) wifi_init: accept mbox: 6
+I (3474) wifi_init: tcpip mbox: 32
+I (3474) wifi_init: udp mbox: 6
+I (3484) wifi_init: tcp mbox: 6
+I (3484) wifi_init: tcp tx win: 5760
+I (3484) wifi_init: tcp rx win: 5760
+I (3494) wifi_init: tcp mss: 1440
+I (3494) wifi_init: WiFi IRAM OP enabled
+I (3494) wifi_init: WiFi RX IRAM OP enabled
+I (3504) LORA_DRIVER: Creating custom WiFi AP netif
+I (4474) phy_init: phy_version 701,f4f1da3a,Mar  3 2025,15:50:10
+W (4474) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (4524) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+E (4574) wifi:failed to post WiFi event=43 ret=259
+I (4584) wifi:mode : softAP (24:0a:c4:00:01:11)
+I (4584) wifi:Total power save buffer number: 16
+I (4594) wifi:Init max length of beacon: 752/752
+I (4594) wifi:Init max length of beacon: 752/752
+E (4594) wifi:failed to post WiFi event=12 ret=259
+I (6674) LORA_DRIVER: ✅ LoRa WiFi simulation ready - Broadcasting on 192.168.4.255:8080
+I (6674) LORACUE_MAIN: Initializing LoRa protocol with PC device ID: 0xACE5
+I (6684) LORA_PROTOCOL: Initializing LoRa protocol for device 0xACE5
+I (6684) LORA_PROTOCOL: LoRa protocol initialized successfully
+I (6694) LORACUE_MAIN: Running hardware validation...
+I (6694) BSP_WOKWI: Validating Wokwi simulator hardware...
+I (6704) BSP_WOKWI: ✓ Buttons configured (GPIO46, GPIO45)
+I (6704) BSP_WOKWI: ✓ Status LED working (GPIO35)
+I (6714) BSP_WOKWI: ✅ Wokwi hardware validation complete
+I (6714) ui_screen_controller: Setting screen: 1
+I (8314) LORACUE_MAIN: Starting LED fade pattern
+I (8314) LORACUE_MAIN: Main loop starting - should have low CPU usage when idle

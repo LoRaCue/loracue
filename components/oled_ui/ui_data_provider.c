@@ -1,5 +1,7 @@
 #include "ui_data_provider.h"
 #include "power_mgmt.h"
+#include "lora_driver.h"
+#include "bsp.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
@@ -7,6 +9,7 @@
 
 static const char* TAG = "ui_data_provider";
 static ui_status_t cached_status;
+static battery_info_t cached_battery;
 static bool status_valid = false;
 
 static void generate_device_name(char* device_name, size_t size) {
@@ -46,26 +49,56 @@ esp_err_t ui_data_provider_update(void) {
         return ESP_ERR_INVALID_STATE;
     }
     
-    // Update battery level from power management
-    power_stats_t power_stats;
-    esp_err_t ret = power_mgmt_get_stats(&power_stats);
-    if (ret == ESP_OK) {
-        // For now, simulate battery level since power_stats_t doesn't have it
-        // TODO: Add battery level to power_stats_t or create separate battery API
-        cached_status.battery_level = 75;  // Simulated for now
-        cached_status.usb_connected = true;  // Simulated for now
-        ESP_LOGD(TAG, "Battery: %d%%, USB: %s", 
-                cached_status.battery_level, 
-                cached_status.usb_connected ? "connected" : "disconnected");
+    // Update real battery data from BSP
+    float battery_voltage = bsp_read_battery();
+    if (battery_voltage > 0) {
+        // Update cached battery info
+        cached_battery.voltage = battery_voltage;
+        cached_battery.usb_connected = (battery_voltage > 4.3f);
+        cached_battery.charging = cached_battery.usb_connected && (battery_voltage < 4.2f);
+        
+        // Convert voltage to percentage (3.0V = 0%, 4.2V = 100%)
+        if (battery_voltage >= 4.2f) {
+            cached_battery.percentage = 100;
+        } else if (battery_voltage <= 3.0f) {
+            cached_battery.percentage = 0;
+        } else {
+            cached_battery.percentage = (uint8_t)((battery_voltage - 3.0f) / 1.2f * 100);
+        }
+        
+        // Update main status
+        cached_status.battery_level = cached_battery.percentage;
+        cached_status.usb_connected = cached_battery.usb_connected;
+        
+        ESP_LOGD(TAG, "Battery: %.2fV (%d%%), USB: %s, Charging: %s", 
+                battery_voltage, cached_battery.percentage,
+                cached_battery.usb_connected ? "yes" : "no",
+                cached_battery.charging ? "yes" : "no");
     } else {
-        ESP_LOGW(TAG, "Failed to get power stats: %s", esp_err_to_name(ret));
+        ESP_LOGW(TAG, "Failed to read battery voltage");
         // Keep previous values on error
     }
     
-    // TODO: Update LoRa status when LoRa component is available
-    // For now, simulate based on system state
-    cached_status.lora_connected = true;  // Assume connected for demo
-    cached_status.signal_strength = SIGNAL_STRONG;
+    // Update real LoRa status from driver
+    int16_t rssi = lora_get_rssi();
+    if (rssi > -50) {
+        cached_status.signal_strength = SIGNAL_STRONG;
+        cached_status.lora_connected = true;
+    } else if (rssi > -70) {
+        cached_status.signal_strength = SIGNAL_GOOD;
+        cached_status.lora_connected = true;
+    } else if (rssi > -90) {
+        cached_status.signal_strength = SIGNAL_FAIR;
+        cached_status.lora_connected = true;
+    } else if (rssi > -110) {
+        cached_status.signal_strength = SIGNAL_WEAK;
+        cached_status.lora_connected = true;
+    } else {
+        cached_status.signal_strength = SIGNAL_NONE;
+        cached_status.lora_connected = false;
+    }
+    
+    ESP_LOGD(TAG, "LoRa RSSI: %d dBm, Signal: %d", rssi, cached_status.signal_strength);
     
     return ESP_OK;
 }
@@ -77,6 +110,15 @@ const ui_status_t* ui_data_provider_get_status(void) {
     }
     
     return &cached_status;
+}
+
+esp_err_t ui_data_provider_get_battery_info(battery_info_t* battery_info) {
+    if (!status_valid || !battery_info) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    *battery_info = cached_battery;
+    return ESP_OK;
 }
 
 esp_err_t ui_data_provider_force_update(bool usb_connected, bool lora_connected, uint8_t battery_level) {

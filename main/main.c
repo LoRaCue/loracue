@@ -25,7 +25,7 @@
 #include "led_manager.h"
 #include "power_mgmt.h"
 #include "usb_pairing.h"
-#include "web_config.h"
+#include "device_config.h"
 
 static const char *TAG = "LORACUE_MAIN";
 

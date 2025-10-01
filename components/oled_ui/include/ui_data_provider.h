@@ -4,6 +4,16 @@
 #include "esp_err.h"
 
 /**
+ * @brief Detailed battery information
+ */
+typedef struct {
+    float voltage;          ///< Battery voltage in volts
+    uint8_t percentage;     ///< Battery percentage (0-100%)
+    bool charging;          ///< True if charging via USB
+    bool usb_connected;     ///< True if USB cable connected
+} battery_info_t;
+
+/**
  * @brief Initialize UI data provider
  * @return ESP_OK on success
  */
@@ -20,6 +30,13 @@ esp_err_t ui_data_provider_update(void);
  * @return Pointer to current status, NULL on error
  */
 const ui_status_t* ui_data_provider_get_status(void);
+
+/**
+ * @brief Get detailed battery information
+ * @param battery_info Output battery information
+ * @return ESP_OK on success
+ */
+esp_err_t ui_data_provider_get_battery_info(battery_info_t* battery_info);
 
 /**
  * @brief Force update status (for testing/demo)

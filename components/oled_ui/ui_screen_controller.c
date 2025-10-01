@@ -58,6 +58,10 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
             device_info_screen_draw(status);
             break;
             
+        case OLED_SCREEN_BATTERY:
+            battery_status_screen_draw(status);
+            break;
+            
         default:
             ESP_LOGW(TAG, "Screen %d not implemented, showing main", screen);
             main_screen_draw(status);
@@ -109,6 +113,9 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 // Select menu item
                 int selected = menu_screen_get_selected();
                 switch (selected) {
+                    case MENU_BATTERY_STATUS:
+                        ui_screen_controller_set(OLED_SCREEN_BATTERY, NULL);
+                        break;
                     case MENU_DEVICE_INFO:
                         ui_screen_controller_set(OLED_SCREEN_DEVICE_INFO, NULL);
                         break;
@@ -124,6 +131,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
             
         case OLED_SCREEN_SYSTEM_INFO:
         case OLED_SCREEN_DEVICE_INFO:
+        case OLED_SCREEN_BATTERY:
             if (button == OLED_BUTTON_PREV) {
                 // Back to menu
                 ui_screen_controller_set(OLED_SCREEN_MENU, NULL);

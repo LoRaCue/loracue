@@ -1,10 +1,10 @@
 /**
- * @file web_config.h
- * @brief Web configuration interface with Wi-Fi AP and HTTP server
+ * @file device_config.h
+ * @brief Device configuration management with NVS persistence
  * 
- * CONTEXT: Ticket 6.1 - Web Configuration Interface
- * PURPOSE: Wi-Fi AP mode with HTTP server for device configuration
- * FEATURES: Settings management, OTA updates, device status
+ * CONTEXT: Device configuration and settings management
+ * PURPOSE: Store and retrieve device configuration from NVS
+ * FEATURES: Settings management, NVS persistence, device status
  */
 
 #pragma once

@@ -6,7 +6,7 @@
  * PURPOSE: Basic web interface placeholder
  */
 
-#include "web_config.h"
+#include "device_config.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "nvs.h"
