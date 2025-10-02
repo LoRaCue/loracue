@@ -6,9 +6,11 @@
 #include "bsp.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
+#include "driver/i2c_master.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "u8g2.h"
+#include "u8g2_esp32_hal.h"
 
 static const char *TAG = "BSP_WOKWI";
 
@@ -20,18 +22,8 @@ u8g2_t u8g2;
 #define BUTTON_NEXT_PIN        GPIO_NUM_45
 #define BUTTON_BOTH_PIN        GPIO_NUM_21  // Wokwi "BOTH" button
 #define STATUS_LED_PIN         GPIO_NUM_35
-
-// Minimal u8g2 callback for Wokwi (no actual I2C, just stub)
-uint8_t u8g2_wokwi_gpio_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr) {
-    (void)u8x8; (void)arg_int; (void)arg_ptr;
-    switch(msg) {
-        case U8X8_MSG_DELAY_MILLI: vTaskDelay(pdMS_TO_TICKS(arg_int)); break;
-        case U8X8_MSG_DELAY_10MICRO: esp_rom_delay_us(10); break;
-        case U8X8_MSG_DELAY_100NANO: __asm__ __volatile__("nop"); break;
-        default: return 0;
-    }
-    return 1;
-}
+#define I2C_SDA_PIN            GPIO_NUM_17
+#define I2C_SCL_PIN            GPIO_NUM_18
 
 esp_err_t bsp_init(void)
 {
@@ -59,9 +51,15 @@ esp_err_t bsp_init(void)
     ret = gpio_config(&led_config);
     if (ret != ESP_OK) return ret;
     
-    // Initialize u8g2 for SSD1306 (Wokwi simulator)
-    u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, u8x8_byte_sw_i2c, u8g2_wokwi_gpio_delay_cb);
-    u8g2_SetI2CAddress(&u8g2, 0x3C << 1);
+    // Initialize u8g2 HAL for I2C
+    u8g2_esp32_hal_t u8g2_hal = U8G2_ESP32_HAL_DEFAULT;
+    u8g2_hal.bus.i2c.sda = I2C_SDA_PIN;
+    u8g2_hal.bus.i2c.scl = I2C_SCL_PIN;
+    u8g2_esp32_hal_init(u8g2_hal);
+    
+    // Initialize u8g2 for SSD1306 (Wokwi)
+    u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, u8g2_esp32_i2c_byte_cb, u8g2_esp32_gpio_and_delay_cb);
+    u8x8_SetI2CAddress(&u8g2.u8x8, 0x3C << 1);
     u8g2_InitDisplay(&u8g2);
     u8g2_SetPowerSave(&u8g2, 0);
     
