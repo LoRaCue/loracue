@@ -4,7 +4,7 @@
  * 
  * CONTEXT: Ticket 2.2 - Custom Protocol Implementation
  * PACKET: DeviceID(2) + SequenceNum(2) + Command(1) + Payload(0-7) + MAC(4)
- * SECURITY: AES-128 encryption with replay protection
+ * SECURITY: AES-256 encryption with replay protection
  */
 
 #pragma once
@@ -59,7 +59,7 @@ typedef struct __attribute__((packed)) {
  * @brief Initialize LoRa protocol
  * 
  * @param device_id This device's unique ID
- * @param aes_key 16-byte AES key for encryption
+ * @param aes_key 32-byte AES-256 key for encryption
  * @return ESP_OK on success
  */
 esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *aes_key);

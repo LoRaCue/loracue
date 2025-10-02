@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 #define DEVICE_NAME_MAX_LEN     32
-#define DEVICE_AES_KEY_LEN      16
+#define DEVICE_AES_KEY_LEN      32  // AES-256 requires 32 bytes
 #define DEVICE_MAC_ADDR_LEN     6
 #define MAX_PAIRED_DEVICES      16
 
@@ -48,7 +48,7 @@ esp_err_t device_registry_init(void);
  * @param device_id Unique device ID
  * @param device_name User-friendly device name
  * @param mac_address Hardware MAC address
- * @param aes_key Per-device AES encryption key
+ * @param aes_key Per-device AES-256 encryption key (32 bytes)
  * @return ESP_OK on success, ESP_ERR_NO_MEM if registry full
  */
 esp_err_t device_registry_add(uint16_t device_id, const char *device_name, 
