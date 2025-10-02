@@ -29,6 +29,10 @@ static TaskHandle_t button_task_handle = NULL;
 static bool manager_running = false;
 static uint32_t last_activity_time = 0;
 
+// Button event callback
+static button_event_callback_t event_callback = NULL;
+static void* callback_arg = NULL;
+
 // Button state tracking
 typedef struct {
     bool current_state;
@@ -113,6 +117,7 @@ static void button_manager_task(void *pvParameters)
             if (both_press_duration >= BOTH_PRESS_TIME_MS && !prev_button.long_press_sent) {
                 ESP_LOGI(TAG, "Both buttons long press - Menu");
                 ui_screen_controller_handle_button(OLED_BUTTON_BOTH, true);
+                if (event_callback) event_callback(BUTTON_EVENT_BOTH_LONG, callback_arg);
                 prev_button.long_press_sent = true;
                 next_button.long_press_sent = true;
             }
@@ -128,6 +133,7 @@ static void button_manager_task(void *pvParameters)
             if (time_diff <= 100) { // Both pressed within 100ms
                 ESP_LOGI(TAG, "Both buttons short press");
                 ui_screen_controller_handle_button(OLED_BUTTON_BOTH, false);
+                if (event_callback) event_callback(BUTTON_EVENT_BOTH_SHORT, callback_arg);
                 // Clear press times to prevent individual processing
                 prev_button.press_start_time = 0;
                 next_button.press_start_time = 0;
@@ -141,6 +147,7 @@ static void button_manager_task(void *pvParameters)
                 if (press_duration >= LONG_PRESS_TIME_MS && !prev_button.long_press_sent) {
                     ESP_LOGI(TAG, "PREV long press");
                     ui_screen_controller_handle_button(OLED_BUTTON_PREV, true);
+                    if (event_callback) event_callback(BUTTON_EVENT_PREV_LONG, callback_arg);
                     prev_button.long_press_sent = true;
                 }
             } else if (!prev_button.current_state && prev_button.press_start_time > 0) {
@@ -149,6 +156,7 @@ static void button_manager_task(void *pvParameters)
                 if (press_duration < LONG_PRESS_TIME_MS && !prev_button.long_press_sent) {
                     ESP_LOGI(TAG, "PREV short press");
                     ui_screen_controller_handle_button(OLED_BUTTON_PREV, false);
+                    if (event_callback) event_callback(BUTTON_EVENT_PREV_SHORT, callback_arg);
                 }
                 prev_button.press_start_time = 0;
             }
@@ -159,6 +167,7 @@ static void button_manager_task(void *pvParameters)
                     if (press_duration >= LONG_PRESS_TIME_MS && !next_button.long_press_sent) {
                         ESP_LOGI(TAG, "NEXT long press");
                         ui_screen_controller_handle_button(OLED_BUTTON_NEXT, true);
+                        if (event_callback) event_callback(BUTTON_EVENT_NEXT_LONG, callback_arg);
                         next_button.long_press_sent = true;
                     }
                 } else if (!next_button.current_state && next_button.press_start_time > 0) {
@@ -167,6 +176,7 @@ static void button_manager_task(void *pvParameters)
                     if (press_duration < LONG_PRESS_TIME_MS && !next_button.long_press_sent) {
                         ESP_LOGI(TAG, "NEXT short press");
                         ui_screen_controller_handle_button(OLED_BUTTON_NEXT, false);
+                        if (event_callback) event_callback(BUTTON_EVENT_NEXT_SHORT, callback_arg);
                     }
                     next_button.press_start_time = 0;
                 }
@@ -254,5 +264,12 @@ esp_err_t button_manager_stop(void)
     }
     
     ESP_LOGI(TAG, "Button manager stopped");
+    return ESP_OK;
+}
+
+esp_err_t button_manager_register_callback(button_event_callback_t callback, void* arg)
+{
+    event_callback = callback;
+    callback_arg = arg;
     return ESP_OK;
 }

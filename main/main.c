@@ -26,6 +26,7 @@
 #include "led_manager.h"
 #include "power_mgmt.h"
 #include "device_config.h"
+#include "lora_comm.h"
 
 static const char *TAG = "LORACUE_MAIN";
 static device_mode_t current_device_mode = DEVICE_MODE_PRESENTER;
@@ -239,14 +240,6 @@ void app_main(void)
         return;
     }
     
-    // Initialize USB HID
-    ESP_LOGI(TAG, "Initializing USB HID interface...");
-    ret = usb_hid_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "USB HID initialization failed: %s", esp_err_to_name(ret));
-        return;
-    }
-    
     // Initialize LoRa driver
     ESP_LOGI(TAG, "Initializing LoRa driver...");
     ret = lora_driver_init();
@@ -274,6 +267,22 @@ void app_main(void)
         return;
     }
     
+    // Initialize LoRa communication
+    ESP_LOGI(TAG, "Initializing LoRa communication...");
+    ret = lora_comm_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "LoRa communication initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    
+    // Initialize USB HID
+    ESP_LOGI(TAG, "Initializing USB HID interface...");
+    ret = usb_hid_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "USB HID initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    
     // Validate hardware
     ESP_LOGI(TAG, "Running hardware validation...");
     ret = bsp_validate_hardware();
@@ -297,6 +306,14 @@ void app_main(void)
     
     // Set to receive mode initially
     lora_set_receive_mode();
+    
+    // Start LoRa communication task
+    ESP_LOGI(TAG, "Starting LoRa communication...");
+    ret = lora_comm_start();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start LoRa communication: %s", esp_err_to_name(ret));
+        return;
+    }
     
     // Main status update loop
     oled_status_t status = {
