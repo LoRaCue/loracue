@@ -1,5 +1,6 @@
 #include "lora_comm.h"
 #include "lora_protocol.h"
+#include "lora_driver.h"
 #include "button_manager.h"
 #include "device_config.h"
 #include "usb_hid.h"
@@ -41,6 +42,7 @@ static void handle_lora_command(lora_command_t command)
 static void lora_receive_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "LoRa receive task started");
+    uint32_t consecutive_errors = 0;
     
     while (lora_task_running) {
         lora_packet_data_t packet_data;
@@ -48,8 +50,24 @@ static void lora_receive_task(void *pvParameters)
         
         if (ret == ESP_OK) {
             handle_lora_command(packet_data.command);
+            consecutive_errors = 0;  // Reset error counter on success
         } else if (ret != ESP_ERR_TIMEOUT) {
             ESP_LOGW(TAG, "LoRa receive error: %s", esp_err_to_name(ret));
+            consecutive_errors++;
+            
+            // Check for connection loss
+            if (consecutive_errors > 10) {
+                ESP_LOGE(TAG, "LoRa connection lost, attempting recovery...");
+                lora_connection_state_t state = lora_protocol_get_connection_state();
+                
+                if (state == LORA_CONNECTION_LOST) {
+                    // Reinitialize LoRa driver
+                    ESP_LOGI(TAG, "Reinitializing LoRa driver");
+                    lora_driver_init();
+                    consecutive_errors = 0;
+                    vTaskDelay(pdMS_TO_TICKS(1000));  // Wait before retry
+                }
+            }
         }
         
         vTaskDelay(pdMS_TO_TICKS(10));

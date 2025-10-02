@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_random.h"
+#include "esp_timer.h"
 #include "usb/usb_host.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -122,11 +123,27 @@ esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
         ESP_LOGI(TAG, "Would send: PAIR_DEVICE %s", json_string);
         
         // TODO: Implement USB CDC host mode communication
-        // For now, simulate success
-        vTaskDelay(pdMS_TO_TICKS(2000));
+        // Wait for pairing with timeout
+        uint32_t timeout_ms = 30000;  // 30 second timeout
+        uint32_t start_time = esp_timer_get_time() / 1000;
+        bool pairing_success = false;
+        
+        while ((esp_timer_get_time() / 1000 - start_time) < timeout_ms) {
+            // Check for pairing completion
+            // For now, simulate timeout
+            vTaskDelay(pdMS_TO_TICKS(100));
+        }
         
         free(json_string);
         cJSON_Delete(json);
+        
+        if (!pairing_success) {
+            ESP_LOGW(TAG, "USB pairing timeout after %d seconds", timeout_ms / 1000);
+            if (result_callback) {
+                result_callback(false, 0, "Timeout");
+            }
+            return ESP_ERR_TIMEOUT;
+        }
         
         if (result_callback) {
             result_callback(true, device_id, config.device_name);
