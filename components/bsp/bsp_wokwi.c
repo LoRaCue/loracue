@@ -21,6 +21,18 @@ u8g2_t u8g2;
 #define BUTTON_BOTH_PIN        GPIO_NUM_21  // Wokwi "BOTH" button
 #define STATUS_LED_PIN         GPIO_NUM_35
 
+// Minimal u8g2 callback for Wokwi (no actual I2C, just stub)
+uint8_t u8g2_wokwi_gpio_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr) {
+    (void)u8x8; (void)arg_int; (void)arg_ptr;
+    switch(msg) {
+        case U8X8_MSG_DELAY_MILLI: vTaskDelay(pdMS_TO_TICKS(arg_int)); break;
+        case U8X8_MSG_DELAY_10MICRO: esp_rom_delay_us(10); break;
+        case U8X8_MSG_DELAY_100NANO: __asm__ __volatile__("nop"); break;
+        default: return 0;
+    }
+    return 1;
+}
+
 esp_err_t bsp_init(void)
 {
     ESP_LOGI(TAG, "Initializing Wokwi Simulator BSP");
@@ -46,6 +58,12 @@ esp_err_t bsp_init(void)
     };
     ret = gpio_config(&led_config);
     if (ret != ESP_OK) return ret;
+    
+    // Initialize u8g2 for SSD1306 (Wokwi simulator)
+    u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, u8x8_byte_sw_i2c, u8g2_wokwi_gpio_delay_cb);
+    u8g2_SetI2CAddress(&u8g2, 0x3C << 1);
+    u8g2_InitDisplay(&u8g2);
+    u8g2_SetPowerSave(&u8g2, 0);
     
     ESP_LOGI(TAG, "Wokwi BSP initialization complete");
     return ESP_OK;
