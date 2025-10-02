@@ -203,22 +203,37 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_task_wdt_init(&wdt_config));
     ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
     
-    // Initialize power management first
+    // Initialize device configuration
+    ESP_LOGI(TAG, "Initializing device configuration system...");
+    ret = device_config_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Device config initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    
+    // Get device config for power management settings
+    device_config_t config;
+    device_config_get(&config);
+    
+    // Initialize power management with settings from NVS
     ESP_LOGI(TAG, "Initializing power management...");
     power_config_t power_config = {
 #ifdef SIMULATOR_BUILD
-        .light_sleep_timeout_ms = 0,         // Disabled in simulator
-        .deep_sleep_timeout_ms = 0,          // Disabled in simulator  
-        .enable_auto_light_sleep = false,    // No sleep in simulator
-        .enable_auto_deep_sleep = false,     // No sleep in simulator
+        .light_sleep_timeout_ms = 0,
+        .deep_sleep_timeout_ms = 0,
+        .enable_auto_light_sleep = false,
+        .enable_auto_deep_sleep = false,
 #else
-        .light_sleep_timeout_ms = 0,         // TODO: Re-enable after implementing I2C restoration
-        .deep_sleep_timeout_ms = 300000,    // 5 minutes
-        .enable_auto_light_sleep = false,   // FIXME: Disabled due to I2C corruption after wake
-        .enable_auto_deep_sleep = true,
+        .light_sleep_timeout_ms = 0,         // TODO: Re-enable after I2C restoration
+        .deep_sleep_timeout_ms = config.auto_sleep_enabled ? config.sleep_timeout_ms : 0,
+        .enable_auto_light_sleep = false,   // FIXME: Disabled due to I2C corruption
+        .enable_auto_deep_sleep = config.auto_sleep_enabled,
 #endif
-        .cpu_freq_mhz = 80,                 // 80MHz for power efficiency
+        .cpu_freq_mhz = 80,
     };
+    ESP_LOGI(TAG, "Power config: deep_sleep=%lums, auto_sleep=%s", 
+             power_config.deep_sleep_timeout_ms, 
+             power_config.enable_auto_deep_sleep ? "enabled" : "disabled");
     ret = power_mgmt_init(&power_config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Power management initialization failed: %s", esp_err_to_name(ret));
@@ -242,14 +257,6 @@ void app_main(void)
     }
     led_manager_solid(true); // Turn on LED during startup
     
-    // Initialize device configuration
-    ESP_LOGI(TAG, "Initializing device configuration system...");
-    ret = device_config_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Device config initialization failed: %s", esp_err_to_name(ret));
-        return;
-    }
-    
     // Initialize OLED UI
     ESP_LOGI(TAG, "Initializing OLED UI...");
     ret = oled_ui_init();
@@ -258,8 +265,7 @@ void app_main(void)
         return;
     }
     
-    // Apply brightness from config
-    device_config_t config;
+    // Apply brightness from config (reuse config from power mgmt)
     device_config_get(&config);
     extern u8g2_t u8g2;
     u8g2_SetContrast(&u8g2, config.display_brightness);
