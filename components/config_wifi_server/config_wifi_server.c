@@ -10,7 +10,11 @@
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_app_format.h"
+#include "esp_timer.h"
 #include "device_registry.h"
+#include "device_config.h"
+#include "lora_driver.h"
+#include "version.h"
 #include "cJSON.h"
 #include <string.h>
 #include <sys/stat.h>
@@ -26,24 +30,6 @@ static esp_ota_handle_t ota_handle = 0;
 static const esp_partition_t *ota_partition = NULL;
 static size_t ota_received_bytes = 0;
 static size_t ota_total_size = 0;
-
-// Device settings
-typedef struct {
-    char name[32];
-    char mode[16];
-} device_settings_t;
-
-typedef struct {
-    uint32_t frequency;
-    uint8_t spreading_factor;
-    uint32_t bandwidth;
-    uint8_t coding_rate;
-    uint8_t tx_power;
-    uint8_t sync_word;
-} lora_settings_t;
-
-static device_settings_t device_settings = {"LoRaCue", "presenter"};
-static lora_settings_t lora_settings = {868000000, 7, 500000, 5, 14, 0x12};
 
 // Generate WiFi credentials from MAC address
 static void generate_wifi_credentials(char* ssid, size_t ssid_len, char* password, size_t pass_len) {
@@ -109,9 +95,18 @@ static esp_err_t static_handler(httpd_req_t *req) {
 }
 
 static esp_err_t device_settings_get_handler(httpd_req_t *req) {
+    device_config_t config;
+    if (device_config_get(&config) != ESP_OK) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
     cJSON *json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "name", device_settings.name);
-    cJSON_AddStringToObject(json, "mode", device_settings.mode);
+    cJSON_AddStringToObject(json, "name", config.device_name);
+    cJSON_AddStringToObject(json, "mode", device_mode_to_string(config.device_mode));
+    cJSON_AddNumberToObject(json, "sleepTimeout", config.sleep_timeout_ms);
+    cJSON_AddBoolToObject(json, "autoSleep", config.auto_sleep_enabled);
+    cJSON_AddNumberToObject(json, "brightness", config.display_brightness);
     
     char *json_string = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");
@@ -123,7 +118,7 @@ static esp_err_t device_settings_get_handler(httpd_req_t *req) {
 }
 
 static esp_err_t device_settings_post_handler(httpd_req_t *req) {
-    char content[256];
+    char content[512];
     int ret = httpd_req_recv(req, content, sizeof(content) - 1);
     if (ret <= 0) {
         httpd_resp_send_500(req);
@@ -137,31 +132,64 @@ static esp_err_t device_settings_post_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
     
-    cJSON *name = cJSON_GetObjectItem(json, "name");
-    cJSON *mode = cJSON_GetObjectItem(json, "mode");
+    device_config_t config;
+    device_config_get(&config);
     
+    cJSON *name = cJSON_GetObjectItem(json, "name");
     if (name && cJSON_IsString(name)) {
-        strncpy(device_settings.name, name->valuestring, sizeof(device_settings.name) - 1);
+        strncpy(config.device_name, name->valuestring, sizeof(config.device_name) - 1);
     }
+    
+    cJSON *mode = cJSON_GetObjectItem(json, "mode");
     if (mode && cJSON_IsString(mode)) {
-        strncpy(device_settings.mode, mode->valuestring, sizeof(device_settings.mode) - 1);
+        if (strcmp(mode->valuestring, "presenter") == 0) {
+            config.device_mode = DEVICE_MODE_PRESENTER;
+        } else if (strcmp(mode->valuestring, "pc") == 0) {
+            config.device_mode = DEVICE_MODE_PC;
+        }
+    }
+    
+    cJSON *sleepTimeout = cJSON_GetObjectItem(json, "sleepTimeout");
+    if (sleepTimeout && cJSON_IsNumber(sleepTimeout)) {
+        config.sleep_timeout_ms = sleepTimeout->valueint;
+    }
+    
+    cJSON *autoSleep = cJSON_GetObjectItem(json, "autoSleep");
+    if (autoSleep && cJSON_IsBool(autoSleep)) {
+        config.auto_sleep_enabled = cJSON_IsTrue(autoSleep);
+    }
+    
+    cJSON *brightness = cJSON_GetObjectItem(json, "brightness");
+    if (brightness && cJSON_IsNumber(brightness)) {
+        config.display_brightness = brightness->valueint;
+    }
+    
+    esp_err_t err = device_config_set(&config);
+    cJSON_Delete(json);
+    
+    if (err != ESP_OK) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
     }
     
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\"}", 15);
-    
-    cJSON_Delete(json);
+    httpd_resp_send(req, "{\"status\":\"ok\"}", 16);
     return ESP_OK;
 }
 
 static esp_err_t lora_settings_get_handler(httpd_req_t *req) {
+    lora_config_t config;
+    if (lora_get_config(&config) != ESP_OK) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
     cJSON *json = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json, "frequency", lora_settings.frequency);
-    cJSON_AddNumberToObject(json, "spreadingFactor", lora_settings.spreading_factor);
-    cJSON_AddNumberToObject(json, "bandwidth", lora_settings.bandwidth);
-    cJSON_AddNumberToObject(json, "codingRate", lora_settings.coding_rate);
-    cJSON_AddNumberToObject(json, "txPower", lora_settings.tx_power);
-    cJSON_AddNumberToObject(json, "syncWord", lora_settings.sync_word);
+    cJSON_AddNumberToObject(json, "frequency", config.frequency);
+    cJSON_AddNumberToObject(json, "spreadingFactor", config.spreading_factor);
+    cJSON_AddNumberToObject(json, "bandwidth", config.bandwidth);
+    cJSON_AddNumberToObject(json, "codingRate", config.coding_rate);
+    cJSON_AddNumberToObject(json, "txPower", config.tx_power);
     
     char *json_string = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");
@@ -187,24 +215,34 @@ static esp_err_t lora_settings_post_handler(httpd_req_t *req) {
         return ESP_FAIL;
     }
     
-    cJSON *freq = cJSON_GetObjectItem(json, "frequency");
-    cJSON *sf = cJSON_GetObjectItem(json, "spreadingFactor");
-    cJSON *bw = cJSON_GetObjectItem(json, "bandwidth");
-    cJSON *cr = cJSON_GetObjectItem(json, "codingRate");
-    cJSON *power = cJSON_GetObjectItem(json, "txPower");
-    cJSON *sync = cJSON_GetObjectItem(json, "syncWord");
+    lora_config_t config;
+    lora_get_config(&config);
     
-    if (freq && cJSON_IsNumber(freq)) lora_settings.frequency = freq->valueint;
-    if (sf && cJSON_IsNumber(sf)) lora_settings.spreading_factor = sf->valueint;
-    if (bw && cJSON_IsNumber(bw)) lora_settings.bandwidth = bw->valueint;
-    if (cr && cJSON_IsNumber(cr)) lora_settings.coding_rate = cr->valueint;
-    if (power && cJSON_IsNumber(power)) lora_settings.tx_power = power->valueint;
-    if (sync && cJSON_IsNumber(sync)) lora_settings.sync_word = sync->valueint;
+    cJSON *freq = cJSON_GetObjectItem(json, "frequency");
+    if (freq && cJSON_IsNumber(freq)) config.frequency = freq->valueint;
+    
+    cJSON *sf = cJSON_GetObjectItem(json, "spreadingFactor");
+    if (sf && cJSON_IsNumber(sf)) config.spreading_factor = sf->valueint;
+    
+    cJSON *bw = cJSON_GetObjectItem(json, "bandwidth");
+    if (bw && cJSON_IsNumber(bw)) config.bandwidth = bw->valueint;
+    
+    cJSON *cr = cJSON_GetObjectItem(json, "codingRate");
+    if (cr && cJSON_IsNumber(cr)) config.coding_rate = cr->valueint;
+    
+    cJSON *power = cJSON_GetObjectItem(json, "txPower");
+    if (power && cJSON_IsNumber(power)) config.tx_power = power->valueint;
+    
+    esp_err_t err = lora_set_config(&config);
+    cJSON_Delete(json);
+    
+    if (err != ESP_OK) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
     
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\"}", 15);
-    
-    cJSON_Delete(json);
+    httpd_resp_send(req, "{\"status\":\"ok\"}", 16);
     return ESP_OK;
 }
 
@@ -495,6 +533,35 @@ static esp_err_t devices_delete_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static esp_err_t system_info_handler(httpd_req_t *req) {
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "version", LORACUE_VERSION_FULL);
+    cJSON_AddStringToObject(json, "commit", LORACUE_BUILD_COMMIT_SHORT);
+    cJSON_AddStringToObject(json, "branch", LORACUE_BUILD_BRANCH);
+    cJSON_AddStringToObject(json, "buildDate", LORACUE_BUILD_DATE);
+    cJSON_AddNumberToObject(json, "uptime", esp_timer_get_time() / 1000000);
+    cJSON_AddNumberToObject(json, "freeHeap", esp_get_free_heap_size());
+    
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    cJSON_AddStringToObject(json, "partition", running->label);
+    
+    char *json_string = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json_string, strlen(json_string));
+    free(json_string);
+    cJSON_Delete(json);
+    return ESP_OK;
+}
+
+static esp_err_t factory_reset_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Factory reset initiated\"}", 52);
+    
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    device_config_factory_reset();
+    return ESP_OK;
+}
+
 esp_err_t config_wifi_server_start(void) {
     if (server_running) {
         return ESP_OK;
@@ -590,6 +657,13 @@ esp_err_t config_wifi_server_start(void) {
         
         httpd_uri_t devices_delete_uri = { .uri = "/api/devices/*", .method = HTTP_DELETE, .handler = devices_delete_handler };
         httpd_register_uri_handler(server, &devices_delete_uri);
+        
+        // System API endpoints
+        httpd_uri_t system_info_uri = { .uri = "/api/system/info", .method = HTTP_GET, .handler = system_info_handler };
+        httpd_register_uri_handler(server, &system_info_uri);
+        
+        httpd_uri_t factory_reset_uri = { .uri = "/api/system/factory-reset", .method = HTTP_POST, .handler = factory_reset_handler };
+        httpd_register_uri_handler(server, &factory_reset_uri);
         
         server_running = true;
         ESP_LOGI(TAG, "WiFi AP started: %s / %s", ssid, password);
