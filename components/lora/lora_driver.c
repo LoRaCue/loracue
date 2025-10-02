@@ -293,8 +293,8 @@ esp_err_t lora_driver_init(void)
     LoRaInit();
     
     int16_t ret = LoRaBegin(
-        config.frequency,           // Frequency in Hz
-        config.tx_power,            // TX power in dBm
+        current_config.frequency,           // Frequency in Hz
+        current_config.tx_power,            // TX power in dBm
         3.3,                        // TCXO voltage
         false                       // Use DC-DC regulator (not LDO)
     );
@@ -306,9 +306,9 @@ esp_err_t lora_driver_init(void)
     
     // Configure LoRa parameters
     LoRaConfig(
-        config.spreading_factor,    // Spreading factor
-        config.bandwidth / 125,     // Bandwidth index (125kHz = 0, 250kHz = 1, 500kHz = 2)
-        config.coding_rate,         // Coding rate
+        current_config.spreading_factor,    // Spreading factor
+        current_config.bandwidth / 125,     // Bandwidth index (125kHz = 0, 250kHz = 1, 500kHz = 2)
+        current_config.coding_rate,         // Coding rate
         8,                          // Preamble length
         0,                          // Variable payload length
         true,                       // CRC enabled

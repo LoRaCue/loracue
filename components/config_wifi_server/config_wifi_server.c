@@ -573,7 +573,7 @@ esp_err_t config_wifi_server_start(void) {
     esp_vfs_spiffs_conf_t spiffs_conf = {
         .base_path = "/spiffs",
         .partition_label = NULL,
-        .max_files = 10,
+        .max_files = 20,
         .format_if_mount_failed = true
     };
     esp_vfs_spiffs_register(&spiffs_conf);

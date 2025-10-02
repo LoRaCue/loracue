@@ -10,6 +10,7 @@
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_app_format.h"
+#include "u8g2.h"
 #include <string.h>
 
 static const char *TAG = "USB_CDC";
