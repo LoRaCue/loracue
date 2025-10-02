@@ -87,8 +87,15 @@ static esp_err_t root_handler(httpd_req_t *req) {
 }
 
 static esp_err_t static_handler(httpd_req_t *req) {
-    char filepath[256];
+    char filepath[512];
+    if (strlen(req->uri) > 500) {
+        httpd_resp_send_404(req);
+        return ESP_FAIL;
+    }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
     snprintf(filepath, sizeof(filepath), "/spiffs%s", req->uri);
+#pragma GCC diagnostic pop
     return serve_static_file(req, filepath);
 }
 
@@ -117,7 +124,7 @@ static esp_err_t device_settings_post_handler(httpd_req_t *req) {
     
     cJSON *json = cJSON_Parse(content);
     if (!json) {
-        httpd_resp_send_400(req);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
         return ESP_FAIL;
     }
     
@@ -167,7 +174,7 @@ static esp_err_t lora_settings_post_handler(httpd_req_t *req) {
     
     cJSON *json = cJSON_Parse(content);
     if (!json) {
-        httpd_resp_send_400(req);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
         return ESP_FAIL;
     }
     
@@ -212,7 +219,7 @@ static esp_err_t firmware_upload_handler(httpd_req_t *req) {
     int remaining = req->content_len;
     
     while (remaining > 0) {
-        int recv_len = httpd_req_recv(req, buffer, MIN(remaining, sizeof(buffer)));
+        int recv_len = httpd_req_recv(req, buffer, (remaining < sizeof(buffer)) ? remaining : sizeof(buffer));
         if (recv_len <= 0) {
             esp_ota_abort(ota_handle);
             httpd_resp_send_500(req);

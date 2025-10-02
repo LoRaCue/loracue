@@ -9,6 +9,7 @@ static const char* menu_items[] = {
     "Device Mode",
     "Battery Status", 
     "LoRa Settings",
+    "Device Registry",
     "Configuration Mode",
     "Device Info",
     "System Info"

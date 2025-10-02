@@ -1,4 +1,4 @@
-import { Moon, Sun, Wifi, Settings, Upload } from 'lucide-react'
+import { Moon, Sun, Wifi, Settings, Upload, Users } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
