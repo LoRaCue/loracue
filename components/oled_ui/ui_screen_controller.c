@@ -218,10 +218,19 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
         case OLED_SCREEN_SYSTEM_INFO:
         case OLED_SCREEN_DEVICE_INFO:
         case OLED_SCREEN_BATTERY:
+            if (button == OLED_BUTTON_PREV) {
+                // Back to menu
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+            }
+            break;
+            
         case OLED_SCREEN_FACTORY_RESET:
             if (button == OLED_BUTTON_PREV) {
                 // Back to menu
                 factory_reset_screen_select();
+            } else if (long_press && button == OLED_BUTTON_BOTH) {
+                // Long press both buttons (5s) - execute factory reset
+                factory_reset_screen_execute();
             }
             break;
             
