@@ -31,6 +31,9 @@ static int16_t last_rssi = 0;
 static uint64_t last_packet_time = 0;
 static TaskHandle_t rssi_monitor_task_handle = NULL;
 static bool rssi_monitor_running = false;
+
+// Connection statistics
+static lora_connection_stats_t connection_stats = {0};
 static mbedtls_aes_context aes_ctx;
 
 esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
@@ -152,9 +155,11 @@ esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_t *payl
     ret = lora_send_packet((uint8_t*)&packet, sizeof(packet));
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to send packet: %s", esp_err_to_name(ret));
+        connection_stats.failed_transmissions++;
         return ret;
     }
     
+    connection_stats.packets_sent++;
     ESP_LOGI(TAG, "Packet sent successfully (seq: %d)", packet_data.sequence_num);
     return ESP_OK;
 }
@@ -173,7 +178,13 @@ esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *pay
         esp_err_t ret = lora_protocol_send_command(command, payload, payload_length);
         if (ret != ESP_OK) {
             ESP_LOGW(TAG, "Send failed on attempt %d: %s", attempt + 1, esp_err_to_name(ret));
+            if (attempt > 0) connection_stats.retransmissions++;
             continue;
+        }
+        
+        // Track retransmissions
+        if (attempt > 0) {
+            connection_stats.retransmissions++;
         }
         
         // Wait for ACK
@@ -185,6 +196,7 @@ esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *pay
             if (ret == ESP_OK && ack_packet.command == CMD_ACK && ack_packet.payload_length == 2) {
                 uint16_t ack_seq = (ack_packet.payload[0] << 8) | ack_packet.payload[1];
                 if (ack_seq == expected_ack_seq) {
+                    connection_stats.acks_received++;
                     ESP_LOGI(TAG, "ACK received for seq %d", expected_ack_seq);
                     return ESP_OK;
                 }
@@ -195,6 +207,7 @@ esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *pay
     }
     
     ESP_LOGE(TAG, "Failed to get ACK after %d attempts", max_retries + 1);
+    connection_stats.failed_transmissions++;
     return ESP_ERR_TIMEOUT;
 }
 
@@ -288,6 +301,9 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
     
     // Update device registry with new sequence number
     device_registry_update_last_seen(packet_data->device_id, packet_data->sequence_num);
+    
+    // Track received packets
+    connection_stats.packets_received++;
     
     // Send ACK for non-ACK packets
     if (packet_data->command != CMD_ACK) {
@@ -397,4 +413,28 @@ esp_err_t lora_protocol_start_rssi_monitor(void)
     
     ESP_LOGI(TAG, "RSSI monitor started");
     return ESP_OK;
+}
+
+esp_err_t lora_protocol_get_stats(lora_connection_stats_t *stats)
+{
+    if (!stats) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    *stats = connection_stats;
+    
+    // Calculate packet loss rate
+    if (connection_stats.packets_sent > 0) {
+        stats->packet_loss_rate = (float)connection_stats.failed_transmissions / connection_stats.packets_sent * 100.0f;
+    } else {
+        stats->packet_loss_rate = 0.0f;
+    }
+    
+    return ESP_OK;
+}
+
+void lora_protocol_reset_stats(void)
+{
+    memset(&connection_stats, 0, sizeof(connection_stats));
+    ESP_LOGI(TAG, "Connection statistics reset");
 }

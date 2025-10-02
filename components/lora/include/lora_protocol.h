@@ -143,6 +143,31 @@ int16_t lora_protocol_get_last_rssi(void);
  */
 esp_err_t lora_protocol_start_rssi_monitor(void);
 
+/**
+ * @brief Connection statistics
+ */
+typedef struct {
+    uint32_t packets_sent;
+    uint32_t packets_received;
+    uint32_t acks_received;
+    uint32_t retransmissions;
+    uint32_t failed_transmissions;
+    float packet_loss_rate;
+} lora_connection_stats_t;
+
+/**
+ * @brief Get connection statistics
+ * 
+ * @param stats Pointer to store statistics
+ * @return ESP_OK on success
+ */
+esp_err_t lora_protocol_get_stats(lora_connection_stats_t *stats);
+
+/**
+ * @brief Reset connection statistics
+ */
+void lora_protocol_reset_stats(void);
+
 #ifdef __cplusplus
 }
 #endif
