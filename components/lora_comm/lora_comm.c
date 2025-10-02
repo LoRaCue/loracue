@@ -82,9 +82,12 @@ static void lora_button_handler(button_event_type_t event, void* arg)
             return;
     }
     
-    esp_err_t ret = lora_protocol_send_command(lora_cmd, NULL, 0);
+    // Use reliable transmission for critical presentation commands
+    esp_err_t ret = lora_protocol_send_reliable(lora_cmd, NULL, 0, 1000, 2);
     if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to send LoRa command: %s", esp_err_to_name(ret));
+        ESP_LOGW(TAG, "Failed to send LoRa command reliably: %s", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "LoRa command sent successfully with ACK");
     }
 }
 

@@ -11,6 +11,7 @@
 #include "device_registry.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "esp_timer.h"
 #include "mbedtls/aes.h"
 #include "mbedtls/md.h"
 #include <string.h>
@@ -150,6 +151,45 @@ esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_t *payl
     return ESP_OK;
 }
 
+esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length, uint32_t timeout_ms, uint8_t max_retries)
+{
+    if (!protocol_initialized) {
+        ESP_LOGE(TAG, "Protocol not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    uint16_t expected_ack_seq = sequence_counter + 1;
+    
+    for (uint8_t attempt = 0; attempt <= max_retries; attempt++) {
+        // Send command
+        esp_err_t ret = lora_protocol_send_command(command, payload, payload_length);
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "Send failed on attempt %d: %s", attempt + 1, esp_err_to_name(ret));
+            continue;
+        }
+        
+        // Wait for ACK
+        uint32_t start_time = esp_timer_get_time() / 1000;
+        while ((esp_timer_get_time() / 1000 - start_time) < timeout_ms) {
+            lora_packet_data_t ack_packet;
+            ret = lora_protocol_receive_packet(&ack_packet, 100);
+            
+            if (ret == ESP_OK && ack_packet.command == CMD_ACK && ack_packet.payload_length == 2) {
+                uint16_t ack_seq = (ack_packet.payload[0] << 8) | ack_packet.payload[1];
+                if (ack_seq == expected_ack_seq) {
+                    ESP_LOGI(TAG, "ACK received for seq %d", expected_ack_seq);
+                    return ESP_OK;
+                }
+            }
+        }
+        
+        ESP_LOGW(TAG, "No ACK received, attempt %d/%d", attempt + 1, max_retries + 1);
+    }
+    
+    ESP_LOGE(TAG, "Failed to get ACK after %d attempts", max_retries + 1);
+    return ESP_ERR_TIMEOUT;
+}
+
 esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t timeout_ms)
 {
     if (!protocol_initialized) {
@@ -240,6 +280,14 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
     
     // Update device registry with new sequence number
     device_registry_update_last_seen(packet_data->device_id, packet_data->sequence_num);
+    
+    // Send ACK for non-ACK packets
+    if (packet_data->command != CMD_ACK) {
+        esp_err_t ack_ret = lora_protocol_send_ack(packet_data->device_id, packet_data->sequence_num);
+        if (ack_ret != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to send ACK: %s", esp_err_to_name(ack_ret));
+        }
+    }
     
     ESP_LOGI(TAG, "Valid packet from %s (0x%04X): cmd=0x%02X, seq=%d", 
              sender_device.device_name, packet_data->device_id, 

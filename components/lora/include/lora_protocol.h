@@ -75,6 +75,18 @@ esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *aes_key);
 esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_t *payload, uint8_t payload_length);
 
 /**
+ * @brief Send command with ACK and retransmission
+ * 
+ * @param command Command to send
+ * @param payload Optional payload data
+ * @param payload_length Payload length (0-7)
+ * @param timeout_ms Timeout for ACK reception
+ * @param max_retries Maximum retry attempts
+ * @return ESP_OK on success, ESP_ERR_TIMEOUT if no ACK received
+ */
+esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length, uint32_t timeout_ms, uint8_t max_retries);
+
+/**
  * @brief Receive and validate LoRa packet
  * 
  * @param packet_data Decoded packet data
