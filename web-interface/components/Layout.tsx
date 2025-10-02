@@ -22,12 +22,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <div className="flex items-center space-x-3">
-                <Logo className="w-8 h-8 text-primary-600 dark:text-primary-400" />
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                  LoRaCue
-                </h1>
-              </div>
+              <Logo className="w-12 h-12 text-primary-600 dark:text-primary-400" />
               <div className="flex space-x-1">
                 {navigation.map((item) => {
                   const Icon = item.icon
