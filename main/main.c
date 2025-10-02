@@ -25,7 +25,6 @@
 #include "button_manager.h"
 #include "led_manager.h"
 #include "power_mgmt.h"
-#include "usb_pairing.h"
 #include "device_config.h"
 
 static const char *TAG = "LORACUE_MAIN";
@@ -113,7 +112,7 @@ static void usb_monitor_task(void *pvParameters)
     bool prev_usb = false;
     
     while (1) {
-        bool current_usb = usb_hid_is_connected() || usb_pairing_is_connected();
+        bool current_usb = usb_hid_is_connected();
         
         if (current_usb != prev_usb) {
             status->usb_connected = current_usb;
@@ -202,14 +201,6 @@ void app_main(void)
     ret = device_config_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Device config initialization failed: %s", esp_err_to_name(ret));
-        return;
-    }
-    
-    // Initialize USB pairing
-    ESP_LOGI(TAG, "Initializing USB pairing system...");
-    ret = usb_pairing_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "USB pairing initialization failed: %s", esp_err_to_name(ret));
         return;
     }
     

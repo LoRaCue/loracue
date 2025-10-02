@@ -18,21 +18,40 @@ static void refresh_device_list(void) {
     device_registry_list(devices, MAX_PAIRED_DEVICES, &device_count);
 }
 
+static void draw_registry_header(void) {
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+    u8g2_DrawStr(&u8g2, 2, 8, "DEVICE REGISTRY");
+    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
+}
+
+static void draw_registry_footer(void) {
+    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
+    u8g2_DrawStr(&u8g2, 8, 64, "Back");
+    
+    if (device_count > 0) {
+        const char* action_text = "Remove";
+        int action_text_width = u8g2_GetStrWidth(&u8g2, action_text);
+        int action_x = DISPLAY_WIDTH - both_buttons_width - action_text_width - 2;
+        u8g2_DrawXBM(&u8g2, action_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
+        u8g2_DrawStr(&u8g2, action_x + both_buttons_width + 2, 64, action_text);
+    }
+}
+
 void device_registry_screen_draw(void) {
     u8g2_ClearBuffer(&u8g2);
     
     // Refresh device list
     refresh_device_list();
     
-    // Title
-    u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
-    u8g2_DrawStr(&u8g2, 2, 10, "Device Registry");
+    draw_registry_header();
     
     if (device_count == 0) {
         u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-        u8g2_DrawStr(&u8g2, 2, 30, "No devices paired");
-        u8g2_DrawStr(&u8g2, 2, 42, "Use config mode to");
-        u8g2_DrawStr(&u8g2, 2, 52, "pair new devices");
+        u8g2_DrawStr(&u8g2, 2, 25, "No devices paired");
+        u8g2_DrawStr(&u8g2, 2, 37, "Use config mode to");
+        u8g2_DrawStr(&u8g2, 2, 47, "pair new devices");
     } else {
         // Device list
         u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
@@ -43,7 +62,7 @@ void device_registry_screen_draw(void) {
         
         for (int i = visible_start; i < visible_end; i++) {
             int display_index = i - visible_start;
-            int y = 22 + (display_index * 10);
+            int y = 20 + (display_index * 10);
             
             if (i == selected_device) {
                 // Highlight selected device
@@ -68,7 +87,7 @@ void device_registry_screen_draw(void) {
         
         // Scroll indicators
         if (scroll_offset > 0) {
-            int selected_y = 22 + ((selected_device - scroll_offset) * 10);
+            int selected_y = 20 + ((selected_device - scroll_offset) * 10);
             int lightbar_top = selected_y - 8;
             int lightbar_bottom = selected_y + 1;
             
@@ -79,7 +98,7 @@ void device_registry_screen_draw(void) {
             u8g2_SetDrawColor(&u8g2, 1);
         }
         if (visible_end < device_count) {
-            int selected_y = 22 + ((selected_device - scroll_offset) * 10);
+            int selected_y = 20 + ((selected_device - scroll_offset) * 10);
             int lightbar_top = selected_y - 8;
             int lightbar_bottom = selected_y + 1;
             
@@ -91,19 +110,7 @@ void device_registry_screen_draw(void) {
         }
     }
     
-    // Bottom navigation
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-    u8g2_DrawStr(&u8g2, 8, 64, "Back");
-    
-    if (device_count > 0) {
-        const char* action_text = "Remove";
-        int action_text_width = u8g2_GetStrWidth(&u8g2, action_text);
-        int action_x = DISPLAY_WIDTH - both_buttons_width - action_text_width - 2;
-        u8g2_DrawXBM(&u8g2, action_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-        u8g2_DrawStr(&u8g2, action_x + both_buttons_width + 2, 64, action_text);
-    }
-    
+    draw_registry_footer();
     u8g2_SendBuffer(&u8g2);
 }
 
