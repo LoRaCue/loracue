@@ -11,6 +11,7 @@ static const char* menu_items[] = {
     "LoRa Settings",
     "Device Pairing",
     "Device Registry",
+    "Display Brightness",
     "Configuration Mode",
     "Device Info",
     "System Info"
