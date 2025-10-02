@@ -24,12 +24,25 @@ Enterprise-grade wireless presentation remote with long-range LoRa communication
 
 ## 🏗️ **Hardware Architecture**
 
-### **Target Hardware: Heltec LoRa V3**
+### **Current Prototyping Hardware: Heltec LoRa V3**
+
+![Heltec LoRa V3](assets/HeltecV3.png)
+
+**Currently Supported Hardware:**
+- **Heltec WiFi LoRa 32 V3** - Our primary development and prototyping platform
 - **MCU**: ESP32-S3 (Dual-core Xtensa LX7, 240MHz)
 - **LoRa**: SX1262 transceiver (868/915MHz)
 - **Display**: SH1106 OLED (128x64, I2C)
 - **Flash**: 8MB SPI Flash with OTA partitioning
 - **Power**: USB-C charging with battery monitoring
+
+> ⚠️ **Hardware Support Status**: The Heltec LoRa V3 is currently the **only officially supported hardware**. While our Board Support Package (BSP) architecture is designed to support any ESP32-S3 board with SX12XX LoRa modules, only the Heltec V3 has been tested and verified.
+
+**Future Hardware Plans:**
+- **Dedicated PCB Design**: Custom ergonomic form factor optimized for presentation use
+- **Enhanced Controls**: Multiple buttons and rotary encoder for intuitive navigation
+- **Professional Build**: Injection-molded housing with premium materials
+- **Extended Battery**: Longer runtime with optimized power management
 
 ### **Wokwi Simulation Setup**
 ![Wokwi Diagram](assets/wokwi_diagramm.png)
