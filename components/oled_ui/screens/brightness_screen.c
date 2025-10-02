@@ -72,10 +72,10 @@ void brightness_screen_draw(void) {
 void brightness_screen_navigate(menu_direction_t direction) {
     if (!edit_mode) return;
     
-    if (direction == MENU_UP) {
+    if (direction == MENU_DOWN) {
         if (brightness_value <= 250) brightness_value += 5;
         else brightness_value = 255;
-    } else if (direction == MENU_DOWN) {
+    } else if (direction == MENU_UP) {
         if (brightness_value >= 5) brightness_value -= 5;
         else brightness_value = 0;
     }
