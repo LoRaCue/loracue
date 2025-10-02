@@ -1,6 +1,7 @@
 #include "ui_data_provider.h"
 #include "power_mgmt.h"
 #include "lora_driver.h"
+#include "lora_protocol.h"
 #include "bsp.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -79,26 +80,37 @@ esp_err_t ui_data_provider_update(void) {
         // Keep previous values on error
     }
     
-    // Update real LoRa status from driver
-    int16_t rssi = lora_get_rssi();
-    if (rssi > -50) {
-        cached_status.signal_strength = SIGNAL_STRONG;
-        cached_status.lora_connected = true;
-    } else if (rssi > -70) {
-        cached_status.signal_strength = SIGNAL_GOOD;
-        cached_status.lora_connected = true;
-    } else if (rssi > -90) {
-        cached_status.signal_strength = SIGNAL_FAIR;
-        cached_status.lora_connected = true;
-    } else if (rssi > -110) {
-        cached_status.signal_strength = SIGNAL_WEAK;
-        cached_status.lora_connected = true;
-    } else {
-        cached_status.signal_strength = SIGNAL_NONE;
-        cached_status.lora_connected = false;
+    // Update LoRa status from protocol layer
+    lora_connection_state_t conn_state = lora_protocol_get_connection_state();
+    int16_t rssi = lora_protocol_get_last_rssi();
+    
+    // Map connection state to signal strength
+    switch (conn_state) {
+        case LORA_CONNECTION_EXCELLENT:
+            cached_status.signal_strength = SIGNAL_STRONG;
+            cached_status.lora_connected = true;
+            break;
+        case LORA_CONNECTION_GOOD:
+            cached_status.signal_strength = SIGNAL_GOOD;
+            cached_status.lora_connected = true;
+            break;
+        case LORA_CONNECTION_WEAK:
+            cached_status.signal_strength = SIGNAL_FAIR;
+            cached_status.lora_connected = true;
+            break;
+        case LORA_CONNECTION_POOR:
+            cached_status.signal_strength = SIGNAL_WEAK;
+            cached_status.lora_connected = true;
+            break;
+        case LORA_CONNECTION_LOST:
+        default:
+            cached_status.signal_strength = SIGNAL_NONE;
+            cached_status.lora_connected = false;
+            break;
     }
     
-    ESP_LOGD(TAG, "LoRa RSSI: %d dBm, Signal: %d", rssi, cached_status.signal_strength);
+    ESP_LOGD(TAG, "LoRa: %s, RSSI: %d dBm", 
+             cached_status.lora_connected ? "connected" : "disconnected", rssi);
     
     return ESP_OK;
 }

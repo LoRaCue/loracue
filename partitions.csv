@@ -1,9 +1,9 @@
 # LoRaCue Partition Table - 8MB SPI Flash Layout (Corrected)
 # Name,   Type, SubType, Offset,  Size,    Flags
-nvs,      data, nvs,     0x9000,  0x19000,  # 100KB - Extended NVS storage
-phy_init, data, phy,     0x22000, 0x1000,   # 4KB - PHY init data
-factory,  app,  factory, 0x23000, 0x200000, # 2MB - Factory app
-ota_0,    app,  ota_0,   0x223000,0x200000, # 2MB - OTA app 0
-ota_1,    app,  ota_1,   0x423000,0x200000, # 2MB - OTA app 1
-otadata,  data, ota,     0x623000,0x2000,   # 8KB - OTA data
-spiffs,   data, spiffs,  0x625000,0x1DB000, # ~1.86MB - Web assets & data
+nvs,      data, nvs,     0x9000,  0x17000,
+phy_init, data, phy,     0x20000, 0x1000,
+factory,  app,  factory, 0x30000, 0x200000,
+ota_0,    app,  ota_0,   0x230000,0x200000,
+ota_1,    app,  ota_1,   0x430000,0x200000,
+otadata,  data, ota,     0x630000,0x2000,
+spiffs,   data, spiffs,  0x640000,0x1C0000,
