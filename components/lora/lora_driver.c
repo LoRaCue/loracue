@@ -15,6 +15,10 @@
 #include "nvs.h"
 #include <string.h>
 
+#ifndef SIMULATOR_BUILD
+#include "ra01s.h"  // Include RA01S library for hardware
+#endif
+
 #ifdef SIMULATOR_BUILD
 #include "esp_wifi.h"
 #include "esp_netif.h"
@@ -286,21 +290,33 @@ esp_err_t lora_driver_init(void)
 #else
     ESP_LOGI(TAG, "📻 Hardware mode: Initializing SX1262 LoRa");
     
-    // Reset SX1262
-    esp_err_t ret = bsp_sx1262_reset();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "SX1262 reset failed: %s", esp_err_to_name(ret));
-        return ret;
+    // Initialize RA01S library
+    LoRaInit();
+    
+    int16_t ret = LoRaBegin(
+        config.frequency,           // Frequency in Hz
+        config.tx_power,            // TX power in dBm
+        3.3,                        // TCXO voltage
+        false                       // Use DC-DC regulator (not LDO)
+    );
+    
+    if (ret != ERR_NONE) {
+        ESP_LOGE(TAG, "LoRa initialization failed: %d", ret);
+        return ESP_FAIL;
     }
     
-    // Read version to verify communication
-    uint8_t version = bsp_sx1262_read_register(0x0320);
-    if (version != 0x14) {
-        ESP_LOGE(TAG, "SX1262 version check failed: 0x%02x (expected 0x14)", version);
-        return ESP_ERR_NOT_FOUND;
-    }
+    // Configure LoRa parameters
+    LoRaConfig(
+        config.spreading_factor,    // Spreading factor
+        config.bandwidth / 125,     // Bandwidth index (125kHz = 0, 250kHz = 1, 500kHz = 2)
+        config.coding_rate,         // Coding rate
+        8,                          // Preamble length
+        0,                          // Variable payload length
+        true,                       // CRC enabled
+        false                       // Normal IQ
+    );
     
-    ESP_LOGI(TAG, "SX1262 detected successfully (version: 0x%02x)", version);
+    ESP_LOGI(TAG, "SX1262 initialized successfully");
     return ESP_OK;
 #endif
 }
@@ -314,8 +330,16 @@ esp_err_t lora_send_packet(const uint8_t *data, size_t length)
 #ifdef SIMULATOR_BUILD
     return lora_sim_send_packet(data, length);
 #else
-    // Hardware LoRa transmission - placeholder
+    // Hardware LoRa transmission using RA01S
     ESP_LOGI(TAG, "📻 LoRa TX: %d bytes", length);
+    
+    bool ret = LoRaSend((uint8_t*)data, length, SX126x_TXMODE_SYNC);
+    if (!ret) {
+        ESP_LOGE(TAG, "LoRa transmission failed");
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "LoRa packet sent successfully");
     return ESP_OK;
 #endif
 }
@@ -329,8 +353,16 @@ esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received
 #ifdef SIMULATOR_BUILD
     return lora_sim_receive_packet(data, max_length, received_length, timeout_ms);
 #else
-    // Hardware LoRa reception - placeholder
+    // Hardware LoRa reception using RA01S
     *received_length = 0;
+    
+    uint8_t bytes_received = LoRaReceive(data, max_length);
+    if (bytes_received > 0) {
+        *received_length = bytes_received;
+        ESP_LOGI(TAG, "📻 LoRa RX: %d bytes", bytes_received);
+        return ESP_OK;
+    }
+    
     return ESP_ERR_TIMEOUT;
 #endif
 }
@@ -390,8 +422,12 @@ esp_err_t lora_set_receive_mode(void)
     // UDP is always in receive mode
     return ESP_OK;
 #else
-    // Hardware receive mode - placeholder
+    // Hardware receive mode using RA01S
     ESP_LOGI(TAG, "📻 LoRa RX mode");
+    
+    // Set LoRa to continuous receive mode
+    SetRx(0); // 0 = continuous receive mode
+    
     return ESP_OK;
 #endif
 }
