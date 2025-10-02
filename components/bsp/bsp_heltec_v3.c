@@ -21,6 +21,9 @@
 
 static const char *TAG = "BSP_HELTEC_V3";
 
+// Global u8g2 instance
+u8g2_t u8g2;
+
 // Heltec LoRa V3 Pin Definitions
 #define BUTTON_PREV_PIN         GPIO_NUM_46
 #define BUTTON_NEXT_PIN         GPIO_NUM_45
