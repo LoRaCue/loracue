@@ -12,6 +12,7 @@
 #include "esp_err.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "class/hid/hid.h"  // Include TinyUSB HID constants
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,12 +20,13 @@ extern "C" {
 
 /**
  * @brief USB HID key codes for presentation control
+ * Using TinyUSB HID key constants to avoid conflicts
  */
 typedef enum {
-    HID_KEY_PAGE_DOWN = 0x4E,   ///< Next slide (Page Down)
-    HID_KEY_PAGE_UP = 0x4B,     ///< Previous slide (Page Up)  
-    HID_KEY_B = 0x05,           ///< Black screen ('b')
-    HID_KEY_F5 = 0x3E,          ///< Start presentation (F5)
+    USB_HID_KEY_PAGE_DOWN = HID_KEY_PAGE_DOWN,   ///< Next slide (Page Down)
+    USB_HID_KEY_PAGE_UP = HID_KEY_PAGE_UP,       ///< Previous slide (Page Up)  
+    USB_HID_KEY_B = HID_KEY_B,                   ///< Black screen ('b')
+    USB_HID_KEY_F5 = HID_KEY_F5,                 ///< Start presentation (F5)
 } usb_hid_keycode_t;
 
 /**
