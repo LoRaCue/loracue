@@ -81,6 +81,13 @@ uint32_t lora_get_frequency(void);
 esp_err_t lora_get_config(lora_config_t *config);
 
 /**
+ * @brief Load LoRa configuration from NVS
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t lora_load_config_from_nvs(void);
+
+/**
  * @brief Set LoRa configuration and save to NVS
  * 
  * @param config New LoRa configuration
