@@ -15,7 +15,9 @@
 #include "esp_random.h"
 #include "esp_mac.h"
 #include "esp_ota_ops.h"
+#include "esp_task_wdt.h"
 #include "nvs_flash.h"
+#include "nvs.h"
 #include "version.h"
 #include "bsp.h"
 #include "lora_driver.h"
@@ -32,12 +34,71 @@
 static const char *TAG = "LORACUE_MAIN";
 static device_mode_t current_device_mode = DEVICE_MODE_PRESENTER;
 static EventGroupHandle_t system_events;
+static const esp_partition_t *running_partition = NULL;
+static TimerHandle_t ota_validation_timer = NULL;
 
 // Demo AES keys for different devices
 static const uint8_t demo_aes_key_1[16] = {
     0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
     0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
 };
+
+#define OTA_BOOT_COUNTER_KEY "ota_boot_cnt"
+#define OTA_ROLLBACK_LOG_KEY "ota_rollback"
+#define MAX_BOOT_ATTEMPTS 3
+
+static uint32_t ota_get_boot_counter(void) {
+    nvs_handle_t nvs;
+    uint32_t counter = 0;
+    if (nvs_open("storage", NVS_READONLY, &nvs) == ESP_OK) {
+        nvs_get_u32(nvs, OTA_BOOT_COUNTER_KEY, &counter);
+        nvs_close(nvs);
+    }
+    return counter;
+}
+
+static void ota_increment_boot_counter(void) {
+    nvs_handle_t nvs;
+    if (nvs_open("storage", NVS_READWRITE, &nvs) == ESP_OK) {
+        uint32_t counter = ota_get_boot_counter() + 1;
+        nvs_set_u32(nvs, OTA_BOOT_COUNTER_KEY, counter);
+        nvs_commit(nvs);
+        nvs_close(nvs);
+        ESP_LOGW(TAG, "Boot attempt %lu/%d", counter, MAX_BOOT_ATTEMPTS);
+    }
+}
+
+static void ota_reset_boot_counter(void) {
+    nvs_handle_t nvs;
+    if (nvs_open("storage", NVS_READWRITE, &nvs) == ESP_OK) {
+        nvs_erase_key(nvs, OTA_BOOT_COUNTER_KEY);
+        nvs_commit(nvs);
+        nvs_close(nvs);
+    }
+}
+
+static void ota_log_rollback(const char *reason) {
+    nvs_handle_t nvs;
+    if (nvs_open("storage", NVS_READWRITE, &nvs) == ESP_OK) {
+        char log[128];
+        snprintf(log, sizeof(log), "%s|%s", running_partition->label, reason);
+        nvs_set_str(nvs, OTA_ROLLBACK_LOG_KEY, log);
+        nvs_commit(nvs);
+        nvs_close(nvs);
+        ESP_LOGE(TAG, "Rollback logged: %s", log);
+    }
+}
+
+static void ota_validation_timer_cb(TimerHandle_t timer) {
+    ESP_LOGI(TAG, "60s health check passed - marking firmware valid");
+    esp_ota_img_states_t ota_state;
+    if (esp_ota_get_state_partition(running_partition, &ota_state) == ESP_OK) {
+        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+            esp_ota_mark_app_valid_cancel_rollback();
+            ota_reset_boot_counter();
+        }
+    }
+}
 
 static EventGroupHandle_t system_events;
 
@@ -112,14 +173,33 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
     
     // OTA rollback validation
-    const esp_partition_t *running = esp_ota_get_running_partition();
+    running_partition = esp_ota_get_running_partition();
     esp_ota_img_states_t ota_state;
-    if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
+    
+    // Check boot counter for repeated failures
+    uint32_t boot_counter = ota_get_boot_counter();
+    if (boot_counter >= MAX_BOOT_ATTEMPTS) {
+        ESP_LOGE(TAG, "Max boot attempts reached (%lu), forcing rollback", boot_counter);
+        ota_log_rollback("max_boot_attempts");
+        esp_ota_mark_app_invalid_rollback_and_reboot();
+    }
+    
+    if (esp_ota_get_state_partition(running_partition, &ota_state) == ESP_OK) {
         if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
-            ESP_LOGW(TAG, "New firmware pending validation, will mark valid after successful init");
+            ESP_LOGW(TAG, "New firmware pending validation");
+            ota_increment_boot_counter();
         }
     }
-    ESP_LOGI(TAG, "Running partition: %s (offset 0x%lx)", running->label, running->address);
+    ESP_LOGI(TAG, "Running partition: %s (offset 0x%lx)", running_partition->label, running_partition->address);
+    
+    // Initialize watchdog (90s timeout for init + 60s validation)
+    esp_task_wdt_config_t wdt_config = {
+        .timeout_ms = 90000,
+        .idle_core_mask = 0,
+        .trigger_panic = true
+    };
+    ESP_ERROR_CHECK(esp_task_wdt_init(&wdt_config));
+    ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
     
     // Initialize power management first
     ESP_LOGI(TAG, "Initializing power management...");
@@ -278,11 +358,18 @@ void app_main(void)
         return;
     }
     
-    // Mark OTA as valid after successful initialization
-    if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
+    // Reset watchdog after successful init
+    esp_task_wdt_reset();
+    
+    // Start 60s validation timer for new firmware
+    if (esp_ota_get_state_partition(running_partition, &ota_state) == ESP_OK) {
         if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
-            ESP_LOGI(TAG, "Marking new firmware as valid");
-            esp_ota_mark_app_valid_cancel_rollback();
+            ESP_LOGI(TAG, "Starting 60s health check for new firmware");
+            ota_validation_timer = xTimerCreate("ota_valid", pdMS_TO_TICKS(60000), 
+                                                pdFALSE, NULL, ota_validation_timer_cb);
+            if (ota_validation_timer) {
+                xTimerStart(ota_validation_timer, 0);
+            }
         }
     }
     
@@ -307,12 +394,15 @@ void app_main(void)
     ESP_LOGI(TAG, "Main loop starting - should have low CPU usage when idle");
     
     while (1) {
+        // Reset watchdog
+        esp_task_wdt_reset();
+        
         // Wait for any system event
         EventBits_t events = xEventGroupWaitBits(system_events, 
                                                 0xFF, // Wait for any event
                                                 pdTRUE, // Clear on exit
                                                 pdFALSE, // Wait for any bit
-                                                portMAX_DELAY);
+                                                pdMS_TO_TICKS(10000)); // 10s timeout
         
         if (events & (1 << 0)) { // Battery changed
             oled_ui_update_status(&status);
