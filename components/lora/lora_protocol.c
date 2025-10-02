@@ -12,6 +12,8 @@
 #include "esp_log.h"
 #include "esp_random.h"
 #include "esp_timer.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "mbedtls/aes.h"
 #include "mbedtls/md.h"
 #include <string.h>
@@ -23,6 +25,12 @@ static bool protocol_initialized = false;
 static uint16_t local_device_id = 0;
 static uint16_t sequence_counter = 0;
 static uint8_t aes_key[16];
+
+// RSSI monitoring variables
+static int16_t last_rssi = 0;
+static uint64_t last_packet_time = 0;
+static TaskHandle_t rssi_monitor_task_handle = NULL;
+static bool rssi_monitor_running = false;
 static mbedtls_aes_context aes_ctx;
 
 esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
@@ -289,9 +297,13 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
         }
     }
     
-    ESP_LOGI(TAG, "Valid packet from %s (0x%04X): cmd=0x%02X, seq=%d", 
+    // Update RSSI and timestamp for connection monitoring
+    last_rssi = lora_get_rssi();
+    last_packet_time = esp_timer_get_time();
+    
+    ESP_LOGI(TAG, "Valid packet from %s (0x%04X): cmd=0x%02X, seq=%d, RSSI=%d dBm", 
              sender_device.device_name, packet_data->device_id, 
-             packet_data->command, packet_data->sequence_num);
+             packet_data->command, packet_data->sequence_num, last_rssi);
     
     return ESP_OK;
 }
@@ -309,4 +321,80 @@ esp_err_t lora_protocol_send_ack(uint16_t to_device_id, uint16_t ack_sequence_nu
 uint16_t lora_protocol_get_next_sequence(void)
 {
     return sequence_counter + 1;
+}
+
+lora_connection_state_t lora_protocol_get_connection_state(void)
+{
+    uint64_t now = esp_timer_get_time();
+    uint64_t time_since_last_packet = now - last_packet_time;
+    
+    // Connection lost if no packets for 30 seconds
+    if (time_since_last_packet > 30000000) {
+        return LORA_CONNECTION_LOST;
+    }
+    
+    // Evaluate based on RSSI
+    if (last_rssi > -70) {
+        return LORA_CONNECTION_EXCELLENT;
+    } else if (last_rssi > -85) {
+        return LORA_CONNECTION_GOOD;
+    } else if (last_rssi > -100) {
+        return LORA_CONNECTION_WEAK;
+    } else {
+        return LORA_CONNECTION_POOR;
+    }
+}
+
+int16_t lora_protocol_get_last_rssi(void)
+{
+    return last_rssi;
+}
+
+static void rssi_monitor_task(void *pvParameters)
+{
+    ESP_LOGI(TAG, "RSSI monitor task started");
+    
+    while (rssi_monitor_running) {
+        lora_connection_state_t state = lora_protocol_get_connection_state();
+        
+        // Log connection quality changes
+        static lora_connection_state_t last_state = LORA_CONNECTION_LOST;
+        if (state != last_state) {
+            const char* state_names[] = {"EXCELLENT", "GOOD", "WEAK", "POOR", "LOST"};
+            ESP_LOGI(TAG, "Connection state: %s (RSSI: %d dBm)", 
+                     state_names[state], last_rssi);
+            last_state = state;
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(5000)); // Check every 5 seconds
+    }
+    
+    ESP_LOGI(TAG, "RSSI monitor task stopped");
+    vTaskDelete(NULL);
+}
+
+esp_err_t lora_protocol_start_rssi_monitor(void)
+{
+    if (rssi_monitor_running) {
+        return ESP_OK;
+    }
+    
+    rssi_monitor_running = true;
+    BaseType_t ret = xTaskCreate(
+        rssi_monitor_task,
+        "lora_rssi",
+        2048,
+        NULL,
+        3,
+        &rssi_monitor_task_handle
+    );
+    
+    if (ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create RSSI monitor task");
+        rssi_monitor_running = false;
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "RSSI monitor started");
+    return ESP_OK;
 }

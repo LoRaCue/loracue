@@ -105,6 +105,12 @@ esp_err_t lora_comm_start(void)
 {
     ESP_LOGI(TAG, "Starting LoRa communication task");
     
+    // Start RSSI monitoring
+    esp_err_t rssi_ret = lora_protocol_start_rssi_monitor();
+    if (rssi_ret != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to start RSSI monitor: %s", esp_err_to_name(rssi_ret));
+    }
+    
     lora_task_running = true;
     BaseType_t ret = xTaskCreate(
         lora_receive_task,

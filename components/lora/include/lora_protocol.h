@@ -111,6 +111,38 @@ esp_err_t lora_protocol_send_ack(uint16_t to_device_id, uint16_t ack_sequence_nu
  */
 uint16_t lora_protocol_get_next_sequence(void);
 
+/**
+ * @brief LoRa connection quality states
+ */
+typedef enum {
+    LORA_CONNECTION_EXCELLENT = 0,  ///< RSSI > -70 dBm
+    LORA_CONNECTION_GOOD = 1,       ///< RSSI > -85 dBm  
+    LORA_CONNECTION_WEAK = 2,       ///< RSSI > -100 dBm
+    LORA_CONNECTION_POOR = 3,       ///< RSSI <= -100 dBm
+    LORA_CONNECTION_LOST = 4        ///< No packets received recently
+} lora_connection_state_t;
+
+/**
+ * @brief Get current connection quality
+ * 
+ * @return Current connection state based on RSSI and activity
+ */
+lora_connection_state_t lora_protocol_get_connection_state(void);
+
+/**
+ * @brief Get last RSSI value
+ * 
+ * @return RSSI in dBm, or 0 if no recent packets
+ */
+int16_t lora_protocol_get_last_rssi(void);
+
+/**
+ * @brief Start RSSI monitoring task
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t lora_protocol_start_rssi_monitor(void);
+
 #ifdef __cplusplus
 }
 #endif
