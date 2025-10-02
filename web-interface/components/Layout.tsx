@@ -1,4 +1,4 @@
-import { Moon, Sun, Wifi, Settings, Upload, Users } from 'lucide-react'
+import { Moon, Sun, Wifi, Settings, Upload, Users, Info } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -10,7 +10,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigation = [
     { name: 'Device', href: '/', icon: Settings },
     { name: 'LoRa', href: '/lora', icon: Wifi },
+    { name: 'Devices', href: '/devices', icon: Users },
     { name: 'Firmware', href: '/firmware', icon: Upload },
+    { name: 'System', href: '/system', icon: Info },
   ]
 
   return (
