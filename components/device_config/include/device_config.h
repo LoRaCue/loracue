@@ -67,6 +67,12 @@ esp_err_t device_config_get(device_config_t *config);
  */
 esp_err_t device_config_set(const device_config_t *config);
 
+/**
+ * @brief Factory reset - erase all NVS and reboot
+ * @return ESP_OK on success (will not return if successful)
+ */
+esp_err_t device_config_factory_reset(void);
+
 #ifdef __cplusplus
 }
 #endif

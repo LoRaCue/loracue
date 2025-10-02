@@ -8,8 +8,11 @@
 
 #include "device_config.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "nvs_flash.h"
 #include "nvs.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <string.h>
 
 static const char *TAG = "DEVICE_CONFIG";
@@ -102,4 +105,23 @@ esp_err_t device_config_set(const device_config_t *config)
     }
     
     return ret;
+}
+
+esp_err_t device_config_factory_reset(void) {
+    ESP_LOGW(TAG, "Factory reset initiated - erasing all NVS data");
+    
+    // Erase entire NVS partition
+    esp_err_t ret = nvs_flash_erase();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to erase NVS: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    ESP_LOGI(TAG, "NVS erased successfully, rebooting...");
+    vTaskDelay(pdMS_TO_TICKS(1000));  // Give time for log output
+    
+    // Reboot device
+    esp_restart();
+    
+    return ESP_OK;  // Will never reach here
 }

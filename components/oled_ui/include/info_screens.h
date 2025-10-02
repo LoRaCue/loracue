@@ -18,3 +18,8 @@ void device_info_screen_draw(const ui_status_t* status);
  * @param status Current UI status data
  */
 void battery_status_screen_draw(const ui_status_t* status);
+
+/**
+ * @brief Draw LoRa statistics screen
+ */
+void lora_stats_screen_draw(void);

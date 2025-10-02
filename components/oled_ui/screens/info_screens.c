@@ -4,6 +4,7 @@
 #include "ui_icons.h"
 #include "device_mode_screen.h"
 #include "lora_driver.h"
+#include "lora_protocol.h"
 #include "version.h"
 #include "esp_mac.h"
 #include "esp_system.h"
@@ -211,6 +212,43 @@ void battery_status_screen_draw(const ui_status_t* status) {
         u8g2_DrawStr(&u8g2, 2, 40, "Status: Unknown");
         u8g2_DrawStr(&u8g2, 2, 50, "Health: --");
     }
+    
+    draw_info_footer();
+    
+    u8g2_SendBuffer(&u8g2);
+}
+
+void lora_stats_screen_draw(void) {
+    u8g2_ClearBuffer(&u8g2);
+    
+    draw_info_header("LORA STATS");
+    
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+    
+    // Get connection statistics
+    lora_connection_stats_t stats;
+    lora_protocol_get_stats(&stats);
+    
+    // Packets sent/received
+    char line1[32];
+    snprintf(line1, sizeof(line1), "TX: %lu  RX: %lu", stats.packets_sent, stats.packets_received);
+    u8g2_DrawStr(&u8g2, 2, 20, line1);
+    
+    // ACKs and retransmissions
+    char line2[32];
+    snprintf(line2, sizeof(line2), "ACK: %lu  Retry: %lu", stats.acks_received, stats.retransmissions);
+    u8g2_DrawStr(&u8g2, 2, 30, line2);
+    
+    // Packet loss rate
+    char line3[32];
+    snprintf(line3, sizeof(line3), "Loss: %.1f%%", stats.packet_loss_rate);
+    u8g2_DrawStr(&u8g2, 2, 40, line3);
+    
+    // Current RSSI
+    int16_t rssi = lora_protocol_get_last_rssi();
+    char line4[32];
+    snprintf(line4, sizeof(line4), "RSSI: %d dBm", rssi);
+    u8g2_DrawStr(&u8g2, 2, 50, line4);
     
     draw_info_footer();
     
