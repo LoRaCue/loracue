@@ -14,6 +14,7 @@
 #include "esp_log.h"
 #include "esp_random.h"
 #include "esp_mac.h"
+#include "esp_ota_ops.h"
 #include "nvs_flash.h"
 #include "version.h"
 #include "bsp.h"
@@ -109,6 +110,16 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
+    
+    // OTA rollback validation
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    esp_ota_img_states_t ota_state;
+    if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
+        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+            ESP_LOGW(TAG, "New firmware pending validation, will mark valid after successful init");
+        }
+    }
+    ESP_LOGI(TAG, "Running partition: %s (offset 0x%lx)", running->label, running->address);
     
     // Initialize power management first
     ESP_LOGI(TAG, "Initializing power management...");
@@ -265,6 +276,14 @@ void app_main(void)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start LoRa communication: %s", esp_err_to_name(ret));
         return;
+    }
+    
+    // Mark OTA as valid after successful initialization
+    if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK) {
+        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+            ESP_LOGI(TAG, "Marking new firmware as valid");
+            esp_ota_mark_app_valid_cancel_rollback();
+        }
     }
     
     // Main status update loop
