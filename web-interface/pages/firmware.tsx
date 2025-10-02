@@ -28,42 +28,59 @@ export default function FirmwarePage() {
     setProgress(0)
     setStatus('idle')
 
-    const formData = new FormData()
-    formData.append('firmware', file)
+    const CHUNK_SIZE = 8192 // 8KB chunks
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+    let uploadedChunks = 0
 
     try {
-      const xhr = new XMLHttpRequest()
+      // Upload file in chunks
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE
+        const end = Math.min(start + CHUNK_SIZE, file.size)
+        const chunk = file.slice(start, end)
+        
+        const formData = new FormData()
+        formData.append('chunk', chunk)
+        formData.append('chunkIndex', i.toString())
+        formData.append('totalChunks', totalChunks.toString())
+        
+        const response = await fetch('/api/firmware/chunk', {
+          method: 'POST',
+          body: formData
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Chunk ${i} upload failed`)
+        }
+        
+        uploadedChunks++
+        setProgress(Math.round((uploadedChunks / totalChunks) * 90)) // Reserve 10% for commit
+      }
+
+      // Commit the upload
+      const commitResponse = await fetch('/api/firmware/commit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          totalSize: file.size,
+          filename: file.name 
+        })
+      })
+
+      if (!commitResponse.ok) {
+        throw new Error('Failed to commit firmware upload')
+      }
+
+      setProgress(100)
+      setStatus('success')
+      setMessage('Firmware uploaded successfully! Device will reboot.')
+      setFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
       
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          setProgress(Math.round((e.loaded / e.total) * 100))
-        }
-      }
-
-      xhr.onload = () => {
-        if (xhr.status === 200) {
-          setStatus('success')
-          setMessage('Firmware uploaded successfully! Device will reboot.')
-          setFile(null)
-          if (fileInputRef.current) fileInputRef.current.value = ''
-        } else {
-          setStatus('error')
-          setMessage('Upload failed. Please try again.')
-        }
-        setUploading(false)
-      }
-
-      xhr.onerror = () => {
-        setStatus('error')
-        setMessage('Upload failed. Please check your connection.')
-        setUploading(false)
-      }
-
-      xhr.open('POST', '/api/firmware/upload')
-      xhr.send(formData)
     } catch (error) {
       setStatus('error')
-      setMessage('Upload failed. Please try again.')
+      setMessage(`Upload failed: ${error.message}`)
+    } finally {
       setUploading(false)
     }
   }

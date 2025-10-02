@@ -8,6 +8,8 @@
 #include "esp_crc.h"
 #include "esp_spiffs.h"
 #include "esp_ota_ops.h"
+#include "esp_partition.h"
+#include "esp_app_format.h"
 #include "cJSON.h"
 #include <string.h>
 #include <sys/stat.h>
@@ -17,6 +19,12 @@ static const char* TAG = "CONFIG_WIFI_SERVER";
 static httpd_handle_t server = NULL;
 static esp_netif_t* ap_netif = NULL;
 static bool server_running = false;
+
+// OTA update state
+static esp_ota_handle_t ota_handle = 0;
+static const esp_partition_t *ota_partition = NULL;
+static size_t ota_received_bytes = 0;
+static size_t ota_total_size = 0;
 
 // Device settings
 typedef struct {
@@ -199,61 +207,175 @@ static esp_err_t lora_settings_post_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static esp_err_t firmware_upload_handler(httpd_req_t *req) {
-    esp_ota_handle_t ota_handle = 0;
-    const esp_partition_t *ota_partition = esp_ota_get_next_update_partition(NULL);
+static esp_err_t firmware_start_handler(httpd_req_t *req) {
+    char content[512];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
     
+    cJSON *json = cJSON_Parse(content);
+    if (!json) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+    
+    cJSON *size = cJSON_GetObjectItem(json, "size");
+    if (!cJSON_IsNumber(size)) {
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing size parameter");
+        return ESP_FAIL;
+    }
+    
+    // Clean up any existing OTA session
+    if (ota_handle) {
+        esp_ota_abort(ota_handle);
+        ota_handle = 0;
+    }
+    
+    ota_total_size = size->valueint;
+    ota_received_bytes = 0;
+    
+    // Get next OTA partition
+    ota_partition = esp_ota_get_next_update_partition(NULL);
     if (!ota_partition) {
+        cJSON_Delete(json);
         httpd_resp_send_500(req);
         return ESP_FAIL;
     }
     
-    esp_err_t err = esp_ota_begin(ota_partition, OTA_SIZE_UNKNOWN, &ota_handle);
+    // Begin OTA update
+    esp_err_t err = esp_ota_begin(ota_partition, ota_total_size, &ota_handle);
+    if (err != ESP_OK) {
+        cJSON_Delete(json);
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
+    cJSON_Delete(json);
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Ready for firmware data\"}", 50);
+    
+    return ESP_OK;
+}
+
+static esp_err_t firmware_data_handler(httpd_req_t *req) {
+    if (!ota_handle) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No active OTA session");
+        return ESP_FAIL;
+    }
+    
+    char content[2048];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+    
+    // Parse hex data from JSON
+    cJSON *json = cJSON_Parse(content);
+    if (!json) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+    
+    cJSON *data_item = cJSON_GetObjectItem(json, "data");
+    if (!cJSON_IsString(data_item)) {
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing data parameter");
+        return ESP_FAIL;
+    }
+    
+    const char *hex_data = data_item->valuestring;
+    size_t hex_len = strlen(hex_data);
+    
+    if (hex_len % 2 != 0) {
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid hex data length");
+        return ESP_FAIL;
+    }
+    
+    size_t data_len = hex_len / 2;
+    uint8_t *binary_data = malloc(data_len);
+    if (!binary_data) {
+        cJSON_Delete(json);
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
+    // Convert hex to binary
+    for (size_t i = 0; i < data_len; i++) {
+        if (sscanf(hex_data + i * 2, "%02hhx", &binary_data[i]) != 1) {
+            free(binary_data);
+            cJSON_Delete(json);
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid hex data");
+            return ESP_FAIL;
+        }
+    }
+    
+    esp_err_t err = esp_ota_write(ota_handle, binary_data, data_len);
+    free(binary_data);
+    cJSON_Delete(json);
+    
     if (err != ESP_OK) {
         httpd_resp_send_500(req);
         return ESP_FAIL;
     }
     
-    char buffer[1024];
-    int received = 0;
-    int remaining = req->content_len;
+    ota_received_bytes += data_len;
     
-    while (remaining > 0) {
-        int recv_len = httpd_req_recv(req, buffer, (remaining < sizeof(buffer)) ? remaining : sizeof(buffer));
-        if (recv_len <= 0) {
-            esp_ota_abort(ota_handle);
-            httpd_resp_send_500(req);
-            return ESP_FAIL;
-        }
-        
-        err = esp_ota_write(ota_handle, buffer, recv_len);
-        if (err != ESP_OK) {
-            esp_ota_abort(ota_handle);
-            httpd_resp_send_500(req);
-            return ESP_FAIL;
-        }
-        
-        received += recv_len;
-        remaining -= recv_len;
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Data written\"}", 40);
+    
+    return ESP_OK;
+}
+
+static esp_err_t firmware_verify_handler(httpd_req_t *req) {
+    if (!ota_handle) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No active OTA session");
+        return ESP_FAIL;
     }
     
-    err = esp_ota_end(ota_handle);
+    esp_err_t err = esp_ota_end(ota_handle);
     if (err != ESP_OK) {
+        ota_handle = 0;
         httpd_resp_send_500(req);
         return ESP_FAIL;
     }
     
-    err = esp_ota_set_boot_partition(ota_partition);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Firmware verified\"}", 47);
+    
+    return ESP_OK;
+}
+
+static esp_err_t firmware_commit_handler(httpd_req_t *req) {
+    if (!ota_partition) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No OTA partition to commit");
+        return ESP_FAIL;
+    }
+    
+    esp_err_t err = esp_ota_set_boot_partition(ota_partition);
     if (err != ESP_OK) {
         httpd_resp_send_500(req);
         return ESP_FAIL;
     }
     
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Firmware uploaded successfully\"}", 58);
+    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Firmware committed - rebooting\"}", 60);
+    
+    // Clean up
+    ota_handle = 0;
+    ota_partition = NULL;
+    ota_received_bytes = 0;
+    ota_total_size = 0;
     
     // Restart after a short delay
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(2000));
     esp_restart();
     
     return ESP_OK;
@@ -332,8 +454,18 @@ esp_err_t config_wifi_server_start(void) {
         httpd_uri_t lora_post_uri = { .uri = "/api/lora/settings", .method = HTTP_POST, .handler = lora_settings_post_handler };
         httpd_register_uri_handler(server, &lora_post_uri);
         
-        httpd_uri_t firmware_uri = { .uri = "/api/firmware/upload", .method = HTTP_POST, .handler = firmware_upload_handler };
-        httpd_register_uri_handler(server, &firmware_uri);
+        // Firmware update API endpoints
+        httpd_uri_t fw_start_uri = { .uri = "/api/firmware/start", .method = HTTP_POST, .handler = firmware_start_handler };
+        httpd_register_uri_handler(server, &fw_start_uri);
+        
+        httpd_uri_t fw_data_uri = { .uri = "/api/firmware/data", .method = HTTP_POST, .handler = firmware_data_handler };
+        httpd_register_uri_handler(server, &fw_data_uri);
+        
+        httpd_uri_t fw_verify_uri = { .uri = "/api/firmware/verify", .method = HTTP_POST, .handler = firmware_verify_handler };
+        httpd_register_uri_handler(server, &fw_verify_uri);
+        
+        httpd_uri_t fw_commit_uri = { .uri = "/api/firmware/commit", .method = HTTP_POST, .handler = firmware_commit_handler };
+        httpd_register_uri_handler(server, &fw_commit_uri);
         
         server_running = true;
         ESP_LOGI(TAG, "WiFi AP started: %s / %s", ssid, password);
