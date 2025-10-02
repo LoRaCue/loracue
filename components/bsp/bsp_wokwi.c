@@ -8,8 +8,12 @@
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "u8g2.h"
 
 static const char *TAG = "BSP_WOKWI";
+
+// Global u8g2 instance
+u8g2_t u8g2;
 
 // GPIO pin definitions for Wokwi
 #define BUTTON_PREV_PIN        GPIO_NUM_46
