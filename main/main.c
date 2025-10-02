@@ -258,6 +258,13 @@ void app_main(void)
         return;
     }
     
+    // Apply brightness from config
+    device_config_t config;
+    device_config_get(&config);
+    extern u8g2_t u8g2;
+    u8g2_SetContrast(&u8g2, config.display_brightness);
+    ESP_LOGI(TAG, "OLED brightness set to %d", config.display_brightness);
+    
     // Show boot logo
     oled_ui_set_screen(OLED_SCREEN_BOOT);
     vTaskDelay(pdMS_TO_TICKS(2000));
@@ -293,8 +300,7 @@ void app_main(void)
         return;
     }
     
-    // Get device mode from NVS
-    device_config_t config;
+    // Get device mode from NVS (reuse config from brightness setting)
     device_config_get(&config);
     current_device_mode = config.device_mode;
     
