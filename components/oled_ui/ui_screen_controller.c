@@ -10,6 +10,7 @@
 #include "device_registry_screen.h"
 #include "brightness_screen.h"
 #include "config_mode_screen.h"
+#include "factory_reset_screen.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -68,6 +69,10 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
             
         case OLED_SCREEN_SYSTEM_INFO:
             system_info_screen_draw();
+            break;
+            
+        case OLED_SCREEN_FACTORY_RESET:
+            factory_reset_screen_draw();
             break;
             
         case OLED_SCREEN_DEVICE_INFO:
@@ -200,6 +205,9 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                     case MENU_SYSTEM_INFO:
                         ui_screen_controller_set(OLED_SCREEN_SYSTEM_INFO, NULL);
                         break;
+                    case MENU_FACTORY_RESET:
+                        ui_screen_controller_set(OLED_SCREEN_FACTORY_RESET, NULL);
+                        break;
                     default:
                         ESP_LOGI(TAG, "Menu item %d not implemented yet", selected);
                         break;
@@ -210,9 +218,10 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
         case OLED_SCREEN_SYSTEM_INFO:
         case OLED_SCREEN_DEVICE_INFO:
         case OLED_SCREEN_BATTERY:
+        case OLED_SCREEN_FACTORY_RESET:
             if (button == OLED_BUTTON_PREV) {
                 // Back to menu
-                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+                factory_reset_screen_select();
             }
             break;
             

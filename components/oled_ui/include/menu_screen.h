@@ -14,7 +14,8 @@ typedef enum {
     MENU_BRIGHTNESS,
     MENU_CONFIG_MODE,
     MENU_DEVICE_INFO,
-    MENU_SYSTEM_INFO
+    MENU_SYSTEM_INFO,
+    MENU_FACTORY_RESET
 } menu_item_t;
 
 /**

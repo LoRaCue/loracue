@@ -35,6 +35,7 @@ typedef enum {
     OLED_SCREEN_CONFIG_ACTIVE,  ///< Config mode active
     OLED_SCREEN_DEVICE_INFO,    ///< Device information
     OLED_SCREEN_SYSTEM_INFO,    ///< System information
+    OLED_SCREEN_FACTORY_RESET,  ///< Factory reset
     OLED_SCREEN_LOW_BATTERY,    ///< Low battery warning
     OLED_SCREEN_CONNECTION_LOST ///< Connection lost
 } oled_screen_t;

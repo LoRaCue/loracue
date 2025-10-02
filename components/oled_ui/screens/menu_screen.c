@@ -14,7 +14,8 @@ static const char* menu_items[] = {
     "Display Brightness",
     "Configuration Mode",
     "Device Info",
-    "System Info"
+    "System Info",
+    "Factory Reset"
 };
 
 static const int menu_item_count = sizeof(menu_items) / sizeof(menu_items[0]);
