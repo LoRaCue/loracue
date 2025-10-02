@@ -155,6 +155,55 @@ static void handle_get_paired_devices(void)
     cJSON_Delete(devices_array);
 }
 
+static void handle_pair_device(cJSON *pair_json)
+{
+    cJSON *name = cJSON_GetObjectItem(pair_json, "name");
+    cJSON *mac = cJSON_GetObjectItem(pair_json, "mac");
+    cJSON *key = cJSON_GetObjectItem(pair_json, "key");
+    
+    if (!name || !mac || !key) {
+        send_response("ERROR Missing pairing parameters");
+        return;
+    }
+    
+    // Parse MAC address
+    uint8_t mac_bytes[6];
+    if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+               &mac_bytes[0], &mac_bytes[1], &mac_bytes[2],
+               &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
+        send_response("ERROR Invalid MAC address");
+        return;
+    }
+    
+    // Parse AES-256 key (64 hex chars = 32 bytes)
+    uint8_t aes_key[32];
+    const char *key_str = key->valuestring;
+    if (strlen(key_str) != 64) {
+        send_response("ERROR Invalid key length (expected 64 hex chars for AES-256)");
+        return;
+    }
+    
+    for (int i = 0; i < 32; i++) {
+        if (sscanf(key_str + i*2, "%02hhx", &aes_key[i]) != 1) {
+            send_response("ERROR Invalid key format");
+            return;
+        }
+    }
+    
+    // Generate device ID from MAC
+    uint16_t device_id = (mac_bytes[4] << 8) | mac_bytes[5];
+    
+    // Add to registry
+    esp_err_t ret = device_registry_add(device_id, name->valuestring, mac_bytes, aes_key);
+    if (ret != ESP_OK) {
+        send_response("ERROR Failed to add device");
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Device paired: 0x%04X (%s)", device_id, name->valuestring);
+    send_response("OK Device paired successfully");
+}
+
 static void handle_fw_update_start(cJSON *update_json)
 {
     cJSON *size = cJSON_GetObjectItem(update_json, "size");
@@ -316,6 +365,18 @@ static void process_command(const char *command_line)
     // Handle commands with parameters
     if (strncmp(command_line, "SET_DEVICE_NAME ", 16) == 0) {
         handle_set_device_name(command_line + 16);
+        return;
+    }
+    
+    // Handle JSON commands
+    if (strncmp(command_line, "PAIR_DEVICE ", 12) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 12);
+        if (json) {
+            handle_pair_device(json);
+            cJSON_Delete(json);
+        } else {
+            send_response("ERROR Invalid JSON");
+        }
         return;
     }
     
