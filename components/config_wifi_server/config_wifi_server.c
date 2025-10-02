@@ -10,6 +10,7 @@
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_app_format.h"
+#include "device_registry.h"
 #include "cJSON.h"
 #include <string.h>
 #include <sys/stat.h>
@@ -377,6 +378,119 @@ static esp_err_t firmware_commit_handler(httpd_req_t *req) {
     // Restart after a short delay
     vTaskDelay(pdMS_TO_TICKS(2000));
     esp_restart();
+}
+
+static esp_err_t devices_list_handler(httpd_req_t *req) {
+    cJSON *devices_array = cJSON_CreateArray();
+    
+    for (uint16_t i = 0; i < 0xFFFF; i++) {
+        paired_device_t device;
+        if (device_registry_get(i, &device) == ESP_OK) {
+            cJSON *device_obj = cJSON_CreateObject();
+            cJSON_AddNumberToObject(device_obj, "id", device.device_id);
+            cJSON_AddStringToObject(device_obj, "name", device.device_name);
+            
+            char mac_str[18];
+            snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
+                    device.mac_address[0], device.mac_address[1], device.mac_address[2],
+                    device.mac_address[3], device.mac_address[4], device.mac_address[5]);
+            cJSON_AddStringToObject(device_obj, "mac", mac_str);
+            cJSON_AddBoolToObject(device_obj, "active", device.is_active);
+            
+            cJSON_AddItemToArray(devices_array, device_obj);
+        }
+    }
+    
+    char *json_string = cJSON_Print(devices_array);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json_string, strlen(json_string));
+    free(json_string);
+    cJSON_Delete(devices_array);
+    return ESP_OK;
+}
+
+static esp_err_t devices_add_handler(httpd_req_t *req) {
+    char content[512];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+    
+    cJSON *json = cJSON_Parse(content);
+    if (!json) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+    
+    cJSON *name = cJSON_GetObjectItem(json, "name");
+    cJSON *mac = cJSON_GetObjectItem(json, "mac");
+    cJSON *key = cJSON_GetObjectItem(json, "key");
+    
+    if (!name || !mac || !key) {
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing parameters");
+        return ESP_FAIL;
+    }
+    
+    uint8_t mac_bytes[6];
+    if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+               &mac_bytes[0], &mac_bytes[1], &mac_bytes[2],
+               &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid MAC");
+        return ESP_FAIL;
+    }
+    
+    uint8_t aes_key[32];
+    const char *key_str = key->valuestring;
+    if (strlen(key_str) != 64) {
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid key length");
+        return ESP_FAIL;
+    }
+    
+    for (int i = 0; i < 32; i++) {
+        if (sscanf(key_str + i*2, "%02hhx", &aes_key[i]) != 1) {
+            cJSON_Delete(json);
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid key format");
+            return ESP_FAIL;
+        }
+    }
+    
+    uint16_t device_id = (mac_bytes[4] << 8) | mac_bytes[5];
+    esp_err_t err = device_registry_add(device_id, name->valuestring, mac_bytes, aes_key);
+    cJSON_Delete(json);
+    
+    if (err != ESP_OK) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\"}", 16);
+    return ESP_OK;
+}
+
+static esp_err_t devices_delete_handler(httpd_req_t *req) {
+    char *id_str = strrchr(req->uri, '/');
+    if (!id_str) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing device ID");
+        return ESP_FAIL;
+    }
+    
+    uint16_t device_id = (uint16_t)strtol(id_str + 1, NULL, 10);
+    esp_err_t err = device_registry_remove(device_id);
+    
+    if (err != ESP_OK) {
+        httpd_resp_send_404(req);
+        return ESP_FAIL;
+    }
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\"}", 16);
+    return ESP_OK;
     
     return ESP_OK;
 }
@@ -466,6 +580,16 @@ esp_err_t config_wifi_server_start(void) {
         
         httpd_uri_t fw_commit_uri = { .uri = "/api/firmware/commit", .method = HTTP_POST, .handler = firmware_commit_handler };
         httpd_register_uri_handler(server, &fw_commit_uri);
+        
+        // Device registry API endpoints
+        httpd_uri_t devices_list_uri = { .uri = "/api/devices", .method = HTTP_GET, .handler = devices_list_handler };
+        httpd_register_uri_handler(server, &devices_list_uri);
+        
+        httpd_uri_t devices_add_uri = { .uri = "/api/devices", .method = HTTP_POST, .handler = devices_add_handler };
+        httpd_register_uri_handler(server, &devices_add_uri);
+        
+        httpd_uri_t devices_delete_uri = { .uri = "/api/devices/*", .method = HTTP_DELETE, .handler = devices_delete_handler };
+        httpd_register_uri_handler(server, &devices_delete_uri);
         
         server_running = true;
         ESP_LOGI(TAG, "WiFi AP started: %s / %s", ssid, password);
