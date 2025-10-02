@@ -194,13 +194,13 @@ void app_main(void)
     }
     ESP_LOGI(TAG, "Running partition: %s (offset 0x%lx)", running_partition->label, running_partition->address);
     
-    // Initialize watchdog (90s timeout for init + 60s validation)
+    // Reconfigure watchdog (90s timeout for init + 60s validation)
     esp_task_wdt_config_t wdt_config = {
         .timeout_ms = 90000,
         .idle_core_mask = 0,
         .trigger_panic = true
     };
-    ESP_ERROR_CHECK(esp_task_wdt_init(&wdt_config));
+    ESP_ERROR_CHECK(esp_task_wdt_reconfigure(&wdt_config));
     ESP_ERROR_CHECK(esp_task_wdt_add(NULL));
     
     // Initialize device configuration
