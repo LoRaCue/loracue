@@ -79,6 +79,9 @@ void brightness_screen_navigate(menu_direction_t direction) {
         if (brightness_value >= 5) brightness_value -= 5;
         else brightness_value = 0;
     }
+    
+    extern u8g2_t u8g2;
+    u8g2_SetContrast(&u8g2, brightness_value);
 }
 
 void brightness_screen_select(void) {

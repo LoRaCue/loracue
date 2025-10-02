@@ -73,6 +73,31 @@ static void handle_set_device_name(const char *name)
     }
 }
 
+static void handle_set_brightness(const char *value_str)
+{
+    int brightness = atoi(value_str);
+    if (brightness < 0 || brightness > 255) {
+        send_response("ERROR Brightness must be 0-255");
+        return;
+    }
+    
+    device_config_t config;
+    device_config_get(&config);
+    config.display_brightness = (uint8_t)brightness;
+    
+    esp_err_t ret = device_config_set(&config);
+    if (ret != ESP_OK) {
+        send_response("ERROR Failed to save brightness");
+        return;
+    }
+    
+    // Apply immediately
+    extern u8g2_t u8g2;
+    u8g2_SetContrast(&u8g2, config.display_brightness);
+    
+    send_response("OK Brightness updated");
+}
+
 static void handle_get_lora_config(void)
 {
     lora_config_t config;
@@ -365,6 +390,10 @@ static void process_command(const char *command_line)
     // Handle commands with parameters
     if (strncmp(command_line, "SET_DEVICE_NAME ", 16) == 0) {
         handle_set_device_name(command_line + 16);
+        return;
+    }
+    if (strncmp(command_line, "SET_BRIGHTNESS ", 15) == 0) {
+        handle_set_brightness(command_line + 15);
         return;
     }
     
