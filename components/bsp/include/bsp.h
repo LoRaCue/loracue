@@ -22,6 +22,9 @@ extern "C" {
 typedef enum {
     BSP_BUTTON_PREV = 0,    ///< Previous/Back button
     BSP_BUTTON_NEXT = 1,    ///< Next/Forward button
+#ifdef SIMULATOR_BUILD
+    BSP_BUTTON_BOTH = 2,    ///< Both buttons (Wokwi simulation only)
+#endif
 } bsp_button_t;
 
 /**
@@ -159,6 +162,14 @@ esp_err_t bsp_sx1262_reset(void);
  * @return ESP_OK if hardware validation passes, ESP_FAIL otherwise
  */
 esp_err_t bsp_validate_hardware(void);
+
+/**
+ * @brief Initialize u8g2 graphics library with BSP HAL callbacks
+ * 
+ * @param u8g2 Pointer to u8g2 structure to initialize
+ * @return ESP_OK on success, error code otherwise
+ */
+esp_err_t bsp_u8g2_init(void *u8g2);
 
 #ifdef __cplusplus
 }

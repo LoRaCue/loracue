@@ -1,0 +1,517 @@
+#include "config_wifi_server.h"
+#include "esp_wifi.h"
+#include "esp_netif.h"
+#include "esp_http_server.h"
+#include "esp_event.h"
+#include "esp_log.h"
+#include "esp_mac.h"
+#include "esp_crc.h"
+#include "esp_spiffs.h"
+#include "esp_ota_ops.h"
+#include "esp_partition.h"
+#include "esp_app_format.h"
+#include "cJSON.h"
+#include <string.h>
+#include <sys/stat.h>
+
+static const char* TAG = "CONFIG_WIFI_SERVER";
+
+static httpd_handle_t server = NULL;
+static esp_netif_t* ap_netif = NULL;
+static bool server_running = false;
+
+// OTA update state
+static esp_ota_handle_t ota_handle = 0;
+static const esp_partition_t *ota_partition = NULL;
+static size_t ota_received_bytes = 0;
+static size_t ota_total_size = 0;
+
+// Device settings
+typedef struct {
+    char name[32];
+    char mode[16];
+} device_settings_t;
+
+typedef struct {
+    uint32_t frequency;
+    uint8_t spreading_factor;
+    uint32_t bandwidth;
+    uint8_t coding_rate;
+    uint8_t tx_power;
+    uint8_t sync_word;
+} lora_settings_t;
+
+static device_settings_t device_settings = {"LoRaCue", "presenter"};
+static lora_settings_t lora_settings = {868000000, 7, 500000, 5, 14, 0x12};
+
+// Generate WiFi credentials from MAC address
+static void generate_wifi_credentials(char* ssid, size_t ssid_len, char* password, size_t pass_len) {
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    
+    // Generate SSID: LoRaCue-XXXX
+    snprintf(ssid, ssid_len, "LoRaCue-%02X%02X", mac[4], mac[5]);
+    
+    // Generate password from MAC CRC32
+    uint32_t crc = esp_crc32_le(0, mac, 6);
+    const char* charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    for (int i = 0; i < 8; i++) {
+        password[i] = charset[crc % 62];
+        crc /= 62;
+    }
+    password[8] = '\0';
+}
+
+// Serve static files from SPIFFS
+static esp_err_t serve_static_file(httpd_req_t *req, const char* filepath) {
+    FILE* file = fopen(filepath, "r");
+    if (!file) {
+        httpd_resp_send_404(req);
+        return ESP_FAIL;
+    }
+    
+    // Set content type based on file extension
+    const char* ext = strrchr(filepath, '.');
+    if (ext) {
+        if (strcmp(ext, ".html") == 0) httpd_resp_set_type(req, "text/html");
+        else if (strcmp(ext, ".css") == 0) httpd_resp_set_type(req, "text/css");
+        else if (strcmp(ext, ".js") == 0) httpd_resp_set_type(req, "application/javascript");
+        else if (strcmp(ext, ".json") == 0) httpd_resp_set_type(req, "application/json");
+    }
+    
+    char buffer[1024];
+    size_t read_bytes;
+    while ((read_bytes = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        httpd_resp_send_chunk(req, buffer, read_bytes);
+    }
+    httpd_resp_send_chunk(req, NULL, 0);
+    fclose(file);
+    return ESP_OK;
+}
+
+// HTTP handlers
+static esp_err_t root_handler(httpd_req_t *req) {
+    return serve_static_file(req, "/spiffs/index.html");
+}
+
+static esp_err_t static_handler(httpd_req_t *req) {
+    char filepath[512];
+    if (strlen(req->uri) > 500) {
+        httpd_resp_send_404(req);
+        return ESP_FAIL;
+    }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+    snprintf(filepath, sizeof(filepath), "/spiffs%s", req->uri);
+#pragma GCC diagnostic pop
+    return serve_static_file(req, filepath);
+}
+
+static esp_err_t device_settings_get_handler(httpd_req_t *req) {
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "name", device_settings.name);
+    cJSON_AddStringToObject(json, "mode", device_settings.mode);
+    
+    char *json_string = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json_string, strlen(json_string));
+    
+    free(json_string);
+    cJSON_Delete(json);
+    return ESP_OK;
+}
+
+static esp_err_t device_settings_post_handler(httpd_req_t *req) {
+    char content[256];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+    
+    cJSON *json = cJSON_Parse(content);
+    if (!json) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+    
+    cJSON *name = cJSON_GetObjectItem(json, "name");
+    cJSON *mode = cJSON_GetObjectItem(json, "mode");
+    
+    if (name && cJSON_IsString(name)) {
+        strncpy(device_settings.name, name->valuestring, sizeof(device_settings.name) - 1);
+    }
+    if (mode && cJSON_IsString(mode)) {
+        strncpy(device_settings.mode, mode->valuestring, sizeof(device_settings.mode) - 1);
+    }
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\"}", 15);
+    
+    cJSON_Delete(json);
+    return ESP_OK;
+}
+
+static esp_err_t lora_settings_get_handler(httpd_req_t *req) {
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json, "frequency", lora_settings.frequency);
+    cJSON_AddNumberToObject(json, "spreadingFactor", lora_settings.spreading_factor);
+    cJSON_AddNumberToObject(json, "bandwidth", lora_settings.bandwidth);
+    cJSON_AddNumberToObject(json, "codingRate", lora_settings.coding_rate);
+    cJSON_AddNumberToObject(json, "txPower", lora_settings.tx_power);
+    cJSON_AddNumberToObject(json, "syncWord", lora_settings.sync_word);
+    
+    char *json_string = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, json_string, strlen(json_string));
+    
+    free(json_string);
+    cJSON_Delete(json);
+    return ESP_OK;
+}
+
+static esp_err_t lora_settings_post_handler(httpd_req_t *req) {
+    char content[512];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+    
+    cJSON *json = cJSON_Parse(content);
+    if (!json) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+    
+    cJSON *freq = cJSON_GetObjectItem(json, "frequency");
+    cJSON *sf = cJSON_GetObjectItem(json, "spreadingFactor");
+    cJSON *bw = cJSON_GetObjectItem(json, "bandwidth");
+    cJSON *cr = cJSON_GetObjectItem(json, "codingRate");
+    cJSON *power = cJSON_GetObjectItem(json, "txPower");
+    cJSON *sync = cJSON_GetObjectItem(json, "syncWord");
+    
+    if (freq && cJSON_IsNumber(freq)) lora_settings.frequency = freq->valueint;
+    if (sf && cJSON_IsNumber(sf)) lora_settings.spreading_factor = sf->valueint;
+    if (bw && cJSON_IsNumber(bw)) lora_settings.bandwidth = bw->valueint;
+    if (cr && cJSON_IsNumber(cr)) lora_settings.coding_rate = cr->valueint;
+    if (power && cJSON_IsNumber(power)) lora_settings.tx_power = power->valueint;
+    if (sync && cJSON_IsNumber(sync)) lora_settings.sync_word = sync->valueint;
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\"}", 15);
+    
+    cJSON_Delete(json);
+    return ESP_OK;
+}
+
+static esp_err_t firmware_start_handler(httpd_req_t *req) {
+    char content[512];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+    
+    cJSON *json = cJSON_Parse(content);
+    if (!json) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+    
+    cJSON *size = cJSON_GetObjectItem(json, "size");
+    if (!cJSON_IsNumber(size)) {
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing size parameter");
+        return ESP_FAIL;
+    }
+    
+    // Clean up any existing OTA session
+    if (ota_handle) {
+        esp_ota_abort(ota_handle);
+        ota_handle = 0;
+    }
+    
+    ota_total_size = size->valueint;
+    ota_received_bytes = 0;
+    
+    // Get next OTA partition
+    ota_partition = esp_ota_get_next_update_partition(NULL);
+    if (!ota_partition) {
+        cJSON_Delete(json);
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
+    // Begin OTA update
+    esp_err_t err = esp_ota_begin(ota_partition, ota_total_size, &ota_handle);
+    if (err != ESP_OK) {
+        cJSON_Delete(json);
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
+    cJSON_Delete(json);
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Ready for firmware data\"}", 50);
+    
+    return ESP_OK;
+}
+
+static esp_err_t firmware_data_handler(httpd_req_t *req) {
+    if (!ota_handle) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No active OTA session");
+        return ESP_FAIL;
+    }
+    
+    char content[2048];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+    
+    // Parse hex data from JSON
+    cJSON *json = cJSON_Parse(content);
+    if (!json) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+    
+    cJSON *data_item = cJSON_GetObjectItem(json, "data");
+    if (!cJSON_IsString(data_item)) {
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing data parameter");
+        return ESP_FAIL;
+    }
+    
+    const char *hex_data = data_item->valuestring;
+    size_t hex_len = strlen(hex_data);
+    
+    if (hex_len % 2 != 0) {
+        cJSON_Delete(json);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid hex data length");
+        return ESP_FAIL;
+    }
+    
+    size_t data_len = hex_len / 2;
+    uint8_t *binary_data = malloc(data_len);
+    if (!binary_data) {
+        cJSON_Delete(json);
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
+    // Convert hex to binary
+    for (size_t i = 0; i < data_len; i++) {
+        if (sscanf(hex_data + i * 2, "%02hhx", &binary_data[i]) != 1) {
+            free(binary_data);
+            cJSON_Delete(json);
+            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid hex data");
+            return ESP_FAIL;
+        }
+    }
+    
+    esp_err_t err = esp_ota_write(ota_handle, binary_data, data_len);
+    free(binary_data);
+    cJSON_Delete(json);
+    
+    if (err != ESP_OK) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
+    ota_received_bytes += data_len;
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Data written\"}", 40);
+    
+    return ESP_OK;
+}
+
+static esp_err_t firmware_verify_handler(httpd_req_t *req) {
+    if (!ota_handle) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No active OTA session");
+        return ESP_FAIL;
+    }
+    
+    esp_err_t err = esp_ota_end(ota_handle);
+    if (err != ESP_OK) {
+        ota_handle = 0;
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Firmware verified\"}", 47);
+    
+    return ESP_OK;
+}
+
+static esp_err_t firmware_commit_handler(httpd_req_t *req) {
+    if (!ota_partition) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No OTA partition to commit");
+        return ESP_FAIL;
+    }
+    
+    esp_err_t err = esp_ota_set_boot_partition(ota_partition);
+    if (err != ESP_OK) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Firmware committed - rebooting\"}", 60);
+    
+    // Clean up
+    ota_handle = 0;
+    ota_partition = NULL;
+    ota_received_bytes = 0;
+    ota_total_size = 0;
+    
+    // Restart after a short delay
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    esp_restart();
+    
+    return ESP_OK;
+}
+
+esp_err_t config_wifi_server_start(void) {
+    if (server_running) {
+        return ESP_OK;
+    }
+    
+    ESP_LOGI(TAG, "Starting WiFi AP and web server");
+    
+    // Initialize SPIFFS
+    esp_vfs_spiffs_conf_t spiffs_conf = {
+        .base_path = "/spiffs",
+        .partition_label = NULL,
+        .max_files = 10,
+        .format_if_mount_failed = true
+    };
+    esp_vfs_spiffs_register(&spiffs_conf);
+    
+    // Initialize WiFi
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    
+    ap_netif = esp_netif_create_default_wifi_ap();
+    
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    
+    // Generate credentials
+    char ssid[32];
+    char password[16];
+    generate_wifi_credentials(ssid, sizeof(ssid), password, sizeof(password));
+    
+    // Configure AP
+    wifi_config_t wifi_config = {
+        .ap = {
+            .channel = 1,
+            .max_connection = 4,
+            .authmode = WIFI_AUTH_WPA_WPA2_PSK
+        },
+    };
+    
+    strncpy((char*)wifi_config.ap.ssid, ssid, sizeof(wifi_config.ap.ssid));
+    strncpy((char*)wifi_config.ap.password, password, sizeof(wifi_config.ap.password));
+    wifi_config.ap.ssid_len = strlen(ssid);
+    
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
+    ESP_ERROR_CHECK(esp_wifi_start());
+    
+    // Start HTTP server
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.server_port = 80;
+    config.max_uri_handlers = 16;
+    
+    if (httpd_start(&server, &config) == ESP_OK) {
+        // Static file handlers
+        httpd_uri_t root_uri = { .uri = "/", .method = HTTP_GET, .handler = root_handler };
+        httpd_register_uri_handler(server, &root_uri);
+        
+        httpd_uri_t static_uri = { .uri = "/*", .method = HTTP_GET, .handler = static_handler };
+        httpd_register_uri_handler(server, &static_uri);
+        
+        // API handlers
+        httpd_uri_t device_get_uri = { .uri = "/api/device/settings", .method = HTTP_GET, .handler = device_settings_get_handler };
+        httpd_register_uri_handler(server, &device_get_uri);
+        
+        httpd_uri_t device_post_uri = { .uri = "/api/device/settings", .method = HTTP_POST, .handler = device_settings_post_handler };
+        httpd_register_uri_handler(server, &device_post_uri);
+        
+        httpd_uri_t lora_get_uri = { .uri = "/api/lora/settings", .method = HTTP_GET, .handler = lora_settings_get_handler };
+        httpd_register_uri_handler(server, &lora_get_uri);
+        
+        httpd_uri_t lora_post_uri = { .uri = "/api/lora/settings", .method = HTTP_POST, .handler = lora_settings_post_handler };
+        httpd_register_uri_handler(server, &lora_post_uri);
+        
+        // Firmware update API endpoints
+        httpd_uri_t fw_start_uri = { .uri = "/api/firmware/start", .method = HTTP_POST, .handler = firmware_start_handler };
+        httpd_register_uri_handler(server, &fw_start_uri);
+        
+        httpd_uri_t fw_data_uri = { .uri = "/api/firmware/data", .method = HTTP_POST, .handler = firmware_data_handler };
+        httpd_register_uri_handler(server, &fw_data_uri);
+        
+        httpd_uri_t fw_verify_uri = { .uri = "/api/firmware/verify", .method = HTTP_POST, .handler = firmware_verify_handler };
+        httpd_register_uri_handler(server, &fw_verify_uri);
+        
+        httpd_uri_t fw_commit_uri = { .uri = "/api/firmware/commit", .method = HTTP_POST, .handler = firmware_commit_handler };
+        httpd_register_uri_handler(server, &fw_commit_uri);
+        
+        server_running = true;
+        ESP_LOGI(TAG, "WiFi AP started: %s / %s", ssid, password);
+        ESP_LOGI(TAG, "Web server started on http://192.168.4.1");
+    }
+    
+    return ESP_OK;
+}
+
+esp_err_t config_wifi_server_stop(void) {
+    if (!server_running) {
+        return ESP_OK;
+    }
+    
+    ESP_LOGI(TAG, "Stopping WiFi AP and web server");
+    
+    // Stop HTTP server
+    if (server) {
+        httpd_stop(server);
+        server = NULL;
+    }
+    
+    // Stop WiFi
+    esp_wifi_stop();
+    esp_wifi_deinit();
+    
+    if (ap_netif) {
+        esp_netif_destroy(ap_netif);
+        ap_netif = NULL;
+    }
+    
+    // Unmount SPIFFS
+    esp_vfs_spiffs_unregister(NULL);
+    
+#ifndef SIMULATOR_BUILD
+    // Only disable WiFi on real hardware for power saving
+    esp_event_loop_delete_default();
+    esp_netif_deinit();
+#endif
+    
+    server_running = false;
+    ESP_LOGI(TAG, "WiFi AP and web server stopped");
+    
+    return ESP_OK;
+}
+
+bool config_wifi_server_is_running(void) {
+    return server_running;
+}

@@ -1,60 +1,139 @@
 /**
  * @file usb_hid.c
- * @brief Minimal USB HID keyboard implementation
- * 
- * CONTEXT: Simplified implementation for Ticket 3.1 validation
- * PURPOSE: Basic USB HID keyboard functionality placeholder
+ * @brief USB composite device (HID + CDC) with LoRa integration
  */
 
 #include "usb_hid.h"
+#include "usb_cdc.h"
 #include "esp_log.h"
+#include "tinyusb.h"
+#include "tusb.h"
+#include "class/hid/hid_device.h"
+#include "class/cdc/cdc_device.h"
+#include "cJSON.h"
+#include "device_registry.h"
+#include "device_config.h"
+#include "button_manager.h"
 
-static const char *TAG = "USB_HID";
-static bool usb_initialized = false;
-static bool usb_connected = false;
+static const char *TAG = "USB_COMPOSITE";
 
-esp_err_t usb_hid_init(void)
+static void send_key(uint8_t keycode, uint8_t modifier)
 {
-    ESP_LOGI(TAG, "Initializing USB HID (placeholder implementation)");
-    
-    // Placeholder initialization
-    usb_initialized = true;
-    usb_connected = true; // Simulate connection for testing
-    
-    ESP_LOGI(TAG, "USB HID initialized successfully (placeholder)");
-    return ESP_OK;
-}
-
-esp_err_t usb_hid_send_key(usb_hid_keycode_t keycode)
-{
-    return usb_hid_send_key_with_modifier(keycode, 0);
-}
-
-esp_err_t usb_hid_send_key_with_modifier(usb_hid_keycode_t keycode, uint8_t modifier)
-{
-    if (!usb_initialized) {
-        ESP_LOGE(TAG, "USB HID not initialized");
-        return ESP_ERR_INVALID_STATE;
+    if (!tud_hid_ready()) {
+        ESP_LOGW(TAG, "HID not ready");
+        return;
     }
     
-    if (!usb_connected) {
-        ESP_LOGW(TAG, "USB not connected");
-        return ESP_ERR_NOT_FOUND;
+    uint8_t keycodes[6] = {0};
+    keycodes[0] = keycode;
+    
+    // Send key press
+    tud_hid_keyboard_report(0, modifier, keycodes);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    
+    // Send key release
+    tud_hid_keyboard_report(0, 0, NULL);
+    
+    ESP_LOGI(TAG, "Sent key: 0x%02X (modifier: 0x%02X)", keycode, modifier);
+}
+
+
+
+// Key mappings for different modes
+typedef struct {
+    uint8_t keycode;
+    uint8_t modifier;
+} key_mapping_t;
+
+// PC Mode key mappings
+static const key_mapping_t pc_mode_keys[] = {
+    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},       // Previous slide
+    [BUTTON_EVENT_PREV_LONG]  = {0x29, 0},                  // Escape key
+    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0},     // Next slide
+    [BUTTON_EVENT_NEXT_LONG]  = {HID_KEY_F5, 0},            // Start slideshow
+};
+
+// Presenter Mode key mappings
+static const key_mapping_t presenter_mode_keys[] = {
+    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},       // Previous slide
+    [BUTTON_EVENT_PREV_LONG]  = {HID_KEY_B, 0},             // Blank screen
+    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0},     // Next slide
+    [BUTTON_EVENT_NEXT_LONG]  = {0x2C, 0},                  // Space key
+};
+
+static void button_event_handler(button_event_type_t event, void* arg)
+{
+    device_config_t config;
+    device_config_get(&config);
+    const key_mapping_t* key_map = (config.device_mode == DEVICE_MODE_PC) ? pc_mode_keys : presenter_mode_keys;
+    
+    if (event >= sizeof(pc_mode_keys) / sizeof(key_mapping_t)) {
+        ESP_LOGW(TAG, "Invalid button event: %d", event);
+        return;
     }
     
-    ESP_LOGI(TAG, "📋 USB HID: Sending keycode 0x%02X (%s)", keycode, 
-             keycode == HID_KEY_PAGE_DOWN ? "Page Down" :
-             keycode == HID_KEY_PAGE_UP ? "Page Up" :
-             keycode == HID_KEY_B ? "B key" :
-             keycode == HID_KEY_F5 ? "F5" : "Unknown");
-    
-    // Placeholder - would send actual USB HID report
-    // For now, just log the action
-    
-    return ESP_OK;
+    key_mapping_t mapping = key_map[event];
+    send_key(mapping.keycode, mapping.modifier);
+}
+
+// TinyUSB CDC callbacks
+void tud_cdc_rx_cb(uint8_t itf)
+{
+    usb_cdc_process_commands();
+}
+
+// TinyUSB HID callbacks
+uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
+{
+    return 0;
+}
+
+void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
+{
+}
+
+// HID Report Descriptor for keyboard
+static const uint8_t hid_report_descriptor[] = {
+    TUD_HID_REPORT_DESC_KEYBOARD()
+};
+
+uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance)
+{
+    return hid_report_descriptor;
 }
 
 bool usb_hid_is_connected(void)
 {
-    return usb_connected;
+    return tud_hid_ready() && tud_cdc_connected();
+}
+
+esp_err_t usb_hid_send_key(usb_hid_keycode_t keycode)
+{
+    send_key(keycode, 0);
+    return ESP_OK;
+}
+
+esp_err_t usb_hid_init(void)
+{
+    ESP_LOGI(TAG, "Initializing USB composite device (HID + CDC)");
+    
+    tinyusb_config_t tusb_cfg = {
+        .port = TINYUSB_PORT_FULL_SPEED_0,
+        .phy = {.skip_setup = false, .self_powered = false},
+        .task = {.size = 4096, .priority = 5, .xCoreID = 0},
+        .descriptor = {0},
+        .event_cb = NULL,
+        .event_arg = NULL
+    };
+    
+    ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+    
+    // Initialize USB CDC protocol
+    ESP_ERROR_CHECK(usb_cdc_init());
+    
+    // Register button event handler
+    ESP_ERROR_CHECK(button_manager_register_callback(button_event_handler, NULL));
+    
+    ESP_LOGI(TAG, "USB composite device initialized");
+    return ESP_OK;
 }

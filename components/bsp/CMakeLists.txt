@@ -1,5 +1,5 @@
 # Conditional BSP compilation based on build target
-if(CMAKE_C_FLAGS MATCHES "SIMULATOR_BUILD=1")
+if(CMAKE_C_FLAGS MATCHES "SIMULATOR_BUILD" OR SIMULATOR_BUILD)
     set(BSP_SRCS "bsp_wokwi.c")
     message(STATUS "Building with Wokwi BSP (SSD1306)")
 else()
@@ -10,5 +10,5 @@ endif()
 idf_component_register(
     SRCS ${BSP_SRCS}
     INCLUDE_DIRS "include"
-    REQUIRES driver esp_adc esp_driver_spi esp_driver_i2c spi_flash
+    REQUIRES driver esp_adc esp_driver_spi esp_driver_i2c spi_flash u8g2 u8g2-hal-esp-idf
 )

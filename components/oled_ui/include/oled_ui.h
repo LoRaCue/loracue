@@ -1,114 +1,121 @@
 /**
  * @file oled_ui.h
- * @brief OLED User Interface with state machine and menu system
+ * @brief OLED User Interface using u8g2 graphics library
  * 
- * CONTEXT: Ticket 4.1 - OLED State Machine
- * PURPOSE: Two-button navigation with hierarchical menu system
- * HARDWARE: SH1106 OLED display via BSP I2C interface
+ * CONTEXT: LoRaCue enterprise presentation clicker OLED display
+ * HARDWARE: SH1106 (Heltec V3) / SSD1306 (Wokwi) 128x64 OLED
+ * PURPOSE: Rich graphics UI with icons, fonts, and animations
  */
 
 #pragma once
 
 #include "esp_err.h"
-#include <stdint.h>
+#include "u8g2.h"
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
- * @brief UI states for state machine
+ * @brief OLED UI screen types
  */
 typedef enum {
-    UI_STATE_MAIN,          ///< Main status screen
-    UI_STATE_MENU,          ///< Main menu
-    UI_STATE_WIRELESS,      ///< Wireless settings
-    UI_STATE_PAIRING,       ///< Pairing menu
-    UI_STATE_PAIRING_PIN,   ///< Pairing PIN display
-    UI_STATE_SYSTEM,        ///< System settings
-    UI_STATE_WEB_CONFIG,    ///< Web config display
-    UI_STATE_NAME_EDIT,     ///< Device name editor
-    UI_STATE_BOOT_LOGO,     ///< Boot logo display
-    UI_STATE_SCREENSAVER,   ///< Screensaver mode
-} ui_state_t;
+    OLED_SCREEN_BOOT,           ///< Boot/startup screen
+    OLED_SCREEN_MAIN,           ///< Main status screen
+    OLED_SCREEN_MENU,           ///< Settings menu
+    OLED_SCREEN_DEVICE_MODE,    ///< Device mode selection
+    OLED_SCREEN_BATTERY,        ///< Battery status
+    OLED_SCREEN_LORA_SETTINGS,  ///< LoRa configuration
+    OLED_SCREEN_DEVICE_PAIRING, ///< Device pairing
+    OLED_SCREEN_DEVICE_REGISTRY, ///< Device registry
+    OLED_SCREEN_CONFIG_MODE,    ///< Configuration mode
+    OLED_SCREEN_CONFIG_ACTIVE,  ///< Config mode active
+    OLED_SCREEN_DEVICE_INFO,    ///< Device information
+    OLED_SCREEN_SYSTEM_INFO,    ///< System information
+    OLED_SCREEN_LOW_BATTERY,    ///< Low battery warning
+    OLED_SCREEN_CONNECTION_LOST ///< Connection lost
+} oled_screen_t;
 
 /**
- * @brief Button events for UI navigation
+ * @brief Button types for navigation
  */
 typedef enum {
-    UI_EVENT_NONE,          ///< No event
-    UI_EVENT_PREV_SHORT,    ///< PREV button short press
-    UI_EVENT_PREV_LONG,     ///< PREV button long press (>1.5s)
-    UI_EVENT_NEXT_SHORT,    ///< NEXT button short press  
-    UI_EVENT_NEXT_LONG,     ///< NEXT button long press (>1.5s)
-    UI_EVENT_BOTH_LONG,     ///< Both buttons long press (>3s)
-    UI_EVENT_TIMEOUT,       ///< Inactivity timeout
-} ui_event_t;
+    OLED_BUTTON_PREV = 0,   ///< Previous/Back button
+    OLED_BUTTON_NEXT,       ///< Next/Forward button
+    OLED_BUTTON_BOTH        ///< Both buttons pressed
+} oled_button_t;
 
 /**
- * @brief Device status information for display
+ * @brief Device status for display
  */
 typedef struct {
-    char device_name[32];   ///< Device name
-    float battery_voltage;  ///< Battery voltage
-    int signal_strength;    ///< Signal strength (0-100%)
-    bool usb_connected;     ///< USB connection status
-    bool is_charging;       ///< Battery charging status
-    int paired_count;       ///< Number of paired devices
-} device_status_t;
+    uint8_t battery_level;      ///< Battery percentage (0-100)
+    bool battery_charging;      ///< Battery charging status
+    bool lora_connected;        ///< LoRa connection status
+    uint8_t lora_signal;        ///< LoRa signal strength (0-100)
+    bool usb_connected;         ///< USB connection status
+    uint16_t device_id;         ///< Device ID
+    char device_name[32];       ///< Device name
+} oled_status_t;
 
 /**
  * @brief Initialize OLED UI system
  * 
- * @return ESP_OK on success
+ * Sets up u8g2 graphics library and initializes display.
+ * 
+ * @return ESP_OK on success, error code otherwise
  */
 esp_err_t oled_ui_init(void);
 
 /**
- * @brief Update UI with button events
+ * @brief Handle button press events
  * 
- * @param event Button event to process
- * @return ESP_OK on success
+ * @param button Button that was pressed
+ * @param long_press True if long press detected
  */
-esp_err_t oled_ui_handle_event(ui_event_t event);
+void oled_ui_handle_button(oled_button_t button, bool long_press);
 
 /**
- * @brief Update device status display
+ * @brief Update device status and refresh display
  * 
- * @param status Current device status
- * @return ESP_OK on success
+ * @param status Device status structure
+ * @return ESP_OK on success, error code otherwise
  */
-esp_err_t oled_ui_update_status(const device_status_t *status);
+esp_err_t oled_ui_update_status(const oled_status_t *status);
 
 /**
- * @brief Get current UI state
+ * @brief Switch to different screen
  * 
- * @return Current UI state
+ * @param screen Screen type to display
+ * @return ESP_OK on success, error code otherwise
  */
-ui_state_t oled_ui_get_state(void);
+esp_err_t oled_ui_set_screen(oled_screen_t screen);
 
 /**
- * @brief Force UI to specific state
+ * @brief Show message on display
  * 
- * @param state Target UI state
- * @return ESP_OK on success
+ * @param title Message title
+ * @param message Message text
+ * @param timeout_ms Auto-clear timeout (0 = no timeout)
+ * @return ESP_OK on success, error code otherwise
  */
-esp_err_t oled_ui_set_state(ui_state_t state);
+esp_err_t oled_ui_show_message(const char *title, const char *message, uint32_t timeout_ms);
 
 /**
- * @brief Show boot logo
+ * @brief Clear display
  * 
- * @return ESP_OK on success
+ * @return ESP_OK on success, error code otherwise
  */
-esp_err_t oled_ui_show_boot_logo(void);
+esp_err_t oled_ui_clear(void);
 
 /**
- * @brief Enter screensaver mode
+ * @brief Get u8g2 instance for custom drawing
  * 
- * @return ESP_OK on success
+ * @return Pointer to u8g2 instance
  */
-esp_err_t oled_ui_enter_screensaver(void);
+u8g2_t* oled_ui_get_u8g2(void);
 
 #ifdef __cplusplus
 }

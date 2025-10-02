@@ -13,7 +13,9 @@
 #include "freertos/task.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "esp_mac.h"
 #include "nvs_flash.h"
+#include "version.h"
 #include "bsp.h"
 #include "lora_driver.h"
 #include "lora_protocol.h"
@@ -23,10 +25,12 @@
 #include "button_manager.h"
 #include "led_manager.h"
 #include "power_mgmt.h"
-#include "usb_pairing.h"
-#include "web_config.h"
+#include "device_config.h"
+#include "lora_comm.h"
 
 static const char *TAG = "LORACUE_MAIN";
+static device_mode_t current_device_mode = DEVICE_MODE_PRESENTER;
+static EventGroupHandle_t system_events;
 
 // Demo AES keys for different devices
 static const uint8_t demo_aes_key_1[16] = {
@@ -40,6 +44,16 @@ static esp_err_t handle_lora_command(lora_command_t command, uint16_t sender_id)
     
     // Update power management activity on LoRa command
     power_mgmt_update_activity();
+    
+    // Get device mode to determine behavior
+    device_config_t config;
+    device_config_get(&config);
+    
+    // Only PC mode handles commands
+    if (config.device_mode != DEVICE_MODE_PC) {
+        ESP_LOGD(TAG, "Ignoring command - device in PRESENTER mode");
+        return ESP_OK;
+    }
     
     switch (command) {
         case CMD_NEXT_SLIDE:
@@ -60,6 +74,57 @@ static esp_err_t handle_lora_command(lora_command_t command, uint16_t sender_id)
     }
 }
 
+static EventGroupHandle_t system_events;
+
+static void check_device_mode_change(void)
+{
+    device_config_t config;
+    device_config_get(&config);
+    
+    if (config.device_mode != current_device_mode) {
+        ESP_LOGI(TAG, "Device mode changed from %s to %s", 
+                 device_mode_to_string(current_device_mode),
+                 device_mode_to_string(config.device_mode));
+        current_device_mode = config.device_mode;
+    }
+}
+
+static void battery_monitor_task(void *pvParameters)
+{
+    oled_status_t *status = (oled_status_t *)pvParameters;
+    uint8_t prev_battery = 0;
+    
+    while (1) {
+        uint8_t current_battery = (uint8_t)(bsp_read_battery() * 100 / 4.2f);
+        
+        if (current_battery != prev_battery) {
+            status->battery_level = current_battery;
+            xEventGroupSetBits(system_events, (1 << 0)); // Battery event
+            prev_battery = current_battery;
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(5000)); // Check every 5 seconds
+    }
+}
+
+static void usb_monitor_task(void *pvParameters)
+{
+    oled_status_t *status = (oled_status_t *)pvParameters;
+    bool prev_usb = false;
+    
+    while (1) {
+        bool current_usb = usb_hid_is_connected();
+        
+        if (current_usb != prev_usb) {
+            status->usb_connected = current_usb;
+            xEventGroupSetBits(system_events, (1 << 1)); // USB event
+            prev_usb = current_usb;
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(500)); // Check every 500ms
+    }
+}
+
 static void pairing_result_callback(bool success, uint16_t device_id, const char* device_name)
 {
     if (success) {
@@ -69,12 +134,15 @@ static void pairing_result_callback(bool success, uint16_t device_id, const char
     }
     
     // Return to main UI
-    oled_ui_set_state(UI_STATE_MAIN);
+    oled_ui_set_screen(OLED_SCREEN_MAIN);
 }
 
 void app_main(void)
 {
     ESP_LOGI(TAG, "LoRaCue starting - Enterprise presentation clicker");
+    ESP_LOGI(TAG, "Version: %s", LORACUE_VERSION_FULL);
+    ESP_LOGI(TAG, "Build: %s (%s)", LORACUE_BUILD_COMMIT_SHORT, LORACUE_BUILD_BRANCH);
+    ESP_LOGI(TAG, "Date: %s", LORACUE_BUILD_DATE);
     
     // Check wake cause
     esp_sleep_wakeup_cause_t wake_cause = esp_sleep_get_wakeup_cause();
@@ -129,19 +197,11 @@ void app_main(void)
     }
     led_manager_solid(true); // Turn on LED during startup
     
-    // Initialize web configuration
-    ESP_LOGI(TAG, "Initializing web configuration system...");
-    ret = web_config_init(NULL); // Use default settings
+    // Initialize device configuration
+    ESP_LOGI(TAG, "Initializing device configuration system...");
+    ret = device_config_init();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Web config initialization failed: %s", esp_err_to_name(ret));
-        return;
-    }
-    
-    // Initialize USB pairing
-    ESP_LOGI(TAG, "Initializing USB pairing system...");
-    ret = usb_pairing_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "USB pairing initialization failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Device config initialization failed: %s", esp_err_to_name(ret));
         return;
     }
     
@@ -154,7 +214,7 @@ void app_main(void)
     }
     
     // Show boot logo
-    oled_ui_show_boot_logo();
+    oled_ui_set_screen(OLED_SCREEN_BOOT);
     vTaskDelay(pdMS_TO_TICKS(2000));
     
     // Initialize button manager
@@ -180,14 +240,6 @@ void app_main(void)
         return;
     }
     
-    // Initialize USB HID
-    ESP_LOGI(TAG, "Initializing USB HID interface...");
-    ret = usb_hid_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "USB HID initialization failed: %s", esp_err_to_name(ret));
-        return;
-    }
-    
     // Initialize LoRa driver
     ESP_LOGI(TAG, "Initializing LoRa driver...");
     ret = lora_driver_init();
@@ -196,12 +248,38 @@ void app_main(void)
         return;
     }
     
-    // Initialize LoRa protocol
-    uint16_t device_id = 0xAC00 | (esp_random() & 0xFF); // PC device ID (AC = LoRaCue)
-    ESP_LOGI(TAG, "Initializing LoRa protocol with PC device ID: 0x%04X", device_id);
+    // Get device mode from NVS
+    device_config_t config;
+    device_config_get(&config);
+    current_device_mode = config.device_mode;
+    
+    // Generate device ID from MAC address (static identity)
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    uint16_t device_id = (mac[4] << 8) | mac[5]; // Use last 2 bytes of MAC
+    
+    ESP_LOGI(TAG, "Device mode: %s, Static ID: 0x%04X", 
+             device_mode_to_string(config.device_mode), device_id);
+    
     ret = lora_protocol_init(device_id, demo_aes_key_1);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "LoRa protocol initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    
+    // Initialize LoRa communication
+    ESP_LOGI(TAG, "Initializing LoRa communication...");
+    ret = lora_comm_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "LoRa communication initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    
+    // Initialize USB HID
+    ESP_LOGI(TAG, "Initializing USB HID interface...");
+    ret = usb_hid_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "USB HID initialization failed: %s", esp_err_to_name(ret));
         return;
     }
     
@@ -212,8 +290,15 @@ void app_main(void)
         ESP_LOGE(TAG, "Hardware validation failed");
     }
     
+    // Create event group for system events
+    system_events = xEventGroupCreate();
+    if (!system_events) {
+        ESP_LOGE(TAG, "Failed to create system event group");
+        return;
+    }
+    
     // Transition to main UI state
-    oled_ui_set_state(UI_STATE_MAIN);
+    oled_ui_set_screen(OLED_SCREEN_MAIN);
     
     // Start LED fading after initialization complete
     ESP_LOGI(TAG, "Starting LED fade pattern");
@@ -222,76 +307,51 @@ void app_main(void)
     // Set to receive mode initially
     lora_set_receive_mode();
     
+    // Start LoRa communication task
+    ESP_LOGI(TAG, "Starting LoRa communication...");
+    ret = lora_comm_start();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start LoRa communication: %s", esp_err_to_name(ret));
+        return;
+    }
+    
     // Main status update loop
-    device_status_t status = {
-        .battery_voltage = 3.7f,
-        .signal_strength = 85,
-        .usb_connected = usb_hid_is_connected(),
-        .is_charging = false,
-        .paired_count = device_registry_get_count()
+    oled_status_t status = {
+        .battery_level = 85,
+        .lora_connected = false,
+        .lora_signal = 0,
+        .usb_connected = false,
+        .device_id = 0x1234
     };
     strcpy(status.device_name, "LoRaCue-STAGE");
     
-    uint32_t stats_counter = 0;
+    // Create event group for system events
+    system_events = xEventGroupCreate();
+    
+    // Start periodic tasks
+    xTaskCreate(battery_monitor_task, "battery_monitor", 2048, &status, 5, NULL);
+    xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &status, 5, NULL);
+    
+    // Main task now just handles events
+    ESP_LOGI(TAG, "Main loop starting - should have low CPU usage when idle");
     
     while (1) {
-        // Process USB pairing
-        usb_pairing_process();
+        // Wait for any system event
+        EventBits_t events = xEventGroupWaitBits(system_events, 
+                                                0xFF, // Wait for any event
+                                                pdTRUE, // Clear on exit
+                                                pdFALSE, // Wait for any bit
+                                                portMAX_DELAY);
         
-        // Update device status
-        status.battery_voltage = bsp_read_battery();
-        status.usb_connected = usb_hid_is_connected() || usb_pairing_is_connected();
-        status.paired_count = device_registry_get_count();
-        
-        // Update UI with current status
-        oled_ui_update_status(&status);
-        
-        // Log system statistics every 30 seconds
-        if (++stats_counter >= 300) { // 300 * 100ms = 30s
-            power_stats_t power_stats;
-            if (power_mgmt_get_stats(&power_stats) == ESP_OK) {
-                ESP_LOGI(TAG, "⚡ Power Stats - Active: %dms, Light Sleep: %dms, Deep Sleep: %dms",
-                         power_stats.active_time_ms, power_stats.light_sleep_time_ms, 
-                         power_stats.deep_sleep_time_ms);
-                ESP_LOGI(TAG, "🔋 Estimated battery life: %.1f hours", 
-                         power_stats.estimated_battery_hours);
-            }
-            
-            ESP_LOGI(TAG, "🔗 Pairing Status: %d paired devices, State: %d", 
-                     status.paired_count, usb_pairing_get_state());
-            
-            ESP_LOGI(TAG, "🌐 Web Config: State=%d, Clients=%d", 
-                     web_config_get_state(), web_config_get_client_count());
-            
-            stats_counter = 0;
+        if (events & (1 << 0)) { // Battery changed
+            oled_ui_update_status(&status);
         }
         
-        // Check for incoming LoRa packets (non-blocking)
-        lora_packet_data_t received_packet;
-        ret = lora_protocol_receive_packet(&received_packet, 10); // 10ms timeout
-        
-        if (ret == ESP_OK) {
-            // Get device info for logging
-            paired_device_t sender_device;
-            if (device_registry_get(received_packet.device_id, &sender_device) == ESP_OK) {
-                ESP_LOGI(TAG, "🔓 Command from %s (0x%04X): cmd=0x%02X", 
-                         sender_device.device_name, received_packet.device_id, 
-                         received_packet.command);
-            }
-            
-            // Execute received command via USB HID
-            handle_lora_command(received_packet.command, received_packet.device_id);
-            
-            // Send ACK
-            lora_protocol_send_ack(received_packet.device_id, received_packet.sequence_num);
-            
-            lora_set_receive_mode();
-        } else if (ret == ESP_ERR_NOT_FOUND) {
-            ESP_LOGD(TAG, "Packet from unpaired device ignored");
-        } else if (ret != ESP_ERR_TIMEOUT) {
-            ESP_LOGW(TAG, "Receive error: %s", esp_err_to_name(ret));
+        if (events & (1 << 1)) { // USB status changed
+            oled_ui_update_status(&status);
         }
         
-        vTaskDelay(pdMS_TO_TICKS(100)); // 10Hz update rate
+        // Check for device mode changes when not in menu
+        check_device_mode_change();
     }
 }

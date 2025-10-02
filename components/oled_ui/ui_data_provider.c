@@ -1,0 +1,138 @@
+#include "ui_data_provider.h"
+#include "power_mgmt.h"
+#include "lora_driver.h"
+#include "bsp.h"
+#include "esp_log.h"
+#include "esp_mac.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+static const char* TAG = "ui_data_provider";
+static ui_status_t cached_status;
+static battery_info_t cached_battery;
+static bool status_valid = false;
+
+static void generate_device_name(char* device_name, size_t size) {
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    
+    device_name[0] = 'R';
+    device_name[1] = 'C';
+    device_name[2] = '-';
+    device_name[3] = "0123456789ABCDEF"[mac[4] >> 4];
+    device_name[4] = "0123456789ABCDEF"[mac[4] & 0xF];
+    device_name[5] = "0123456789ABCDEF"[mac[5] >> 4];
+    device_name[6] = "0123456789ABCDEF"[mac[5] & 0xF];
+    device_name[7] = '\0';
+}
+
+esp_err_t ui_data_provider_init(void) {
+    ESP_LOGI(TAG, "Initializing UI data provider");
+    
+    // Generate device name
+    generate_device_name(cached_status.device_name, sizeof(cached_status.device_name));
+    
+    // Initialize with safe defaults
+    cached_status.usb_connected = false;
+    cached_status.lora_connected = false;
+    cached_status.signal_strength = SIGNAL_NONE;
+    cached_status.battery_level = 0;
+    
+    status_valid = true;
+    ESP_LOGI(TAG, "Data provider initialized for device: %s", cached_status.device_name);
+    
+    return ESP_OK;
+}
+
+esp_err_t ui_data_provider_update(void) {
+    if (!status_valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Update real battery data from BSP
+    float battery_voltage = bsp_read_battery();
+    if (battery_voltage > 0) {
+        // Update cached battery info
+        cached_battery.voltage = battery_voltage;
+        cached_battery.usb_connected = (battery_voltage > 4.3f);
+        cached_battery.charging = cached_battery.usb_connected && (battery_voltage < 4.2f);
+        
+        // Convert voltage to percentage (3.0V = 0%, 4.2V = 100%)
+        if (battery_voltage >= 4.2f) {
+            cached_battery.percentage = 100;
+        } else if (battery_voltage <= 3.0f) {
+            cached_battery.percentage = 0;
+        } else {
+            cached_battery.percentage = (uint8_t)((battery_voltage - 3.0f) / 1.2f * 100);
+        }
+        
+        // Update main status
+        cached_status.battery_level = cached_battery.percentage;
+        cached_status.usb_connected = cached_battery.usb_connected;
+        
+        ESP_LOGD(TAG, "Battery: %.2fV (%d%%), USB: %s, Charging: %s", 
+                battery_voltage, cached_battery.percentage,
+                cached_battery.usb_connected ? "yes" : "no",
+                cached_battery.charging ? "yes" : "no");
+    } else {
+        ESP_LOGW(TAG, "Failed to read battery voltage");
+        // Keep previous values on error
+    }
+    
+    // Update real LoRa status from driver
+    int16_t rssi = lora_get_rssi();
+    if (rssi > -50) {
+        cached_status.signal_strength = SIGNAL_STRONG;
+        cached_status.lora_connected = true;
+    } else if (rssi > -70) {
+        cached_status.signal_strength = SIGNAL_GOOD;
+        cached_status.lora_connected = true;
+    } else if (rssi > -90) {
+        cached_status.signal_strength = SIGNAL_FAIR;
+        cached_status.lora_connected = true;
+    } else if (rssi > -110) {
+        cached_status.signal_strength = SIGNAL_WEAK;
+        cached_status.lora_connected = true;
+    } else {
+        cached_status.signal_strength = SIGNAL_NONE;
+        cached_status.lora_connected = false;
+    }
+    
+    ESP_LOGD(TAG, "LoRa RSSI: %d dBm, Signal: %d", rssi, cached_status.signal_strength);
+    
+    return ESP_OK;
+}
+
+const ui_status_t* ui_data_provider_get_status(void) {
+    if (!status_valid) {
+        ESP_LOGE(TAG, "Data provider not initialized");
+        return NULL;
+    }
+    
+    return &cached_status;
+}
+
+esp_err_t ui_data_provider_get_battery_info(battery_info_t* battery_info) {
+    if (!status_valid || !battery_info) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    *battery_info = cached_battery;
+    return ESP_OK;
+}
+
+esp_err_t ui_data_provider_force_update(bool usb_connected, bool lora_connected, uint8_t battery_level) {
+    if (!status_valid) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    cached_status.usb_connected = usb_connected;
+    cached_status.lora_connected = lora_connected;
+    cached_status.battery_level = battery_level;
+    cached_status.signal_strength = lora_connected ? SIGNAL_STRONG : SIGNAL_NONE;
+    
+    ESP_LOGI(TAG, "Status force updated: USB=%d, LoRa=%d, Battery=%d%%", 
+             usb_connected, lora_connected, battery_level);
+    
+    return ESP_OK;
+}
