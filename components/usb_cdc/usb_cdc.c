@@ -126,52 +126,6 @@ static void handle_set_lora_config(cJSON *config_json)
     }
 }
 
-static void handle_pair_device(cJSON *pair_json)
-{
-    cJSON *name = cJSON_GetObjectItem(pair_json, "name");
-    cJSON *mac = cJSON_GetObjectItem(pair_json, "mac");
-    cJSON *key = cJSON_GetObjectItem(pair_json, "key");
-    
-    if (!cJSON_IsString(name) || !cJSON_IsString(mac) || !cJSON_IsString(key)) {
-        send_response("ERROR Invalid pairing parameters");
-        return;
-    }
-    
-    uint8_t mac_bytes[6];
-    uint8_t key_bytes[16];
-    
-    // Parse MAC address
-    if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
-               &mac_bytes[0], &mac_bytes[1], &mac_bytes[2],
-               &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
-        send_response("ERROR Invalid MAC address format");
-        return;
-    }
-    
-    // Parse key (hex string)
-    const char *key_str = key->valuestring;
-    if (strlen(key_str) != 32) {
-        send_response("ERROR Key must be 32 hex characters");
-        return;
-    }
-    
-    for (int i = 0; i < 16; i++) {
-        if (sscanf(key_str + i * 2, "%02hhx", &key_bytes[i]) != 1) {
-            send_response("ERROR Invalid key format");
-            return;
-        }
-    }
-    
-    uint16_t device_id = (mac_bytes[4] << 8) | mac_bytes[5];
-    esp_err_t ret = device_registry_add(device_id, name->valuestring, mac_bytes, key_bytes);
-    
-    if (ret == ESP_OK) {
-        send_response("OK Device paired successfully");
-    } else {
-        send_response("ERROR Failed to pair device");
-    }
-}
-
 static void handle_get_paired_devices(void)
 {
     cJSON *devices_array = cJSON_CreateArray();
@@ -253,7 +207,7 @@ static void handle_fw_update_data(const char *data_str)
         return;
     }
     
-    int chunk_num = atoi(data_str);
+    // Skip chunk number parsing for now - just use hex data
     const char *hex_data = space_pos + 1;
     
     // Convert hex string to binary

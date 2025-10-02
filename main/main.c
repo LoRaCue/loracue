@@ -38,42 +38,6 @@ static const uint8_t demo_aes_key_1[16] = {
     0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
 };
 
-static esp_err_t handle_lora_command(lora_command_t command, uint16_t sender_id)
-{
-    ESP_LOGI(TAG, "🎯 Executing command 0x%02X from device 0x%04X", command, sender_id);
-    
-    // Update power management activity on LoRa command
-    power_mgmt_update_activity();
-    
-    // Get device mode to determine behavior
-    device_config_t config;
-    device_config_get(&config);
-    
-    // Only PC mode handles commands
-    if (config.device_mode != DEVICE_MODE_PC) {
-        ESP_LOGD(TAG, "Ignoring command - device in PRESENTER mode");
-        return ESP_OK;
-    }
-    
-    switch (command) {
-        case CMD_NEXT_SLIDE:
-            return usb_hid_send_key(HID_KEY_PAGE_DOWN);
-            
-        case CMD_PREV_SLIDE:
-            return usb_hid_send_key(HID_KEY_PAGE_UP);
-            
-        case CMD_BLACK_SCREEN:
-            return usb_hid_send_key(HID_KEY_B);
-            
-        case CMD_START_PRESENTATION:
-            return usb_hid_send_key(HID_KEY_F5);
-            
-        default:
-            ESP_LOGW(TAG, "Unknown command: 0x%02X", command);
-            return ESP_ERR_INVALID_ARG;
-    }
-}
-
 static EventGroupHandle_t system_events;
 
 static void check_device_mode_change(void)
@@ -123,18 +87,6 @@ static void usb_monitor_task(void *pvParameters)
         
         vTaskDelay(pdMS_TO_TICKS(500)); // Check every 500ms
     }
-}
-
-static void pairing_result_callback(bool success, uint16_t device_id, const char* device_name)
-{
-    if (success) {
-        ESP_LOGI(TAG, "🔗 Pairing successful: %s (0x%04X)", device_name, device_id);
-    } else {
-        ESP_LOGW(TAG, "❌ Pairing failed: %s", device_name);
-    }
-    
-    // Return to main UI
-    oled_ui_set_screen(OLED_SCREEN_MAIN);
 }
 
 void app_main(void)
