@@ -98,8 +98,8 @@ esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
         esp_read_mac(mac, ESP_MAC_WIFI_STA);
         uint16_t device_id = (mac[4] << 8) | mac[5];
         
-        // Generate AES key
-        uint8_t aes_key[16];
+        // Generate AES-256 key (32 bytes)
+        uint8_t aes_key[32];
         esp_fill_random(aes_key, sizeof(aes_key));
         
         // Create pairing JSON
@@ -111,8 +111,8 @@ esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
                  mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
         cJSON_AddStringToObject(json, "mac", mac_str);
         
-        char key_str[33];
-        for (int i = 0; i < 16; i++) {
+        char key_str[65]; // 32 bytes = 64 hex chars + null
+        for (int i = 0; i < 32; i++) {
             snprintf(key_str + i*2, 3, "%02x", aes_key[i]);
         }
         cJSON_AddStringToObject(json, "key", key_str);
