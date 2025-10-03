@@ -181,7 +181,7 @@ static void update_active_presenter(uint16_t device_id, int16_t rssi)
     }
 }
 
-static void check_device_mode_change(void)
+void check_device_mode_change(void)
 {
     device_config_t config;
     device_config_get(&config);
@@ -720,8 +720,5 @@ void app_main(void)
         if (events & (1 << 4)) { // PC mode periodic update
             oled_ui_update_status(&g_oled_status);
         }
-        
-        // Check for device mode changes when not in menu
-        check_device_mode_change();
     }
 }
