@@ -14,21 +14,6 @@ static ui_status_t cached_status;
 static battery_info_t cached_battery;
 static bool status_valid = false;
 
-static void generate_device_name(char *device_name, size_t size)
-{
-    uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_WIFI_STA);
-
-    device_name[0] = 'R';
-    device_name[1] = 'C';
-    device_name[2] = '-';
-    device_name[3] = "0123456789ABCDEF"[mac[4] >> 4];
-    device_name[4] = "0123456789ABCDEF"[mac[4] & 0xF];
-    device_name[5] = "0123456789ABCDEF"[mac[5] >> 4];
-    device_name[6] = "0123456789ABCDEF"[mac[5] & 0xF];
-    device_name[7] = '\0';
-}
-
 esp_err_t ui_data_provider_init(void)
 {
     ESP_LOGI(TAG, "Initializing UI data provider");
