@@ -4,23 +4,12 @@
 
 extern u8g2_t u8g2;
 
+#define bluetooth_width  5
+#define bluetooth_height 8
+static unsigned char bluetooth_bits[] = {
+    0xe4, 0xec, 0xf5, 0xee, 0xee, 0xf5, 0xec, 0xe4};
+
 void ui_bluetooth_draw_at(int x, int y, bool connected)
 {
-    // Bluetooth symbol (simplified)
-    // Vertical line
-    u8g2_DrawVLine(&u8g2, x + 3, y, BT_ICON_HEIGHT);
-    
-    // Top triangle
-    u8g2_DrawLine(&u8g2, x + 3, y, x + 6, y + 2);
-    u8g2_DrawLine(&u8g2, x + 3, y + 3, x + 6, y + 2);
-    
-    // Bottom triangle
-    u8g2_DrawLine(&u8g2, x + 3, y + 3, x + 6, y + 5);
-    u8g2_DrawLine(&u8g2, x + 3, y + 6, x + 6, y + 5);
-    
-    // Left triangles
-    u8g2_DrawLine(&u8g2, x, y + 2, x + 3, y);
-    u8g2_DrawLine(&u8g2, x, y + 2, x + 3, y + 3);
-    u8g2_DrawLine(&u8g2, x, y + 5, x + 3, y + 3);
-    u8g2_DrawLine(&u8g2, x, y + 5, x + 3, y + 6);
+    u8g2_DrawXBM(&u8g2, x, y, bluetooth_width, bluetooth_height, bluetooth_bits);
 }

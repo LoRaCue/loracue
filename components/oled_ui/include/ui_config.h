@@ -19,8 +19,8 @@
 #define USB_ICON_WIDTH 10
 #define USB_ICON_HEIGHT 6
 
-#define BT_ICON_WIDTH 7
-#define BT_ICON_HEIGHT 7
+#define BT_ICON_WIDTH 5
+#define BT_ICON_HEIGHT 8
 
 #define RF_ICON_X 113
 #define RF_ICON_Y 2
