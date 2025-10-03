@@ -3,6 +3,7 @@
 #include "lora_driver.h"
 #include "lora_protocol.h"
 #include "bsp.h"
+#include "device_config.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
@@ -30,8 +31,10 @@ static void generate_device_name(char* device_name, size_t size) {
 esp_err_t ui_data_provider_init(void) {
     ESP_LOGI(TAG, "Initializing UI data provider");
     
-    // Generate device name
-    generate_device_name(cached_status.device_name, sizeof(cached_status.device_name));
+    // Load device name from config
+    device_config_t config;
+    device_config_get(&config);
+    strncpy(cached_status.device_name, config.device_name, sizeof(cached_status.device_name) - 1);
     
     // Initialize with safe defaults
     cached_status.usb_connected = false;
