@@ -67,6 +67,21 @@ export default function LoRaPage() {
     { value: 500000, label: '500 kHz' }
   ]
 
+  const presets = [
+    { name: 'Conference (50m)', sf: 7, bw: 500000, power: 14, desc: 'Fast, low latency' },
+    { name: 'Auditorium (200m)', sf: 8, bw: 250000, power: 17, desc: 'Balanced' },
+    { name: 'Stadium (500m)', sf: 10, bw: 125000, power: 20, desc: 'Max range' }
+  ]
+
+  const applyPreset = (preset: typeof presets[0]) => {
+    setSettings({
+      ...settings,
+      spreadingFactor: preset.sf,
+      bandwidth: preset.bw,
+      txPower: preset.power
+    })
+  }
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -77,7 +92,28 @@ export default function LoRaPage() {
           </p>
         </div>
 
+        {/* Presets Section */}
+        <div className="card p-6">
+          <h2 className="text-xl font-semibold mb-4">Quick Presets</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {presets.map((preset, idx) => (
+              <button
+                key={idx}
+                onClick={() => applyPreset(preset)}
+                className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 transition-colors text-left"
+              >
+                <div className="font-semibold mb-1">{preset.name}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">{preset.desc}</div>
+                <div className="text-xs text-gray-500">
+                  SF{preset.sf}, {preset.bw/1000}kHz, {preset.power}dBm
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="card p-8">
+          <h2 className="text-xl font-semibold mb-6">Advanced Settings</h2>
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
