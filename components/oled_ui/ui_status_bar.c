@@ -47,7 +47,7 @@ void ui_status_bar_draw(const ui_status_t *status)
     }
     
     if (status->bluetooth_enabled) {
-        ui_bluetooth_draw_at(next_x, ICON_Y, status->bluetooth_connected);
+        ui_bluetooth_draw_at(next_x, 0, status->bluetooth_connected);
         next_x += BT_ICON_WIDTH + ICON_SPACING;
     }
     
