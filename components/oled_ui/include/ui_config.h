@@ -14,13 +14,11 @@
 #define SEPARATOR_Y_BOTTOM 53
 
 // Status icons configuration
-#define USB_ICON_X 93
-#define USB_ICON_Y 2
+// USB and Bluetooth are dynamic (only show when active)
+// RF and Battery are fixed positions on the right
 #define USB_ICON_WIDTH 10
 #define USB_ICON_HEIGHT 6
 
-#define BT_ICON_X 103
-#define BT_ICON_Y 2
 #define BT_ICON_WIDTH 7
 #define BT_ICON_HEIGHT 7
 
@@ -34,6 +32,9 @@
 #define BATTERY_SEGMENTS 4
 #define BATTERY_SEGMENT_WIDTH 2
 #define BATTERY_ICON_HEIGHT 6
+
+#define ICON_Y 2
+#define ICON_SPACING 3
 
 // Text positioning
 #define TEXT_MARGIN_LEFT 0
