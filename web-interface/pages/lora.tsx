@@ -84,26 +84,37 @@ export default function LoRaPage() {
 
   const calculatePerformance = () => {
     const sf = settings.spreadingFactor
-    const bw = settings.bandwidth / 1000 // Convert to kHz
+    const bw = settings.bandwidth // in Hz
     const cr = settings.codingRate
+    const pl = 10 // payload length in bytes
     
-    // Simplified time-on-air calculation for small packets (~10 bytes)
-    // Symbol time = 2^SF / BW
-    const symbolTime = Math.pow(2, sf) / bw
+    // Symbol duration in seconds
+    const Ts = Math.pow(2, sf) / bw
     
-    // Approximate preamble + header + payload for small packet
-    const symbolCount = 8 + 4.25 + Math.ceil((8 * 10 - 4 * sf + 28 + 16) / (4 * sf)) * (cr + 4)
+    // Preamble time (8 symbols + 4.25 symbols)
+    const Tpreamble = (8 + 4.25) * Ts
     
-    const airTime = symbolTime * symbolCount
+    // Payload symbol count
+    const payloadSymbNb = 8 + Math.max(
+      Math.ceil((8 * pl - 4 * sf + 28 + 16) / (4 * sf)) * cr,
+      0
+    )
     
-    // Range estimation based on SF and power
+    // Payload time
+    const Tpayload = payloadSymbNb * Ts
+    
+    // Total time on air in milliseconds
+    const timeOnAir = (Tpreamble + Tpayload) * 1000
+    
+    // Range estimation based on SF and TX power
     let range = 50
-    if (sf >= 10) range = 500
-    else if (sf >= 8) range = 200
-    else range = 50
+    if (sf >= 10 && settings.txPower >= 17) range = 500
+    else if (sf >= 9 && settings.txPower >= 17) range = 300
+    else if (sf >= 8 && settings.txPower >= 14) range = 200
+    else if (sf >= 7) range = 50
     
     return {
-      latency: Math.round(airTime),
+      latency: Math.round(timeOnAir),
       range: range
     }
   }
