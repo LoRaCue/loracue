@@ -82,6 +82,34 @@ export default function LoRaPage() {
     })
   }
 
+  const calculatePerformance = () => {
+    const sf = settings.spreadingFactor
+    const bw = settings.bandwidth / 1000 // Convert to kHz
+    const cr = settings.codingRate
+    
+    // Simplified time-on-air calculation for small packets (~10 bytes)
+    // Symbol time = 2^SF / BW
+    const symbolTime = Math.pow(2, sf) / bw
+    
+    // Approximate preamble + header + payload for small packet
+    const symbolCount = 8 + 4.25 + Math.ceil((8 * 10 - 4 * sf + 28 + 16) / (4 * sf)) * (cr + 4)
+    
+    const airTime = symbolTime * symbolCount
+    
+    // Range estimation based on SF and power
+    let range = 50
+    if (sf >= 10) range = 500
+    else if (sf >= 8) range = 200
+    else range = 50
+    
+    return {
+      latency: Math.round(airTime),
+      range: range
+    }
+  }
+
+  const perf = calculatePerformance()
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -222,8 +250,8 @@ export default function LoRaPage() {
                 <div>
                   <h3 className="font-medium text-blue-900 dark:text-blue-100">Performance Estimate</h3>
                   <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                    SF{settings.spreadingFactor} + {settings.bandwidth/1000}kHz = ~{Math.round(1000 / (Math.pow(2, settings.spreadingFactor) / (settings.bandwidth/1000)))}ms latency, 
-                    ~{settings.frequency === 868000000 ? '2km' : settings.frequency === 915000000 ? '1.5km' : '3km'} range
+                    SF{settings.spreadingFactor} + {settings.bandwidth/1000}kHz = ~{perf.latency}ms latency, 
+                    ~{perf.range}m range
                   </p>
                 </div>
               </div>
