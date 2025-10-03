@@ -57,7 +57,7 @@ void pc_mode_screen_draw(const oled_status_t* status)
     if (status->command_history_count == 0) {
         u8g2_SetFont(&u8g2, u8g2_font_helvB12_tr);
         int title_width = u8g2_GetStrWidth(&u8g2, "PC MODE");
-        u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - title_width) / 2, 28, "PC MODE");
+        u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - title_width) / 2, 27, "PC MODE");
         
         u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
         int line1_width = u8g2_GetStrWidth(&u8g2, "Waiting for");

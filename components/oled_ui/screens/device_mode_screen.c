@@ -31,36 +31,51 @@ void device_mode_screen_draw(void) {
     device_config_t config;
     device_config_get(&config);
     
+    // Viewport height: 54 - 10 = 44px, each item gets 44/2 = 22px
+    const int viewport_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
+    const int item_height = viewport_height / mode_item_count;
+    const int bar_height = (viewport_height / 2) - 1;  // 50% of viewport height minus 1px
+    
     // Mode selection
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
     for (int i = 0; i < mode_item_count; i++) {
-        int y = 20 + (i * 15);
+        int item_y_start = SEPARATOR_Y_TOP + (i * item_height);
+        int bar_y_center = item_y_start + (item_height / 2);
+        
+        // Calculate lightbar position
+        int bar_y = bar_y_center - (bar_height / 2);
+        int adjusted_bar_height = bar_height;
+        
+        // Adjust positions: top bar +1px, bottom bar -1px at end
+        if (i == 0) {
+            bar_y += 1;  // Top bar starts 1px down
+        }
+        if (i == 1) {
+            adjusted_bar_height -= 1;  // Bottom bar stops 1px up
+        }
         
         if (i == selected_item) {
-            // Highlight selected item (moved up 1px)
-            u8g2_DrawBox(&u8g2, 0, y - 9, DISPLAY_WIDTH, 12);
+            u8g2_DrawBox(&u8g2, 0, bar_y, DISPLAY_WIDTH, adjusted_bar_height);
             u8g2_SetDrawColor(&u8g2, 0);  // Invert color for text
-            
-            // Show checkmark for active mode
-            if ((i == 0 && config.device_mode == DEVICE_MODE_PRESENTER) || 
-                (i == 1 && config.device_mode == DEVICE_MODE_PC)) {
-                u8g2_DrawXBM(&u8g2, 4, y - 7, checkmark_width, checkmark_height, checkmark_bits);
-                u8g2_DrawStr(&u8g2, 16, y, mode_items[i]);  // Adjusted for 9px width + margin
-            } else {
-                u8g2_DrawStr(&u8g2, 16, y, mode_items[i]);
-            }
-            
-            u8g2_SetDrawColor(&u8g2, 1);  // Reset color
+        }
+        
+        // Center text and icon relative to the actual lightbar position
+        int lightbar_center = bar_y + (adjusted_bar_height / 2);
+        int text_y = lightbar_center + 3;  // Adjust for font baseline
+        
+        // Show checkmark for active mode
+        if ((i == 0 && config.device_mode == DEVICE_MODE_PRESENTER) || 
+            (i == 1 && config.device_mode == DEVICE_MODE_PC)) {
+            int icon_y = lightbar_center - (checkmark_height / 2);
+            u8g2_DrawXBM(&u8g2, 4, icon_y, checkmark_width, checkmark_height, checkmark_bits);
+            u8g2_DrawStr(&u8g2, 16, text_y, mode_items[i]);
         } else {
-            // Show checkmark for active mode
-            if ((i == 0 && config.device_mode == DEVICE_MODE_PRESENTER) || 
-                (i == 1 && config.device_mode == DEVICE_MODE_PC)) {
-                u8g2_DrawXBM(&u8g2, 4, y - 7, checkmark_width, checkmark_height, checkmark_bits);
-                u8g2_DrawStr(&u8g2, 16, y, mode_items[i]);  // Adjusted for 9px width + margin
-            } else {
-                u8g2_DrawStr(&u8g2, 16, y, mode_items[i]);
-            }
+            u8g2_DrawStr(&u8g2, 16, text_y, mode_items[i]);
+        }
+        
+        if (i == selected_item) {
+            u8g2_SetDrawColor(&u8g2, 1);  // Reset color
         }
     }
     
