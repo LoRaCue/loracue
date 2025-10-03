@@ -1,11 +1,44 @@
 #include "bluetooth_config.h"
-#include "commands.h"
 #include "device_config.h"
+#include "esp_log.h"
+
+#ifdef SIMULATOR_BUILD
+// Simulator stubs - Bluetooth not available
+static const char *TAG = "BT_CONFIG";
+
+esp_err_t bluetooth_config_init(void)
+{
+    ESP_LOGI(TAG, "Bluetooth not available in simulator build");
+    return ESP_ERR_NOT_SUPPORTED;
+}
+
+esp_err_t bluetooth_config_set_enabled(bool enabled)
+{
+    return ESP_OK;
+}
+
+bool bluetooth_config_is_enabled(void)
+{
+    return false;
+}
+
+bool bluetooth_config_is_connected(void)
+{
+    return false;
+}
+
+bool bluetooth_config_get_passkey(uint32_t *passkey)
+{
+    return false;
+}
+
+#else
+// Hardware implementation
+#include "commands.h"
 #include "esp_bt.h"
 #include "esp_gap_ble_api.h"
 #include "esp_gatt_common_api.h"
 #include "esp_gatts_api.h"
-#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nvs_flash.h"
@@ -305,3 +338,5 @@ bool bluetooth_config_get_passkey(uint32_t *passkey)
     }
     return false;
 }
+
+#endif // SIMULATOR_BUILD
