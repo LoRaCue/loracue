@@ -37,16 +37,8 @@ static void handle_ping(void)
 
 static void handle_get_version(void)
 {
-    send_response("v0.1.0-alpha.39");
-}
-
-static void handle_get_device_name(void)
-{
-    device_config_t config;
-    device_config_get(&config);
-
     cJSON *response = cJSON_CreateObject();
-    cJSON_AddStringToObject(response, "device_name", config.device_name);
+    cJSON_AddStringToObject(response, "version", "v0.1.0-alpha.39");
 
     char *json_string = cJSON_Print(response);
     send_response(json_string);
@@ -54,49 +46,65 @@ static void handle_get_device_name(void)
     cJSON_Delete(response);
 }
 
-static void handle_set_device_name(const char *name)
+static void handle_get_device_config(void)
 {
-    if (!name || strlen(name) == 0 || strlen(name) >= 32) {
-        send_response("ERROR Invalid device name");
+    device_config_t config;
+    if (device_config_get(&config) != ESP_OK) {
+        send_response("ERROR Failed to get device config");
         return;
     }
 
-    device_config_t config;
-    device_config_get(&config);
-    strncpy(config.device_name, name, sizeof(config.device_name) - 1);
-    config.device_name[sizeof(config.device_name) - 1] = '\0';
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddStringToObject(response, "name", config.device_name);
+    cJSON_AddStringToObject(response, "mode", device_mode_to_string(config.device_mode));
+    cJSON_AddNumberToObject(response, "sleepTimeout", config.sleep_timeout_ms);
+    cJSON_AddBoolToObject(response, "autoSleep", config.auto_sleep_enabled);
+    cJSON_AddNumberToObject(response, "brightness", config.display_brightness);
 
-    esp_err_t ret = device_config_set(&config);
-    if (ret == ESP_OK) {
-        send_response("OK Device name updated");
-    } else {
-        send_response("ERROR Failed to save device name");
-    }
+    char *json_string = cJSON_Print(response);
+    send_response(json_string);
+    free(json_string);
+    cJSON_Delete(response);
 }
 
-static void handle_set_brightness(const char *value_str)
+static void handle_set_device_config(cJSON *config_json)
 {
-    int brightness = atoi(value_str);
-    if (brightness < 0 || brightness > 255) {
-        send_response("ERROR Brightness must be 0-255");
-        return;
-    }
-
     device_config_t config;
-    device_config_get(&config);
-    config.display_brightness = (uint8_t)brightness;
-
-    esp_err_t ret = device_config_set(&config);
+    esp_err_t ret = device_config_get(&config);
     if (ret != ESP_OK) {
-        send_response("ERROR Failed to save brightness");
+        send_response("ERROR Failed to get current device config");
         return;
     }
 
-    // Apply immediately
-    extern u8g2_t u8g2;
-    u8g2_SetContrast(&u8g2, config.display_brightness);
+    cJSON *name = cJSON_GetObjectItem(config_json, "name");
+    if (name && cJSON_IsString(name)) {
+        strncpy(config.device_name, name->valuestring, sizeof(config.device_name) - 1);
+        config.device_name[sizeof(config.device_name) - 1] = '\0';
+    }
 
-    send_response("OK Brightness updated");
+    cJSON *sleepTimeout = cJSON_GetObjectItem(config_json, "sleepTimeout");
+    if (sleepTimeout && cJSON_IsNumber(sleepTimeout))
+        config.sleep_timeout_ms = sleepTimeout->valueint;
+
+    cJSON *autoSleep = cJSON_GetObjectItem(config_json, "autoSleep");
+    if (autoSleep && cJSON_IsBool(autoSleep))
+        config.auto_sleep_enabled = cJSON_IsTrue(autoSleep);
+
+    cJSON *brightness = cJSON_GetObjectItem(config_json, "brightness");
+    if (brightness && cJSON_IsNumber(brightness)) {
+        config.display_brightness = brightness->valueint;
+        // Apply immediately
+        extern u8g2_t u8g2;
+        u8g2_SetContrast(&u8g2, config.display_brightness);
+    }
+
+    ret = device_config_set(&config);
+    if (ret != ESP_OK) {
+        send_response("ERROR Failed to save device config");
+        return;
+    }
+
+    send_response("OK Device config updated");
 }
 
 static void handle_get_lora_config(void)
@@ -377,8 +385,8 @@ static void process_command(const char *command_line)
         return;
     }
 
-    if (strcmp(command_line, "GET_DEVICE_NAME") == 0) {
-        handle_get_device_name();
+    if (strcmp(command_line, "GET_DEVICE_CONFIG") == 0) {
+        handle_get_device_config();
         return;
     }
 
@@ -392,17 +400,18 @@ static void process_command(const char *command_line)
         return;
     }
 
-    // Handle commands with parameters
-    if (strncmp(command_line, "SET_DEVICE_NAME ", 16) == 0) {
-        handle_set_device_name(command_line + 16);
-        return;
-    }
-    if (strncmp(command_line, "SET_BRIGHTNESS ", 15) == 0) {
-        handle_set_brightness(command_line + 15);
+    // Handle JSON commands
+    if (strncmp(command_line, "SET_DEVICE_CONFIG ", 18) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 18);
+        if (json) {
+            handle_set_device_config(json);
+            cJSON_Delete(json);
+        } else {
+            send_response("ERROR Invalid JSON");
+        }
         return;
     }
 
-    // Handle JSON commands
     if (strncmp(command_line, "PAIR_DEVICE ", 12) == 0) {
         cJSON *json = cJSON_Parse(command_line + 12);
         if (json) {

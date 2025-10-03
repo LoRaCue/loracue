@@ -84,8 +84,11 @@ export default function LoRaPage() {
   const calculatePerformance = () => {
     const sf = settings.spreadingFactor
     const bw = settings.bandwidth // in Hz
-    const cr = settings.codingRate
+    const cr = settings.codingRate - 4 // Convert 5-8 to 1-4
     const pl = 10 // payload length in bytes
+    const crc = 1 // CRC enabled
+    const h = 0 // Explicit header
+    const de = (sf >= 11 && bw === 125000) ? 1 : 0 // Low data rate optimization
     
     // Symbol duration in seconds
     const Ts = Math.pow(2, sf) / bw
@@ -93,24 +96,28 @@ export default function LoRaPage() {
     // Preamble time (8 symbols + 4.25 symbols)
     const Tpreamble = (8 + 4.25) * Ts
     
-    // Payload symbol count
+    // Payload symbol count (Semtech formula)
     const payloadSymbNb = 8 + Math.max(
-      Math.ceil((8 * pl - 4 * sf + 28 + 16) / (4 * sf)) * cr,
+      Math.ceil((8 * pl - 4 * sf + 28 + 16 * crc - 20 * h) / (4 * (sf - 2 * de))) * (cr + 4),
       0
     )
     
-    // Payload time
-    const Tpayload = payloadSymbNb * Ts
-    
     // Total time on air in milliseconds
-    const timeOnAir = (Tpreamble + Tpayload) * 1000
+    const timeOnAir = (Tpreamble + payloadSymbNb * Ts) * 1000
     
-    // Range estimation based on SF and TX power
-    let range = 50
-    if (sf >= 10 && settings.txPower >= 17) range = 500
-    else if (sf >= 9 && settings.txPower >= 17) range = 300
-    else if (sf >= 8 && settings.txPower >= 14) range = 200
-    else if (sf >= 7) range = 50
+    // Range estimation using link budget
+    // SX1262 sensitivity: -148 dBm @ SF12/BW125, improves ~2.5dB per SF step down
+    const sensitivity = -148 + (12 - sf) * 2.5 + (bw > 125000 ? Math.log2(bw / 125000) * 3 : 0)
+    const txPower = settings.txPower
+    const antennaGain = 2 // Small external antenna (dBi)
+    const linkBudget = txPower + antennaGain - sensitivity + antennaGain
+    
+    // Free-space path loss: FSPL = 20*log10(d) + 20*log10(f) + 20*log10(4π/c)
+    // Solving for d: d = 10^((FSPL - 20*log10(f) - 20*log10(4π/c)) / 20)
+    const freq = settings.frequency
+    const c = 299792458 // speed of light
+    const fsplConstant = 20 * Math.log10(freq) + 20 * Math.log10(4 * Math.PI / c)
+    const range = Math.pow(10, (linkBudget - fsplConstant) / 20)
     
     return {
       latency: Math.round(timeOnAir),
