@@ -24,13 +24,17 @@ esp_err_t device_registry_init(void)
     ESP_LOGI(TAG, "Initializing device registry");
     
     esp_err_t ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &registry_nvs_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to open NVS namespace: %s", esp_err_to_name(ret));
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI(TAG, "NVS namespace not found, will be created on first device pairing");
+        registry_initialized = true;
+        return ESP_OK;
+    } else if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(ret));
         return ret;
     }
     
     registry_initialized = true;
-    ESP_LOGI(TAG, "Device registry initialized successfully");
+    ESP_LOGI(TAG, "Device registry initialized with existing data");
     
     return ESP_OK;
 }
@@ -46,6 +50,15 @@ esp_err_t device_registry_add(uint16_t device_id, const char *device_name,
     if (!registry_initialized) {
         ESP_LOGE(TAG, "Registry not initialized");
         return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Open NVS handle if not already open (lazy initialization)
+    if (registry_nvs_handle == 0) {
+        esp_err_t ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &registry_nvs_handle);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(ret));
+            return ret;
+        }
     }
     
     ESP_LOGI(TAG, "Adding device 0x%04X: %s", device_id, device_name);
@@ -96,6 +109,11 @@ esp_err_t device_registry_get(uint16_t device_id, paired_device_t *device)
         return ESP_ERR_INVALID_STATE;
     }
     
+    // If NVS handle not open, no devices exist yet
+    if (registry_nvs_handle == 0) {
+        return ESP_ERR_NOT_FOUND;
+    }
+    
     char key_name[16];
     generate_device_key(device_id, key_name, sizeof(key_name));
     
@@ -144,6 +162,11 @@ esp_err_t device_registry_remove(uint16_t device_id)
     if (!registry_initialized) {
         ESP_LOGE(TAG, "Registry not initialized");
         return ESP_ERR_INVALID_STATE;
+    }
+    
+    // If NVS handle not open, device doesn't exist
+    if (registry_nvs_handle == 0) {
+        return ESP_ERR_NOT_FOUND;
     }
     
     ESP_LOGI(TAG, "Removing device 0x%04X", device_id);

@@ -16,6 +16,11 @@ extern u8g2_t u8g2;
 
 void pc_mode_screen_draw(const oled_status_t* status)
 {
+    if (!status) {
+        ESP_LOGE(TAG, "NULL status pointer");
+        return;
+    }
+    
     u8g2_ClearBuffer(&u8g2);
     
     // Convert to ui_status_t for status bar
@@ -50,7 +55,7 @@ void pc_mode_screen_draw(const oled_status_t* status)
     
     // If no commands yet
     if (status->command_history_count == 0) {
-        u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+        u8g2_SetFont(&u8g2, u8g2_font_helvB12_tr);
         int title_width = u8g2_GetStrWidth(&u8g2, "PC MODE");
         u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - title_width) / 2, 28, "PC MODE");
         

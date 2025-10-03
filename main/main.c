@@ -32,10 +32,13 @@
 #include "lora_comm.h"
 
 static const char *TAG = "LORACUE_MAIN";
-static device_mode_t current_device_mode = DEVICE_MODE_PRESENTER;
+device_mode_t current_device_mode = DEVICE_MODE_PRESENTER;
 static EventGroupHandle_t system_events;
 static const esp_partition_t *running_partition = NULL;
 static TimerHandle_t ota_validation_timer = NULL;
+
+// External UI functions
+extern void oled_ui_enable_background_tasks(bool enable);
 
 // Active presenter tracking (PC mode)
 typedef struct {
@@ -178,31 +181,6 @@ static void update_active_presenter(uint16_t device_id, int16_t rssi)
         active_presenters[slot].last_rssi = rssi;
         active_presenters[slot].last_seen_ms = now;
         active_presenters[slot].command_count++;
-    }
-}
-
-void check_device_mode_change(void)
-{
-    device_config_t config;
-    device_config_get(&config);
-    
-    if (config.device_mode != current_device_mode) {
-        ESP_LOGI(TAG, "Device mode changed from %s to %s", 
-                 device_mode_to_string(current_device_mode),
-                 device_mode_to_string(config.device_mode));
-        
-        if (config.device_mode == DEVICE_MODE_PC) {
-            ESP_LOGI(TAG, "PC mode: receiver only, buttons disabled");
-            oled_ui_set_screen(OLED_SCREEN_PC_MODE);
-            if (!usb_hid_is_connected()) {
-                oled_ui_show_message("PC Mode", "Connect USB Cable", 3000);
-            }
-        } else {
-            ESP_LOGI(TAG, "Presenter mode: transmitter, buttons enabled");
-            oled_ui_set_screen(OLED_SCREEN_MAIN);
-        }
-        
-        current_device_mode = config.device_mode;
     }
 }
 
@@ -627,13 +605,8 @@ void app_main(void)
         return;
     }
     
-    // Transition to main UI state
-    device_config_get(&config);
-    if (config.device_mode == DEVICE_MODE_PC) {
-        oled_ui_set_screen(OLED_SCREEN_PC_MODE);
-    } else {
-        oled_ui_set_screen(OLED_SCREEN_MAIN);
-    }
+    // Transition to main UI state (adapts to mode automatically)
+    oled_ui_set_screen(OLED_SCREEN_MAIN);
     
     // Start LED fading after initialization complete
     ESP_LOGI(TAG, "Starting LED fade pattern");
@@ -729,6 +702,29 @@ void app_main(void)
                 extern void pc_mode_screen_draw(const oled_status_t*);
                 pc_mode_screen_draw(&g_oled_status);
             }
+        }
+        
+        if (events & (1 << 5)) { // Device mode changed
+            ESP_LOGI(TAG, "Device mode changed to: %s", device_mode_to_string(current_device_mode));
+            
+            // Save to NVS
+            device_config_t cfg;
+            device_config_get(&cfg);
+            cfg.device_mode = current_device_mode;
+            device_config_set(&cfg);
+            
+            // Force screen redraw with new mode
+            oled_ui_update_status(&g_oled_status);
+        }
+        
+        // Check if device mode changed and persist to NVS (fallback for missed events)
+        device_config_get(&config);
+        if (config.device_mode != current_device_mode) {
+            ESP_LOGI(TAG, "Device mode changed to: %s (fallback)", device_mode_to_string(current_device_mode));
+            
+            // Save to NVS
+            config.device_mode = current_device_mode;
+            device_config_set(&config);
         }
     }
 }

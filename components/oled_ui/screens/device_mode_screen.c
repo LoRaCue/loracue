@@ -2,7 +2,11 @@
 #include "ui_config.h"
 #include "ui_icons.h"
 #include "device_config.h"
+#include "oled_ui.h"
 #include "u8g2.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/event_groups.h"
 
 extern u8g2_t u8g2;
 
@@ -99,14 +103,25 @@ void device_mode_screen_select(void) {
     device_config_get(&config);
     
     // Update mode based on selection
+    device_mode_t new_mode;
     if (selected_item == 0) {
-        config.device_mode = DEVICE_MODE_PRESENTER;
-    } else if (selected_item == 1) {
-        config.device_mode = DEVICE_MODE_PC;
+        new_mode = DEVICE_MODE_PRESENTER;
+    } else {
+        new_mode = DEVICE_MODE_PC;
     }
     
-    // Save to NVS (mode change will take effect on menu exit)
-    device_config_set(&config);
+    // Only proceed if mode actually changed
+    if (new_mode == config.device_mode) {
+        return;  // No change, stay in screen
+    }
+    
+    // Update global mode - main loop will save to NVS
+    extern device_mode_t current_device_mode;
+    current_device_mode = new_mode;
+    
+    // Return to main screen to show new mode
+    extern void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status);
+    ui_screen_controller_set(OLED_SCREEN_MAIN, NULL);
 }
 
 device_mode_t device_mode_get_current(void) {

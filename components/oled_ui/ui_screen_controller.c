@@ -35,6 +35,15 @@ void ui_screen_controller_init(void) {
 }
 
 void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
+    // Acquire draw lock
+    extern bool oled_ui_try_lock_draw(void);
+    extern void oled_ui_unlock_draw(void);
+    
+    if (!oled_ui_try_lock_draw()) {
+        ESP_LOGW(TAG, "Failed to acquire draw lock, skipping screen change");
+        return;
+    }
+    
     current_screen = screen;
     
     // Track menu entry time for timeout
@@ -50,6 +59,7 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
     
     if (!status) {
         ESP_LOGE(TAG, "No status data available");
+        oled_ui_unlock_draw();  // Release lock before returning
         return;
     }
     
@@ -68,7 +78,17 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
             // PC mode needs oled_status_t for command history
             {
                 extern oled_status_t g_oled_status;
-                pc_mode_screen_draw(&g_oled_status);
+                // Check if g_oled_status is initialized (device_name will be set)
+                if (g_oled_status.device_name[0] != '\0') {
+                    pc_mode_screen_draw(&g_oled_status);
+                } else {
+                    // Not initialized yet, draw empty PC mode screen
+                    oled_status_t temp_status = {0};
+                    temp_status.battery_level = status->battery_level;
+                    temp_status.usb_connected = status->usb_connected;
+                    temp_status.lora_connected = status->lora_connected;
+                    pc_mode_screen_draw(&temp_status);
+                }
             }
             break;
             
@@ -122,10 +142,18 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
             current_screen = OLED_SCREEN_MAIN;
             break;
     }
+    
+    // Release draw lock
+    oled_ui_unlock_draw();
 }
 
 oled_screen_t ui_screen_controller_get_current(void) {
     return current_screen;
+}
+
+void ui_screen_controller_set_no_draw(oled_screen_t screen) {
+    current_screen = screen;
+    ESP_LOGI(TAG, "Screen type changed to: %d (no draw)", screen);
 }
 
 void ui_screen_controller_update(const ui_status_t* status) {
@@ -139,23 +167,53 @@ void ui_screen_controller_update(const ui_status_t* status) {
         }
     }
     
-    // Force update data provider if status provided
-    if (status) {
-        ui_data_provider_force_update(status->usb_connected, status->lora_connected, status->battery_level);
-    } else {
-        // Update from BSP sensors
+    // Update data provider if status not provided
+    if (!status) {
         esp_err_t ret = ui_data_provider_update();
         if (ret != ESP_OK) {
             ESP_LOGW(TAG, "Failed to update data: %s", esp_err_to_name(ret));
+            return;
         }
+        status = ui_data_provider_get_status();
+    } else {
+        ui_data_provider_force_update(status->usb_connected, status->lora_connected, status->battery_level);
     }
     
-    // Redraw current screen with updated data
-    ui_screen_controller_set(current_screen, NULL);
+    if (!status) {
+        ESP_LOGW(TAG, "No status data available for update");
+        return;
+    }
+    
+    // Redraw current screen with updated data (only screens that need periodic updates)
+    switch (current_screen) {
+        case OLED_SCREEN_MAIN:
+            main_screen_draw(status);
+            break;
+            
+        case OLED_SCREEN_PC_MODE:
+            {
+                extern oled_status_t g_oled_status;
+                pc_mode_screen_draw(&g_oled_status);
+            }
+            break;
+            
+        case OLED_SCREEN_BATTERY:
+            battery_status_screen_draw(status);
+            break;
+            
+        // Other screens don't need periodic updates
+        default:
+            break;
+    }
 }
 
 void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
     ESP_LOGI(TAG, "Button %d pressed (long: %d) on screen %d", button, long_press, current_screen);
+    
+    // Reset menu timeout on any button press while in menu
+    if (current_screen == OLED_SCREEN_MENU) {
+        menu_enter_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    }
     
     switch (current_screen) {
         case OLED_SCREEN_BOOT:
@@ -170,14 +228,19 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
             }
             break;
             
+        case OLED_SCREEN_PC_MODE:
+            if (long_press && button == OLED_BUTTON_BOTH) {
+                // Long press both buttons -> Menu
+                menu_screen_reset();
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+            }
+            break;
+            
         case OLED_SCREEN_MENU:
             if (long_press && button == OLED_BUTTON_BOTH) {
                 // Long press both buttons -> Exit menu
-                ESP_LOGI(TAG, "Exiting menu - checking device mode");
-                
-                // Check if device mode changed and apply it
-                extern void check_device_mode_change(void);
-                check_device_mode_change();
+                ESP_LOGI(TAG, "Exiting menu");
+                ui_screen_controller_set(OLED_SCREEN_MAIN, NULL);
             } else if (button == OLED_BUTTON_PREV) {
                 menu_screen_navigate(MENU_UP);
                 menu_screen_draw();
@@ -259,7 +322,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 device_mode_screen_draw();
             } else if (button == OLED_BUTTON_BOTH) {
                 device_mode_screen_select();
-                device_mode_screen_draw();
+                // Don't redraw - select() changes screen if mode changed
             }
             break;
             

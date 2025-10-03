@@ -151,6 +151,17 @@ esp_err_t oled_ui_clear(void);
  */
 u8g2_t* oled_ui_get_u8g2(void);
 
+/**
+ * @brief Try to acquire draw lock (non-blocking)
+ * @return true if lock acquired, false if busy
+ */
+bool oled_ui_try_lock_draw(void);
+
+/**
+ * @brief Release draw lock
+ */
+void oled_ui_unlock_draw(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -5,7 +5,14 @@
 extern u8g2_t u8g2;
 
 void ui_rf_draw(signal_strength_t strength) {
-    if (strength == SIGNAL_NONE) return;  // Don't draw if no signal
+    // Draw baseline for all bars (1 pixel each) to show capacity
+    for (int i = 0; i < RF_ICON_BARS; i++) {
+        uint8_t bar_x = RF_ICON_X + (i * 2);
+        uint8_t baseline_y = RF_ICON_Y + RF_ICON_HEIGHT - 1;
+        u8g2_DrawPixel(&u8g2, bar_x, baseline_y);
+    }
+    
+    if (strength == SIGNAL_NONE) return;  // Only baseline visible
     
     // Draw signal bars based on strength
     for (int i = 0; i < RF_ICON_BARS; i++) {
