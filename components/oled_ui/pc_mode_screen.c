@@ -2,6 +2,7 @@
 #include "oled_ui.h"
 #include "ui_status_bar.h"
 #include "ui_config.h"
+#include "ui_icons.h"
 #include "bsp.h"
 #include "u8g2.h"
 #include "esp_log.h"
@@ -49,16 +50,32 @@ void pc_mode_screen_draw(const oled_status_t* status)
     
     // If no commands yet
     if (status->command_history_count == 0) {
+        u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
+        int title_width = u8g2_GetStrWidth(&u8g2, "PC MODE");
+        u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - title_width) / 2, 28, "PC MODE");
+        
         u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-        u8g2_DrawStr(&u8g2, 20, 30, "Waiting for");
-        u8g2_DrawStr(&u8g2, 20, 42, "commands...");
+        int line1_width = u8g2_GetStrWidth(&u8g2, "Waiting for");
+        int line2_width = u8g2_GetStrWidth(&u8g2, "commands...");
+        u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - line1_width) / 2, 38, "Waiting for");
+        u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - line2_width) / 2, 48, "commands...");
     }
     
     // Bottom separator
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
     
-    // Bottom bar (device name + menu hint)
-    ui_bottom_bar_draw(&ui_status);
+    // Bottom bar - only menu hint
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+    const char* menu_text = "3s ";
+    const char* menu_suffix = " Menu";
+    int text_width = u8g2_GetStrWidth(&u8g2, menu_text);
+    int suffix_width = u8g2_GetStrWidth(&u8g2, menu_suffix);
+    int total_width = text_width + both_buttons_width + suffix_width;
+    
+    int start_x = (DISPLAY_WIDTH - total_width) / 2;
+    u8g2_DrawStr(&u8g2, start_x, DISPLAY_HEIGHT - 1, menu_text);
+    u8g2_DrawXBM(&u8g2, start_x + text_width, DISPLAY_HEIGHT - both_buttons_height - 1, both_buttons_width, both_buttons_height, both_buttons_bits);
+    u8g2_DrawStr(&u8g2, start_x + text_width + both_buttons_width, DISPLAY_HEIGHT - 1, menu_suffix);
     
     u8g2_SendBuffer(&u8g2);
 }

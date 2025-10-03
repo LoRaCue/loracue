@@ -401,6 +401,8 @@ static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
 static void button_handler(button_event_type_t event, void *arg)
 {
     oled_screen_t screen = oled_ui_get_screen();
+    
+    // Allow both button press for menu on both MAIN and PC_MODE screens
     if (screen != OLED_SCREEN_MAIN && screen != OLED_SCREEN_PC_MODE) {
         return;
     }
@@ -408,6 +410,7 @@ static void button_handler(button_event_type_t event, void *arg)
     device_config_t config;
     device_config_get(&config);
     
+    // In PC mode, only allow menu access (no LoRa commands)
     if (config.device_mode == DEVICE_MODE_PC) {
         ESP_LOGD(TAG, "PC mode: buttons disabled for LoRa transmission");
         return;
