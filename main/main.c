@@ -671,7 +671,12 @@ void app_main(void)
     g_oled_status.lora_signal = 0;
     g_oled_status.usb_connected = false;
     g_oled_status.device_id = 0x1234;
-    strcpy(g_oled_status.device_name, "LoRaCue-STAGE");
+    
+    // Load device name from config
+    device_config_t dev_config;
+    device_config_get(&dev_config);
+    strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
+    
     strcpy(g_oled_status.last_command, "");
     
     // Register application callbacks
