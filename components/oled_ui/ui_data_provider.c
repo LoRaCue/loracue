@@ -9,6 +9,10 @@
 #include "lora_protocol.h"
 #include "power_mgmt.h"
 
+#ifndef SIMULATOR_BUILD
+#include "bluetooth_config.h"
+#endif
+
 static const char *TAG = "ui_data_provider";
 static ui_status_t cached_status;
 static battery_info_t cached_battery;
@@ -24,10 +28,12 @@ esp_err_t ui_data_provider_init(void)
     strncpy(cached_status.device_name, config.device_name, sizeof(cached_status.device_name) - 1);
 
     // Initialize with safe defaults
-    cached_status.usb_connected   = false;
-    cached_status.lora_connected  = false;
-    cached_status.signal_strength = SIGNAL_NONE;
-    cached_status.battery_level   = 0;
+    cached_status.usb_connected       = false;
+    cached_status.bluetooth_enabled   = config.bluetooth_enabled;
+    cached_status.bluetooth_connected = false;
+    cached_status.lora_connected      = false;
+    cached_status.signal_strength     = SIGNAL_NONE;
+    cached_status.battery_level       = 0;
 
     status_valid = true;
     ESP_LOGI(TAG, "Data provider initialized for device: %s", cached_status.device_name);
@@ -68,6 +74,16 @@ esp_err_t ui_data_provider_update(void)
         ESP_LOGW(TAG, "Failed to read battery voltage");
         // Keep previous values on error
     }
+
+    // Update Bluetooth status
+    device_config_t config;
+    device_config_get(&config);
+    cached_status.bluetooth_enabled = config.bluetooth_enabled;
+#ifndef SIMULATOR_BUILD
+    cached_status.bluetooth_connected = bluetooth_config_is_connected();
+#else
+    cached_status.bluetooth_connected = false;
+#endif
 
     // Update LoRa status from protocol layer
     lora_connection_state_t conn_state = lora_protocol_get_connection_state();

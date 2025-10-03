@@ -19,12 +19,17 @@
 #define USB_ICON_WIDTH 10
 #define USB_ICON_HEIGHT 6
 
-#define RF_ICON_X 107
+#define BT_ICON_X 103
+#define BT_ICON_Y 2
+#define BT_ICON_WIDTH 7
+#define BT_ICON_HEIGHT 7
+
+#define RF_ICON_X 113
 #define RF_ICON_Y 2
 #define RF_ICON_BARS 4
 #define RF_ICON_HEIGHT 6
 
-#define BATTERY_ICON_X 117
+#define BATTERY_ICON_X 123
 #define BATTERY_ICON_Y 2
 #define BATTERY_SEGMENTS 4
 #define BATTERY_SEGMENT_WIDTH 2
@@ -46,6 +51,8 @@ typedef enum {
 
 typedef struct {
     bool usb_connected;
+    bool bluetooth_enabled;
+    bool bluetooth_connected;
     bool lora_connected;
     signal_strength_t signal_strength;
     uint8_t battery_level; // 0-100%

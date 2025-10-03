@@ -1,5 +1,6 @@
 #include "ui_status_bar.h"
 #include "icons/ui_battery.h"
+#include "icons/ui_bluetooth.h"
 #include "icons/ui_rf.h"
 #include "icons/ui_usb.h"
 #include "u8g2.h"
@@ -15,8 +16,9 @@ void ui_status_bar_draw(const ui_status_t *status)
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     u8g2_DrawStr(&u8g2, TEXT_MARGIN_LEFT - 1, 8, "LORACUE");
 
-    // Draw status icons
+    // Draw status icons (order: USB, Bluetooth, RF, Battery)
     ui_usb_draw(status->usb_connected);
+    ui_bluetooth_draw(status->bluetooth_enabled, status->bluetooth_connected);
     ui_rf_draw(status->signal_strength);
     ui_battery_draw(status->battery_level);
 
