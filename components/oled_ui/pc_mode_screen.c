@@ -64,7 +64,7 @@ void pc_mode_screen_draw(const oled_status_t* status)
     // Bottom separator
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
     
-    // Bottom bar - only menu hint
+    // Bottom bar - menu hint on right
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     const char* menu_text = "3s ";
     const char* menu_suffix = " Menu";
@@ -72,7 +72,7 @@ void pc_mode_screen_draw(const oled_status_t* status)
     int suffix_width = u8g2_GetStrWidth(&u8g2, menu_suffix);
     int total_width = text_width + both_buttons_width + suffix_width;
     
-    int start_x = (DISPLAY_WIDTH - total_width) / 2;
+    int start_x = DISPLAY_WIDTH - total_width - TEXT_MARGIN_RIGHT;
     u8g2_DrawStr(&u8g2, start_x, DISPLAY_HEIGHT - 1, menu_text);
     u8g2_DrawXBM(&u8g2, start_x + text_width, DISPLAY_HEIGHT - both_buttons_height - 1, both_buttons_width, both_buttons_height, both_buttons_bits);
     u8g2_DrawStr(&u8g2, start_x + text_width + both_buttons_width, DISPLAY_HEIGHT - 1, menu_suffix);
