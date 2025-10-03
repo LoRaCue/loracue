@@ -173,8 +173,11 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
         case OLED_SCREEN_MENU:
             if (long_press && button == OLED_BUTTON_BOTH) {
                 // Long press both buttons -> Exit menu
-                ESP_LOGI(TAG, "Exiting menu - returning to main screen");
-                ui_screen_controller_set(OLED_SCREEN_MAIN, NULL);
+                ESP_LOGI(TAG, "Exiting menu - checking device mode");
+                
+                // Check if device mode changed and apply it
+                extern void check_device_mode_change(void);
+                check_device_mode_change();
             } else if (button == OLED_BUTTON_PREV) {
                 menu_screen_navigate(MENU_UP);
                 menu_screen_draw();

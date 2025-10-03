@@ -105,12 +105,8 @@ void device_mode_screen_select(void) {
         config.device_mode = DEVICE_MODE_PC;
     }
     
-    // Save to NVS
+    // Save to NVS (mode change will take effect on menu exit)
     device_config_set(&config);
-    
-    // Trigger mode change logic in main.c
-    extern void check_device_mode_change(void);
-    check_device_mode_change();
 }
 
 device_mode_t device_mode_get_current(void) {
