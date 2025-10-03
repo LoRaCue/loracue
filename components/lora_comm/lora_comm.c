@@ -32,7 +32,7 @@ static void lora_receive_task(void *pvParameters)
             
             if (rx_callback) {
                 int16_t rssi = lora_protocol_get_last_rssi();
-                rx_callback(packet_data.command, packet_data.payload, packet_data.payload_length, rssi, rx_callback_ctx);
+                rx_callback(packet_data.device_id, packet_data.command, packet_data.payload, packet_data.payload_length, rssi, rx_callback_ctx);
             }
             
             lora_connection_state_t state = lora_protocol_get_connection_state();

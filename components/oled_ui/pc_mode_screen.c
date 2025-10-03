@@ -21,28 +21,23 @@ void pc_mode_screen_draw(const ui_status_t* status)
     // USB status
     u8g2_SetFont(&u8g2, u8g2_font_6x10_tr);
     if (status->usb_connected) {
-        u8g2_DrawStr(&u8g2, 0, 24, "USB: Connected");
+        u8g2_DrawStr(&u8g2, 0, 24, "USB: OK");
     } else {
-        u8g2_DrawStr(&u8g2, 0, 24, "USB: DISCONNECTED!");
+        u8g2_DrawStr(&u8g2, 0, 24, "USB: DISC!");
     }
     
-    // LoRa status with RSSI
-    if (status->lora_connected) {
-        char buf[32];
-        snprintf(buf, sizeof(buf), "LoRa: %d dBm", status->lora_signal);
-        u8g2_DrawStr(&u8g2, 0, 36, buf);
-    } else {
-        u8g2_DrawStr(&u8g2, 0, 36, "LoRa: Waiting...");
-    }
+    // Active presenters count
+    char buf[32];
+    snprintf(buf, sizeof(buf), "Presenters: %d", status->active_presenter_count);
+    u8g2_DrawStr(&u8g2, 0, 36, buf);
     
-    // Last command
-    char cmd_buf[32];
+    // Last command with RSSI
     if (status->last_command[0] != '\0') {
-        snprintf(cmd_buf, sizeof(cmd_buf), "Last: %s", status->last_command);
+        snprintf(buf, sizeof(buf), "%s (%ddBm)", status->last_command, status->lora_signal);
     } else {
-        snprintf(cmd_buf, sizeof(cmd_buf), "Last: --");
+        snprintf(buf, sizeof(buf), "Waiting...");
     }
-    u8g2_DrawStr(&u8g2, 0, 50, cmd_buf);
+    u8g2_DrawStr(&u8g2, 0, 48, buf);
     
     // Footer
     u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);

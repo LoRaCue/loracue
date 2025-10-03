@@ -37,6 +37,18 @@ static EventGroupHandle_t system_events;
 static const esp_partition_t *running_partition = NULL;
 static TimerHandle_t ota_validation_timer = NULL;
 
+// Active presenter tracking (PC mode)
+typedef struct {
+    uint16_t device_id;
+    int16_t last_rssi;
+    uint32_t last_seen_ms;
+    uint32_t command_count;
+} active_presenter_t;
+
+#define MAX_ACTIVE_PRESENTERS 4
+static active_presenter_t active_presenters[MAX_ACTIVE_PRESENTERS] = {0};
+static uint32_t total_commands_received = 0;
+
 // Demo AES-256 keys for different devices
 static const uint8_t demo_aes_key_1[32] = {
     0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
@@ -103,6 +115,39 @@ static void ota_validation_timer_cb(TimerHandle_t timer) {
 }
 
 static EventGroupHandle_t system_events;
+
+static void update_active_presenter(uint16_t device_id, int16_t rssi)
+{
+    uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    int slot = -1;
+    
+    // Find existing or empty slot
+    for (int i = 0; i < MAX_ACTIVE_PRESENTERS; i++) {
+        if (active_presenters[i].device_id == device_id) {
+            slot = i;
+            break;
+        }
+        if (slot == -1 && active_presenters[i].device_id == 0) {
+            slot = i;
+        }
+    }
+    
+    // Expire old entries (>30s)
+    for (int i = 0; i < MAX_ACTIVE_PRESENTERS; i++) {
+        if (active_presenters[i].device_id != 0 && 
+            (now - active_presenters[i].last_seen_ms) > 30000) {
+            ESP_LOGI(TAG, "Presenter 0x%04X expired", active_presenters[i].device_id);
+            memset(&active_presenters[i], 0, sizeof(active_presenter_t));
+        }
+    }
+    
+    if (slot != -1) {
+        active_presenters[slot].device_id = device_id;
+        active_presenters[slot].last_rssi = rssi;
+        active_presenters[slot].last_seen_ms = now;
+        active_presenters[slot].command_count++;
+    }
+}
 
 static void check_device_mode_change(void)
 {
@@ -200,7 +245,7 @@ static bool rate_limiter_check(void)
 }
 
 // Application layer: LoRa command to USB HID mapping
-static void lora_rx_handler(lora_command_t command, const uint8_t *payload, uint8_t payload_length, int16_t rssi, void *user_ctx)
+static void lora_rx_handler(uint16_t device_id, lora_command_t command, const uint8_t *payload, uint8_t payload_length, int16_t rssi, void *user_ctx)
 {
     device_config_t config;
     device_config_get(&config);
@@ -210,7 +255,20 @@ static void lora_rx_handler(lora_command_t command, const uint8_t *payload, uint
         return;
     }
     
-    ESP_LOGI(TAG, "PC mode RX: cmd=0x%02X, rssi=%d dBm", command, rssi);
+    ESP_LOGI(TAG, "PC mode RX: device=0x%04X, cmd=0x%02X, rssi=%d dBm", device_id, command, rssi);
+    
+    // Device pairing validation
+    if (!device_registry_is_paired(device_id)) {
+        ESP_LOGW(TAG, "Ignoring command from unpaired device 0x%04X", device_id);
+        return;
+    }
+    
+    // Update device registry
+    device_registry_update_last_seen(device_id, 0);
+    
+    // Track active presenter
+    update_active_presenter(device_id, rssi);
+    total_commands_received++;
     
     if (!rate_limiter_check()) {
         ESP_LOGW(TAG, "Rate limit exceeded (>10 cmd/s)");
@@ -252,6 +310,18 @@ static void lora_rx_handler(lora_command_t command, const uint8_t *payload, uint
     oled_status_t *status = (oled_status_t *)user_ctx;
     status->lora_signal = rssi;
     strncpy(status->last_command, cmd_name, sizeof(status->last_command) - 1);
+    
+    // Update active presenters list
+    status->active_presenter_count = 0;
+    for (int i = 0; i < MAX_ACTIVE_PRESENTERS && i < 4; i++) {
+        if (active_presenters[i].device_id != 0) {
+            status->active_presenters[status->active_presenter_count].device_id = active_presenters[i].device_id;
+            status->active_presenters[status->active_presenter_count].rssi = active_presenters[i].last_rssi;
+            status->active_presenters[status->active_presenter_count].command_count = active_presenters[i].command_count;
+            status->active_presenter_count++;
+        }
+    }
+    
     xEventGroupSetBits(system_events, (1 << 3));
 }
 

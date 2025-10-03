@@ -51,6 +51,15 @@ typedef enum {
 } oled_button_t;
 
 /**
+ * @brief Active presenter info for PC mode
+ */
+typedef struct {
+    uint16_t device_id;
+    int16_t rssi;
+    uint32_t command_count;
+} active_presenter_info_t;
+
+/**
  * @brief Device status for display
  */
 typedef struct {
@@ -62,6 +71,8 @@ typedef struct {
     uint16_t device_id;         ///< Device ID
     char device_name[32];       ///< Device name
     char last_command[16];      ///< Last received command (PC mode)
+    uint8_t active_presenter_count;
+    active_presenter_info_t active_presenters[4];
 } oled_status_t;
 
 /**

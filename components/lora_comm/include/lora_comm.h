@@ -10,13 +10,14 @@ extern "C" {
 /**
  * @brief LoRa command received callback
  * 
+ * @param device_id Sender device ID
  * @param command Received command
  * @param payload Payload data (NULL if no payload)
  * @param payload_length Payload length
  * @param rssi Signal strength in dBm
  * @param user_ctx User context passed during registration
  */
-typedef void (*lora_comm_rx_callback_t)(lora_command_t command, const uint8_t *payload, uint8_t payload_length, int16_t rssi, void *user_ctx);
+typedef void (*lora_comm_rx_callback_t)(uint16_t device_id, lora_command_t command, const uint8_t *payload, uint8_t payload_length, int16_t rssi, void *user_ctx);
 
 /**
  * @brief LoRa connection state changed callback
