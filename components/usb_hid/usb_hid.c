@@ -4,16 +4,16 @@
  */
 
 #include "usb_hid.h"
-#include "usb_cdc.h"
+#include "button_manager.h"
+#include "cJSON.h"
+#include "class/cdc/cdc_device.h"
+#include "class/hid/hid_device.h"
+#include "device_config.h"
+#include "device_registry.h"
 #include "esp_log.h"
 #include "tinyusb.h"
 #include "tusb.h"
-#include "class/hid/hid_device.h"
-#include "class/cdc/cdc_device.h"
-#include "cJSON.h"
-#include "device_registry.h"
-#include "device_config.h"
-#include "button_manager.h"
+#include "usb_cdc.h"
 
 static const char *TAG = "USB_COMPOSITE";
 
@@ -23,21 +23,19 @@ static void send_key(uint8_t keycode, uint8_t modifier)
         ESP_LOGW(TAG, "HID not ready");
         return;
     }
-    
+
     uint8_t keycodes[6] = {0};
-    keycodes[0] = keycode;
-    
+    keycodes[0]         = keycode;
+
     // Send key press
     tud_hid_keyboard_report(0, modifier, keycodes);
     vTaskDelay(pdMS_TO_TICKS(10));
-    
+
     // Send key release
     tud_hid_keyboard_report(0, 0, NULL);
-    
+
     ESP_LOGI(TAG, "Sent key: 0x%02X (modifier: 0x%02X)", keycode, modifier);
 }
-
-
 
 // Key mappings for different modes
 typedef struct {
@@ -47,31 +45,31 @@ typedef struct {
 
 // PC Mode key mappings
 static const key_mapping_t pc_mode_keys[] = {
-    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},       // Previous slide
-    [BUTTON_EVENT_PREV_LONG]  = {0x29, 0},                  // Escape key
-    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0},     // Next slide
-    [BUTTON_EVENT_NEXT_LONG]  = {HID_KEY_F5, 0},            // Start slideshow
+    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},   // Previous slide
+    [BUTTON_EVENT_PREV_LONG]  = {0x29, 0},              // Escape key
+    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0}, // Next slide
+    [BUTTON_EVENT_NEXT_LONG]  = {HID_KEY_F5, 0},        // Start slideshow
 };
 
 // Presenter Mode key mappings
 static const key_mapping_t presenter_mode_keys[] = {
-    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},       // Previous slide
-    [BUTTON_EVENT_PREV_LONG]  = {HID_KEY_B, 0},             // Blank screen
-    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0},     // Next slide
-    [BUTTON_EVENT_NEXT_LONG]  = {0x2C, 0},                  // Space key
+    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},   // Previous slide
+    [BUTTON_EVENT_PREV_LONG]  = {HID_KEY_B, 0},         // Blank screen
+    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0}, // Next slide
+    [BUTTON_EVENT_NEXT_LONG]  = {0x2C, 0},              // Space key
 };
 
-static void button_event_handler(button_event_type_t event, void* arg)
+static void button_event_handler(button_event_type_t event, void *arg)
 {
     device_config_t config;
     device_config_get(&config);
-    const key_mapping_t* key_map = (config.device_mode == DEVICE_MODE_PC) ? pc_mode_keys : presenter_mode_keys;
-    
+    const key_mapping_t *key_map = (config.device_mode == DEVICE_MODE_PC) ? pc_mode_keys : presenter_mode_keys;
+
     if (event >= sizeof(pc_mode_keys) / sizeof(key_mapping_t)) {
         ESP_LOGW(TAG, "Invalid button event: %d", event);
         return;
     }
-    
+
     key_mapping_t mapping = key_map[event];
     send_key(mapping.keycode, mapping.modifier);
 }
@@ -83,21 +81,21 @@ void tud_cdc_rx_cb(uint8_t itf)
 }
 
 // TinyUSB HID callbacks
-uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
+uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer,
+                               uint16_t reqlen)
 {
     return 0;
 }
 
-void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
+void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer,
+                           uint16_t bufsize)
 {
 }
 
 // HID Report Descriptor for keyboard
-static const uint8_t hid_report_descriptor[] = {
-    TUD_HID_REPORT_DESC_KEYBOARD()
-};
+static const uint8_t hid_report_descriptor[] = {TUD_HID_REPORT_DESC_KEYBOARD()};
 
-uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance)
+uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 {
     return hid_report_descriptor;
 }
@@ -116,24 +114,22 @@ esp_err_t usb_hid_send_key(usb_hid_keycode_t keycode)
 esp_err_t usb_hid_init(void)
 {
     ESP_LOGI(TAG, "Initializing USB composite device (HID + CDC)");
-    
-    tinyusb_config_t tusb_cfg = {
-        .port = TINYUSB_PORT_FULL_SPEED_0,
-        .phy = {.skip_setup = false, .self_powered = false},
-        .task = {.size = 4096, .priority = 5, .xCoreID = 0},
-        .descriptor = {0},
-        .event_cb = NULL,
-        .event_arg = NULL
-    };
-    
+
+    tinyusb_config_t tusb_cfg = {.port       = TINYUSB_PORT_FULL_SPEED_0,
+                                 .phy        = {.skip_setup = false, .self_powered = false},
+                                 .task       = {.size = 4096, .priority = 5, .xCoreID = 0},
+                                 .descriptor = {0},
+                                 .event_cb   = NULL,
+                                 .event_arg  = NULL};
+
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
-    
+
     // Initialize USB CDC protocol
     ESP_ERROR_CHECK(usb_cdc_init());
-    
+
     // Register button event handler
     ESP_ERROR_CHECK(button_manager_register_callback(button_event_handler, NULL));
-    
+
     ESP_LOGI(TAG, "USB composite device initialized");
     return ESP_OK;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ui_config.h"
 #include "menu_screen.h"
+#include "ui_config.h"
 
 /**
  * @brief Draw LoRa settings configuration screen

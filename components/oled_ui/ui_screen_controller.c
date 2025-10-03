@@ -1,79 +1,81 @@
 #include "ui_screen_controller.h"
-#include "ui_data_provider.h"
 #include "boot_screen.h"
-#include "main_screen.h"
-#include "pc_mode_screen.h"
-#include "info_screens.h"
-#include "menu_screen.h"
-#include "device_mode_screen.h"
-#include "lora_settings_screen.h"
-#include "pairing_screen.h"
-#include "device_registry_screen.h"
 #include "brightness_screen.h"
 #include "config_mode_screen.h"
-#include "factory_reset_screen.h"
+#include "device_mode_screen.h"
+#include "device_registry_screen.h"
 #include "esp_log.h"
+#include "factory_reset_screen.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "info_screens.h"
+#include "lora_settings_screen.h"
+#include "main_screen.h"
+#include "menu_screen.h"
+#include "pairing_screen.h"
+#include "pc_mode_screen.h"
+#include "ui_data_provider.h"
 
-static const char* TAG = "ui_screen_controller";
+static const char *TAG              = "ui_screen_controller";
 static oled_screen_t current_screen = OLED_SCREEN_BOOT;
-static uint32_t menu_enter_time = 0;
+static uint32_t menu_enter_time     = 0;
 
-#define MENU_TIMEOUT_MS 15000  // 15 seconds
+#define MENU_TIMEOUT_MS 15000 // 15 seconds
 
-void ui_screen_controller_init(void) {
+void ui_screen_controller_init(void)
+{
     ESP_LOGI(TAG, "Initializing screen controller");
-    
+
     // Initialize data provider
     esp_err_t ret = ui_data_provider_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize data provider: %s", esp_err_to_name(ret));
     }
-    
+
     ESP_LOGI(TAG, "Screen controller initialized");
 }
 
-void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
+void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status)
+{
     // Acquire draw lock
     extern bool oled_ui_try_lock_draw(void);
     extern void oled_ui_unlock_draw(void);
-    
+
     if (!oled_ui_try_lock_draw()) {
         ESP_LOGW(TAG, "Failed to acquire draw lock, skipping screen change");
         return;
     }
-    
+
     current_screen = screen;
-    
+
     // Track menu entry time for timeout
     if (screen == OLED_SCREEN_MENU) {
         menu_enter_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
     }
-    
+
     // Update data if needed
     if (!status) {
         ui_data_provider_update();
         status = ui_data_provider_get_status();
     }
-    
+
     if (!status) {
         ESP_LOGE(TAG, "No status data available");
-        oled_ui_unlock_draw();  // Release lock before returning
+        oled_ui_unlock_draw(); // Release lock before returning
         return;
     }
-    
+
     ESP_LOGI(TAG, "Setting screen: %d", screen);
-    
+
     switch (screen) {
         case OLED_SCREEN_BOOT:
             boot_screen_draw();
             break;
-            
+
         case OLED_SCREEN_MAIN:
             main_screen_draw(status);
             break;
-            
+
         case OLED_SCREEN_PC_MODE:
             // PC mode needs oled_status_t for command history
             {
@@ -83,80 +85,83 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
                     pc_mode_screen_draw(&g_oled_status);
                 } else {
                     // Not initialized yet, draw empty PC mode screen
-                    oled_status_t temp_status = {0};
-                    temp_status.battery_level = status->battery_level;
-                    temp_status.usb_connected = status->usb_connected;
+                    oled_status_t temp_status  = {0};
+                    temp_status.battery_level  = status->battery_level;
+                    temp_status.usb_connected  = status->usb_connected;
                     temp_status.lora_connected = status->lora_connected;
                     pc_mode_screen_draw(&temp_status);
                 }
             }
             break;
-            
+
         case OLED_SCREEN_MENU:
             menu_screen_draw();
             break;
-            
+
         case OLED_SCREEN_SYSTEM_INFO:
             system_info_screen_draw();
             break;
-            
+
         case OLED_SCREEN_FACTORY_RESET:
             factory_reset_screen_draw();
             break;
-            
+
         case OLED_SCREEN_DEVICE_INFO:
             device_info_screen_draw(status);
             break;
-            
+
         case OLED_SCREEN_BATTERY:
             battery_status_screen_draw(status);
             break;
-            
+
         case OLED_SCREEN_DEVICE_MODE:
             device_mode_screen_draw();
             break;
-            
+
         case OLED_SCREEN_LORA_SETTINGS:
             lora_settings_screen_draw();
             break;
-            
+
         case OLED_SCREEN_DEVICE_PAIRING:
             pairing_screen_draw();
             break;
-            
+
         case OLED_SCREEN_DEVICE_REGISTRY:
             device_registry_screen_draw();
             break;
-            
+
         case OLED_SCREEN_BRIGHTNESS:
             brightness_screen_draw();
             break;
-            
+
         case OLED_SCREEN_CONFIG_ACTIVE:
             config_mode_screen_draw();
             break;
-            
+
         default:
             ESP_LOGW(TAG, "Screen %d not implemented, showing main", screen);
             main_screen_draw(status);
             current_screen = OLED_SCREEN_MAIN;
             break;
     }
-    
+
     // Release draw lock
     oled_ui_unlock_draw();
 }
 
-oled_screen_t ui_screen_controller_get_current(void) {
+oled_screen_t ui_screen_controller_get_current(void)
+{
     return current_screen;
 }
 
-void ui_screen_controller_set_no_draw(oled_screen_t screen) {
+void ui_screen_controller_set_no_draw(oled_screen_t screen)
+{
     current_screen = screen;
     ESP_LOGI(TAG, "Screen type changed to: %d (no draw)", screen);
 }
 
-void ui_screen_controller_update(const ui_status_t* status) {
+void ui_screen_controller_update(const ui_status_t *status)
+{
     // Check menu timeout
     if (current_screen == OLED_SCREEN_MENU) {
         uint32_t current_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
@@ -166,7 +171,7 @@ void ui_screen_controller_update(const ui_status_t* status) {
             return;
         }
     }
-    
+
     // Update data provider if status not provided
     if (!status) {
         esp_err_t ret = ui_data_provider_update();
@@ -178,48 +183,47 @@ void ui_screen_controller_update(const ui_status_t* status) {
     } else {
         ui_data_provider_force_update(status->usb_connected, status->lora_connected, status->battery_level);
     }
-    
+
     if (!status) {
         ESP_LOGW(TAG, "No status data available for update");
         return;
     }
-    
+
     // Redraw current screen with updated data (only screens that need periodic updates)
     switch (current_screen) {
         case OLED_SCREEN_MAIN:
             main_screen_draw(status);
             break;
-            
-        case OLED_SCREEN_PC_MODE:
-            {
-                extern oled_status_t g_oled_status;
-                pc_mode_screen_draw(&g_oled_status);
-            }
-            break;
-            
+
+        case OLED_SCREEN_PC_MODE: {
+            extern oled_status_t g_oled_status;
+            pc_mode_screen_draw(&g_oled_status);
+        } break;
+
         case OLED_SCREEN_BATTERY:
             battery_status_screen_draw(status);
             break;
-            
+
         // Other screens don't need periodic updates
         default:
             break;
     }
 }
 
-void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
+void ui_screen_controller_handle_button(oled_button_t button, bool long_press)
+{
     ESP_LOGI(TAG, "Button %d pressed (long: %d) on screen %d", button, long_press, current_screen);
-    
+
     // Reset menu timeout on any button press while in menu
     if (current_screen == OLED_SCREEN_MENU) {
         menu_enter_time = xTaskGetTickCount() * portTICK_PERIOD_MS;
     }
-    
+
     switch (current_screen) {
         case OLED_SCREEN_BOOT:
             // Boot screen auto-transitions, ignore buttons
             break;
-            
+
         case OLED_SCREEN_MAIN:
             if (long_press && button == OLED_BUTTON_BOTH) {
                 // Long press both buttons -> Menu
@@ -227,7 +231,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
             }
             break;
-            
+
         case OLED_SCREEN_PC_MODE:
             if (long_press && button == OLED_BUTTON_BOTH) {
                 // Long press both buttons -> Menu
@@ -235,7 +239,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
             }
             break;
-            
+
         case OLED_SCREEN_MENU:
             if (long_press && button == OLED_BUTTON_BOTH) {
                 // Long press both buttons -> Exit menu
@@ -293,7 +297,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 }
             }
             break;
-            
+
         case OLED_SCREEN_SYSTEM_INFO:
         case OLED_SCREEN_DEVICE_INFO:
         case OLED_SCREEN_BATTERY:
@@ -302,7 +306,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
             }
             break;
-            
+
         case OLED_SCREEN_FACTORY_RESET:
             if (button == OLED_BUTTON_PREV) {
                 // Back to menu
@@ -312,7 +316,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 factory_reset_screen_execute();
             }
             break;
-            
+
         case OLED_SCREEN_DEVICE_MODE:
             if (button == OLED_BUTTON_PREV) {
                 // Back to menu
@@ -325,7 +329,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 // Don't redraw - select() changes screen if mode changed
             }
             break;
-            
+
         case OLED_SCREEN_LORA_SETTINGS:
             if (button == OLED_BUTTON_PREV) {
                 // Back to menu
@@ -338,7 +342,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 lora_settings_screen_draw();
             }
             break;
-            
+
         case OLED_SCREEN_BRIGHTNESS:
             if (button == OLED_BUTTON_PREV) {
                 if (brightness_screen_is_edit_mode()) {
@@ -357,7 +361,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 brightness_screen_draw();
             }
             break;
-            
+
         case OLED_SCREEN_DEVICE_PAIRING:
             if (button == OLED_BUTTON_PREV) {
                 // Stop pairing and back to menu
@@ -365,7 +369,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
             }
             break;
-            
+
         case OLED_SCREEN_DEVICE_REGISTRY:
             if (button == OLED_BUTTON_PREV) {
                 // Back to menu
@@ -378,7 +382,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 ESP_LOGI(TAG, "Device removal not implemented yet");
             }
             break;
-            
+
         case OLED_SCREEN_CONFIG_ACTIVE:
             if (button == OLED_BUTTON_PREV) {
                 // Back to menu
@@ -389,7 +393,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press) {
                 config_mode_screen_draw();
             }
             break;
-            
+
         default:
             ESP_LOGW(TAG, "Button handling not implemented for screen %d", current_screen);
             break;

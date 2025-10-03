@@ -9,7 +9,7 @@ extern "C" {
 
 /**
  * @brief LoRa command received callback
- * 
+ *
  * @param device_id Sender device ID
  * @param command Received command
  * @param payload Payload data (NULL if no payload)
@@ -17,11 +17,12 @@ extern "C" {
  * @param rssi Signal strength in dBm
  * @param user_ctx User context passed during registration
  */
-typedef void (*lora_comm_rx_callback_t)(uint16_t device_id, lora_command_t command, const uint8_t *payload, uint8_t payload_length, int16_t rssi, void *user_ctx);
+typedef void (*lora_comm_rx_callback_t)(uint16_t device_id, lora_command_t command, const uint8_t *payload,
+                                        uint8_t payload_length, int16_t rssi, void *user_ctx);
 
 /**
  * @brief LoRa connection state changed callback
- * 
+ *
  * @param state New connection state
  * @param user_ctx User context passed during registration
  */
@@ -29,14 +30,14 @@ typedef void (*lora_comm_state_callback_t)(lora_connection_state_t state, void *
 
 /**
  * @brief Initialize LoRa communication layer
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t lora_comm_init(void);
 
 /**
  * @brief Register callback for received commands
- * 
+ *
  * @param callback Callback function
  * @param user_ctx User context to pass to callback
  * @return ESP_OK on success
@@ -45,7 +46,7 @@ esp_err_t lora_comm_register_rx_callback(lora_comm_rx_callback_t callback, void 
 
 /**
  * @brief Register callback for connection state changes
- * 
+ *
  * @param callback Callback function
  * @param user_ctx User context to pass to callback
  * @return ESP_OK on success
@@ -54,7 +55,7 @@ esp_err_t lora_comm_register_state_callback(lora_comm_state_callback_t callback,
 
 /**
  * @brief Send LoRa command
- * 
+ *
  * @param command Command to send
  * @param payload Optional payload data
  * @param payload_length Payload length (0-7)
@@ -64,7 +65,7 @@ esp_err_t lora_comm_send_command(lora_command_t command, const uint8_t *payload,
 
 /**
  * @brief Send LoRa command with reliable delivery (ACK + retries)
- * 
+ *
  * @param command Command to send
  * @param payload Optional payload data
  * @param payload_length Payload length (0-7)
@@ -74,14 +75,14 @@ esp_err_t lora_comm_send_command_reliable(lora_command_t command, const uint8_t 
 
 /**
  * @brief Start LoRa communication task
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t lora_comm_start(void);
 
 /**
  * @brief Stop LoRa communication task
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t lora_comm_stop(void);

@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Enterprise-grade LoRa presentation clicker",
   "scripts": {
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "format:check": "find main components -type f \\( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \\) ! -path '*/sx126x/*' ! -path '*/u8g2/*' ! -path '*/u8g2-hal-esp-idf/*' -exec clang-format --dry-run --Werror {} +",
+    "format:fix": "find main components -type f \\( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \\) ! -path '*/sx126x/*' ! -path '*/u8g2/*' ! -path '*/u8g2-hal-esp-idf/*' -exec clang-format -i {} +",
+    "precommit": "npm run format:check"
   },
   "devDependencies": {
     "@commitlint/cli": "^17.0.0",

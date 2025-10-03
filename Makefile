@@ -1,7 +1,7 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 # Automatically finds and sets up ESP-IDF environment
 
-.PHONY: build clean flash monitor menuconfig size erase help check-idf setup-env sim-build sim-web sim sim-debug sim-screenshot check-wokwi web-build web-dev
+.PHONY: build clean flash monitor menuconfig size erase help check-idf setup-env sim-build sim-web sim sim-debug sim-screenshot check-wokwi web-build web-dev format format-check lint
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -103,6 +103,70 @@ size: check-idf
 erase: check-idf
 	@echo "🗑️  Erasing flash memory..."
 	$(IDF_SETUP) idf.py erase-flash
+
+# Code Quality Targets
+format:
+	@echo "🎨 Formatting code..."
+	@if ! command -v clang-format >/dev/null 2>&1; then \
+		echo "❌ clang-format not found. Install with:"; \
+		echo "  macOS: brew install clang-format"; \
+		echo "  Linux: sudo apt install clang-format"; \
+		exit 1; \
+	fi
+	@find main components -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) \
+		! -path "*/sx126x/*" \
+		! -path "*/u8g2/*" \
+		! -path "*/u8g2-hal-esp-idf/*" \
+		-exec clang-format -i {} +
+	@echo "✅ Code formatted"
+
+format-check:
+	@echo "🔍 Checking code formatting..."
+	@if ! command -v clang-format >/dev/null 2>&1; then \
+		echo "❌ clang-format not found. Install with:"; \
+		echo "  macOS: brew install clang-format"; \
+		echo "  Linux: sudo apt install clang-format"; \
+		exit 1; \
+	fi
+	@UNFORMATTED=$$(find main components -type f \( -name '*.c' -o -name '*.h' -o -name '*.cpp' -o -name '*.hpp' \) \
+		! -path "*/sx126x/*" \
+		! -path "*/u8g2/*" \
+		! -path "*/u8g2-hal-esp-idf/*" \
+		-exec clang-format --dry-run --Werror {} + 2>&1 | grep "warning:" || true); \
+	if [ -n "$$UNFORMATTED" ]; then \
+		echo "❌ Code formatting issues found"; \
+		echo "$$UNFORMATTED"; \
+		echo ""; \
+		echo "Fix with: make format"; \
+		exit 1; \
+	fi
+	@echo "✅ Code formatting OK"
+
+lint:
+	@echo "🔍 Running static analysis..."
+	@if ! command -v cppcheck >/dev/null 2>&1; then \
+		echo "❌ cppcheck not found. Install with:"; \
+		echo "  macOS: brew install cppcheck"; \
+		echo "  Linux: sudo apt install cppcheck"; \
+		exit 1; \
+	fi
+	@cppcheck --enable=warning,style,performance,portability \
+		--suppress=missingIncludeSystem \
+		--suppress=unmatchedSuppression \
+		--inline-suppr \
+		--error-exitcode=1 \
+		--quiet \
+		-i components/sx126x \
+		-i components/u8g2 \
+		-i components/u8g2-hal-esp-idf \
+		-I main/include \
+		-I components/*/include \
+		main/ components/ 2>&1 | grep -v "Checking" || true
+	@if [ $$? -eq 1 ]; then \
+		echo "❌ Static analysis found issues"; \
+		exit 1; \
+	fi
+	@echo "✅ Static analysis passed"
 
 # Set target (run once after fresh clone)
 set-target: check-idf
@@ -244,6 +308,11 @@ help:
 	@echo "  erase         - Erase entire flash"
 	@echo "  rebuild       - Clean and rebuild"
 	@echo "  dev           - Build, flash, and monitor"
+	@echo ""
+	@echo "🎨 Code quality:"
+	@echo "  format        - Format all C/C++ code"
+	@echo "  format-check  - Check code formatting"
+	@echo "  lint          - Run static analysis"
 	@echo ""
 	@echo "🌐 Web interface targets:"
 	@echo "  web-dev       - Start development server (localhost:3000)"

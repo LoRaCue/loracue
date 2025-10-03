@@ -1,9 +1,6 @@
 #pragma once
 
-typedef enum {
-    MENU_UP,
-    MENU_DOWN
-} menu_direction_t;
+typedef enum { MENU_UP, MENU_DOWN } menu_direction_t;
 
 typedef enum {
     MENU_DEVICE_MODE = 0,

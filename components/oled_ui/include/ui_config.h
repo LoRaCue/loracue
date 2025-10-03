@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 // Display dimensions
 #define DISPLAY_WIDTH 128
@@ -37,10 +37,10 @@
 
 // UI data structures
 typedef enum {
-    SIGNAL_NONE = 0,
-    SIGNAL_WEAK = 1,
-    SIGNAL_FAIR = 2,
-    SIGNAL_GOOD = 3,
+    SIGNAL_NONE   = 0,
+    SIGNAL_WEAK   = 1,
+    SIGNAL_FAIR   = 2,
+    SIGNAL_GOOD   = 3,
     SIGNAL_STRONG = 4
 } signal_strength_t;
 
@@ -48,10 +48,10 @@ typedef struct {
     bool usb_connected;
     bool lora_connected;
     signal_strength_t signal_strength;
-    uint8_t battery_level;  // 0-100%
+    uint8_t battery_level; // 0-100%
     char device_name[16];
-    int16_t lora_signal;    // RSSI in dBm
-    char last_command[16];  // Last received command
+    int16_t lora_signal;   // RSSI in dBm
+    char last_command[16]; // Last received command
     uint8_t active_presenter_count;
     uint8_t command_history_count;
 } ui_status_t;

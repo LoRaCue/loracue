@@ -4,9 +4,9 @@
  */
 
 #include "bsp.h"
-#include "esp_log.h"
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "u8g2.h"
@@ -18,51 +18,53 @@ static const char *TAG = "BSP_WOKWI";
 u8g2_t u8g2;
 
 // GPIO pin definitions for Wokwi
-#define BUTTON_PREV_PIN        GPIO_NUM_46
-#define BUTTON_NEXT_PIN        GPIO_NUM_45
-#define BUTTON_BOTH_PIN        GPIO_NUM_21  // Wokwi "BOTH" button
-#define STATUS_LED_PIN         GPIO_NUM_35
-#define I2C_SDA_PIN            GPIO_NUM_17
-#define I2C_SCL_PIN            GPIO_NUM_18
+#define BUTTON_PREV_PIN GPIO_NUM_46
+#define BUTTON_NEXT_PIN GPIO_NUM_45
+#define BUTTON_BOTH_PIN GPIO_NUM_21 // Wokwi "BOTH" button
+#define STATUS_LED_PIN GPIO_NUM_35
+#define I2C_SDA_PIN GPIO_NUM_17
+#define I2C_SCL_PIN GPIO_NUM_18
 
 esp_err_t bsp_init(void)
 {
     ESP_LOGI(TAG, "Initializing Wokwi Simulator BSP");
-    
+
     // Initialize GPIO for buttons
     gpio_config_t button_config = {
         .pin_bit_mask = (1ULL << BUTTON_PREV_PIN) | (1ULL << BUTTON_NEXT_PIN) | (1ULL << BUTTON_BOTH_PIN),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .mode         = GPIO_MODE_INPUT,
+        .pull_up_en   = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
     };
     esp_err_t ret = gpio_config(&button_config);
-    if (ret != ESP_OK) return ret;
-    
+    if (ret != ESP_OK)
+        return ret;
+
     // Initialize status LED
     gpio_config_t led_config = {
         .pin_bit_mask = (1ULL << STATUS_LED_PIN),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
     };
     ret = gpio_config(&led_config);
-    if (ret != ESP_OK) return ret;
-    
+    if (ret != ESP_OK)
+        return ret;
+
     // Initialize u8g2 HAL for I2C
     u8g2_esp32_hal_t u8g2_hal = U8G2_ESP32_HAL_DEFAULT;
-    u8g2_hal.bus.i2c.sda = I2C_SDA_PIN;
-    u8g2_hal.bus.i2c.scl = I2C_SCL_PIN;
+    u8g2_hal.bus.i2c.sda      = I2C_SDA_PIN;
+    u8g2_hal.bus.i2c.scl      = I2C_SCL_PIN;
     u8g2_esp32_hal_init(u8g2_hal);
-    
+
     // Initialize u8g2 for SSD1306 (Wokwi)
     u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, u8g2_esp32_i2c_byte_cb, u8g2_esp32_gpio_and_delay_cb);
     u8x8_SetI2CAddress(&u8g2.u8x8, 0x3C << 1);
     u8g2_InitDisplay(&u8g2);
     u8g2_SetPowerSave(&u8g2, 0);
-    
+
     ESP_LOGI(TAG, "Wokwi BSP initialization complete");
     return ESP_OK;
 }

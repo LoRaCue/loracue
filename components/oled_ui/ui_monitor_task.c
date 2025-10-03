@@ -1,24 +1,25 @@
 #include "ui_monitor_task.h"
-#include "ui_data_provider.h"
-#include "ui_screen_controller.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "ui_data_provider.h"
+#include "ui_screen_controller.h"
 
-static const char* TAG = "ui_monitor";
+static const char *TAG                  = "ui_monitor";
 static TaskHandle_t monitor_task_handle = NULL;
-static bool monitor_running = false;
+static bool monitor_running             = false;
 
-static void ui_monitor_task(void* pvParameters) {
+static void ui_monitor_task(void *pvParameters)
+{
     ESP_LOGI(TAG, "UI monitor task started");
-    
+
     // Wait 10 seconds before first update to allow full system initialization
     // and avoid collision with early user interactions (mode changes, etc.)
     vTaskDelay(pdMS_TO_TICKS(10000));
-    
-    TickType_t last_update = xTaskGetTickCount();
-    const TickType_t update_interval = pdMS_TO_TICKS(5000);  // Update every 5 seconds
-    
+
+    TickType_t last_update           = xTaskGetTickCount();
+    const TickType_t update_interval = pdMS_TO_TICKS(5000); // Update every 5 seconds
+
     while (monitor_running) {
         // Update data from BSP sensors
         esp_err_t ret = ui_data_provider_update();
@@ -28,55 +29,52 @@ static void ui_monitor_task(void* pvParameters) {
             // Update screen with new data
             ui_screen_controller_update(NULL);
         }
-        
+
         // Wait for next update interval
         vTaskDelayUntil(&last_update, update_interval);
     }
-    
+
     ESP_LOGI(TAG, "UI monitor task stopped");
     vTaskDelete(NULL);
 }
 
-esp_err_t ui_monitor_task_start(void) {
+esp_err_t ui_monitor_task_start(void)
+{
     if (monitor_running) {
         ESP_LOGW(TAG, "Monitor task already running");
         return ESP_ERR_INVALID_STATE;
     }
-    
+
     monitor_running = true;
-    
-    BaseType_t ret = xTaskCreate(
-        ui_monitor_task,
-        "ui_monitor",
-        4096,
-        NULL,
-        5,  // Priority
-        &monitor_task_handle
-    );
-    
+
+    BaseType_t ret = xTaskCreate(ui_monitor_task, "ui_monitor", 4096, NULL,
+                                 5, // Priority
+                                 &monitor_task_handle);
+
     if (ret != pdPASS) {
         monitor_running = false;
         ESP_LOGE(TAG, "Failed to create monitor task");
         return ESP_ERR_NO_MEM;
     }
-    
+
     ESP_LOGI(TAG, "UI monitor task started successfully");
     return ESP_OK;
 }
 
-esp_err_t ui_monitor_task_stop(void) {
+esp_err_t ui_monitor_task_stop(void)
+{
     if (!monitor_running) {
         ESP_LOGW(TAG, "Monitor task not running");
         return ESP_ERR_INVALID_STATE;
     }
-    
+
     monitor_running = false;
-    
+
     // Task will delete itself
     if (monitor_task_handle) {
         monitor_task_handle = NULL;
     }
-    
+
     ESP_LOGI(TAG, "UI monitor task stop requested");
     return ESP_OK;
 }
