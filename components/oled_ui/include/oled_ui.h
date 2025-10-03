@@ -24,6 +24,7 @@ extern "C" {
 typedef enum {
     OLED_SCREEN_BOOT,           ///< Boot/startup screen
     OLED_SCREEN_MAIN,           ///< Main status screen
+    OLED_SCREEN_PC_MODE,        ///< PC mode receiver screen
     OLED_SCREEN_MENU,           ///< Settings menu
     OLED_SCREEN_DEVICE_MODE,    ///< Device mode selection
     OLED_SCREEN_BATTERY,        ///< Battery status
@@ -60,6 +61,7 @@ typedef struct {
     bool usb_connected;         ///< USB connection status
     uint16_t device_id;         ///< Device ID
     char device_name[32];       ///< Device name
+    char last_command[16];      ///< Last received command (PC mode)
 } oled_status_t;
 
 /**

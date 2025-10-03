@@ -2,6 +2,7 @@
 #include "ui_data_provider.h"
 #include "boot_screen.h"
 #include "main_screen.h"
+#include "pc_mode_screen.h"
 #include "info_screens.h"
 #include "menu_screen.h"
 #include "device_mode_screen.h"
@@ -61,6 +62,10 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
             
         case OLED_SCREEN_MAIN:
             main_screen_draw(status);
+            break;
+            
+        case OLED_SCREEN_PC_MODE:
+            pc_mode_screen_draw(status);
             break;
             
         case OLED_SCREEN_MENU:

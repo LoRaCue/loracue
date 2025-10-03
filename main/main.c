@@ -116,11 +116,13 @@ static void check_device_mode_change(void)
         
         if (config.device_mode == DEVICE_MODE_PC) {
             ESP_LOGI(TAG, "PC mode: receiver only, buttons disabled");
+            oled_ui_set_screen(OLED_SCREEN_PC_MODE);
             if (!usb_hid_is_connected()) {
                 oled_ui_show_message("PC Mode", "Connect USB Cable", 3000);
             }
         } else {
             ESP_LOGI(TAG, "Presenter mode: transmitter, buttons enabled");
+            oled_ui_set_screen(OLED_SCREEN_MAIN);
         }
         
         current_device_mode = config.device_mode;
@@ -221,18 +223,23 @@ static void lora_rx_handler(lora_command_t command, const uint8_t *payload, uint
     }
     
     usb_hid_keycode_t keycode;
+    const char *cmd_name;
     switch (command) {
         case CMD_NEXT_SLIDE:
             keycode = HID_KEY_PAGE_DOWN;
+            cmd_name = "NEXT";
             break;
         case CMD_PREV_SLIDE:
             keycode = HID_KEY_PAGE_UP;
+            cmd_name = "PREV";
             break;
         case CMD_BLACK_SCREEN:
             keycode = HID_KEY_B;
+            cmd_name = "BLACK";
             break;
         case CMD_START_PRESENTATION:
             keycode = HID_KEY_F5;
+            cmd_name = "START";
             break;
         default:
             ESP_LOGW(TAG, "Unknown command: 0x%02X", command);
@@ -240,6 +247,12 @@ static void lora_rx_handler(lora_command_t command, const uint8_t *payload, uint
     }
     
     usb_hid_send_key(keycode);
+    
+    // Update status for PC mode screen
+    oled_status_t *status = (oled_status_t *)user_ctx;
+    status->lora_signal = rssi;
+    strncpy(status->last_command, cmd_name, sizeof(status->last_command) - 1);
+    xEventGroupSetBits(system_events, (1 << 3));
 }
 
 static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
@@ -254,7 +267,8 @@ static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
 
 static void button_handler(button_event_type_t event, void *arg)
 {
-    if (oled_ui_get_screen() != OLED_SCREEN_MAIN) {
+    oled_screen_t screen = oled_ui_get_screen();
+    if (screen != OLED_SCREEN_MAIN && screen != OLED_SCREEN_PC_MODE) {
         return;
     }
     
@@ -490,7 +504,12 @@ void app_main(void)
     }
     
     // Transition to main UI state
-    oled_ui_set_screen(OLED_SCREEN_MAIN);
+    device_config_get(&config);
+    if (config.device_mode == DEVICE_MODE_PC) {
+        oled_ui_set_screen(OLED_SCREEN_PC_MODE);
+    } else {
+        oled_ui_set_screen(OLED_SCREEN_MAIN);
+    }
     
     // Start LED fading after initialization complete
     ESP_LOGI(TAG, "Starting LED fade pattern");
@@ -528,7 +547,8 @@ void app_main(void)
         .lora_connected = false,
         .lora_signal = 0,
         .usb_connected = false,
-        .device_id = 0x1234
+        .device_id = 0x1234,
+        .last_command = ""
     };
     strcpy(status.device_name, "LoRaCue-STAGE");
     
@@ -567,6 +587,10 @@ void app_main(void)
         }
         
         if (events & (1 << 2)) { // LoRa state changed
+            oled_ui_update_status(&status);
+        }
+        
+        if (events & (1 << 3)) { // Command received
             oled_ui_update_status(&status);
         }
         

@@ -50,6 +50,8 @@ typedef struct {
     signal_strength_t signal_strength;
     uint8_t battery_level;  // 0-100%
     char device_name[16];
+    int16_t lora_signal;    // RSSI in dBm
+    char last_command[16];  // Last received command
 } ui_status_t;
 
 typedef struct {
