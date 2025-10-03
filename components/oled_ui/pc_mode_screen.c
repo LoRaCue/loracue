@@ -64,8 +64,13 @@ void pc_mode_screen_draw(const oled_status_t* status)
     // Bottom separator
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
     
-    // Bottom bar - menu hint on right
+    // Bottom bar
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
+    
+    // Device name on left
+    u8g2_DrawStr(&u8g2, TEXT_MARGIN_LEFT - 1, DISPLAY_HEIGHT - 1, ui_status.device_name);
+    
+    // Menu hint on right
     const char* menu_text = "3s ";
     const char* menu_suffix = " Menu";
     int text_width = u8g2_GetStrWidth(&u8g2, menu_text);
