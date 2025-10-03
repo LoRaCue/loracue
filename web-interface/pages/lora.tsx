@@ -57,7 +57,7 @@ export default function LoRaPage() {
   const getFrequencyLabel = (freq: number) => {
     if (freq === 868000000) return '868 MHz (EU)'
     if (freq === 915000000) return '915 MHz (US)'
-    if (freq === 433000000) return '433 MHz'
+    if (freq === 433000000) return '433 MHz (China/World)'
     return `${freq / 1000000} MHz`
   }
 
