@@ -153,6 +153,66 @@ static void usb_monitor_task(void *pvParameters)
     }
 }
 
+// Application layer: LoRa command to USB HID mapping
+static void lora_rx_handler(lora_command_t command, const uint8_t *payload, uint8_t payload_length, int16_t rssi, void *user_ctx)
+{
+    ESP_LOGI(TAG, "LoRa RX: cmd=0x%02X, rssi=%d dBm", command, rssi);
+    
+    usb_hid_keycode_t keycode;
+    switch (command) {
+        case CMD_NEXT_SLIDE:
+            keycode = HID_KEY_PAGE_DOWN;
+            break;
+        case CMD_PREV_SLIDE:
+            keycode = HID_KEY_PAGE_UP;
+            break;
+        case CMD_BLACK_SCREEN:
+            keycode = HID_KEY_B;
+            break;
+        case CMD_START_PRESENTATION:
+            keycode = HID_KEY_F5;
+            break;
+        default:
+            ESP_LOGW(TAG, "Unknown command: 0x%02X", command);
+            return;
+    }
+    
+    usb_hid_send_key(keycode);
+}
+
+static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
+{
+    oled_status_t *status = (oled_status_t *)user_ctx;
+    status->lora_connected = (state != LORA_CONNECTION_LOST);
+    status->lora_signal = (state == LORA_CONNECTION_EXCELLENT) ? 100 : 
+                          (state == LORA_CONNECTION_GOOD) ? 75 :
+                          (state == LORA_CONNECTION_WEAK) ? 50 : 25;
+    xEventGroupSetBits(system_events, (1 << 2));
+}
+
+static void button_handler(button_event_type_t event, void *arg)
+{
+    lora_command_t cmd;
+    switch (event) {
+        case BUTTON_EVENT_PREV_SHORT:
+            cmd = CMD_PREV_SLIDE;
+            break;
+        case BUTTON_EVENT_NEXT_SHORT:
+            cmd = CMD_NEXT_SLIDE;
+            break;
+        case BUTTON_EVENT_PREV_LONG:
+            cmd = CMD_BLACK_SCREEN;
+            break;
+        case BUTTON_EVENT_NEXT_LONG:
+            cmd = CMD_START_PRESENTATION;
+            break;
+        default:
+            return;
+    }
+    
+    lora_comm_send_command_reliable(cmd, NULL, 0);
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "LoRaCue starting - Enterprise presentation clicker");
@@ -397,6 +457,11 @@ void app_main(void)
     };
     strcpy(status.device_name, "LoRaCue-STAGE");
     
+    // Register application callbacks
+    lora_comm_register_rx_callback(lora_rx_handler, &status);
+    lora_comm_register_state_callback(lora_state_handler, &status);
+    button_manager_register_callback(button_handler, NULL);
+    
     // Create event group for system events
     system_events = xEventGroupCreate();
     
@@ -423,6 +488,10 @@ void app_main(void)
         }
         
         if (events & (1 << 1)) { // USB status changed
+            oled_ui_update_status(&status);
+        }
+        
+        if (events & (1 << 2)) { // LoRa state changed
             oled_ui_update_status(&status);
         }
         

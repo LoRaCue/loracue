@@ -1,43 +1,22 @@
 #include "lora_comm.h"
 #include "lora_protocol.h"
 #include "lora_driver.h"
-#include "button_manager.h"
-#include "device_config.h"
-#include "usb_hid.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 static const char *TAG = "LORA_COMM";
+
 static TaskHandle_t lora_task_handle = NULL;
 static bool lora_task_running = false;
 
-static void handle_lora_command(lora_command_t command)
-{
-    ESP_LOGI(TAG, "Received LoRa command: 0x%02X", command);
-    
-    usb_hid_keycode_t keycode;
-    
-    switch (command) {
-        case CMD_NEXT_SLIDE:
-            keycode = HID_KEY_PAGE_DOWN;
-            break;
-        case CMD_PREV_SLIDE:
-            keycode = HID_KEY_PAGE_UP;
-            break;
-        case CMD_BLACK_SCREEN:
-            keycode = HID_KEY_B;
-            break;
-        case CMD_START_PRESENTATION:
-            keycode = HID_KEY_F5;
-            break;
-        default:
-            ESP_LOGW(TAG, "Unknown LoRa command: 0x%02X", command);
-            return;
-    }
-    
-    usb_hid_send_key(keycode);
-}
+static lora_comm_rx_callback_t rx_callback = NULL;
+static void *rx_callback_ctx = NULL;
+
+static lora_comm_state_callback_t state_callback = NULL;
+static void *state_callback_ctx = NULL;
+
+static lora_connection_state_t last_connection_state = LORA_CONNECTION_LOST;
 
 static void lora_receive_task(void *pvParameters)
 {
@@ -49,23 +28,38 @@ static void lora_receive_task(void *pvParameters)
         esp_err_t ret = lora_protocol_receive_packet(&packet_data, 1000);
         
         if (ret == ESP_OK) {
-            handle_lora_command(packet_data.command);
-            consecutive_errors = 0;  // Reset error counter on success
+            consecutive_errors = 0;
+            
+            if (rx_callback) {
+                int16_t rssi = lora_protocol_get_last_rssi();
+                rx_callback(packet_data.command, packet_data.payload, packet_data.payload_length, rssi, rx_callback_ctx);
+            }
+            
+            lora_connection_state_t state = lora_protocol_get_connection_state();
+            if (state != last_connection_state) {
+                last_connection_state = state;
+                if (state_callback) {
+                    state_callback(state, state_callback_ctx);
+                }
+            }
         } else if (ret != ESP_ERR_TIMEOUT) {
             ESP_LOGW(TAG, "LoRa receive error: %s", esp_err_to_name(ret));
             consecutive_errors++;
             
-            // Check for connection loss
             if (consecutive_errors > 10) {
                 ESP_LOGE(TAG, "LoRa connection lost, attempting recovery...");
                 lora_connection_state_t state = lora_protocol_get_connection_state();
                 
-                if (state == LORA_CONNECTION_LOST) {
-                    // Reinitialize LoRa driver
+                if (state == LORA_CONNECTION_LOST && state != last_connection_state) {
+                    last_connection_state = state;
+                    if (state_callback) {
+                        state_callback(state, state_callback_ctx);
+                    }
+                    
                     ESP_LOGI(TAG, "Reinitializing LoRa driver");
                     lora_driver_init();
                     consecutive_errors = 0;
-                    vTaskDelay(pdMS_TO_TICKS(1000));  // Wait before retry
+                    vTaskDelay(pdMS_TO_TICKS(1000));
                 }
             }
         }
@@ -77,67 +71,47 @@ static void lora_receive_task(void *pvParameters)
     vTaskDelete(NULL);
 }
 
-static void lora_button_handler(button_event_type_t event, void* arg)
-{
-    device_config_t config;
-    device_config_get(&config);
-    
-    lora_command_t lora_cmd;
-    switch (event) {
-        case BUTTON_EVENT_PREV_SHORT:
-            lora_cmd = CMD_PREV_SLIDE;
-            break;
-        case BUTTON_EVENT_NEXT_SHORT:
-            lora_cmd = CMD_NEXT_SLIDE;
-            break;
-        case BUTTON_EVENT_PREV_LONG:
-            lora_cmd = CMD_BLACK_SCREEN;
-            break;
-        case BUTTON_EVENT_NEXT_LONG:
-            lora_cmd = CMD_START_PRESENTATION;
-            break;
-        default:
-            return;
-    }
-    
-    // Use reliable transmission for critical presentation commands
-    esp_err_t ret = lora_protocol_send_reliable(lora_cmd, NULL, 0, 1000, 2);
-    if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to send LoRa command reliably: %s", esp_err_to_name(ret));
-    } else {
-        ESP_LOGI(TAG, "LoRa command sent successfully with ACK");
-    }
-}
-
 esp_err_t lora_comm_init(void)
 {
     ESP_LOGI(TAG, "Initializing LoRa communication");
-    
-    ESP_ERROR_CHECK(button_manager_register_callback(lora_button_handler, NULL));
-    
-    ESP_LOGI(TAG, "LoRa communication initialized");
     return ESP_OK;
+}
+
+esp_err_t lora_comm_register_rx_callback(lora_comm_rx_callback_t callback, void *user_ctx)
+{
+    rx_callback = callback;
+    rx_callback_ctx = user_ctx;
+    return ESP_OK;
+}
+
+esp_err_t lora_comm_register_state_callback(lora_comm_state_callback_t callback, void *user_ctx)
+{
+    state_callback = callback;
+    state_callback_ctx = user_ctx;
+    return ESP_OK;
+}
+
+esp_err_t lora_comm_send_command(lora_command_t command, const uint8_t *payload, uint8_t payload_length)
+{
+    return lora_protocol_send_command(command, payload, payload_length);
+}
+
+esp_err_t lora_comm_send_command_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length)
+{
+    return lora_protocol_send_reliable(command, payload, payload_length, 1000, 2);
 }
 
 esp_err_t lora_comm_start(void)
 {
     ESP_LOGI(TAG, "Starting LoRa communication task");
     
-    // Start RSSI monitoring
     esp_err_t rssi_ret = lora_protocol_start_rssi_monitor();
     if (rssi_ret != ESP_OK) {
         ESP_LOGW(TAG, "Failed to start RSSI monitor: %s", esp_err_to_name(rssi_ret));
     }
     
     lora_task_running = true;
-    BaseType_t ret = xTaskCreate(
-        lora_receive_task,
-        "lora_rx",
-        4096,
-        NULL,
-        4,
-        &lora_task_handle
-    );
+    BaseType_t ret = xTaskCreate(lora_receive_task, "lora_rx", 4096, NULL, 4, &lora_task_handle);
     
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create LoRa receive task");
@@ -146,5 +120,22 @@ esp_err_t lora_comm_start(void)
     }
     
     ESP_LOGI(TAG, "LoRa communication started");
+    return ESP_OK;
+}
+
+esp_err_t lora_comm_stop(void)
+{
+    if (!lora_task_running) {
+        return ESP_OK;
+    }
+    
+    ESP_LOGI(TAG, "Stopping LoRa communication task");
+    lora_task_running = false;
+    
+    if (lora_task_handle) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        lora_task_handle = NULL;
+    }
+    
     return ESP_OK;
 }
