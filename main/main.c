@@ -113,6 +113,16 @@ static void check_device_mode_change(void)
         ESP_LOGI(TAG, "Device mode changed from %s to %s", 
                  device_mode_to_string(current_device_mode),
                  device_mode_to_string(config.device_mode));
+        
+        if (config.device_mode == DEVICE_MODE_PC) {
+            ESP_LOGI(TAG, "PC mode: receiver only, buttons disabled");
+            if (!usb_hid_is_connected()) {
+                oled_ui_show_message("PC Mode", "Connect USB Cable", 3000);
+            }
+        } else {
+            ESP_LOGI(TAG, "Presenter mode: transmitter, buttons enabled");
+        }
+        
         current_device_mode = config.device_mode;
     }
 }
@@ -145,18 +155,70 @@ static void usb_monitor_task(void *pvParameters)
         
         if (current_usb != prev_usb) {
             status->usb_connected = current_usb;
-            xEventGroupSetBits(system_events, (1 << 1)); // USB event
+            xEventGroupSetBits(system_events, (1 << 1));
+            
+            device_config_t config;
+            device_config_get(&config);
+            
+            if (config.device_mode == DEVICE_MODE_PC && !current_usb) {
+                ESP_LOGW(TAG, "PC mode: USB disconnected - cannot send HID events");
+                oled_ui_show_message("PC Mode", "Connect USB Cable", 3000);
+            }
+            
             prev_usb = current_usb;
         }
         
-        vTaskDelay(pdMS_TO_TICKS(500)); // Check every 500ms
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
+}
+
+// Rate limiter for PC mode
+typedef struct {
+    uint32_t last_command_ms;
+    uint32_t command_count_1s;
+} rate_limiter_t;
+
+static rate_limiter_t rate_limiter = {0};
+
+static bool rate_limiter_check(void)
+{
+    uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    
+    if (now - rate_limiter.last_command_ms > 1000) {
+        rate_limiter.command_count_1s = 0;
+    }
+    
+    if (rate_limiter.command_count_1s >= 10) {
+        return false;
+    }
+    
+    rate_limiter.last_command_ms = now;
+    rate_limiter.command_count_1s++;
+    return true;
 }
 
 // Application layer: LoRa command to USB HID mapping
 static void lora_rx_handler(lora_command_t command, const uint8_t *payload, uint8_t payload_length, int16_t rssi, void *user_ctx)
 {
-    ESP_LOGI(TAG, "LoRa RX: cmd=0x%02X, rssi=%d dBm", command, rssi);
+    device_config_t config;
+    device_config_get(&config);
+    
+    if (config.device_mode == DEVICE_MODE_PRESENTER) {
+        ESP_LOGD(TAG, "Presenter mode: ignoring received LoRa command");
+        return;
+    }
+    
+    ESP_LOGI(TAG, "PC mode RX: cmd=0x%02X, rssi=%d dBm", command, rssi);
+    
+    if (!rate_limiter_check()) {
+        ESP_LOGW(TAG, "Rate limit exceeded (>10 cmd/s)");
+        return;
+    }
+    
+    if (!usb_hid_is_connected()) {
+        ESP_LOGE(TAG, "USB not connected, cannot send HID");
+        return;
+    }
     
     usb_hid_keycode_t keycode;
     switch (command) {
@@ -192,8 +254,15 @@ static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
 
 static void button_handler(button_event_type_t event, void *arg)
 {
-    // Don't send LoRa commands when in menu
     if (oled_ui_get_screen() != OLED_SCREEN_MAIN) {
+        return;
+    }
+    
+    device_config_t config;
+    device_config_get(&config);
+    
+    if (config.device_mode == DEVICE_MODE_PC) {
+        ESP_LOGD(TAG, "PC mode: buttons disabled for LoRa transmission");
         return;
     }
     
@@ -215,6 +284,7 @@ static void button_handler(button_event_type_t event, void *arg)
             return;
     }
     
+    ESP_LOGI(TAG, "Presenter mode: sending LoRa command 0x%02X", cmd);
     lora_comm_send_command_reliable(cmd, NULL, 0);
 }
 

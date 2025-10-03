@@ -39,6 +39,12 @@ oled_screen_t oled_ui_get_screen(void) {
     return ui_screen_controller_get_current();
 }
 
+esp_err_t oled_ui_show_message(const char *title, const char *message, uint32_t timeout_ms) {
+    ESP_LOGI(TAG, "Message: %s - %s", title, message);
+    // TODO: Implement message overlay screen
+    return ESP_OK;
+}
+
 void oled_ui_handle_button(oled_button_t button, bool long_press) {
     ui_screen_controller_handle_button(button, long_press);
 }
