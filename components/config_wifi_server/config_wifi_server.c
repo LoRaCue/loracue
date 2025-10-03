@@ -230,9 +230,8 @@ static esp_err_t lora_settings_post_handler(httpd_req_t *req)
     lora_config_t config;
     lora_get_config(&config);
 
-    cJSON *freq = cJSON_GetObjectItem(json, "frequency");
-    if (freq && cJSON_IsNumber(freq))
-        config.frequency = freq->valueint;
+    // Frequency is hardware-dependent and cannot be changed
+    // Only update configurable parameters
 
     cJSON *sf = cJSON_GetObjectItem(json, "spreadingFactor");
     if (sf && cJSON_IsNumber(sf))
