@@ -13,7 +13,7 @@ interface LoRaSettings {
 
 export default function LoRaPage() {
   const [settings, setSettings] = useState<LoRaSettings>({
-    frequency: 915000000,
+    frequency: 868000000,
     spreadingFactor: 7,
     bandwidth: 500000,
     codingRate: 5,
@@ -54,12 +54,11 @@ export default function LoRaPage() {
     }
   }
 
-  const getFrequencyLabel = (freq: number) => {
-    if (freq === 868000000) return '868 MHz (EU)'
-    if (freq === 915000000) return '915 MHz (US)'
-    if (freq === 433000000) return '433 MHz (China/World)'
-    return `${freq / 1000000} MHz`
-  }
+  const frequencyOptions = [
+    { value: 868000000, label: '868 MHz (EU)' },
+    { value: 915000000, label: '915 MHz (US)' },
+    { value: 433000000, label: '433 MHz' }
+  ]
 
   const bandwidthOptions = [
     { value: 125000, label: '125 kHz' },
@@ -157,14 +156,19 @@ export default function LoRaPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Frequency (Hardware)
+                  Frequency
                 </label>
-                <div className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
-                  {getFrequencyLabel(settings.frequency)}
-                </div>
-                <p className="text-sm text-gray-500 mt-1">
-                  Determined by LoRa module hardware
-                </p>
+                <select
+                  value={settings.frequency}
+                  onChange={(e) => setSettings({ ...settings, frequency: Number(e.target.value) })}
+                  className="input"
+                >
+                  {frequencyOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
