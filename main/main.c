@@ -236,10 +236,7 @@ static void usb_monitor_task(void *pvParameters)
             status->usb_connected = current_usb;
             xEventGroupSetBits(system_events, (1 << 1));
             
-            device_config_t config;
-            device_config_get(&config);
-            
-            if (config.device_mode == DEVICE_MODE_PC && !current_usb) {
+            if (current_device_mode == DEVICE_MODE_PC && !current_usb) {
                 ESP_LOGW(TAG, "PC mode: USB disconnected - cannot send HID events");
                 oled_ui_show_message("PC Mode", "Connect USB Cable", 3000);
             }
@@ -256,11 +253,8 @@ static void pc_mode_update_task(void *pvParameters)
     oled_status_t *status = (oled_status_t *)pvParameters;
     
     while (1) {
-        device_config_t config;
-        device_config_get(&config);
-        
-        // Only update in PC mode
-        if (config.device_mode == DEVICE_MODE_PC && oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
+        // Only update in PC mode (check global mode instead of NVS)
+        if (current_device_mode == DEVICE_MODE_PC && oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
             // Update command history timestamps
             status->command_history_count = command_history_count;
             for (int i = 0; i < command_history_count && i < 4; i++) {
@@ -301,10 +295,7 @@ static bool rate_limiter_check(void)
 // Application layer: LoRa command to USB HID mapping
 static void lora_rx_handler(uint16_t device_id, lora_command_t command, const uint8_t *payload, uint8_t payload_length, int16_t rssi, void *user_ctx)
 {
-    device_config_t config;
-    device_config_get(&config);
-    
-    if (config.device_mode == DEVICE_MODE_PRESENTER) {
+    if (current_device_mode == DEVICE_MODE_PRESENTER) {
         ESP_LOGD(TAG, "Presenter mode: ignoring received LoRa command");
         return;
     }
@@ -407,11 +398,8 @@ static void button_handler(button_event_type_t event, void *arg)
         return;
     }
     
-    device_config_t config;
-    device_config_get(&config);
-    
     // In PC mode, only allow menu access (no LoRa commands)
-    if (config.device_mode == DEVICE_MODE_PC) {
+    if (current_device_mode == DEVICE_MODE_PC) {
         ESP_LOGD(TAG, "PC mode: buttons disabled for LoRa transmission");
         return;
     }
