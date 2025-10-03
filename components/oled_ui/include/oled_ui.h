@@ -96,6 +96,13 @@ esp_err_t oled_ui_update_status(const oled_status_t *status);
 esp_err_t oled_ui_set_screen(oled_screen_t screen);
 
 /**
+ * @brief Get current screen
+ * 
+ * @return Current screen type
+ */
+oled_screen_t oled_ui_get_screen(void);
+
+/**
  * @brief Show message on display
  * 
  * @param title Message title

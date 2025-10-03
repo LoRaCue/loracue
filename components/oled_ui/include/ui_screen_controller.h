@@ -16,6 +16,12 @@ void ui_screen_controller_init(void);
 void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status);
 
 /**
+ * @brief Get current screen
+ * @return Current screen type
+ */
+oled_screen_t ui_screen_controller_get_current(void);
+
+/**
  * @brief Update current screen with new status
  * @param status Updated UI status
  */

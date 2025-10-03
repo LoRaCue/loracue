@@ -35,6 +35,10 @@ esp_err_t oled_ui_set_screen(oled_screen_t screen) {
     return ESP_OK;
 }
 
+oled_screen_t oled_ui_get_screen(void) {
+    return ui_screen_controller_get_current();
+}
+
 void oled_ui_handle_button(oled_button_t button, bool long_press) {
     ui_screen_controller_handle_button(button, long_press);
 }

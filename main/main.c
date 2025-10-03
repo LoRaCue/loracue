@@ -192,6 +192,11 @@ static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
 
 static void button_handler(button_event_type_t event, void *arg)
 {
+    // Don't send LoRa commands when in menu
+    if (oled_ui_get_screen() != OLED_SCREEN_MAIN) {
+        return;
+    }
+    
     lora_command_t cmd;
     switch (event) {
         case BUTTON_EVENT_PREV_SHORT:

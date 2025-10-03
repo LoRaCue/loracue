@@ -115,6 +115,10 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
     }
 }
 
+oled_screen_t ui_screen_controller_get_current(void) {
+    return current_screen;
+}
+
 void ui_screen_controller_update(const ui_status_t* status) {
     // Check menu timeout
     if (current_screen == OLED_SCREEN_MENU) {
