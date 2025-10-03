@@ -694,7 +694,7 @@ void app_main(void)
     // Start periodic tasks
     xTaskCreate(battery_monitor_task, "battery_monitor", 2048, &g_oled_status, 5, NULL);
     xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &g_oled_status, 5, NULL);
-    xTaskCreate(pc_mode_update_task, "pc_mode_update", 2048, &g_oled_status, 5, NULL);
+    xTaskCreate(pc_mode_update_task, "pc_mode_update", 4096, &g_oled_status, 5, NULL);
     
     // Main task now just handles events
     ESP_LOGI(TAG, "Main loop starting - should have low CPU usage when idle");
