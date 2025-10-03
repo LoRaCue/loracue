@@ -116,6 +116,7 @@ static esp_err_t device_settings_get_handler(httpd_req_t *req)
     cJSON_AddNumberToObject(json, "sleepTimeout", config.sleep_timeout_ms);
     cJSON_AddBoolToObject(json, "autoSleep", config.auto_sleep_enabled);
     cJSON_AddNumberToObject(json, "brightness", config.display_brightness);
+    cJSON_AddBoolToObject(json, "bluetooth", config.bluetooth_enabled);
 
     char *json_string = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");
@@ -172,6 +173,11 @@ static esp_err_t device_settings_post_handler(httpd_req_t *req)
     cJSON *brightness = cJSON_GetObjectItem(json, "brightness");
     if (brightness && cJSON_IsNumber(brightness)) {
         config.display_brightness = brightness->valueint;
+    }
+
+    cJSON *bluetooth = cJSON_GetObjectItem(json, "bluetooth");
+    if (bluetooth && cJSON_IsBool(bluetooth)) {
+        config.bluetooth_enabled = cJSON_IsTrue(bluetooth);
     }
 
     esp_err_t err = device_config_set(&config);

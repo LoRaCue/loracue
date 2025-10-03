@@ -54,6 +54,7 @@ static void handle_get_device_config(void)
     cJSON_AddNumberToObject(response, "sleepTimeout", config.sleep_timeout_ms);
     cJSON_AddBoolToObject(response, "autoSleep", config.auto_sleep_enabled);
     cJSON_AddNumberToObject(response, "brightness", config.display_brightness);
+    cJSON_AddBoolToObject(response, "bluetooth", config.bluetooth_enabled);
 
     char *json_string = cJSON_Print(response);
     g_send_response(json_string);
@@ -91,6 +92,10 @@ static void handle_set_device_config(cJSON *config_json)
         extern u8g2_t u8g2;
         u8g2_SetContrast(&u8g2, config.display_brightness);
     }
+
+    cJSON *bluetooth = cJSON_GetObjectItem(config_json, "bluetooth");
+    if (bluetooth && cJSON_IsBool(bluetooth))
+        config.bluetooth_enabled = cJSON_IsTrue(bluetooth);
 
     ret = device_config_set(&config);
     if (ret != ESP_OK) {

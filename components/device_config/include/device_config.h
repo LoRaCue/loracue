@@ -39,6 +39,7 @@ typedef struct {
     uint32_t sleep_timeout_ms;  ///< Sleep timeout in milliseconds
     bool auto_sleep_enabled;    ///< Auto sleep enabled
     uint8_t display_brightness; ///< Display brightness (0-255)
+    bool bluetooth_enabled;     ///< Bluetooth configuration mode enabled
 } device_config_t;
 
 /**

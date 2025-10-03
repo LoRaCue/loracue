@@ -25,6 +25,7 @@ static const device_config_t default_config = {
     .sleep_timeout_ms   = 300000, // 5 minutes
     .auto_sleep_enabled = true,
     .display_brightness = 128, // 50% brightness
+    .bluetooth_enabled  = true, // Enabled by default
 };
 
 // Cached configuration
