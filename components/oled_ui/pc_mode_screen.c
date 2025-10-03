@@ -8,6 +8,7 @@
 #include "ui_config.h"
 #include "ui_icons.h"
 #include "ui_status_bar.h"
+#include <inttypes.h>
 #include <string.h>
 
 static const char *TAG = "pc_mode_screen";
@@ -42,7 +43,7 @@ void pc_mode_screen_draw(const oled_status_t *status)
         uint32_t elapsed_sec = (now_ms - status->command_history[i].timestamp_ms) / 1000;
 
         char line[32];
-        snprintf(line, sizeof(line), "%04lu %-8s %s", elapsed_sec, status->command_history[i].device_name,
+        snprintf(line, sizeof(line), "%04" PRIu32 " %-8s %s", elapsed_sec, status->command_history[i].device_name,
                  status->command_history[i].command);
 
         u8g2_DrawStr(&u8g2, 2, y, line);

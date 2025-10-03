@@ -485,9 +485,9 @@ static esp_err_t devices_add_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    cJSON *name = cJSON_GetObjectItem(json, "name");
-    cJSON *mac  = cJSON_GetObjectItem(json, "mac");
-    cJSON *key  = cJSON_GetObjectItem(json, "key");
+    cJSON *name       = cJSON_GetObjectItem(json, "name");
+    const cJSON *mac  = cJSON_GetObjectItem(json, "mac");
+    const cJSON *key  = cJSON_GetObjectItem(json, "key");
 
     if (!name || !mac || !key) {
         cJSON_Delete(json);
@@ -535,7 +535,7 @@ static esp_err_t devices_add_handler(httpd_req_t *req)
 
 static esp_err_t devices_delete_handler(httpd_req_t *req)
 {
-    char *id_str = strrchr(req->uri, '/');
+    const char *id_str = strrchr(req->uri, '/');
     if (!id_str) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing device ID");
         return ESP_FAIL;

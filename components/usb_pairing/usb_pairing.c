@@ -96,7 +96,6 @@ esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
         // Generate device info for pairing
         uint8_t mac[6];
         esp_read_mac(mac, ESP_MAC_WIFI_STA);
-        uint16_t device_id = (mac[4] << 8) | mac[5];
 
         // Generate AES-256 key (32 bytes)
         uint8_t aes_key[32];
@@ -124,9 +123,8 @@ esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
 
         // TODO: Implement USB CDC host mode communication
         // Wait for pairing with timeout
-        uint32_t timeout_ms  = 30000; // 30 second timeout
-        uint32_t start_time  = esp_timer_get_time() / 1000;
-        bool pairing_success = false;
+        uint32_t timeout_ms = 30000; // 30 second timeout
+        uint32_t start_time = esp_timer_get_time() / 1000;
 
         while ((esp_timer_get_time() / 1000 - start_time) < timeout_ms) {
             // Check for pairing completion
@@ -137,17 +135,12 @@ esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
         free(json_string);
         cJSON_Delete(json);
 
-        if (!pairing_success) {
-            ESP_LOGW(TAG, "USB pairing timeout after %d seconds", timeout_ms / 1000);
-            if (result_callback) {
-                result_callback(false, 0, "Timeout");
-            }
-            return ESP_ERR_TIMEOUT;
-        }
-
+        // Pairing not implemented yet, always timeout
+        ESP_LOGW(TAG, "USB pairing timeout after %d seconds", timeout_ms / 1000);
         if (result_callback) {
-            result_callback(true, device_id, config.device_name);
+            result_callback(false, 0, "Timeout");
         }
+        return ESP_ERR_TIMEOUT;
 
     } else {
         // PC device stays in device mode - pairing handled by existing usb_cdc.c

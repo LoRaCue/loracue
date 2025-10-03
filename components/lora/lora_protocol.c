@@ -327,7 +327,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
 
 esp_err_t lora_protocol_send_ack(uint16_t to_device_id, uint16_t ack_sequence_num)
 {
-    uint8_t ack_payload[2] = {(ack_sequence_num >> 8) & 0xFF, ack_sequence_num & 0xFF};
+    const uint8_t ack_payload[2] = {(ack_sequence_num >> 8) & 0xFF, ack_sequence_num & 0xFF};
 
     return lora_protocol_send_command(CMD_ACK, ack_payload, 2);
 }

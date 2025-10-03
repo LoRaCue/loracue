@@ -621,7 +621,7 @@ uint8_t u8g2_esp32_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
 
 esp_err_t bsp_u8g2_init(void *u8g2_ptr)
 {
-    u8g2_t *u8g2 = (u8g2_t *)u8g2_ptr;
+    u8g2_t *u8g2_local = (u8g2_t *)u8g2_ptr;
 
     ESP_LOGI(TAG, "Initializing u8g2 with SH1106 for Heltec V3");
 
@@ -635,12 +635,12 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     }
 
     // Initialize u8g2 with SH1106 128x64 display
-    u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2, U8G2_R0, u8g2_esp32_i2c_byte_cb, u8g2_esp32_gpio_and_delay_cb);
+    u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2_local, U8G2_R0, u8g2_esp32_i2c_byte_cb, u8g2_esp32_gpio_and_delay_cb);
 
     // Initialize display
-    u8g2_InitDisplay(u8g2);
-    u8g2_SetPowerSave(u8g2, 0);
-    u8g2_ClearDisplay(u8g2);
+    u8g2_InitDisplay(u8g2_local);
+    u8g2_SetPowerSave(u8g2_local, 0);
+    u8g2_ClearDisplay(u8g2_local);
 
     ESP_LOGI(TAG, "u8g2 initialized successfully for SH1106");
     return ESP_OK;

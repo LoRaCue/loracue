@@ -188,9 +188,9 @@ static void handle_get_paired_devices(void)
 
 static void handle_pair_device(cJSON *pair_json)
 {
-    cJSON *name = cJSON_GetObjectItem(pair_json, "name");
-    cJSON *mac  = cJSON_GetObjectItem(pair_json, "mac");
-    cJSON *key  = cJSON_GetObjectItem(pair_json, "key");
+    cJSON *name       = cJSON_GetObjectItem(pair_json, "name");
+    const cJSON *mac  = cJSON_GetObjectItem(pair_json, "mac");
+    const cJSON *key  = cJSON_GetObjectItem(pair_json, "key");
 
     if (!name || !mac || !key) {
         send_response("ERROR Missing pairing parameters");
