@@ -28,6 +28,10 @@
 #include "power_mgmt.h"
 #include "usb_hid.h"
 #include "version.h"
+
+#ifndef SIMULATOR_BUILD
+#include "bluetooth_config.h"
+#endif
 #include <stdio.h>
 #include <string.h>
 
@@ -588,6 +592,16 @@ void app_main(void)
         ESP_LOGE(TAG, "USB HID initialization failed: %s", esp_err_to_name(ret));
         return;
     }
+
+    // Initialize Bluetooth configuration (hardware only)
+#ifndef SIMULATOR_BUILD
+    ESP_LOGI(TAG, "Initializing Bluetooth configuration...");
+    ret = bluetooth_config_init();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Bluetooth initialization failed: %s (continuing without BLE)", esp_err_to_name(ret));
+        // Non-fatal - continue without Bluetooth
+    }
+#endif
 
     // Validate hardware
     ESP_LOGI(TAG, "Running hardware validation...");
