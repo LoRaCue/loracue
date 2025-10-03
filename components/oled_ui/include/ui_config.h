@@ -53,6 +53,7 @@ typedef struct {
     int16_t lora_signal;    // RSSI in dBm
     char last_command[16];  // Last received command
     uint8_t active_presenter_count;
+    uint8_t command_history_count;
 } ui_status_t;
 
 typedef struct {

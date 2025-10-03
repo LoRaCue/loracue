@@ -65,7 +65,11 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t* status) {
             break;
             
         case OLED_SCREEN_PC_MODE:
-            pc_mode_screen_draw(status);
+            // PC mode needs oled_status_t for command history
+            {
+                extern oled_status_t g_oled_status;
+                pc_mode_screen_draw(&g_oled_status);
+            }
             break;
             
         case OLED_SCREEN_MENU:

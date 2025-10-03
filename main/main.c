@@ -46,8 +46,40 @@ typedef struct {
 } active_presenter_t;
 
 #define MAX_ACTIVE_PRESENTERS 4
+#define MAX_COMMAND_HISTORY 4
 static active_presenter_t active_presenters[MAX_ACTIVE_PRESENTERS] = {0};
+static command_history_entry_t command_history[MAX_COMMAND_HISTORY] = {0};
+static uint8_t command_history_count = 0;
 static uint32_t total_commands_received = 0;
+
+// Global status for PC mode screen access
+oled_status_t g_oled_status = {0};
+
+static void add_command_to_history(uint16_t device_id, const char *cmd_name)
+{
+    // Shift history down
+    for (int i = MAX_COMMAND_HISTORY - 1; i > 0; i--) {
+        command_history[i] = command_history[i - 1];
+    }
+    
+    // Add new entry at top
+    command_history[0].timestamp_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    command_history[0].device_id = device_id;
+    
+    // Get device name from registry
+    paired_device_t device;
+    if (device_registry_get(device_id, &device) == ESP_OK) {
+        strncpy(command_history[0].device_name, device.device_name, sizeof(command_history[0].device_name) - 1);
+    } else {
+        snprintf(command_history[0].device_name, sizeof(command_history[0].device_name), "LC-%04X", device_id);
+    }
+    
+    strncpy(command_history[0].command, cmd_name, sizeof(command_history[0].command) - 1);
+    
+    if (command_history_count < MAX_COMMAND_HISTORY) {
+        command_history_count++;
+    }
+}
 
 // Demo AES-256 keys for different devices
 static const uint8_t demo_aes_key_1[32] = {
@@ -219,6 +251,28 @@ static void usb_monitor_task(void *pvParameters)
     }
 }
 
+static void pc_mode_update_task(void *pvParameters)
+{
+    oled_status_t *status = (oled_status_t *)pvParameters;
+    
+    while (1) {
+        device_config_t config;
+        device_config_get(&config);
+        
+        // Only update in PC mode
+        if (config.device_mode == DEVICE_MODE_PC && oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
+            // Update command history timestamps
+            status->command_history_count = command_history_count;
+            for (int i = 0; i < command_history_count && i < 4; i++) {
+                memcpy(&status->command_history[i], &command_history[i], sizeof(command_history_entry_t));
+            }
+            xEventGroupSetBits(system_events, (1 << 4));
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
 // Rate limiter for PC mode
 typedef struct {
     uint32_t last_command_ms;
@@ -306,10 +360,19 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
     
     usb_hid_send_key(keycode);
     
+    // Add to command history
+    add_command_to_history(device_id, cmd_name);
+    
     // Update status for PC mode screen
     oled_status_t *status = (oled_status_t *)user_ctx;
     status->lora_signal = rssi;
     strncpy(status->last_command, cmd_name, sizeof(status->last_command) - 1);
+    
+    // Update command history in status
+    status->command_history_count = command_history_count;
+    for (int i = 0; i < command_history_count && i < 4; i++) {
+        memcpy(&status->command_history[i], &command_history[i], sizeof(command_history_entry_t));
+    }
     
     // Update active presenters list
     status->active_presenter_count = 0;
@@ -612,27 +675,26 @@ void app_main(void)
     }
     
     // Main status update loop
-    oled_status_t status = {
-        .battery_level = 85,
-        .lora_connected = false,
-        .lora_signal = 0,
-        .usb_connected = false,
-        .device_id = 0x1234,
-        .last_command = ""
-    };
-    strcpy(status.device_name, "LoRaCue-STAGE");
+    g_oled_status.battery_level = 85;
+    g_oled_status.lora_connected = false;
+    g_oled_status.lora_signal = 0;
+    g_oled_status.usb_connected = false;
+    g_oled_status.device_id = 0x1234;
+    strcpy(g_oled_status.device_name, "LoRaCue-STAGE");
+    strcpy(g_oled_status.last_command, "");
     
     // Register application callbacks
-    lora_comm_register_rx_callback(lora_rx_handler, &status);
-    lora_comm_register_state_callback(lora_state_handler, &status);
+    lora_comm_register_rx_callback(lora_rx_handler, &g_oled_status);
+    lora_comm_register_state_callback(lora_state_handler, &g_oled_status);
     button_manager_register_callback(button_handler, NULL);
     
     // Create event group for system events
     system_events = xEventGroupCreate();
     
     // Start periodic tasks
-    xTaskCreate(battery_monitor_task, "battery_monitor", 2048, &status, 5, NULL);
-    xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &status, 5, NULL);
+    xTaskCreate(battery_monitor_task, "battery_monitor", 2048, &g_oled_status, 5, NULL);
+    xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &g_oled_status, 5, NULL);
+    xTaskCreate(pc_mode_update_task, "pc_mode_update", 2048, &g_oled_status, 5, NULL);
     
     // Main task now just handles events
     ESP_LOGI(TAG, "Main loop starting - should have low CPU usage when idle");
@@ -649,19 +711,23 @@ void app_main(void)
                                                 pdMS_TO_TICKS(10000)); // 10s timeout
         
         if (events & (1 << 0)) { // Battery changed
-            oled_ui_update_status(&status);
+            oled_ui_update_status(&g_oled_status);
         }
         
         if (events & (1 << 1)) { // USB status changed
-            oled_ui_update_status(&status);
+            oled_ui_update_status(&g_oled_status);
         }
         
         if (events & (1 << 2)) { // LoRa state changed
-            oled_ui_update_status(&status);
+            oled_ui_update_status(&g_oled_status);
         }
         
         if (events & (1 << 3)) { // Command received
-            oled_ui_update_status(&status);
+            oled_ui_update_status(&g_oled_status);
+        }
+        
+        if (events & (1 << 4)) { // PC mode periodic update
+            oled_ui_update_status(&g_oled_status);
         }
         
         // Check for device mode changes when not in menu

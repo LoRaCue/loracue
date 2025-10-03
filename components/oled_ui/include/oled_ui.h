@@ -60,6 +60,16 @@ typedef struct {
 } active_presenter_info_t;
 
 /**
+ * @brief Command history entry for PC mode
+ */
+typedef struct {
+    uint32_t timestamp_ms;
+    uint16_t device_id;
+    char device_name[16];
+    char command[8];
+} command_history_entry_t;
+
+/**
  * @brief Device status for display
  */
 typedef struct {
@@ -73,6 +83,8 @@ typedef struct {
     char last_command[16];      ///< Last received command (PC mode)
     uint8_t active_presenter_count;
     active_presenter_info_t active_presenters[4];
+    command_history_entry_t command_history[4];
+    uint8_t command_history_count;
 } oled_status_t;
 
 /**
