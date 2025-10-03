@@ -718,7 +718,12 @@ void app_main(void)
         }
         
         if (events & (1 << 4)) { // PC mode periodic update
-            oled_ui_update_status(&g_oled_status);
+            // Just redraw PC mode screen, don't update full status
+            if (oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
+                extern u8g2_t u8g2;
+                extern void pc_mode_screen_draw(const oled_status_t*);
+                pc_mode_screen_draw(&g_oled_status);
+            }
         }
     }
 }
