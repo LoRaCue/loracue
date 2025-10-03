@@ -1,4 +1,5 @@
 #include "ui_screen_controller.h"
+#include "bluetooth_screen.h"
 #include "boot_screen.h"
 #include "brightness_screen.h"
 #include "config_mode_screen.h"
@@ -132,6 +133,10 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status)
 
         case OLED_SCREEN_BRIGHTNESS:
             brightness_screen_draw();
+            break;
+
+        case OLED_SCREEN_BLUETOOTH:
+            bluetooth_screen_draw();
             break;
 
         case OLED_SCREEN_CONFIG_ACTIVE:
@@ -275,6 +280,9 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press)
                         brightness_screen_init();
                         ui_screen_controller_set(OLED_SCREEN_BRIGHTNESS, NULL);
                         break;
+                    case MENU_BLUETOOTH:
+                        ui_screen_controller_set(OLED_SCREEN_BLUETOOTH, NULL);
+                        break;
                     case MENU_CONFIG_MODE:
                         config_mode_screen_reset();
                         ui_screen_controller_set(OLED_SCREEN_CONFIG_ACTIVE, NULL);
@@ -359,6 +367,16 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press)
             } else if (button == OLED_BUTTON_BOTH) {
                 brightness_screen_select();
                 brightness_screen_draw();
+            }
+            break;
+
+        case OLED_SCREEN_BLUETOOTH:
+            if (button == OLED_BUTTON_PREV) {
+                bluetooth_screen_handle_input(0); // UP
+            } else if (button == OLED_BUTTON_NEXT) {
+                bluetooth_screen_handle_input(1); // DOWN
+            } else if (button == OLED_BUTTON_BOTH) {
+                bluetooth_screen_handle_input(2); // SELECT
             }
             break;
 

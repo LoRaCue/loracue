@@ -32,6 +32,7 @@ typedef enum {
     OLED_SCREEN_DEVICE_PAIRING,  ///< Device pairing
     OLED_SCREEN_DEVICE_REGISTRY, ///< Device registry
     OLED_SCREEN_BRIGHTNESS,      ///< Display brightness
+    OLED_SCREEN_BLUETOOTH,       ///< Bluetooth settings
     OLED_SCREEN_CONFIG_MODE,     ///< Configuration mode
     OLED_SCREEN_CONFIG_ACTIVE,   ///< Config mode active
     OLED_SCREEN_DEVICE_INFO,     ///< Device information
