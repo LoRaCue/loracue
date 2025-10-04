@@ -393,7 +393,7 @@ esp_err_t lora_protocol_start_rssi_monitor(void)
     }
 
     rssi_monitor_running = true;
-    BaseType_t ret       = xTaskCreate(rssi_monitor_task, "lora_rssi", 2048, NULL, 3, &rssi_monitor_task_handle);
+    BaseType_t ret       = xTaskCreate(rssi_monitor_task, "lora_rssi", 3072, NULL, 3, &rssi_monitor_task_handle);
 
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create RSSI monitor task");
