@@ -1,6 +1,8 @@
 #include "icons/ui_status_icons.h"
 #include "u8g2.h"
 #include "ui_config.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 extern u8g2_t u8g2;
 
@@ -71,6 +73,19 @@ void ui_battery_draw(uint8_t battery_level)
         bitmap = battery_1_bar;
     } else {
         bitmap = battery_0_bars;
+        // Blink for critical battery (≤5%)
+        static uint32_t last_toggle = 0;
+        static bool visible = true;
+        uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
+        
+        if (now - last_toggle > 500) {  // Toggle every 500ms
+            visible = !visible;
+            last_toggle = now;
+        }
+        
+        if (!visible) {
+            return;  // Skip drawing to create blink effect
+        }
     }
 
     u8g2_DrawXBM(&u8g2, BATTERY_ICON_X, BATTERY_ICON_Y, 16, 8, bitmap);

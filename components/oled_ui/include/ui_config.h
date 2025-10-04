@@ -16,24 +16,22 @@
 // Status icons configuration
 // USB and Bluetooth are dynamic (only show when active)
 // RF and Battery are fixed positions on the right
-#define USB_ICON_WIDTH 10
-#define USB_ICON_HEIGHT 6
+#define USB_ICON_WIDTH 14
+#define USB_ICON_HEIGHT 7
 
 #define BT_ICON_WIDTH 5
 #define BT_ICON_HEIGHT 8
 
-#define RF_ICON_X 113
-#define RF_ICON_Y 2
-#define RF_ICON_BARS 4
-#define RF_ICON_HEIGHT 6
+#define RF_ICON_WIDTH 11
+#define RF_ICON_HEIGHT 8
+#define RF_ICON_X 98   // 128 - 16 (battery) - 3 (spacing) - 11 (RF) = 98
+#define RF_ICON_Y 0
 
-#define BATTERY_ICON_X 123
-#define BATTERY_ICON_Y 2
-#define BATTERY_SEGMENTS 4
-#define BATTERY_SEGMENT_WIDTH 2
-#define BATTERY_ICON_HEIGHT 6
+#define BATTERY_ICON_WIDTH 16
+#define BATTERY_ICON_HEIGHT 8
+#define BATTERY_ICON_X 112  // 128 - 16 = 112 (right edge)
+#define BATTERY_ICON_Y 0
 
-#define ICON_Y 2
 #define ICON_SPACING 3
 
 // Text positioning

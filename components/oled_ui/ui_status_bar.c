@@ -39,7 +39,7 @@ void ui_status_bar_draw(const ui_status_t *status)
     
     // Draw icons left to right: USB, Bluetooth, RF, Battery
     if (status->usb_connected) {
-        ui_usb_draw_at(next_x, ICON_Y);
+        ui_usb_draw_at(next_x, 0);
         next_x += USB_ICON_WIDTH + ICON_SPACING;
     }
     
