@@ -1,13 +1,10 @@
 #include "bluetooth_screen.h"
+#include "bluetooth_config.h"
 #include "device_config.h"
 #include "oled_ui.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_icons.h"
-
-#ifndef SIMULATOR_BUILD
-#include "bluetooth_config.h"
-#endif
 
 extern u8g2_t u8g2;
 
@@ -109,9 +106,7 @@ void bluetooth_screen_handle_input(int button)
         device_config_set(&config);
         
         // Apply immediately
-#ifndef SIMULATOR_BUILD
         bluetooth_config_set_enabled(config.bluetooth_enabled);
-#endif
         
         bluetooth_screen_draw();
     }

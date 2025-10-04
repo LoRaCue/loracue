@@ -1,13 +1,10 @@
 #include "presenter_main_screen.h"
+#include "bluetooth_config.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_icons.h"
 #include "ui_status_bar.h"
 #include "ui_pairing_overlay.h"
-
-#ifndef SIMULATOR_BUILD
-#include "bluetooth_config.h"
-#endif
 
 extern u8g2_t u8g2;
 
@@ -40,12 +37,10 @@ void presenter_main_screen_draw(const ui_status_t *status)
     ui_bottom_bar_draw(status);
 
     // Draw Bluetooth pairing overlay if active
-#ifndef SIMULATOR_BUILD
     uint32_t passkey;
     if (bluetooth_config_get_passkey(&passkey)) {
         ui_pairing_overlay_draw(passkey);
     }
-#endif
 
     u8g2_SendBuffer(&u8g2);
 }

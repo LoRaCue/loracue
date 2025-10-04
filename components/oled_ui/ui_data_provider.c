@@ -1,5 +1,6 @@
 #include "ui_data_provider.h"
 #include "bsp.h"
+#include "bluetooth_config.h"
 #include "device_config.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -8,10 +9,6 @@
 #include "lora_driver.h"
 #include "lora_protocol.h"
 #include "power_mgmt.h"
-
-#ifndef SIMULATOR_BUILD
-#include "bluetooth_config.h"
-#endif
 
 static const char *TAG = "ui_data_provider";
 static ui_status_t cached_status;
@@ -79,11 +76,7 @@ esp_err_t ui_data_provider_update(void)
     device_config_t config;
     device_config_get(&config);
     cached_status.bluetooth_enabled = config.bluetooth_enabled;
-#ifndef SIMULATOR_BUILD
     cached_status.bluetooth_connected = bluetooth_config_is_connected();
-#else
-    cached_status.bluetooth_connected = false;
-#endif
 
     // Update LoRa status from protocol layer
     lora_connection_state_t conn_state = lora_protocol_get_connection_state();
@@ -150,7 +143,9 @@ esp_err_t ui_data_provider_force_update(bool usb_connected, bool lora_connected,
     cached_status.battery_level   = battery_level;
     cached_status.signal_strength = lora_connected ? SIGNAL_STRONG : SIGNAL_NONE;
 
-    ESP_LOGI(TAG, "Status force updated: USB=%d, LoRa=%d, Battery=%d%%", usb_connected, lora_connected, battery_level);
+    ESP_LOGI(TAG, "Status force updated: USB=%d, BT=%d/%d, LoRa=%d, Battery=%d%%", 
+             usb_connected, cached_status.bluetooth_enabled, cached_status.bluetooth_connected, 
+             lora_connected, battery_level);
 
     return ESP_OK;
 }
