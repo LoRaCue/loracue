@@ -124,7 +124,7 @@ esp_err_t device_config_set(const device_config_t *config)
     nvs_close(nvs_handle);
 
     if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "Device configuration saved to NVS - mode: %s", device_mode_to_string(config->device_mode));
+        ESP_LOGI(TAG, "Device configuration saved to NVS");
         // Update cache with new config
         memcpy(&cached_config, config, sizeof(device_config_t));
         cache_valid = true;

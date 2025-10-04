@@ -3,6 +3,7 @@
 #include "boot_screen.h"
 #include "brightness_screen.h"
 #include "config_mode_screen.h"
+#include "config_wifi_server.h"
 #include "device_mode_screen.h"
 #include "device_registry_screen.h"
 #include "esp_log.h"
@@ -372,7 +373,8 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press)
 
         case OLED_SCREEN_BLUETOOTH:
             if (button == OLED_BUTTON_PREV) {
-                bluetooth_screen_handle_input(0); // UP
+                // Back to menu
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
             } else if (button == OLED_BUTTON_NEXT) {
                 bluetooth_screen_handle_input(1); // DOWN
             } else if (button == OLED_BUTTON_BOTH) {
@@ -403,6 +405,8 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press)
 
         case OLED_SCREEN_CONFIG_ACTIVE:
             if (button == OLED_BUTTON_PREV) {
+                // Stop WiFi server when leaving config mode
+                config_wifi_server_stop();
                 // Back to menu
                 ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
             } else if (button == OLED_BUTTON_BOTH) {

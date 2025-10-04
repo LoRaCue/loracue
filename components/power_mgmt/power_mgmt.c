@@ -7,8 +7,11 @@
  */
 
 #include "power_mgmt.h"
+#include "bsp.h"
 #include "driver/gpio.h"
+#include "driver/i2c.h"
 #include "driver/rtc_io.h"
+#include "driver/spi_master.h"
 #include "esp_log.h"
 #include "esp_pm.h"
 #include "esp_sleep.h"
@@ -257,11 +260,13 @@ esp_err_t power_mgmt_prepare_sleep(void)
 {
     ESP_LOGD(TAG, "Preparing system for sleep");
 
-    // TODO: Disable unnecessary peripherals before sleep
-    // - Deinitialize I2C bus (oled_dev_handle, i2c_bus_handle)
-    // - Disable SPI for LoRa
-    // - Save peripheral states for restoration
+    // Delete I2C driver to free resources
+    i2c_driver_delete(I2C_NUM_0);
 
+    // Free SPI bus
+    spi_bus_free(SPI2_HOST);
+
+    ESP_LOGD(TAG, "Peripherals disabled for sleep");
     return ESP_OK;
 }
 
@@ -269,14 +274,15 @@ esp_err_t power_mgmt_restore_wake(void)
 {
     ESP_LOGD(TAG, "Restoring system after wake");
 
-    // TODO: Re-enable and reinitialize peripherals after wake
-    // - Reinitialize I2C bus for OLED (call bsp_init_i2c())
-    // - Reinitialize SPI for LoRa
-    // - Restore peripheral configurations
-    // CRITICAL: Without this, I2C operations crash with semaphore assertion failures
-    // For now, just update activity timestamp
+    // Reinitialize BSP (handles I2C, SPI, OLED)
+    esp_err_t ret = bsp_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to reinitialize BSP: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
     power_mgmt_update_activity();
 
+    ESP_LOGD(TAG, "Peripherals restored after wake");
     return ESP_OK;
 }

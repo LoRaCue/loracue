@@ -1,0 +1,148 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce3808,len:0x370
+load:0x403c9700,len:0x900
+load:0x403cc700,len:0x2364
+entry 0x403c98ac
+I (35) cpu_start: Multicore app
+I (45) cpu_start: Pro cpu start user code
+I (46) cpu_start: cpu freq: 160000000 Hz
+I (46) app_init: Application information:
+I (47) app_init: Project name:     loracue
+I (49) app_init: App version:      bc3696f-dirty
+I (53) app_init: Compile time:     Oct  4 2025 23:06:56
+I (58) app_init: ELF file SHA256:  067e3900b...
+I (62) app_init: ESP-IDF:          v5.5-dirty
+I (67) efuse_init: Min chip rev:     v0.0
+I (70) efuse_init: Max chip rev:     v0.99 
+I (74) efuse_init: Chip rev:         v0.0
+I (78) heap_init: Initializing. RAM available for dynamic allocation:
+I (84) heap_init: At 3FCAA5A0 len 0003F170 (252 KiB): RAM
+I (89) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (94) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (99) heap_init: At 600FE08C len 00001F5C (7 KiB): RTCRAM
+I (106) spi_flash: detected chip: gd
+I (108) spi_flash: flash io: dio
+W (111) i2c: This driver is an old driver, please migrate your application code to adapt `driver/i2c_master.h`
+I (122) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (128) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (134) coexist: coex firmware version: 831ec70
+I (139) coexist: coexist rom version e7ae62f
+I (143) main_task: Started on CPU0
+I (153) main_task: Calling app_main()
+I (153) LORACUE_MAIN: LoRaCue starting - Enterprise presentation clicker
+I (153) LORACUE_MAIN: Version: 0.1.0-alpha.157
+I (163) LORACUE_MAIN: Build: bc3696f (develop)
+I (163) LORACUE_MAIN: Date: 2025-10-04
+I (193) LORACUE_MAIN: Running partition: factory (offset 0x10000)
+I (193) LORACUE_MAIN: Initializing device configuration system...
+I (193) DEVICE_CONFIG: Initializing device configuration system
+W (193) DEVICE_CONFIG: Failed to open NVS: ESP_ERR_NVS_NOT_FOUND
+I (203) DEVICE_CONFIG: Using default device configuration - name: LC-0110, mode: PRESENTER
+I (213) LORACUE_MAIN: Initializing power management...
+I (213) LORACUE_MAIN: Power config: deep_sleep=0ms, auto_sleep=disabled
+I (223) POWER_MGMT: Initializing power management
+W (223) POWER_MGMT: Power management not supported (simulator mode)
+E (233) sleep: Not an RTC IO: GPIO45
+I (233) POWER_MGMT: Cold boot or reset
+I (243) POWER_MGMT: Power management initialized (CPU: 80MHz, Light sleep: OFF, Deep sleep: OFF)
+I (253) LORACUE_MAIN: Initializing Board Support Package...
+I (253) BSP_WOKWI: Initializing Wokwi Simulator BSP
+I (263) u8g2_hal: sda_io_num 17
+I (263) u8g2_hal: scl_io_num 18
+I (263) u8g2_hal: clk_speed 50000
+I (263) u8g2_hal: i2c_param_config 1
+I (273) u8g2_hal: i2c_driver_install 1
+I (593) BSP_WOKWI: Wokwi BSP initialization complete
+I (593) FW_MANIFEST: Firmware manifest initialized:
+I (593) FW_MANIFEST:   Board ID: 
+I (593) FW_MANIFEST:   Version:  0.1.0-alpha.157
+I (593) FW_MANIFEST:   Magic:    0x4C524355
+I (603) LORACUE_MAIN: Initializing LED manager...
+I (603) LED_MANAGER: Initializing LED manager
+I (613) LED_MANAGER: LED manager initialized
+I (613) LORACUE_MAIN: Initializing OLED UI...
+I (613) oled_ui: Initializing OLED UI
+I (953) ui_screen_controller: Initializing screen controller
+I (953) ui_data_provider: Initializing UI data provider
+I (953) ui_data_provider: Data provider initialized for device: LC-0110
+I (963) ui_screen_controller: Screen controller initialized
+I (963) ui_data_update: Data update task started
+I (973) ui_data_update: Data update task started successfully
+I (973) ui_status_bar: Status bar update task started
+I (983) ui_status_bar: Status bar task started successfully
+I (983) ui_pc_history: PC mode history task started
+I (993) ui_pc_history: PC history task started successfully
+I (993) oled_ui: OLED UI initialized successfully
+I (1003) LORACUE_MAIN: OLED brightness set to 128
+I (1003) ui_screen_controller: Setting screen: 0
+I (3373) LORACUE_MAIN: Initializing button manager...
+I (3373) BUTTON_MGR: Initializing button manager
+I (3373) BUTTON_MGR: Button manager initialized
+I (3373) BUTTON_MGR: Button manager task started
+I (3373) BUTTON_MGR: Button manager started
+I (3383) LORACUE_MAIN: Initializing device registry...
+I (3383) DEVICE_REGISTRY: Initializing device registry
+I (3393) DEVICE_REGISTRY: Device registry initialized with existing data
+I (3393) LORACUE_MAIN: Initializing LoRa driver...
+I (3403) LORA_DRIVER: No LoRa config in NVS, using defaults
+I (3403) LORA_DRIVER: LoRa config: 915000000 Hz, SF7, 500 kHz, 14 dBm
+I (3413) LORA_DRIVER: 🌐 Skipping SX1262 hardware initialization (simulated)
+I (3423) LORACUE_MAIN: Device mode: PRESENTER, Static ID: 0x0110
+I (3423) LORA_PROTOCOL: Initializing LoRa protocol for device 0x0110 with AES-256
+I (3433) LORA_PROTOCOL: LoRa protocol initialized with AES-256 encryption
+I (3443) LORACUE_MAIN: Initializing LoRa communication...
+I (3443) LORA_COMM: Initializing LoRa communication
+I (3443) LORACUE_MAIN: Initializing USB HID interface...
+I (3453) USB_COMPOSITE: Initializing USB composite device (HID + CDC)
+W (3463) tusb_desc: No Device descriptor provided, using default.
+W (3463) tusb_desc: No Full-speed configuration descriptor provided, using default.
+W (3473) tusb_desc: No String descriptors provided, using default.
+I (3483) tusb_desc: 
+┌─────────────────────────────────┐
+│  USB Device Descriptor Summary  │
+├───────────────────┬─────────────┤
+│bDeviceClass       │ 239         │
+├───────────────────┼─────────────┤
+│bDeviceSubClass    │ 2           │
+├───────────────────┼─────────────┤
+│bDeviceProtocol    │ 1           │
+├───────────────────┼─────────────┤
+│bMaxPacketSize0    │ 64          │
+├───────────────────┼─────────────┤
+│idVendor           │ 0x303a      │
+├───────────────────┼─────────────┤
+│idProduct          │ 0x4005      │
+├───────────────────┼─────────────┤
+│bcdDevice          │ 0x100       │
+├───────────────────┼─────────────┤
+│iManufacturer      │ 0x1         │
+├───────────────────┼─────────────┤
+│iProduct           │ 0x2         │
+├───────────────────┼─────────────┤
+│iSerialNumber      │ 0x3         │
+├───────────────────┼─────────────┤
+│bNumConfigurations │ 0x1         │
+└───────────────────┴─────────────┘
+I (3643) TinyUSB: TinyUSB Driver installed on port 0
+I (3653) USB_CDC: USB CDC protocol initialized
+I (3653) USB_COMPOSITE: USB composite device initialized
+I (3663) LORACUE_MAIN: Running hardware validation...
+I (3663) BSP_WOKWI: Validating Wokwi simulator hardware...
+I (3673) BSP_WOKWI: ✓ Buttons configured (GPIO46, GPIO45)
+I (3673) BSP_WOKWI: ✓ Status LED working (GPIO35)
+I (3683) BSP_WOKWI: ✅ Wokwi hardware validation complete
+I (3683) ui_screen_controller: Setting screen: 1
+I (4063) LORACUE_MAIN: Starting LED fade pattern
+I (4063) LORACUE_MAIN: Starting LoRa communication...
+I (4063) LORA_COMM: Starting LoRa communication task
+I (4073) LORA_PROTOCOL: RSSI monitor task started
+I (4073) LORA_PROTOCOL: Connection state: EXCELLENT (RSSI: 0 dBm)
+I (4073) LORA_PROTOCOL: RSSI monitor started
+I (4083) LORA_COMM: LoRa receive task started
+I (4083) LORA_COMM: LoRa communication started
+I (4093) LORACUE_MAIN: Main loop starting - should have low CPU usage when idle
+I (4093) ui_data_provider: Status force updated: USB=0, BT=1/0, LoRa=0, Battery=88%

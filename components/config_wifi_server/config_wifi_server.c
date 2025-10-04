@@ -720,10 +720,18 @@ esp_err_t config_wifi_server_stop(void)
         server = NULL;
     }
 
-    // Stop WiFi
-    esp_wifi_stop();
-    esp_wifi_deinit();
+    // Stop WiFi AP
+    esp_err_t ret = esp_wifi_stop();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "WiFi stop failed: %s", esp_err_to_name(ret));
+    }
 
+    ret = esp_wifi_deinit();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "WiFi deinit failed: %s", esp_err_to_name(ret));
+    }
+
+    // Destroy netif
     if (ap_netif) {
         esp_netif_destroy(ap_netif);
         ap_netif = NULL;
