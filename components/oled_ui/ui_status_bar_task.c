@@ -17,14 +17,13 @@ static void ui_status_bar_task(void *pvParameters)
     // Wait 10 seconds before first update
     vTaskDelay(pdMS_TO_TICKS(10000));
 
-    TickType_t last_update           = xTaskGetTickCount();
-    const TickType_t update_interval = pdMS_TO_TICKS(5000); // Update every 5 seconds
+    TickType_t last_update = xTaskGetTickCount();
 
     while (task_running) {
         // Check if background tasks are enabled
         extern bool oled_ui_background_tasks_enabled(void);
         if (!oled_ui_background_tasks_enabled()) {
-            vTaskDelayUntil(&last_update, update_interval);
+            vTaskDelayUntil(&last_update, pdMS_TO_TICKS(5000));
             continue;
         }
 
@@ -44,6 +43,12 @@ static void ui_status_bar_task(void *pvParameters)
                 oled_ui_unlock_draw();
             }
         }
+
+        // Dynamic update interval: 500ms for low battery (≤5%), 5s otherwise
+        const ui_status_t *status = ui_data_provider_get_status();
+        TickType_t update_interval = (status && status->battery_level <= 5) 
+            ? pdMS_TO_TICKS(500)   // Fast updates for blinking
+            : pdMS_TO_TICKS(5000); // Normal updates
 
         // Wait for next update interval
         vTaskDelayUntil(&last_update, update_interval);
