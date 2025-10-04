@@ -7,6 +7,8 @@
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_system.h"
+#include "firmware_manifest.h"
+#include "ota_compatibility.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lora_driver.h"
@@ -20,6 +22,9 @@ static esp_ota_handle_t ota_handle          = 0;
 static const esp_partition_t *ota_partition = NULL;
 static size_t ota_received_bytes            = 0;
 static size_t ota_total_size                = 0;
+static bool ota_force_mode                  = false;
+static uint8_t ota_header_buffer[4096]      = {0};  // Buffer for manifest extraction
+static bool ota_manifest_checked            = false;
 
 // Response callback (set by commands_execute)
 static response_fn_t g_send_response = NULL;
@@ -241,10 +246,17 @@ static void handle_fw_update_start(cJSON *update_json)
     cJSON *size     = cJSON_GetObjectItem(update_json, "size");
     cJSON *checksum = cJSON_GetObjectItem(update_json, "checksum");
     cJSON *version  = cJSON_GetObjectItem(update_json, "version");
+    cJSON *force    = cJSON_GetObjectItem(update_json, "force");
 
     if (!cJSON_IsNumber(size) || !cJSON_IsString(checksum) || !cJSON_IsString(version)) {
         g_send_response("ERROR Invalid firmware update parameters");
         return;
+    }
+
+    // Check force mode
+    ota_force_mode = (force && cJSON_IsTrue(force));
+    if (ota_force_mode) {
+        ESP_LOGW(TAG, "Force mode enabled - compatibility checks will be bypassed");
     }
 
     if (ota_handle) {
@@ -254,6 +266,8 @@ static void handle_fw_update_start(cJSON *update_json)
 
     ota_total_size     = size->valueint;
     ota_received_bytes = 0;
+    ota_manifest_checked = false;
+    memset(ota_header_buffer, 0, sizeof(ota_header_buffer));
 
     ota_partition = esp_ota_get_next_update_partition(NULL);
     if (!ota_partition) {
@@ -267,8 +281,16 @@ static void handle_fw_update_start(cJSON *update_json)
         return;
     }
 
-    ESP_LOGI(TAG, "OTA update started: %d bytes, version %s", ota_total_size, version->valuestring);
-    g_send_response("OK Ready for firmware data");
+    ESP_LOGI(TAG, "OTA update started: %d bytes, version %s, force=%d", 
+             ota_total_size, version->valuestring, ota_force_mode);
+    
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddStringToObject(response, "status", "ok");
+    cJSON_AddBoolToObject(response, "force_mode", ota_force_mode);
+    char *response_str = cJSON_PrintUnformatted(response);
+    g_send_response(response_str);
+    free(response_str);
+    cJSON_Delete(response);
 }
 
 static void handle_fw_update_data(const char *data_str)
@@ -306,15 +328,54 @@ static void handle_fw_update_data(const char *data_str)
         }
     }
 
-    esp_err_t ret = esp_ota_write(ota_handle, binary_data, data_len);
-    free(binary_data);
+    // Store first 4KB for manifest extraction
+    if (!ota_manifest_checked && ota_received_bytes < sizeof(ota_header_buffer)) {
+        size_t copy_len = (ota_received_bytes + data_len <= sizeof(ota_header_buffer)) 
+            ? data_len 
+            : (sizeof(ota_header_buffer) - ota_received_bytes);
+        memcpy(ota_header_buffer + ota_received_bytes, binary_data, copy_len);
+    }
 
+    esp_err_t ret = esp_ota_write(ota_handle, binary_data, data_len);
+    
     if (ret != ESP_OK) {
+        free(binary_data);
         g_send_response("ERROR Failed to write OTA data");
         return;
     }
 
     ota_received_bytes += data_len;
+
+    // Check compatibility after receiving first 4KB
+    if (!ota_manifest_checked && ota_received_bytes >= sizeof(ota_header_buffer)) {
+        ota_manifest_checked = true;
+        
+        firmware_manifest_t new_manifest;
+        if (ota_extract_manifest(ota_header_buffer, sizeof(ota_header_buffer), &new_manifest) == ESP_OK) {
+            ota_compat_result_t compat = ota_check_compatibility(&new_manifest, ota_force_mode);
+            
+            if (compat != OTA_COMPAT_OK) {
+                free(binary_data);
+                esp_ota_abort(ota_handle);
+                ota_handle = 0;
+                
+                cJSON *error = cJSON_CreateObject();
+                cJSON_AddStringToObject(error, "status", "error");
+                cJSON_AddStringToObject(error, "reason", ota_compat_error_string(compat));
+                cJSON_AddStringToObject(error, "current_board", firmware_manifest_get()->board_id);
+                cJSON_AddStringToObject(error, "new_board", new_manifest.board_id);
+                char *error_str = cJSON_PrintUnformatted(error);
+                g_send_response(error_str);
+                free(error_str);
+                cJSON_Delete(error);
+                return;
+            }
+        } else {
+            ESP_LOGW(TAG, "Could not extract manifest, proceeding anyway");
+        }
+    }
+
+    free(binary_data);
     g_send_response("OK Data written");
 }
 
