@@ -9,6 +9,7 @@
 #include "esp_system.h"
 #include "firmware_manifest.h"
 #include "ota_compatibility.h"
+#include "ota_error_screen.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lora_driver.h"
@@ -358,6 +359,9 @@ static void handle_fw_update_data(const char *data_str)
                 free(binary_data);
                 esp_ota_abort(ota_handle);
                 ota_handle = 0;
+                
+                // Show error on OLED
+                ota_error_screen_draw(firmware_manifest_get()->board_id, new_manifest.board_id);
                 
                 cJSON *error = cJSON_CreateObject();
                 cJSON_AddStringToObject(error, "status", "error");
