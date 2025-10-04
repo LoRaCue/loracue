@@ -4,20 +4,38 @@
 
 extern u8g2_t u8g2;
 
+// Battery XBM bitmaps (16x8)
+static const unsigned char battery_4_bars[] = {
+    0xfe, 0x3f, 0x01, 0x40, 0x6d, 0xdb, 0x6d, 0xdb, 0x6d, 0xdb, 0x6d, 0xdb, 0x01, 0x40, 0xfe, 0x3f};
+
+static const unsigned char battery_3_bars[] = {
+    0xfe, 0x3f, 0x01, 0x40, 0x6d, 0xc3, 0x6d, 0xc3, 0x6d, 0xc3, 0x6d, 0xc3, 0x01, 0x40, 0xfe, 0x3f};
+
+static const unsigned char battery_2_bars[] = {
+    0xfe, 0x3f, 0x01, 0x40, 0x6d, 0xc0, 0x6d, 0xc0, 0x6d, 0xc0, 0x6d, 0xc0, 0x01, 0x40, 0xfe, 0x3f};
+
+static const unsigned char battery_1_bar[] = {
+    0xfe, 0x3f, 0x01, 0x40, 0x0d, 0xc0, 0x0d, 0xc0, 0x0d, 0xc0, 0x0d, 0xc0, 0x01, 0x40, 0xfe, 0x3f};
+
+static const unsigned char battery_0_bars[] = {
+    0xfe, 0x3f, 0x01, 0x40, 0x01, 0xc0, 0x01, 0xc0, 0x01, 0xc0, 0x01, 0xc0, 0x01, 0x40, 0xfe, 0x3f};
+
 void ui_battery_draw(uint8_t battery_level)
 {
-    // Calculate how many segments to fill (0-4)
-    uint8_t filled_segments = (battery_level * BATTERY_SEGMENTS + 50) / 100; // Round to nearest
+    const unsigned char *bitmap;
 
-    for (int i = 0; i < BATTERY_SEGMENTS; i++) {
-        uint8_t segment_x = BATTERY_ICON_X + (i * (BATTERY_SEGMENT_WIDTH + 1));
-
-        if (i < filled_segments) {
-            // Draw filled segment
-            u8g2_DrawBox(&u8g2, segment_x, BATTERY_ICON_Y, BATTERY_SEGMENT_WIDTH, BATTERY_ICON_HEIGHT);
-        } else {
-            // Draw empty segment outline
-            u8g2_DrawFrame(&u8g2, segment_x, BATTERY_ICON_Y, BATTERY_SEGMENT_WIDTH, BATTERY_ICON_HEIGHT);
-        }
+    // Select bitmap based on battery level
+    if (battery_level > 75) {
+        bitmap = battery_4_bars;
+    } else if (battery_level > 50) {
+        bitmap = battery_3_bars;
+    } else if (battery_level > 25) {
+        bitmap = battery_2_bars;
+    } else if (battery_level > 5) {
+        bitmap = battery_1_bar;
+    } else {
+        bitmap = battery_0_bars;
     }
+
+    u8g2_DrawXBM(&u8g2, BATTERY_ICON_X, BATTERY_ICON_Y, 16, 8, bitmap);
 }
