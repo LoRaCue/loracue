@@ -502,6 +502,10 @@ void app_main(void)
         return;
     }
 
+    // Initialize firmware manifest
+    extern void firmware_manifest_init(void);
+    firmware_manifest_init();
+
     // Initialize LED manager and turn on status LED
     ESP_LOGI(TAG, "Initializing LED manager...");
     ret = led_manager_init();

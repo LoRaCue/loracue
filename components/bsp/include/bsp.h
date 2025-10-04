@@ -171,6 +171,16 @@ esp_err_t bsp_validate_hardware(void);
  */
 esp_err_t bsp_u8g2_init(void *u8g2);
 
+/**
+ * @brief Get board identifier string
+ *
+ * Returns a unique identifier for the hardware board type.
+ * Used for firmware compatibility checking during OTA updates.
+ *
+ * @return Constant string with board ID (e.g., "heltec_v3", "wokwi_sim")
+ */
+const char* bsp_get_board_id(void);
+
 #ifdef __cplusplus
 }
 #endif

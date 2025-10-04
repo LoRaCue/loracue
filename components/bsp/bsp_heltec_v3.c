@@ -645,3 +645,9 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     ESP_LOGI(TAG, "u8g2 initialized successfully for SH1106");
     return ESP_OK;
 }
+
+const char* bsp_get_board_id(void)
+{
+    return "heltec_v3";
+}
+

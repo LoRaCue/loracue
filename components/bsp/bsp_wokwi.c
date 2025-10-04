@@ -151,3 +151,9 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     // Just return success to avoid the crash
     return ESP_OK;
 }
+
+const char* bsp_get_board_id(void)
+{
+    return "wokwi_sim";
+}
+
