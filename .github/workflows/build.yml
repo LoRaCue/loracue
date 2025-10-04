@@ -91,7 +91,7 @@ jobs:
           esp-idf-${{ env.ESP_IDF_VERSION }}-
     
     - name: Install ESP-IDF
-      uses: espressif/esp-idf-action@v1
+      uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
         target: ${{ matrix.board.target }}
@@ -233,7 +233,7 @@ jobs:
           esp-idf-${{ env.ESP_IDF_VERSION }}-esp32s3-
     
     - name: Install ESP-IDF
-      uses: espressif/esp-idf-action@v1
+      uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
         target: esp32s3
