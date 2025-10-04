@@ -1,7 +1,5 @@
 #include "ui_status_bar_task.h"
-#ifdef CONFIG_BT_ENABLED
 #include "bluetooth_config.h"
-#endif
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -52,12 +50,10 @@ static void ui_status_bar_task(void *pvParameters)
         bool needs_fast_update = (status && status->battery_level <= 5);
         
         // Also use fast updates during Bluetooth pairing
-#ifdef CONFIG_BT_ENABLED
         uint32_t dummy_passkey;
         if (bluetooth_config_get_passkey(&dummy_passkey)) {
             needs_fast_update = true;
         }
-#endif
         
         TickType_t update_interval = needs_fast_update
             ? pdMS_TO_TICKS(500)   // Fast updates for blinking/pairing
