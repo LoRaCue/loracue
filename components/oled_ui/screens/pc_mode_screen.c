@@ -7,6 +7,7 @@
 #include "oled_ui.h"
 #include "u8g2.h"
 #include "ui_config.h"
+#include "ui_helpers.h"
 #include "ui_icons.h"
 #include "ui_status_bar.h"
 #include "ui_pairing_overlay.h"
@@ -55,14 +56,11 @@ void pc_mode_screen_draw(const oled_status_t *status)
     // If no commands yet
     if (status->command_history_count == 0) {
         u8g2_SetFont(&u8g2, u8g2_font_helvB12_tr);
-        int title_width = u8g2_GetStrWidth(&u8g2, "PC MODE");
-        u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - title_width) / 2, 27, "PC MODE");
+        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 27, "PC MODE");
 
         u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-        int line1_width = u8g2_GetStrWidth(&u8g2, "Waiting for");
-        int line2_width = u8g2_GetStrWidth(&u8g2, "commands...");
-        u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - line1_width) / 2, 38, "Waiting for");
-        u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - line2_width) / 2, 48, "commands...");
+        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 38, "Waiting for");
+        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 48, "commands...");
     }
 
     // Bottom separator

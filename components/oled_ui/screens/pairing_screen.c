@@ -4,6 +4,7 @@
 #include "esp_timer.h"
 #include "u8g2.h"
 #include "ui_config.h"
+#include "ui_helpers.h"
 #include "ui_icons.h"
 #include "usb_pairing.h"
 
@@ -49,28 +50,15 @@ void pairing_screen_draw(void)
         u8g2_DrawXBM(&u8g2, 4, 32, checkmark_width, checkmark_height, checkmark_bits);
         u8g2_DrawStr(&u8g2, 16, 31, "Pairing");
         u8g2_DrawStr(&u8g2, 16, 43, "successful!");
-    } else if (pairing_active) {
-        // Show pairing status
-        device_config_t config;
-        device_config_get(&config);
-
-        u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-
-        if (config.device_mode == DEVICE_MODE_PRESENTER) {
-            u8g2_DrawStr(&u8g2, 2, 25, "Sending pairing");
-            u8g2_DrawStr(&u8g2, 2, 37, "command to PC...");
-            u8g2_DrawStr(&u8g2, 2, 49, "Host mode active");
-        } else {
-            u8g2_DrawStr(&u8g2, 2, 25, "Waiting for");
-            u8g2_DrawStr(&u8g2, 2, 37, "presenter device");
-            u8g2_DrawStr(&u8g2, 2, 49, "Device mode ready");
-        }
     } else {
-        // Instructions
+        // Instructions - centered horizontally and vertically
         u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-        u8g2_DrawStr(&u8g2, 2, 25, "Connect USB-C cable");
-        u8g2_DrawStr(&u8g2, 2, 37, "PC <-> PRESENTER");
-        u8g2_DrawStr(&u8g2, 2, 49, "Press OK to start");
+        
+        int start_y = 23;
+        
+        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, start_y, "Connect USB-C");
+        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, start_y + 12, "cable to other");
+        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, start_y + 24, "LoRaCue device...");
     }
 
     // Footer
@@ -98,13 +86,14 @@ void pairing_screen_reset(void)
     success_start_time = 0;
     pairing_active     = false;
     usb_pairing_stop();
+    
+    // Auto-start pairing when entering screen
+    ESP_LOGI(TAG, "Auto-starting USB pairing (host mode)");
+    pairing_active = true;
+    usb_pairing_start(pairing_result_callback);
 }
 
 void pairing_screen_select(void)
 {
-    if (!pairing_active && !show_success) {
-        ESP_LOGI(TAG, "Starting simple USB pairing");
-        pairing_active = true;
-        usb_pairing_start(pairing_result_callback);
-    }
+    // Pairing auto-starts when entering screen, no manual trigger needed
 }

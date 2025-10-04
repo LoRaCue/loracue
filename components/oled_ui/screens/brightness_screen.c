@@ -2,6 +2,7 @@
 #include "device_config.h"
 #include "u8g2.h"
 #include "ui_config.h"
+#include "ui_helpers.h"
 #include "ui_icons.h"
 
 extern u8g2_t u8g2;
@@ -29,8 +30,7 @@ void brightness_screen_draw(void)
     // Brightness value
     char value_str[8];
     snprintf(value_str, sizeof(value_str), "%d", brightness_value);
-    int value_width = u8g2_GetStrWidth(&u8g2, value_str);
-    u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - value_width) / 2, 28, value_str);
+    u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 28, value_str);
 
     // Progress bar (128px width, centered)
     int bar_width  = 128;

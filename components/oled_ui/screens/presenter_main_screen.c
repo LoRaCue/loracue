@@ -2,6 +2,7 @@
 #include "bluetooth_config.h"
 #include "u8g2.h"
 #include "ui_config.h"
+#include "ui_helpers.h"
 #include "ui_icons.h"
 #include "ui_status_bar.h"
 #include "ui_pairing_overlay.h"
@@ -17,8 +18,7 @@ void presenter_main_screen_draw(const ui_status_t *status)
 
     // Main content area - "PRESENTER"
     u8g2_SetFont(&u8g2, u8g2_font_helvB14_tr);
-    int title_width = u8g2_GetStrWidth(&u8g2, "PRESENTER");
-    u8g2_DrawStr(&u8g2, (DISPLAY_WIDTH - title_width) / 2, 30, "PRESENTER");
+    u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 30, "PRESENTER");
 
     // Button hints with compact arrows
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);

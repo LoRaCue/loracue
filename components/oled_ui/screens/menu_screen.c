@@ -76,7 +76,7 @@ void menu_screen_draw(void)
 
     // Move Select to rightmost position
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr); // Explicitly set font again
-    const char *select_text = "Select";
+    const char *select_text = "Select/3s=Exit";
     int select_text_width   = u8g2_GetStrWidth(&u8g2, select_text);
     int select_x            = DISPLAY_WIDTH - both_buttons_width - select_text_width - 2;
     u8g2_DrawXBM(&u8g2, select_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
