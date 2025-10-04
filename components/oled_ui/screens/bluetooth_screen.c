@@ -70,31 +70,24 @@ void bluetooth_screen_draw(void)
         }
     }
 
-    // Footer - show connection status or pairing passkey
+    // Footer with navigation (like device mode screen)
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
-    u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
-    
-    if (config.bluetooth_enabled) {
-#ifndef SIMULATOR_BUILD
-        uint32_t passkey;
-        if (bluetooth_config_get_passkey(&passkey)) {
-            // Show pairing passkey
-            char passkey_str[32];
-            snprintf(passkey_str, sizeof(passkey_str), "PIN: %06" PRIu32, passkey);
-            u8g2_DrawStr(&u8g2, 2, 62, passkey_str);
-        } else if (bluetooth_config_is_connected()) {
-            u8g2_DrawStr(&u8g2, 2, 62, "Connected");
-        } else {
-            u8g2_DrawStr(&u8g2, 2, 62, "Advertising...");
-        }
-#else
-        u8g2_DrawStr(&u8g2, 2, 62, "Sim: N/A");
-#endif
-    } else {
-        u8g2_DrawStr(&u8g2, 2, 62, "Disabled");
-    }
+    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
 
-    u8g2_DrawStr(&u8g2, DISPLAY_WIDTH - 30, 62, "BACK");
+    // Left: Back arrow
+    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
+    u8g2_DrawStr(&u8g2, 8, 64, "Back");
+
+    // Middle: Next arrow
+    u8g2_DrawXBM(&u8g2, 40, 56, track_next_width, track_next_height, track_next_bits);
+    u8g2_DrawStr(&u8g2, 46, 64, "Next");
+
+    // Right: Select with both buttons icon
+    const char *select_text = "Select";
+    int select_text_width   = u8g2_GetStrWidth(&u8g2, select_text);
+    int select_x            = DISPLAY_WIDTH - both_buttons_width - select_text_width - 2;
+    u8g2_DrawXBM(&u8g2, select_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
+    u8g2_DrawStr(&u8g2, select_x + both_buttons_width + 2, 64, select_text);
 
     u8g2_SendBuffer(&u8g2);
 }
