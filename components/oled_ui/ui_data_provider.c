@@ -1,6 +1,8 @@
 #include "ui_data_provider.h"
 #include "bsp.h"
+#ifdef CONFIG_BT_ENABLED
 #include "bluetooth_config.h"
+#endif
 #include "device_config.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -76,7 +78,11 @@ esp_err_t ui_data_provider_update(void)
     device_config_t config;
     device_config_get(&config);
     cached_status.bluetooth_enabled = config.bluetooth_enabled;
+#ifdef CONFIG_BT_ENABLED
     cached_status.bluetooth_connected = bluetooth_config_is_connected();
+#else
+    cached_status.bluetooth_connected = false;
+#endif
 
     // Update LoRa status from protocol layer
     lora_connection_state_t conn_state = lora_protocol_get_connection_state();
