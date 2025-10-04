@@ -8,8 +8,13 @@
 #include "ui_config.h"
 #include "ui_icons.h"
 #include "ui_status_bar.h"
+#include "ui_pairing_overlay.h"
 #include <inttypes.h>
 #include <string.h>
+
+#ifndef SIMULATOR_BUILD
+#include "bluetooth_config.h"
+#endif
 
 static const char *TAG = "pc_mode_screen";
 
@@ -84,6 +89,14 @@ void pc_mode_screen_draw(const oled_status_t *status)
     u8g2_DrawXBM(&u8g2, start_x + text_width, DISPLAY_HEIGHT - both_buttons_height - 1, both_buttons_width,
                  both_buttons_height, both_buttons_bits);
     u8g2_DrawStr(&u8g2, start_x + text_width + both_buttons_width, DISPLAY_HEIGHT - 1, menu_suffix);
+
+    // Draw Bluetooth pairing overlay if active
+#ifndef SIMULATOR_BUILD
+    uint32_t passkey;
+    if (bluetooth_config_get_passkey(&passkey)) {
+        ui_pairing_overlay_draw(passkey);
+    }
+#endif
 
     u8g2_SendBuffer(&u8g2);
 }

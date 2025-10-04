@@ -44,10 +44,21 @@ static void ui_status_bar_task(void *pvParameters)
             }
         }
 
-        // Dynamic update interval: 500ms for low battery (≤5%), 5s otherwise
+        // Dynamic update interval: 500ms for low battery or Bluetooth pairing, 5s otherwise
         const ui_status_t *status = ui_data_provider_get_status();
-        TickType_t update_interval = (status && status->battery_level <= 5) 
-            ? pdMS_TO_TICKS(500)   // Fast updates for blinking
+        bool needs_fast_update = (status && status->battery_level <= 5);
+        
+#ifndef SIMULATOR_BUILD
+        // Also use fast updates during Bluetooth pairing
+        extern bool bluetooth_config_get_passkey(uint32_t *passkey);
+        uint32_t dummy_passkey;
+        if (bluetooth_config_get_passkey(&dummy_passkey)) {
+            needs_fast_update = true;
+        }
+#endif
+        
+        TickType_t update_interval = needs_fast_update
+            ? pdMS_TO_TICKS(500)   // Fast updates for blinking/pairing
             : pdMS_TO_TICKS(5000); // Normal updates
 
         // Wait for next update interval
