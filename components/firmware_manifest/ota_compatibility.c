@@ -67,8 +67,8 @@ esp_err_t ota_extract_manifest(
             // Found potential manifest, copy it
             memcpy(manifest, data + i, sizeof(firmware_manifest_t));
             
-            // Validate manifest version
-            if (manifest->manifest_version == 0 || manifest->manifest_version > 255) {
+            // Validate manifest version (uint8_t is always <= 255)
+            if (manifest->manifest_version == 0) {
                 ESP_LOGW(TAG, "Invalid manifest version: %d", manifest->manifest_version);
                 continue;
             }

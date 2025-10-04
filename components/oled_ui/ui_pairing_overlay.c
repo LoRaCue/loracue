@@ -35,7 +35,6 @@ void ui_pairing_overlay_draw(uint32_t passkey)
     // "Bluetooth Connection" - bold font
     u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
     const char *title = "Bluetooth";
-    int title_width = u8g2_GetStrWidth(&u8g2, title);
     int text_x = box_x + bluetooth_pairing_width + 12;
     u8g2_DrawStr(&u8g2, text_x, box_y + 10, title);
     
