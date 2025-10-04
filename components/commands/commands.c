@@ -242,6 +242,94 @@ static void handle_pair_device(cJSON *pair_json)
     g_send_response("OK Device paired successfully");
 }
 
+static void handle_unpair_device(cJSON *unpair_json)
+{
+    cJSON *id = cJSON_GetObjectItem(unpair_json, "id");
+    
+    if (!cJSON_IsNumber(id)) {
+        g_send_response("ERROR Missing device ID");
+        return;
+    }
+    
+    uint16_t device_id = id->valueint;
+    
+    if (device_id < 1 || device_id > 10) {
+        g_send_response("ERROR Invalid device ID");
+        return;
+    }
+    
+    esp_err_t ret = device_registry_remove(device_id);
+    if (ret != ESP_OK) {
+        g_send_response("ERROR Device not found");
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Device unpaired: 0x%04X", device_id);
+    g_send_response("OK Device unpaired successfully");
+}
+
+static void handle_update_paired_device(cJSON *update_json)
+{
+    cJSON *id = cJSON_GetObjectItem(update_json, "id");
+    cJSON *name = cJSON_GetObjectItem(update_json, "name");
+    const cJSON *mac = cJSON_GetObjectItem(update_json, "mac");
+    const cJSON *key = cJSON_GetObjectItem(update_json, "key");
+    
+    if (!cJSON_IsNumber(id) || !cJSON_IsString(name) || 
+        !cJSON_IsString(mac) || !cJSON_IsString(key)) {
+        g_send_response("ERROR Missing parameters");
+        return;
+    }
+    
+    uint16_t device_id = id->valueint;
+    
+    if (device_id < 1 || device_id > 10) {
+        g_send_response("ERROR Invalid device ID");
+        return;
+    }
+    
+    // Check if device exists
+    paired_device_t existing;
+    if (device_registry_get(device_id, &existing) != ESP_OK) {
+        g_send_response("ERROR Device not found");
+        return;
+    }
+    
+    // Validate MAC address
+    uint8_t mac_bytes[6];
+    if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", 
+               &mac_bytes[0], &mac_bytes[1], &mac_bytes[2], 
+               &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
+        g_send_response("ERROR Invalid MAC address");
+        return;
+    }
+    
+    // Validate AES key
+    uint8_t aes_key[32];
+    const char *key_str = key->valuestring;
+    if (strlen(key_str) != 64) {
+        g_send_response("ERROR Invalid key length (expected 64 hex chars for AES-256)");
+        return;
+    }
+    
+    for (int i = 0; i < 32; i++) {
+        if (sscanf(key_str + i * 2, "%02hhx", &aes_key[i]) != 1) {
+            g_send_response("ERROR Invalid key format");
+            return;
+        }
+    }
+    
+    // Update device (overwrites existing)
+    esp_err_t ret = device_registry_add(device_id, name->valuestring, mac_bytes, aes_key);
+    if (ret != ESP_OK) {
+        g_send_response("ERROR Failed to update device");
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Device updated: 0x%04X (%s)", device_id, name->valuestring);
+    g_send_response("OK Device updated successfully");
+}
+
 static void handle_fw_update_start(cJSON *update_json)
 {
     cJSON *size     = cJSON_GetObjectItem(update_json, "size");
@@ -468,6 +556,28 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         cJSON *json = cJSON_Parse(command_line + 12);
         if (json) {
             handle_pair_device(json);
+            cJSON_Delete(json);
+        } else {
+            g_send_response("ERROR Invalid JSON");
+        }
+        return;
+    }
+
+    if (strncmp(command_line, "UNPAIR_DEVICE ", 14) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 14);
+        if (json) {
+            handle_unpair_device(json);
+            cJSON_Delete(json);
+        } else {
+            g_send_response("ERROR Invalid JSON");
+        }
+        return;
+    }
+
+    if (strncmp(command_line, "UPDATE_PAIRED_DEVICE ", 21) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 21);
+        if (json) {
+            handle_update_paired_device(json);
             cJSON_Delete(json);
         } else {
             g_send_response("ERROR Invalid JSON");
