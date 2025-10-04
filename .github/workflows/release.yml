@@ -187,8 +187,8 @@ jobs:
         3. Buttons should make LED solid when pressed
         
         ## Support
-        - Documentation: https://github.com/metaneutrons/LoRaCue
-        - Issues: https://github.com/metaneutrons/LoRaCue/issues
+        - Documentation: https://github.com/LoRaCue/loracue
+        - Issues: https://github.com/LoRaCue/loracue/issues
         EOF
     
     - name: Create firmware archive
