@@ -20,7 +20,7 @@ extern "C" {
 #define DEVICE_NAME_MAX_LEN 32
 #define DEVICE_AES_KEY_LEN 32 // AES-256 requires 32 bytes
 #define DEVICE_MAC_ADDR_LEN 6
-#define MAX_PAIRED_DEVICES 16
+#define MAX_PAIRED_DEVICES 32  // Optimal for 100KB NVS (~3.5KB storage)
 
 /**
  * @brief Paired device information
