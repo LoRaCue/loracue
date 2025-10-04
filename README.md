@@ -81,23 +81,45 @@ Our comprehensive Makefile provides a streamlined development experience:
 ```bash
 # 🔨 Build Commands
 make build          # Build for real hardware (Heltec V3)
-make sim            # Build for Wokwi simulator
+make rebuild        # Clean and rebuild project
 make clean          # Clean build artifacts
+make size           # Show binary size information
+make menuconfig     # Configure ESP-IDF project settings
+make set-target     # Set ESP-IDF target (esp32s3)
 
 # 🎮 Simulation Commands  
+make sim            # Build for Wokwi simulator
 make sim-run        # Build and run Wokwi simulation
 make sim-debug      # Interactive simulation with serial monitor
 make sim-screenshot # Capture OLED display screenshot
+make sim-web        # Run simulation in web browser
+make sim-info       # Show Wokwi simulation information
 
 # 📡 Hardware Commands
 make flash          # Flash firmware to connected device
 make monitor        # Serial monitor for debugging
 make flash-monitor  # Flash and immediately start monitoring
+make erase          # Erase entire flash memory
+
+# 🌐 Web Interface Commands
+make web-build      # Build web interface for WiFi configuration
+make web-dev        # Start web interface development server
 
 # 🔧 Development Tools
 make format         # Format code with clang-format
-make lint           # Static code analysis
-make docs           # Generate documentation
+make format-check   # Check code formatting without changes
+make lint           # Static code analysis with cppcheck
+make env-info       # Show development environment information
+
+# 🚀 Quick Start
+make dev            # Setup environment and run simulation
+make all            # Default target (build)
+make help           # Show all available commands
+
+# ✅ Environment Checks
+make check-idf      # Verify ESP-IDF installation
+make check-wokwi    # Verify Wokwi CLI installation
+make setup-env      # Setup development environment
 ```
 
 **Key Benefits**:
@@ -105,6 +127,7 @@ make docs           # Generate documentation
 - **Automatic Environment**: ESP-IDF setup handled automatically
 - **Cross-Platform**: Works on macOS, Linux, and Windows
 - **CI/CD Ready**: GitHub Actions integration for automated testing
+- **Web Development**: Integrated web interface build system
 
 ### **Simulation-First Development**
 
