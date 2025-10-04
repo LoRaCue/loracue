@@ -152,7 +152,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         // Set device name
         device_config_t config;
         device_config_get(&config);
-        char ble_name[32];
+        char ble_name[48];  // "LoRaCue " (8) + device_name (31) + null (1) = 40 bytes minimum
         snprintf(ble_name, sizeof(ble_name), "LoRaCue %s", config.device_name);
         esp_ble_gap_set_device_name(ble_name);
 
