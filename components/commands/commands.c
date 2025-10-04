@@ -253,7 +253,7 @@ static void handle_unpair_device(cJSON *unpair_json)
     
     uint16_t device_id = id->valueint;
     
-    if (device_id < 1 || device_id > 10) {
+    if (device_id < 1 || device_id > MAX_PAIRED_DEVICES) {
         g_send_response("ERROR Invalid device ID");
         return;
     }
@@ -283,7 +283,7 @@ static void handle_update_paired_device(cJSON *update_json)
     
     uint16_t device_id = id->valueint;
     
-    if (device_id < 1 || device_id > 10) {
+    if (device_id < 1 || device_id > MAX_PAIRED_DEVICES) {
         g_send_response("ERROR Invalid device ID");
         return;
     }
