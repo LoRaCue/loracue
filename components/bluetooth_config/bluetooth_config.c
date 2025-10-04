@@ -1,6 +1,7 @@
 #include "bluetooth_config.h"
 #include "device_config.h"
 #include "esp_log.h"
+#include <string.h>
 
 #ifdef SIMULATOR_BUILD
 // Simulator stubs - Bluetooth not available
@@ -46,10 +47,20 @@ bool bluetooth_config_get_passkey(uint32_t *passkey)
 
 static const char *TAG = "BT_CONFIG";
 
-// Nordic UART Service UUIDs
-#define UART_SERVICE_UUID       0x6E400001
-#define UART_TX_CHAR_UUID       0x6E400003 // Notify
-#define UART_RX_CHAR_UUID       0x6E400002 // Write
+// Nordic UART Service UUIDs (128-bit)
+// Base UUID: 6E400001-B5A3-F393-E0A9-E50E24DCCA9E
+static const uint8_t UART_SERVICE_UUID[16] = {
+    0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
+    0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E
+};
+static const uint8_t UART_TX_CHAR_UUID[16] = {
+    0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
+    0x93, 0xF3, 0xA3, 0xB5, 0x03, 0x00, 0x40, 0x6E
+};
+static const uint8_t UART_RX_CHAR_UUID[16] = {
+    0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
+    0x93, 0xF3, 0xA3, 0xB5, 0x02, 0x00, 0x40, 0x6E
+};
 
 #define GATTS_APP_ID            0
 #define GATTS_NUM_HANDLE        8
@@ -166,9 +177,9 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         esp_gatt_srvc_id_t service_id = {
             .is_primary = true,
             .id.inst_id = 0x00,
-            .id.uuid.len = ESP_UUID_LEN_16,
-            .id.uuid.uuid.uuid16 = UART_SERVICE_UUID,
+            .id.uuid.len = ESP_UUID_LEN_128,
         };
+        memcpy(service_id.id.uuid.uuid.uuid128, UART_SERVICE_UUID, 16);
         esp_ble_gatts_create_service(gatts_if, &service_id, GATTS_NUM_HANDLE);
         break;
 
@@ -178,9 +189,9 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 
         // Add TX characteristic (notify)
         esp_bt_uuid_t tx_uuid = {
-            .len = ESP_UUID_LEN_16,
-            .uuid.uuid16 = UART_TX_CHAR_UUID,
+            .len = ESP_UUID_LEN_128,
         };
+        memcpy(tx_uuid.uuid.uuid128, UART_TX_CHAR_UUID, 16);
         esp_ble_gatts_add_char(service_handle, &tx_uuid,
                                ESP_GATT_PERM_READ,
                                ESP_GATT_CHAR_PROP_BIT_NOTIFY,
@@ -188,19 +199,19 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         break;
 
     case ESP_GATTS_ADD_CHAR_EVT:
-        if (param->add_char.char_uuid.uuid.uuid16 == UART_TX_CHAR_UUID) {
+        if (memcmp(param->add_char.char_uuid.uuid.uuid128, UART_TX_CHAR_UUID, 16) == 0) {
             tx_char_handle = param->add_char.attr_handle;
             
             // Add RX characteristic (write)
             esp_bt_uuid_t rx_uuid = {
-                .len = ESP_UUID_LEN_16,
-                .uuid.uuid16 = UART_RX_CHAR_UUID,
+                .len = ESP_UUID_LEN_128,
             };
+            memcpy(rx_uuid.uuid.uuid128, UART_RX_CHAR_UUID, 16);
             esp_ble_gatts_add_char(service_handle, &rx_uuid,
                                    ESP_GATT_PERM_WRITE,
                                    ESP_GATT_CHAR_PROP_BIT_WRITE,
                                    NULL, NULL);
-        } else if (param->add_char.char_uuid.uuid.uuid16 == UART_RX_CHAR_UUID) {
+        } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, UART_RX_CHAR_UUID, 16) == 0) {
             rx_char_handle = param->add_char.attr_handle;
             ESP_LOGI(TAG, "UART service ready");
         }
