@@ -181,6 +181,21 @@ esp_err_t bsp_u8g2_init(void *u8g2);
  */
 const char* bsp_get_board_id(void);
 
+/**
+ * @brief USB descriptor configuration
+ */
+typedef struct {
+    uint16_t usb_pid;           ///< USB Product ID
+    const char *usb_product;    ///< USB Product string
+} bsp_usb_config_t;
+
+/**
+ * @brief Get USB configuration for this board
+ *
+ * @return Pointer to USB configuration structure
+ */
+const bsp_usb_config_t* bsp_get_usb_config(void);
+
 #ifdef __cplusplus
 }
 #endif

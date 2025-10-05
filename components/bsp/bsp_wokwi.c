@@ -157,3 +157,13 @@ const char* bsp_get_board_id(void)
     return "wokwi_sim";
 }
 
+static const bsp_usb_config_t usb_config = {
+    .usb_pid = 0xFAB1,
+    .usb_product = "LC-sim"
+};
+
+const bsp_usb_config_t* bsp_get_usb_config(void)
+{
+    return &usb_config;
+}
+

@@ -651,3 +651,13 @@ const char* bsp_get_board_id(void)
     return "heltec_v3";
 }
 
+static const bsp_usb_config_t usb_config = {
+    .usb_pid = 0xFAB0,
+    .usb_product = "LC-alpha"
+};
+
+const bsp_usb_config_t* bsp_get_usb_config(void)
+{
+    return &usb_config;
+}
+

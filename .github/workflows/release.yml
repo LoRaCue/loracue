@@ -2,6 +2,9 @@ name: Release LoRaCue Firmware
 
 on:
   push:
+    branches:
+      - main
+      - master
     tags:
       - 'v*'
   workflow_dispatch:
@@ -11,8 +14,8 @@ on:
         required: false
         default: false
         type: boolean
-      version_override:
-        description: 'Version override (leave empty for GitVersion)'
+      manual_tag:
+        description: 'Manual tag (e.g., v1.2.3, leave empty for GitVersion)'
         required: false
         type: string
 
@@ -22,10 +25,10 @@ env:
 jobs:
   version:
     runs-on: ubuntu-latest
-    name: Calculate Version
+    name: Calculate Version and Create Tag
     outputs:
       version: ${{ steps.version.outputs.version }}
-      full_version: ${{ steps.gitversion.outputs.fullSemVer }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
       is_prerelease: ${{ steps.version.outputs.is_prerelease }}
       
     steps:
@@ -45,22 +48,61 @@ jobs:
       with:
         useConfigFile: true
     
-    - name: Set version output
+    - name: Validate and set version
       id: version
       run: |
-        if [ -n "${{ github.event.inputs.version_override }}" ]; then
-          VERSION="${{ github.event.inputs.version_override }}"
-          echo "Using override version: $VERSION"
+        GITVERSION="${{ steps.gitversion.outputs.semVer }}"
+        MANUAL_TAG="${{ github.event.inputs.manual_tag }}"
+        PUSHED_TAG="${{ github.ref_name }}"
+        
+        # Determine source
+        if [ "${{ github.event_name }}" == "push" ] && [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          # Tag was pushed
+          VERSION="${PUSHED_TAG#v}"
+          TAG_NAME="$PUSHED_TAG"
+          echo "Using pushed tag: $TAG_NAME"
+        elif [ -n "$MANUAL_TAG" ]; then
+          # Manual tag specified
+          VERSION="${MANUAL_TAG#v}"
+          TAG_NAME="v$VERSION"
+          echo "Manual tag requested: $TAG_NAME"
+          
+          # Compare versions
+          if [ "$(printf '%s\n' "$VERSION" "$GITVERSION" | sort -V | head -n1)" != "$GITVERSION" ]; then
+            echo "ERROR: Manual tag v$VERSION is below GitVersion v$GITVERSION"
+            echo "Cannot create tag that is older than calculated version"
+            exit 1
+          fi
         else
-          VERSION="${{ steps.gitversion.outputs.semVer }}"
-          echo "Using GitVersion: $VERSION"
+          # Auto-generate from GitVersion
+          VERSION="$GITVERSION"
+          TAG_NAME="v$VERSION"
+          echo "Auto-generating tag from GitVersion: $TAG_NAME"
         fi
+        
         echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
         
         if [ "${{ steps.gitversion.outputs.preReleaseTag }}" != "" ] || [ "${{ github.event.inputs.prerelease }}" == "true" ]; then
           echo "is_prerelease=true" >> $GITHUB_OUTPUT
         else
           echo "is_prerelease=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Create and push tag
+      if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
+      run: |
+        TAG_NAME="${{ steps.version.outputs.tag_name }}"
+        
+        # Check if tag already exists
+        if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+          echo "Tag $TAG_NAME already exists, skipping creation"
+        else
+          echo "Creating tag $TAG_NAME"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push origin "$TAG_NAME"
         fi
 
   build-matrix:
@@ -374,6 +416,8 @@ jobs:
     name: Generate Release Notes
     outputs:
       changelog: ${{ steps.changelog.outputs.changelog }}
+      breaking_changes: ${{ steps.changelog.outputs.breaking_changes }}
+      known_issues: ${{ steps.changelog.outputs.known_issues }}
       
     steps:
     - name: Checkout repository
@@ -381,43 +425,83 @@ jobs:
       with:
         fetch-depth: 0
         
-    - name: Generate changelog
+    - name: Generate commit-based changelog
       id: changelog
-      uses: mikepenz/release-changelog-builder-action@v4
-      with:
-        configuration: |
-          {
-            "categories": [
-              {
-                "title": "## 🚀 Features",
-                "labels": ["feat", "feature"]
-              },
-              {
-                "title": "## 🐛 Bug Fixes", 
-                "labels": ["fix", "bugfix"]
-              },
-              {
-                "title": "## 📚 Documentation",
-                "labels": ["docs", "documentation"]
-              },
-              {
-                "title": "## 🔧 Technical Changes",
-                "labels": ["refactor", "perf", "build", "ci", "chore"]
-              }
-            ],
-            "template": "#{{CHANGELOG}}\n\n## 📋 All Changes\n#{{UNCATEGORIZED}}",
-            "pr_template": "- #{{TITLE}} (#{{NUMBER}})",
-            "empty_template": "- No changes in this release",
-            "transformers": [
-              {
-                "pattern": "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore)(\\(.+\\))?: (.+)$",
-                "target": "$3"
-              }
-            ]
-          }
-        toTag: ${{ github.ref_name }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Get previous tag
+        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        if [ -z "$PREV_TAG" ]; then
+          echo "No previous tag found, using all commits"
+          COMMIT_RANGE="HEAD"
+        else
+          echo "Generating changelog from $PREV_TAG to HEAD"
+          COMMIT_RANGE="$PREV_TAG..HEAD"
+        fi
+        
+        # Parse commits by conventional commit type
+        FEATURES=$(git log $COMMIT_RANGE --pretty=format:"%s" --no-merges | grep -E "^feat(\(.+\))?:" | sed 's/^feat[^:]*: /- /' || echo "")
+        FIXES=$(git log $COMMIT_RANGE --pretty=format:"%s" --no-merges | grep -E "^fix(\(.+\))?:" | sed 's/^fix[^:]*: /- /' || echo "")
+        DOCS=$(git log $COMMIT_RANGE --pretty=format:"%s" --no-merges | grep -E "^docs(\(.+\))?:" | sed 's/^docs[^:]*: /- /' || echo "")
+        PERF=$(git log $COMMIT_RANGE --pretty=format:"%s" --no-merges | grep -E "^perf(\(.+\))?:" | sed 's/^perf[^:]*: /- /' || echo "")
+        REFACTOR=$(git log $COMMIT_RANGE --pretty=format:"%s" --no-merges | grep -E "^refactor(\(.+\))?:" | sed 's/^refactor[^:]*: /- /' || echo "")
+        OTHER=$(git log $COMMIT_RANGE --pretty=format:"%s" --no-merges | grep -vE "^(feat|fix|docs|perf|refactor)(\(.+\))?:" | sed 's/^/- /' || echo "")
+        
+        # Detect breaking changes (BREAKING CHANGE: or ! in commit)
+        BREAKING=$(git log $COMMIT_RANGE --pretty=format:"%s%n%b" --no-merges | grep -A 10 -E "(^[a-z]+(\(.+\))?!:|BREAKING CHANGE:)" | grep -v "^--$" || echo "")
+        
+        # Build changelog
+        CHANGELOG=""
+        
+        if [ -n "$FEATURES" ]; then
+          CHANGELOG+="## 🚀 Features%0A%0A$FEATURES%0A%0A"
+        fi
+        
+        if [ -n "$FIXES" ]; then
+          CHANGELOG+="## 🐛 Bug Fixes%0A%0A$FIXES%0A%0A"
+        fi
+        
+        if [ -n "$PERF" ]; then
+          CHANGELOG+="## ⚡ Performance%0A%0A$PERF%0A%0A"
+        fi
+        
+        if [ -n "$DOCS" ]; then
+          CHANGELOG+="## 📚 Documentation%0A%0A$DOCS%0A%0A"
+        fi
+        
+        if [ -n "$REFACTOR" ]; then
+          CHANGELOG+="## 🔧 Refactoring%0A%0A$REFACTOR%0A%0A"
+        fi
+        
+        if [ -n "$OTHER" ]; then
+          CHANGELOG+="## 📋 Other Changes%0A%0A$OTHER%0A%0A"
+        fi
+        
+        if [ -z "$CHANGELOG" ]; then
+          CHANGELOG="No changes in this release"
+        fi
+        
+        # Save outputs
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo -e "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+        echo "breaking_changes<<EOF" >> $GITHUB_OUTPUT
+        echo -e "$BREAKING" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        
+    - name: Check for known issues
+      id: known_issues
+      run: |
+        # Check if KNOWN_ISSUES.md exists
+        if [ -f "KNOWN_ISSUES.md" ]; then
+          ISSUES=$(cat KNOWN_ISSUES.md)
+          echo "known_issues<<EOF" >> $GITHUB_OUTPUT
+          echo "$ISSUES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          echo "known_issues=" >> $GITHUB_OUTPUT
+        fi
 
   create-release:
     runs-on: ubuntu-latest
@@ -439,13 +523,15 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ needs.version.outputs.version }}
+        tag_name: ${{ needs.version.outputs.tag_name }}
         name: LoRaCue v${{ needs.version.outputs.version }}
         body: |
           # 🎯 LoRaCue v${{ needs.version.outputs.version }}
           
           Enterprise LoRa presentation clicker firmware release.
           
+          ${{ needs.generate-changelog.outputs.breaking_changes != '' && format('## ⚠️ BREAKING CHANGES\n\n{0}\n\n', needs.generate-changelog.outputs.breaking_changes) || '' }}
+          ${{ needs.generate-changelog.outputs.known_issues != '' && format('## 🐛 Known Issues\n\n{0}\n\n', needs.generate-changelog.outputs.known_issues) || '' }}
           ## 📦 Supported Boards
           
           | Board | Target | Flash Size | Description |

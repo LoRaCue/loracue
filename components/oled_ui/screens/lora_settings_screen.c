@@ -14,35 +14,48 @@ static int scroll_offset   = 0;
 #define VIEWPORT_SIZE 2 // Show 2 presets at once
 
 static const lora_config_t presets[] = {
-    // Conference Room (50m) - Fast
+    // Conference (100m)
     {
-        .frequency        = 868100000, // 868.1 MHz
-        .spreading_factor = 7,         // SF7
-        .bandwidth        = 500,       // 500kHz
-        .coding_rate      = 5,         // 4/5
-        .tx_power         = 14         // 14dBm
+        .frequency        = 0,   // Set separately based on region
+        .spreading_factor = 7,   // SF7
+        .bandwidth        = 500, // 500kHz
+        .coding_rate      = 5,   // 4/5
+        .tx_power         = 0    // Set based on frequency
     },
-    // Auditorium (200m) - Balanced
+    // Auditorium (250m)
     {
-        .frequency        = 868100000, // 868.1 MHz
-        .spreading_factor = 8,         // SF8
-        .bandwidth        = 250,       // 250kHz
-        .coding_rate      = 5,         // 4/5
-        .tx_power         = 17         // 17dBm
+        .frequency        = 0,   // Set separately based on region
+        .spreading_factor = 9,   // SF9
+        .bandwidth        = 125, // 125kHz
+        .coding_rate      = 7,   // 4/7
+        .tx_power         = 0    // Set based on frequency
     },
-    // Stadium (500m) - Max Range
+    // Stadium (500m)
     {
-        .frequency        = 868100000, // 868.1 MHz
-        .spreading_factor = 10,        // SF10
-        .bandwidth        = 125,       // 125kHz
-        .coding_rate      = 5,         // 4/5
-        .tx_power         = 20         // 20dBm
+        .frequency        = 0,   // Set separately based on region
+        .spreading_factor = 10,  // SF10
+        .bandwidth        = 125, // 125kHz
+        .coding_rate      = 8,   // 4/8
+        .tx_power         = 0    // Set based on frequency
     }};
-static const char *preset_names[] = {"Conference (50m)", "Auditorium (200m)", "Stadium (500m)"};
+static const char *preset_names[] = {"Conference (100m)", "Auditorium (250m)", "Stadium (500m)"};
 
-static const char *preset_details[] = {"SF7, 14dBm, 500kHz", "SF8, 17dBm, 250kHz", "SF10, 20dBm, 125kHz"};
+static const char *preset_details[] = {"SF7, 500kHz, CR4/5", "SF9, 125kHz, CR4/7", "SF10, 125kHz, CR4/8"};
 
 static const int preset_count = sizeof(preset_names) / sizeof(preset_names[0]);
+
+// Get TX power based on frequency
+static int8_t get_tx_power_for_frequency(uint32_t frequency)
+{
+    if (frequency >= 430000000 && frequency <= 440000000) {
+        return 10; // 433MHz: 10dBm
+    } else if (frequency >= 863000000 && frequency <= 870000000) {
+        return 14; // 868MHz: 14dBm
+    } else if (frequency >= 902000000 && frequency <= 928000000) {
+        return 17; // 915MHz: 17dBm (power constrained)
+    }
+    return 14; // Default to 14dBm
+}
 
 static int get_current_preset(void)
 {
@@ -180,9 +193,22 @@ void lora_settings_screen_navigate(menu_direction_t direction)
 
 void lora_settings_screen_select(void)
 {
-    esp_err_t ret = lora_set_config(&presets[selected_preset]);
+    // Get current config to preserve frequency
+    lora_config_t current_config;
+    if (lora_get_config(&current_config) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get current config");
+        return;
+    }
+
+    // Apply preset but keep current frequency and set appropriate power
+    lora_config_t new_config = presets[selected_preset];
+    new_config.frequency = current_config.frequency;
+    new_config.tx_power = get_tx_power_for_frequency(current_config.frequency);
+
+    esp_err_t ret = lora_set_config(&new_config);
     if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "Applied LoRa preset: %s", preset_names[selected_preset]);
+        ESP_LOGI(TAG, "Applied LoRa preset: %s (freq: %lu Hz, power: %d dBm)", 
+                 preset_names[selected_preset], new_config.frequency, new_config.tx_power);
     } else {
         ESP_LOGE(TAG, "Failed to apply LoRa preset: %s", esp_err_to_name(ret));
     }

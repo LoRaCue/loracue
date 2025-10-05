@@ -14,6 +14,7 @@
 #include "tinyusb.h"
 #include "tusb.h"
 #include "usb_cdc.h"
+#include "usb_descriptors.h"
 
 static const char *TAG = "USB_COMPOSITE";
 

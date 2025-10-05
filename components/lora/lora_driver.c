@@ -87,6 +87,9 @@ esp_err_t lora_driver_init(void)
                false                            // Normal IQ
     );
 
+    // Set private network sync word (0x1424)
+    SetSyncWord(0x1424);
+
     ESP_LOGI(TAG, "SX1262 initialized successfully");
     return ESP_OK;
 #endif
@@ -232,6 +235,9 @@ esp_err_t lora_set_config(const lora_config_t *config)
                true,                     // CRC enabled
                false                     // Normal IQ
     );
+
+    // Set private network sync word (0x1424)
+    SetSyncWord(0x1424);
 
     // Return to receive mode
     SetRx(0);

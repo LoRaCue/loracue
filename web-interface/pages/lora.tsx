@@ -67,17 +67,34 @@ export default function LoRaPage() {
   ]
 
   const presets = [
-    { name: 'Conference (50m)', sf: 7, bw: 500000, power: 14, desc: 'Fast, low latency' },
-    { name: 'Auditorium (200m)', sf: 8, bw: 250000, power: 17, desc: 'Balanced' },
-    { name: 'Stadium (500m)', sf: 10, bw: 125000, power: 20, desc: 'Max range' }
+    { name: 'Conference (100m)', sf: 7, bw: 500000, cr: 5, desc: 'Fast, low latency' },
+    { name: 'Auditorium (250m)', sf: 9, bw: 125000, cr: 7, desc: 'Balanced range' },
+    { name: 'Stadium (500m)', sf: 10, bw: 125000, cr: 8, desc: 'Maximum range' }
   ]
+
+  // Get TX power based on frequency
+  const getTxPowerForFrequency = (freq: number): number => {
+    if (freq >= 430000000 && freq <= 440000000) return 10  // 433MHz: 10dBm
+    if (freq >= 863000000 && freq <= 870000000) return 14  // 868MHz: 14dBm
+    if (freq >= 902000000 && freq <= 928000000) return 17  // 915MHz: 17dBm
+    return 14 // Default
+  }
+
+  // Update power when frequency changes
+  useEffect(() => {
+    const newPower = getTxPowerForFrequency(settings.frequency)
+    if (newPower !== settings.txPower) {
+      setSettings(prev => ({ ...prev, txPower: newPower }))
+    }
+  }, [settings.frequency])
 
   const applyPreset = (preset: typeof presets[0]) => {
     setSettings({
       ...settings,
       spreadingFactor: preset.sf,
       bandwidth: preset.bw,
-      txPower: preset.power
+      codingRate: preset.cr,
+      txPower: getTxPowerForFrequency(settings.frequency)
     })
   }
 
