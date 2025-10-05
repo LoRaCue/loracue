@@ -187,7 +187,7 @@ const char* bsp_get_board_id(void);
 typedef struct {
     uint16_t usb_pid;           ///< USB Product ID
     const char *usb_product;    ///< USB Product string
-} bsp_usb_config_t;
+} bsp_usb_config_t; // cppcheck-suppress unusedStructMember
 
 /**
  * @brief Get USB configuration for this board

@@ -43,6 +43,10 @@ static esp_err_t lora_sim_send_packet(const uint8_t *data, size_t length)
 
 static esp_err_t lora_sim_receive_packet(uint8_t *data, size_t max_length, size_t *received_length, uint32_t timeout_ms)
 {
+    (void)data;
+    (void)max_length;
+    (void)received_length;
+    (void)timeout_ms;
     // No receiving in simulation
     return ESP_ERR_TIMEOUT;
 }
