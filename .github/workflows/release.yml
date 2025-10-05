@@ -146,9 +146,8 @@ jobs:
     - name: Build firmware
       shell: bash
       run: |
-        . $IDF_PATH/export.sh
         echo "Building LoRaCue v${{ needs.version.outputs.version }} for ${{ matrix.board.display_name }}"
-        idf.py build
+        make build
     
     - name: Extract and validate firmware manifest
       id: manifest
