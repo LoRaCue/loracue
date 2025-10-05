@@ -1,0 +1,4 @@
+# Minimal defaults for CI builds
+# These settings are already in sdkconfig but CI needs them here
+CONFIG_BT_GATTS_ENABLE=y
+CONFIG_BT_GATTC_ENABLE=y
