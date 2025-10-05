@@ -85,7 +85,7 @@ jobs:
         path: |
           ~/.espressif
           ~/.cache/pip
-        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-${{ hashFiles('**/CMakeLists.txt') }}
+        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-${{ hashFiles('**/CMakeLists.txt', 'sdkconfig') }}
         restore-keys: |
           esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-
           esp-idf-${{ env.ESP_IDF_VERSION }}-
@@ -101,6 +101,7 @@ jobs:
       run: |
         . $IDF_PATH/export.sh
         echo "Building LoRaCue v${{ needs.version.outputs.version }} for ${{ matrix.board.display_name }}"
+        idf.py fullclean
         idf.py build
     
     - name: Extract and validate firmware manifest
@@ -228,7 +229,7 @@ jobs:
         path: |
           ~/.espressif
           ~/.cache/pip
-        key: esp-idf-${{ env.ESP_IDF_VERSION }}-esp32s3-sim-${{ hashFiles('**/CMakeLists.txt') }}
+        key: esp-idf-${{ env.ESP_IDF_VERSION }}-esp32s3-sim-${{ hashFiles('**/CMakeLists.txt', 'sdkconfig') }}
         restore-keys: |
           esp-idf-${{ env.ESP_IDF_VERSION }}-esp32s3-
     
