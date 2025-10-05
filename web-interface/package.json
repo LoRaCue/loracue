@@ -9,7 +9,7 @@
     "build-spiffs": "npm run build && npm run export && node scripts/prepare-spiffs.js"
   },
   "dependencies": {
-    "lucide-react": "^0.294.0",
+    "lucide-react": "^0.544.0",
     "next": "^14.0.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
