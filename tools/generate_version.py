@@ -13,30 +13,23 @@ from pathlib import Path
 def run_gitversion():
     """Run GitVersion and return parsed JSON output"""
     try:
-        # Try dotnet-gitversion first
-        result = subprocess.run(['dotnet-gitversion'], 
+        result = subprocess.run(['gitversion'], 
                               capture_output=True, text=True, check=True)
         return json.loads(result.stdout)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        try:
-            # Fallback to gitversion
-            result = subprocess.run(['gitversion'], 
-                                  capture_output=True, text=True, check=True)
-            return json.loads(result.stdout)
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            print("Warning: GitVersion not found, using fallback version")
-            return {
-                "Major": 0,
-                "Minor": 1,
-                "Patch": 0,
-                "SemVer": "0.1.0-dev",
-                "FullSemVer": "0.1.0-dev",
-                "InformationalVersion": "0.1.0-dev+unknown",
-                "BranchName": "unknown",
-                "Sha": "unknown",
-                "ShortSha": "unknown",
-                "CommitDate": "1970-01-01"
-            }
+        print("Warning: GitVersion not found, using fallback version")
+        return {
+            "Major": 0,
+            "Minor": 1,
+            "Patch": 0,
+            "SemVer": "0.1.0-dev",
+            "FullSemVer": "0.1.0-dev",
+            "InformationalVersion": "0.1.0-dev+unknown",
+            "BranchName": "unknown",
+            "Sha": "unknown",
+            "ShortSha": "unknown",
+            "CommitDate": "1970-01-01"
+        }
 
 def generate_version_header(version_info, output_path):
     """Generate version.h header file"""
