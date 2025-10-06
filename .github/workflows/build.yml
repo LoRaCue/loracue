@@ -155,25 +155,21 @@ jobs:
             f.seek(0x20)
             data = f.read(256)
             
-            # esp_app_desc_t structure
+            # esp_app_desc_t structure offsets
             magic_word = struct.unpack('<I', data[0:4])[0]
             secure_version = struct.unpack('<I', data[4:8])[0]
-            
-            # Version string at offset 16, max 32 bytes
             version = data[16:48].decode('utf-8', errors='ignore').rstrip('\x00')
-            
-            # Project name at offset 48, max 32 bytes  
             project_name = data[48:80].decode('utf-8', errors='ignore').rstrip('\x00')
-            
-            # Date/time strings
-            date = data[112:128].decode('utf-8', errors='ignore').rstrip('\x00')
-            time = data[128:144].decode('utf-8', errors='ignore').rstrip('\x00')
+            time = data[80:96].decode('utf-8', errors='ignore').rstrip('\x00')
+            date = data[96:112].decode('utf-8', errors='ignore').rstrip('\x00')
+            idf_ver = data[112:144].decode('utf-8', errors='ignore').rstrip('\x00')
             
             print(f"✓ ESP-IDF app descriptor found at 0x20")
             print(f"  Magic: 0x{magic_word:08X}")
             print(f"  Board ID (project_name): {project_name}")
             print(f"  Version: {version}")
             print(f"  Build: {date} {time}")
+            print(f"  IDF Version: {idf_ver}")
             
             # Validate board_id matches matrix
             expected_board = "${{ matrix.board.name }}"
