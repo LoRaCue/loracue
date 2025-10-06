@@ -90,6 +90,15 @@ jobs:
           esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-
           esp-idf-${{ env.ESP_IDF_VERSION }}-
     
+    - name: Install GitVersion in build environment
+      shell: bash
+      run: |
+        wget https://github.com/GitTools/GitVersion/releases/download/6.0.5/gitversion-linux-x64-6.0.5.tar.gz
+        tar -xzf gitversion-linux-x64-6.0.5.tar.gz
+        chmod +x gitversion
+        sudo mv gitversion /usr/local/bin/
+        gitversion version
+    
     - name: Verify sdkconfig before build
       shell: bash
       run: |
