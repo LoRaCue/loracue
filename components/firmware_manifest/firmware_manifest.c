@@ -7,28 +7,34 @@
 
 static const char *TAG = "FW_MANIFEST";
 
+// Determine board ID at compile time based on BSP selection
+#if defined(SIMULATOR_BUILD)
+    #define BOARD_ID "wokwi_sim"
+#else
+    #define BOARD_ID "heltec_v3"
+#endif
+
+// Build timestamp as string for logging
+static const char BUILD_TIME[] = __DATE__ " " __TIME__;
+
 // Firmware manifest embedded in .rodata section
-static firmware_manifest_t __attribute__((section(".rodata.manifest"))) 
+static const firmware_manifest_t __attribute__((section(".rodata.manifest"))) 
     firmware_manifest = {
     .magic = FIRMWARE_MAGIC,
     .manifest_version = 1,
     .reserved = {0, 0, 0},
-    .board_id = "",  // Filled at runtime
+    .board_id = BOARD_ID,
     .firmware_version = LORACUE_VERSION_FULL,
-    .build_timestamp = 0,  // Could be filled at build time
-    .checksum = 0  // Could be calculated post-build
+    .build_timestamp = 0,  // Set to 0, actual timestamp in BUILD_TIME string
+    .checksum = 0
 };
 
 void firmware_manifest_init(void)
 {
-    // Get board ID from BSP
-    const char *board_id = bsp_get_board_id();
-    strncpy((char*)firmware_manifest.board_id, board_id, sizeof(firmware_manifest.board_id) - 1);
-    firmware_manifest.board_id[sizeof(firmware_manifest.board_id) - 1] = '\0';
-    
-    ESP_LOGI(TAG, "Firmware manifest initialized:");
+    ESP_LOGI(TAG, "Firmware manifest:");
     ESP_LOGI(TAG, "  Board ID: %s", firmware_manifest.board_id);
     ESP_LOGI(TAG, "  Version:  %s", firmware_manifest.firmware_version);
+    ESP_LOGI(TAG, "  Built:    %s", BUILD_TIME);
     ESP_LOGI(TAG, "  Magic:    0x%08" PRIX32, firmware_manifest.magic);
 }
 
