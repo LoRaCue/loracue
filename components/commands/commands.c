@@ -440,29 +440,33 @@ static void handle_fw_update_data(const char *data_str)
     if (!ota_manifest_checked && ota_received_bytes >= sizeof(ota_header_buffer)) {
         ota_manifest_checked = true;
         
-        esp_app_desc_t new_app_info;
-        if (esp_ota_get_partition_description(ota_partition, &new_app_info) == ESP_OK) {
-            if (!firmware_manifest_is_compatible(&new_app_info)) {
-                free(binary_data);
-                esp_ota_abort(ota_handle);
-                ota_handle = 0;
-                
-                // Show error on OLED
-                ota_error_screen_draw(firmware_manifest_get_board_id(), new_app_info.project_name);
-                
-                cJSON *error = cJSON_CreateObject();
-                cJSON_AddStringToObject(error, "status", "error");
-                cJSON_AddStringToObject(error, "reason", "Board mismatch");
-                cJSON_AddStringToObject(error, "current_board", firmware_manifest_get_board_id());
-                cJSON_AddStringToObject(error, "new_board", new_app_info.project_name);
-                char *error_str = cJSON_PrintUnformatted(error);
-                g_send_response(error_str);
-                free(error_str);
-                cJSON_Delete(error);
-                return;
+        if (!ota_force_mode) {
+            esp_app_desc_t new_app_info;
+            if (esp_ota_get_partition_description(ota_partition, &new_app_info) == ESP_OK) {
+                if (!firmware_manifest_is_compatible(&new_app_info)) {
+                    free(binary_data);
+                    esp_ota_abort(ota_handle);
+                    ota_handle = 0;
+                    
+                    // Show error on OLED
+                    ota_error_screen_draw(firmware_manifest_get_board_id(), new_app_info.project_name);
+                    
+                    cJSON *error = cJSON_CreateObject();
+                    cJSON_AddStringToObject(error, "status", "error");
+                    cJSON_AddStringToObject(error, "reason", "Board mismatch");
+                    cJSON_AddStringToObject(error, "current_board", firmware_manifest_get_board_id());
+                    cJSON_AddStringToObject(error, "new_board", new_app_info.project_name);
+                    char *error_str = cJSON_PrintUnformatted(error);
+                    g_send_response(error_str);
+                    free(error_str);
+                    cJSON_Delete(error);
+                    return;
+                }
+            } else {
+                ESP_LOGW(TAG, "Could not read app descriptor, proceeding anyway");
             }
         } else {
-            ESP_LOGW(TAG, "Could not read app descriptor, proceeding anyway");
+            ESP_LOGW(TAG, "Force mode: skipping compatibility check");
         }
     }
 
