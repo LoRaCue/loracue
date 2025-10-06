@@ -163,7 +163,7 @@ jobs:
         import os
         
         with open('build/loracue.bin', 'rb') as f:
-            data = f.read(4096)
+            data = f.read()
             magic = 0x4C524355
             
             for i in range(len(data) - 60):
