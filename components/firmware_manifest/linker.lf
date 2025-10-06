@@ -1,7 +1,0 @@
-[sections:firmware_manifest]
-entries:
-    .rodata.manifest+
-
-[scheme:default]
-entries:
-    firmware_manifest -> flash_rodata
