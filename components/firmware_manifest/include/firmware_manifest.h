@@ -1,40 +1,33 @@
 #pragma once
 
-#include <stdint.h>
+#include "esp_app_desc.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define FIRMWARE_MAGIC 0x4C524355  // "LRCU"
-
 /**
- * @brief Firmware manifest structure
- * 
- * Embedded in firmware binary for compatibility checking during OTA updates.
- * Total size: 60 bytes
+ * @brief Get board ID from app descriptor
+ * Uses project_name field to store board identifier
  */
-typedef struct {
-    uint32_t magic;                 ///< Magic number (0x4C524355 = "LRCU")
-    uint8_t  manifest_version;      ///< Manifest format version (1)
-    uint8_t  reserved[3];           ///< Reserved for alignment
-    char     board_id[16];          ///< Board identifier (e.g., "heltec_v3")
-    char     firmware_version[32];  ///< Version string from GitVersion
-    uint32_t build_timestamp;       ///< Unix timestamp of build
-    uint32_t checksum;              ///< CRC32 of manifest (excluding this field)
-} __attribute__((packed)) firmware_manifest_t;
+const char* firmware_manifest_get_board_id(void);
 
 /**
- * @brief Get pointer to firmware manifest
- * 
- * @return Pointer to firmware manifest structure
+ * @brief Get firmware version from app descriptor
  */
-const firmware_manifest_t* firmware_manifest_get(void);
+const char* firmware_manifest_get_version(void);
 
 /**
- * @brief Initialize firmware manifest
+ * @brief Check if OTA image is compatible with current board
  * 
- * Must be called during system initialization to populate runtime fields.
+ * @param new_app_info App descriptor from OTA image
+ * @return true if compatible, false otherwise
+ */
+bool firmware_manifest_is_compatible(const esp_app_desc_t *new_app_info);
+
+/**
+ * @brief Log firmware manifest information
  */
 void firmware_manifest_init(void);
 

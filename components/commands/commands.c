@@ -439,23 +439,21 @@ static void handle_fw_update_data(const char *data_str)
     if (!ota_manifest_checked && ota_received_bytes >= sizeof(ota_header_buffer)) {
         ota_manifest_checked = true;
         
-        firmware_manifest_t new_manifest;
-        if (ota_extract_manifest(ota_header_buffer, sizeof(ota_header_buffer), &new_manifest) == ESP_OK) {
-            ota_compat_result_t compat = ota_check_compatibility(&new_manifest, ota_force_mode);
-            
-            if (compat != OTA_COMPAT_OK) {
+        esp_app_desc_t new_app_info;
+        if (esp_ota_get_partition_description(ota_partition, &new_app_info) == ESP_OK) {
+            if (!firmware_manifest_is_compatible(&new_app_info)) {
                 free(binary_data);
                 esp_ota_abort(ota_handle);
                 ota_handle = 0;
                 
                 // Show error on OLED
-                ota_error_screen_draw(firmware_manifest_get()->board_id, new_manifest.board_id);
+                ota_error_screen_draw(firmware_manifest_get_board_id(), new_app_info.project_name);
                 
                 cJSON *error = cJSON_CreateObject();
                 cJSON_AddStringToObject(error, "status", "error");
-                cJSON_AddStringToObject(error, "reason", ota_compat_error_string(compat));
-                cJSON_AddStringToObject(error, "current_board", firmware_manifest_get()->board_id);
-                cJSON_AddStringToObject(error, "new_board", new_manifest.board_id);
+                cJSON_AddStringToObject(error, "reason", "Board mismatch");
+                cJSON_AddStringToObject(error, "current_board", firmware_manifest_get_board_id());
+                cJSON_AddStringToObject(error, "new_board", new_app_info.project_name);
                 char *error_str = cJSON_PrintUnformatted(error);
                 g_send_response(error_str);
                 free(error_str);
@@ -463,7 +461,7 @@ static void handle_fw_update_data(const char *data_str)
                 return;
             }
         } else {
-            ESP_LOGW(TAG, "Could not extract manifest, proceeding anyway");
+            ESP_LOGW(TAG, "Could not read app descriptor, proceeding anyway");
         }
     }
 

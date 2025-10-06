@@ -145,43 +145,45 @@ jobs:
     
     - name: Validate firmware manifest
       run: |
-        echo "=== Firmware Manifest Validation ==="
+        echo "=== Firmware Manifest Validation (esp_app_desc_t) ==="
         python3 << 'EOF'
         import struct
         import sys
         
-        # Manifest is placed in flash_rodata, typically within first 256KB
-        # Search in reasonable range to avoid reading entire multi-MB binary
-        SEARCH_SIZE = 256 * 1024  # 256KB should be more than enough
-        
-        with open('build/loracue.bin', 'rb') as f:
-            data = f.read(SEARCH_SIZE)
-            magic = 0x4C524355  # "LRCU"
+        # ESP-IDF app descriptor is at fixed offset 0x20 in the binary
+        with open('build/${{ matrix.board.name }}.bin', 'rb') as f:
+            f.seek(0x20)
+            data = f.read(256)
             
-            for i in range(len(data) - 60):
-                if struct.unpack('<I', data[i:i+4])[0] == magic:
-                    manifest_version = data[i+4]
-                    board_id = data[i+8:i+24].decode('utf-8', errors='ignore').rstrip('\x00')
-                    fw_version = data[i+24:i+56].decode('utf-8', errors='ignore').rstrip('\x00')
-                    
-                    print(f"✓ Manifest found at offset 0x{i:08X}")
-                    print(f"  Board ID: {board_id}")
-                    print(f"  Firmware Version: {fw_version}")
-                    print(f"  Manifest Version: {manifest_version}")
-                    
-                    # Validate board_id matches matrix
-                    expected_board = "${{ matrix.board.name }}"
-                    if board_id != expected_board:
-                        print(f"✗ ERROR: Board ID mismatch!")
-                        print(f"  Expected: {expected_board}")
-                        print(f"  Found: {board_id}")
-                        sys.exit(1)
-                    
-                    print(f"✓ Board ID validation passed")
-                    sys.exit(0)
+            # esp_app_desc_t structure
+            magic_word = struct.unpack('<I', data[0:4])[0]
+            secure_version = struct.unpack('<I', data[4:8])[0]
             
-            print("✗ ERROR: No valid manifest found in first 256KB!")
-            sys.exit(1)
+            # Version string at offset 16, max 32 bytes
+            version = data[16:48].decode('utf-8', errors='ignore').rstrip('\x00')
+            
+            # Project name at offset 48, max 32 bytes  
+            project_name = data[48:80].decode('utf-8', errors='ignore').rstrip('\x00')
+            
+            # Date/time strings
+            date = data[112:128].decode('utf-8', errors='ignore').rstrip('\x00')
+            time = data[128:144].decode('utf-8', errors='ignore').rstrip('\x00')
+            
+            print(f"✓ ESP-IDF app descriptor found at 0x20")
+            print(f"  Magic: 0x{magic_word:08X}")
+            print(f"  Board ID (project_name): {project_name}")
+            print(f"  Version: {version}")
+            print(f"  Build: {date} {time}")
+            
+            # Validate board_id matches matrix
+            expected_board = "${{ matrix.board.name }}"
+            if project_name != expected_board:
+                print(f"✗ ERROR: Board ID mismatch!")
+                print(f"  Expected: {expected_board}")
+                print(f"  Found: {project_name}")
+                sys.exit(1)
+            
+            print(f"✓ Board ID validation passed")
         EOF
     
     - name: Prepare artifacts

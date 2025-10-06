@@ -1,45 +1,43 @@
 #include "firmware_manifest.h"
-#include "bsp.h"
-#include "version.h"
+#include "esp_ota_ops.h"
 #include "esp_log.h"
 #include <string.h>
-#include <time.h>
 
 static const char *TAG = "FW_MANIFEST";
 
-// Determine board ID at compile time based on BSP selection
-#if defined(SIMULATOR_BUILD)
-    #define BOARD_ID "wokwi_sim"
-#else
-    #define BOARD_ID "heltec_v3"
-#endif
+const char* firmware_manifest_get_board_id(void)
+{
+    const esp_app_desc_t *desc = esp_app_get_description();
+    return desc->project_name;
+}
 
-// Build timestamp as string for logging
-static const char BUILD_TIME[] = __DATE__ " " __TIME__;
+const char* firmware_manifest_get_version(void)
+{
+    const esp_app_desc_t *desc = esp_app_get_description();
+    return desc->version;
+}
 
-// Firmware manifest embedded in .rodata section (~180KB into binary)
-// Placed naturally by linker within first 256KB - suitable for OTA validation
-const firmware_manifest_t __attribute__((section(".rodata.manifest"), used, aligned(4))) 
-    firmware_manifest = {
-    .magic = FIRMWARE_MAGIC,
-    .manifest_version = 1,
-    .reserved = {0, 0, 0},
-    .board_id = BOARD_ID,
-    .firmware_version = LORACUE_VERSION_FULL,
-    .build_timestamp = 0,  // Set to 0, actual timestamp in BUILD_TIME string
-    .checksum = 0
-};
+bool firmware_manifest_is_compatible(const esp_app_desc_t *new_app_info)
+{
+    const esp_app_desc_t *running = esp_app_get_description();
+    
+    // Check board compatibility via project_name
+    if (strcmp(running->project_name, new_app_info->project_name) != 0) {
+        ESP_LOGW(TAG, "Board mismatch: running=%s, new=%s", 
+                 running->project_name, new_app_info->project_name);
+        return false;
+    }
+    
+    return true;
+}
 
 void firmware_manifest_init(void)
 {
+    const esp_app_desc_t *desc = esp_app_get_description();
+    
     ESP_LOGI(TAG, "Firmware manifest:");
-    ESP_LOGI(TAG, "  Board ID: %s", firmware_manifest.board_id);
-    ESP_LOGI(TAG, "  Version:  %s", firmware_manifest.firmware_version);
-    ESP_LOGI(TAG, "  Built:    %s", BUILD_TIME);
-    ESP_LOGI(TAG, "  Magic:    0x%08" PRIX32, firmware_manifest.magic);
-}
-
-const firmware_manifest_t* firmware_manifest_get(void)
-{
-    return &firmware_manifest;
+    ESP_LOGI(TAG, "  Board ID: %s", desc->project_name);
+    ESP_LOGI(TAG, "  Version: %s", desc->version);
+    ESP_LOGI(TAG, "  Build date: %s %s", desc->date, desc->time);
+    ESP_LOGI(TAG, "  IDF version: %s", desc->idf_ver);
 }
