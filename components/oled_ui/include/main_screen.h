@@ -6,4 +6,4 @@
  * @brief Draw main presentation screen
  * @param status Current UI status data
  */
-void main_screen_draw(const ui_status_t* status);
+void main_screen_draw(const ui_status_t *status);

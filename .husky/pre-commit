@@ -1,0 +1,63 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit quality checks..."
+
+# Get staged C/C++ files (excluding submodules)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h|cpp|hpp)$' | grep -v -E '^components/(sx126x|u8g2|u8g2-hal-esp-idf)/' || true)
+
+if [ -n "$STAGED_FILES" ]; then
+    echo "📝 Checking code formatting..."
+    
+    # Check if clang-format is available
+    if ! command -v clang-format &> /dev/null; then
+        echo "⚠️  clang-format not found. Install with: brew install clang-format (macOS) or apt install clang-format (Linux)"
+        exit 1
+    fi
+    
+    # Check formatting
+    UNFORMATTED=""
+    for file in $STAGED_FILES; do
+        if [ -f "$file" ]; then
+            clang-format --dry-run --Werror "$file" 2>&1 | grep -q "warning:" && UNFORMATTED="$UNFORMATTED $file"
+        fi
+    done
+    
+    if [ -n "$UNFORMATTED" ]; then
+        echo "❌ Code formatting issues found in:$UNFORMATTED"
+        echo ""
+        echo "Fix with: make format"
+        echo "Or manually: clang-format -i <file>"
+        exit 1
+    fi
+    
+    echo "✅ Code formatting OK"
+    
+    # Run static analysis on staged files
+    if command -v cppcheck &> /dev/null; then
+        echo "🔍 Running static analysis..."
+        
+        for file in $STAGED_FILES; do
+            if [ -f "$file" ]; then
+                cppcheck --enable=warning,style,performance,portability \
+                    --suppress=missingIncludeSystem \
+                    --inline-suppr \
+                    --error-exitcode=1 \
+                    --quiet \
+                    -I main/include -I components/*/include \
+                    "$file" 2>&1 | grep -v "Checking" || true
+                
+                if [ $? -eq 1 ]; then
+                    echo "❌ Static analysis found issues in $file"
+                    exit 1
+                fi
+            fi
+        done
+        
+        echo "✅ Static analysis passed"
+    else
+        echo "⚠️  cppcheck not found (optional). Install with: brew install cppcheck (macOS)"
+    fi
+fi
+
+echo "✅ Pre-commit checks passed"

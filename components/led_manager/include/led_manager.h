@@ -6,8 +6,8 @@
 #pragma once
 
 #include "esp_err.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,10 +17,10 @@ extern "C" {
  * @brief LED pattern types
  */
 typedef enum {
-    LED_PATTERN_OFF,        ///< LED off
-    LED_PATTERN_SOLID,      ///< LED solid on
-    LED_PATTERN_BLINK,      ///< LED blinking
-    LED_PATTERN_FADE        ///< LED fading (pulsing)
+    LED_PATTERN_OFF,   ///< LED off
+    LED_PATTERN_SOLID, ///< LED solid on
+    LED_PATTERN_BLINK, ///< LED blinking
+    LED_PATTERN_FADE   ///< LED fading (pulsing)
 } led_pattern_t;
 
 /**

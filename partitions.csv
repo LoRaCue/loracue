@@ -1,8 +1,9 @@
-# LoRaCue Partition Table - 8MB SPI Flash Layout (Blueprint Specification)
+# LoRaCue Partition Table - 8MB SPI Flash Layout (Corrected)
 # Name,   Type, SubType, Offset,  Size,    Flags
-nvs,      data, nvs,     0x9000,  0x6000,
-phy_init, data, phy,     0xf000,  0x1000,
-factory,  app,  factory, 0x10000, 0x600000,
-ota_0,    app,  ota_0,   0x610000, 0x600000,
-otadata,  data, ota,     0xC10000, 0x2000,
-spiffs,   data, spiffs,  0xC12000, 0x400000,
+nvs,      data, nvs,     0x9000,  0x17000,
+phy_init, data, phy,     0x20000, 0x1000,
+factory,  app,  factory, 0x30000, 0x200000,
+ota_0,    app,  ota_0,   0x230000,0x200000,
+ota_1,    app,  ota_1,   0x430000,0x200000,
+otadata,  data, ota,     0x630000,0x2000,
+spiffs,   data, spiffs,  0x640000,0x1C0000,

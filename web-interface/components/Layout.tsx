@@ -1,7 +1,8 @@
-import { Moon, Sun, Wifi, Settings, Upload, Users } from 'lucide-react'
+import { Moon, Sun, Wifi, Settings, Upload, Users, Info } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import Logo from './Logo'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme()
@@ -10,7 +11,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navigation = [
     { name: 'Device', href: '/', icon: Settings },
     { name: 'LoRa', href: '/lora', icon: Wifi },
+    { name: 'Devices', href: '/devices', icon: Users },
     { name: 'Firmware', href: '/firmware', icon: Upload },
+    { name: 'System', href: '/system', icon: Info },
   ]
 
   return (
@@ -19,9 +22,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent">
-                LoRaCue
-              </h1>
+              <Logo className="w-24 h-24 text-primary-600 dark:text-white" />
               <div className="flex space-x-1">
                 {navigation.map((item) => {
                   const Icon = item.icon

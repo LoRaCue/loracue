@@ -28,58 +28,60 @@ export default function FirmwarePage() {
     setProgress(0)
     setStatus('idle')
 
-    const CHUNK_SIZE = 8192 // 8KB chunks
-    const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
-    let uploadedChunks = 0
-
     try {
-      // Upload file in chunks
+      // Phase 1: Start OTA
+      setProgress(5)
+      const startRes = await fetch('/api/firmware/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ size: file.size })
+      })
+      if (!startRes.ok) throw new Error('Failed to start OTA')
+
+      // Phase 2: Upload data in chunks
+      const CHUNK_SIZE = 4096
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
+      
       for (let i = 0; i < totalChunks; i++) {
         const start = i * CHUNK_SIZE
         const end = Math.min(start + CHUNK_SIZE, file.size)
         const chunk = file.slice(start, end)
         
-        const formData = new FormData()
-        formData.append('chunk', chunk)
-        formData.append('chunkIndex', i.toString())
-        formData.append('totalChunks', totalChunks.toString())
+        const reader = new FileReader()
+        const base64 = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve((reader.result as string).split(',')[1])
+          reader.readAsDataURL(chunk)
+        })
         
-        const response = await fetch('/api/firmware/chunk', {
+        const dataRes = await fetch('/api/firmware/data', {
           method: 'POST',
-          body: formData
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: base64 })
         })
         
-        if (!response.ok) {
-          throw new Error(`Chunk ${i} upload failed`)
-        }
-        
-        uploadedChunks++
-        setProgress(Math.round((uploadedChunks / totalChunks) * 90)) // Reserve 10% for commit
+        if (!dataRes.ok) throw new Error(`Chunk ${i} upload failed`)
+        setProgress(5 + Math.round((i / totalChunks) * 80))
       }
 
-      // Commit the upload
-      const commitResponse = await fetch('/api/firmware/commit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          totalSize: file.size,
-          filename: file.name 
-        })
-      })
+      // Phase 3: Verify
+      setProgress(90)
+      const verifyRes = await fetch('/api/firmware/verify', { method: 'POST' })
+      if (!verifyRes.ok) throw new Error('Firmware verification failed')
 
-      if (!commitResponse.ok) {
-        throw new Error('Failed to commit firmware upload')
-      }
+      // Phase 4: Commit
+      setProgress(95)
+      const commitRes = await fetch('/api/firmware/commit', { method: 'POST' })
+      if (!commitRes.ok) throw new Error('Failed to commit firmware')
 
       setProgress(100)
       setStatus('success')
-      setMessage('Firmware uploaded successfully! Device will reboot.')
+      setMessage('Firmware uploaded! Device rebooting...')
       setFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
       
     } catch (error) {
       setStatus('error')
-      setMessage(`Upload failed: ${error.message}`)
+      setMessage(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setUploading(false)
     }

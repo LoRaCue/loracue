@@ -1,9 +1,6 @@
 #pragma once
 
-typedef enum {
-    MENU_UP,
-    MENU_DOWN
-} menu_direction_t;
+typedef enum { MENU_UP, MENU_DOWN } menu_direction_t;
 
 typedef enum {
     MENU_DEVICE_MODE = 0,
@@ -11,9 +8,12 @@ typedef enum {
     MENU_LORA_SETTINGS,
     MENU_DEVICE_PAIRING,
     MENU_DEVICE_REGISTRY,
+    MENU_BRIGHTNESS,
+    MENU_BLUETOOTH,
     MENU_CONFIG_MODE,
     MENU_DEVICE_INFO,
-    MENU_SYSTEM_INFO
+    MENU_SYSTEM_INFO,
+    MENU_FACTORY_RESET
 } menu_item_t;
 
 /**

@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  security-events: write
+
+env:
+  ESP_IDF_VERSION: v5.5
+
 jobs:
   code-quality:
     runs-on: ubuntu-latest
@@ -13,14 +20,15 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: 'recursive'
+        fetch-depth: 0
     
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
-        node-version: '20'
+        node-version: '22'
         cache: 'npm'
     
     - name: Install dependencies
@@ -30,61 +38,239 @@ jobs:
       if: github.event_name == 'pull_request'
       run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.sha }} --verbose
 
-  build:
+  version:
     runs-on: ubuntu-latest
-    needs: code-quality
-    name: Build Hardware Firmware
+    name: Calculate Version
+    outputs:
+      version: ${{ steps.gitversion.outputs.semVer }}
+      full_version: ${{ steps.gitversion.outputs.fullSemVer }}
+      
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v4.1.0
+      with:
+        versionSpec: '6.x'
+        
+    - name: Determine Version
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v4.1.0
+      with:
+        configFilePath: GitVersion.yml
+
+  build-hardware:
+    runs-on: ubuntu-latest
+    needs: [code-quality, version]
+    name: Build ${{ matrix.board.display_name }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          - name: "heltec_v3"
+            display_name: "Heltec LoRa V3"
+            target: "esp32s3"
+            description: "ESP32-S3 with SX1262 LoRa and SH1106 OLED"
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: 'recursive'
+        fetch-depth: 0
     
-    - name: Install ESP-IDF
-      uses: espressif/esp-idf-action@v1
+    - name: Cache ESP-IDF
+      uses: actions/cache@v4
       with:
-        esp_idf_version: v5.5
-        target: esp32s3
+        path: |
+          ~/.espressif
+          ~/.cache/pip
+        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-${{ hashFiles('**/CMakeLists.txt', 'sdkconfig') }}
+        restore-keys: |
+          esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-
+          esp-idf-${{ env.ESP_IDF_VERSION }}-
     
-    - name: Build firmware
+    - name: Install GitVersion in build environment
       shell: bash
       run: |
-        . $IDF_PATH/export.sh
-        idf.py build
+        wget https://github.com/GitTools/GitVersion/releases/download/6.0.5/gitversion-linux-x64-6.0.5.tar.gz
+        tar -xzf gitversion-linux-x64-6.0.5.tar.gz
+        chmod +x gitversion
+        sudo mv gitversion /usr/local/bin/
+        gitversion version
+    
+    - name: Verify sdkconfig before build
+      shell: bash
+      run: |
+        echo "=== Critical SDK Configuration Verification ==="
+        echo "Checking BLE 4.2 settings required for bluetooth_config.c..."
+        
+        grep -E "CONFIG_BT_(GATTS|GATTC|BLE_42)" sdkconfig || {
+          echo "ERROR: Required BLE settings not found in sdkconfig!"
+          exit 1
+        }
+        
+        echo ""
+        echo "=== Full sdkconfig (first 100 lines) ==="
+        head -100 sdkconfig
+    
+    - name: Build firmware with ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
+        target: ${{ matrix.board.target }}
+        command: idf.py build
+    
+    - name: Verify sdkconfig after build
+      shell: bash
+      run: |
+        echo "=== Post-Build SDK Configuration Verification ==="
+        echo "Verifying BLE settings were not overwritten during build..."
+        
+        grep "CONFIG_BT_BLE_42_ADV_EN=y" sdkconfig || {
+          echo "ERROR: CONFIG_BT_BLE_42_ADV_EN was overwritten!"
+          exit 1
+        }
+        
+        grep "CONFIG_BT_BLE_42_SCAN_EN=y" sdkconfig || {
+          echo "ERROR: CONFIG_BT_BLE_42_SCAN_EN was overwritten!"
+          exit 1
+        }
+        
+        echo "✓ All critical BLE settings verified"
+    
+    - name: Validate firmware manifest
+      run: |
+        echo "=== Firmware Manifest Validation ==="
+        python3 << 'EOF'
+        import struct
+        import sys
+        
+        with open('build/loracue.bin', 'rb') as f:
+            data = f.read()
+            magic = 0x4C524355  # "LRCU"
+            
+            for i in range(len(data) - 60):
+                if struct.unpack('<I', data[i:i+4])[0] == magic:
+                    manifest_version = data[i+4]
+                    board_id = data[i+8:i+24].decode('utf-8', errors='ignore').rstrip('\x00')
+                    fw_version = data[i+24:i+56].decode('utf-8', errors='ignore').rstrip('\x00')
+                    
+                    print(f"✓ Manifest found at offset 0x{i:08X}")
+                    print(f"  Board ID: {board_id}")
+                    print(f"  Firmware Version: {fw_version}")
+                    print(f"  Manifest Version: {manifest_version}")
+                    
+                    # Validate board_id matches matrix
+                    expected_board = "${{ matrix.board.name }}"
+                    if board_id != expected_board:
+                        print(f"✗ ERROR: Board ID mismatch!")
+                        print(f"  Expected: {expected_board}")
+                        print(f"  Found: {board_id}")
+                        sys.exit(1)
+                    
+                    print(f"✓ Board ID validation passed")
+                    sys.exit(0)
+            
+            print("✗ ERROR: No valid manifest found!")
+            sys.exit(1)
+        EOF
+    
+    - name: Prepare artifacts
+      run: |
+        VERSION="${{ needs.version.outputs.version }}"
+        BOARD="${{ matrix.board.name }}"
+        mkdir -p artifacts
+        
+        # Copy binaries
+        cp build/loracue.bin "artifacts/loracue-${BOARD}-v${VERSION}.bin"
+        cp build/loracue.elf "artifacts/loracue-${BOARD}-v${VERSION}.elf"
+        cp build/bootloader/bootloader.bin "artifacts/bootloader-${BOARD}.bin"
+        cp build/partition_table/partition-table.bin "artifacts/partition-table-${BOARD}.bin"
+        
+        # Generate checksums
+        cd artifacts
+        sha256sum "loracue-${BOARD}-v${VERSION}.bin" > "loracue-${BOARD}-v${VERSION}.bin.sha256"
+        sha256sum "bootloader-${BOARD}.bin" > "bootloader-${BOARD}.bin.sha256"
+        sha256sum "partition-table-${BOARD}.bin" > "partition-table-${BOARD}.bin.sha256"
+        cd ..
+        
+        # Create metadata
+        cat > "artifacts/metadata-${BOARD}.json" << EOF
+        {
+          "board": {
+            "id": "${BOARD}",
+            "display_name": "${{ matrix.board.display_name }}",
+            "target": "${{ matrix.board.target }}",
+            "description": "${{ matrix.board.description }}"
+          },
+          "firmware": {
+            "version": "${VERSION}",
+            "full_version": "${{ needs.version.outputs.full_version }}"
+          },
+          "build": {
+            "date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "workflow_run": "${{ github.run_id }}",
+            "esp_idf_version": "${{ env.ESP_IDF_VERSION }}"
+          }
+        }
+        EOF
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: loracue-hardware
-        path: |
-          build/loracue.bin
-          build/loracue.elf
-          build/bootloader/bootloader.bin
-          build/partition_table/partition-table.bin
+        name: loracue-${{ matrix.board.name }}-${{ needs.version.outputs.version }}
+        path: artifacts/
         retention-days: 30
 
-  release:
+  security-scan:
     runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    name: Create Release Assets
+    needs: code-quality
+    name: Security Scan
     
     steps:
-    - name: Download hardware artifacts
-      uses: actions/download-artifact@v4
+    - name: Checkout repository
+      uses: actions/checkout@v5
       with:
-        name: loracue-hardware
-        path: hardware/
+        submodules: 'recursive'
     
-    - name: Create release archive
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: [version, build-hardware]
+    if: always()
+    name: Build Summary
+    
+    steps:
+    - name: Generate build summary
       run: |
-        mkdir -p release
-        cd hardware && zip -r ../release/loracue-hardware-${{ github.sha }}.zip . && cd ..
-    
-    - name: Upload release artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: loracue-release-${{ github.sha }}
-        path: release/
-        retention-days: 90
+        echo "# LoRaCue Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Version**: ${{ needs.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Build Status" >> $GITHUB_STEP_SUMMARY
+        echo "- Hardware Build: ${{ needs.build-hardware.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- Heltec LoRa V3: \`loracue-heltec_v3-${{ needs.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY

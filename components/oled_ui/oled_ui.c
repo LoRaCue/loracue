@@ -1,76 +1,140 @@
 #include "oled_ui.h"
-#include "ui_screen_controller.h"
-#include "ui_data_provider.h"
-#include "ui_monitor_task.h"
 #include "bsp.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "version.h"
-#include "u8g2.h"
-#include "u8g2_esp32_hal.h"
 #include "esp_mac.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
+#include "u8g2.h"
+#include "ui_data_provider.h"
+#include "ui_data_update_task.h"
+#include "ui_pc_history_task.h"
+#include "ui_screen_controller.h"
+#include "ui_status_bar_task.h"
+#include "version.h"
 #include <string.h>
 
-static const char* TAG = "oled_ui";
+static const char *TAG               = "oled_ui";
+static bool ui_initialized           = false;
+static SemaphoreHandle_t draw_mutex  = NULL;
+static bool background_tasks_enabled = true;
 
-// Global u8g2 instance
-u8g2_t u8g2;
+// Global u8g2 instance (initialized by BSP)
+extern u8g2_t u8g2;
 
-esp_err_t oled_ui_init(void) {
+void oled_ui_enable_background_tasks(bool enable)
+{
+    background_tasks_enabled = enable;
+}
+
+bool oled_ui_background_tasks_enabled(void)
+{
+    return background_tasks_enabled;
+}
+
+bool oled_ui_try_lock_draw(void)
+{
+    if (!draw_mutex)
+        return false;
+    return xSemaphoreTake(draw_mutex, 0) == pdTRUE;
+}
+
+void oled_ui_unlock_draw(void)
+{
+    if (draw_mutex) {
+        xSemaphoreGive(draw_mutex);
+    }
+}
+
+esp_err_t oled_ui_init(void)
+{
     ESP_LOGI(TAG, "Initializing OLED UI");
-    
-    // Configure u8g2 HAL for I2C
-    u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
-    u8g2_esp32_hal.bus.i2c.sda = GPIO_NUM_17;
-    u8g2_esp32_hal.bus.i2c.scl = GPIO_NUM_18;
-    u8g2_esp32_hal_init(u8g2_esp32_hal);
-    
-    // Initialize u8g2 with proper HAL
-    u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, 
-                                           u8g2_esp32_i2c_byte_cb, 
-                                           u8g2_esp32_gpio_and_delay_cb);
-    
-    // Set I2C address (0x3C shifted left = 0x78)
-    u8x8_SetI2CAddress(&u8g2.u8x8, 0x78);
-    
-    u8g2_InitDisplay(&u8g2);
-    u8g2_SetPowerSave(&u8g2, 0);
+
+    // Create draw mutex
+    draw_mutex = xSemaphoreCreateMutex();
+    if (!draw_mutex) {
+        ESP_LOGE(TAG, "Failed to create draw mutex");
+        return ESP_ERR_NO_MEM;
+    }
+
+    // u8g2 is already initialized by BSP
+    // Just verify it's ready
     u8g2_ClearDisplay(&u8g2);
-    
+
     // Initialize screen controller
     ui_screen_controller_init();
-    
+
+    // Start three specialized tasks
+    esp_err_t ret;
+
+    // Task 1: Data provider updates (sensors only, no drawing)
+    ret = ui_data_update_task_start();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start data update task: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    // Task 2: Status bar updates (USB, RF, battery icons)
+    ret = ui_status_bar_task_start();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start status bar task: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    // Task 3: PC mode command history updates
+    ret = ui_pc_history_task_start();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start PC history task: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ui_initialized = true;
     ESP_LOGI(TAG, "OLED UI initialized successfully");
     return ESP_OK;
 }
 
-esp_err_t oled_ui_set_screen(oled_screen_t screen) {
+esp_err_t oled_ui_set_screen(oled_screen_t screen)
+{
     ui_screen_controller_set(screen, NULL);
     return ESP_OK;
 }
 
-void oled_ui_handle_button(oled_button_t button, bool long_press) {
+oled_screen_t oled_ui_get_screen(void)
+{
+    return ui_screen_controller_get_current();
+}
+
+esp_err_t oled_ui_show_message(const char *title, const char *message, uint32_t timeout_ms)
+{
+    ESP_LOGI(TAG, "Message: %s - %s", title, message);
+    // TODO: Implement message overlay screen
+    return ESP_OK;
+}
+
+void oled_ui_handle_button(oled_button_t button, bool long_press)
+{
     ui_screen_controller_handle_button(button, long_press);
 }
 
-esp_err_t oled_ui_update_status(const oled_status_t *status) {
+esp_err_t oled_ui_update_status(const oled_status_t *status)
+{
     if (!status) {
         return ESP_ERR_INVALID_ARG;
     }
-    
+
+    // Ignore updates before UI is fully initialized
+    if (!ui_initialized) {
+        return ESP_OK;
+    }
+
     // Update data provider with new values
-    esp_err_t ret = ui_data_provider_force_update(
-        status->usb_connected, 
-        status->lora_connected, 
-        status->battery_level
-    );
+    esp_err_t ret = ui_data_provider_force_update(status->usb_connected, status->lora_connected, status->battery_level);
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "Failed to update status: %s", esp_err_to_name(ret));
         return ret;
     }
-    
-    // Update screen controller
-    ui_screen_controller_update(NULL);
+
+    // Screen will be updated by monitor task periodically
+    // No need to redraw here to avoid conflicts
     return ESP_OK;
 }
