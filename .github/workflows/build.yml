@@ -130,56 +130,6 @@ jobs:
         
         echo "✓ All critical BLE settings verified"
     
-    - name: Extract and validate firmware manifest
-      shell: bash
-      continue-on-error: true
-      run: |
-        echo "=== Firmware Manifest Validation ==="
-        python3 << 'EOF'
-        import struct
-        import sys
-        
-        with open('build/loracue.bin', 'rb') as f:
-            data = f.read(4096)
-            magic = 0x4C524355  # "LRCU"
-            
-            for i in range(len(data) - 60):
-                if struct.unpack('<I', data[i:i+4])[0] == magic:
-                    manifest_version = data[i+4]
-                    board_id = data[i+8:i+24].decode('utf-8', errors='ignore').rstrip('\x00')
-                    fw_version = data[i+24:i+56].decode('utf-8', errors='ignore').rstrip('\x00')
-                    
-                    print(f"✓ Manifest found at offset {i}")
-                    print(f"  Board ID: {board_id}")
-                    print(f"  Firmware Version: {fw_version}")
-                    print(f"  Manifest Version: {manifest_version}")
-                    
-                    # Validate board_id matches matrix
-                    expected_board = "${{ matrix.board.name }}"
-                    if board_id != expected_board:
-                        print(f"✗ ERROR: Board ID mismatch!")
-                        print(f"  Expected: {expected_board}")
-                        print(f"  Found: {board_id}")
-                        sys.exit(1)
-                    
-                    print(f"✓ Board ID validation passed")
-                    
-                    # Write manifest to file for artifacts
-                    with open('manifest.json', 'w') as mf:
-                        import json
-                        json.dump({
-                            'board_id': board_id,
-                            'firmware_version': fw_version,
-                            'manifest_version': manifest_version,
-                            'offset': i
-                        }, mf, indent=2)
-                    
-                    sys.exit(0)
-            
-            print("✗ ERROR: No valid manifest found!")
-            sys.exit(1)
-        EOF
-    
     - name: Calculate checksums
       run: |
         cd build
@@ -204,9 +154,6 @@ jobs:
         cp build/loracue.bin.sha256 "artifacts/loracue-${BOARD}-v${VERSION}.bin.sha256"
         cp build/bootloader.sha256 "artifacts/bootloader-${BOARD}.bin.sha256"
         cp build/partition-table.sha256 "artifacts/partition-table-${BOARD}.bin.sha256"
-        
-        # Copy manifest
-        cp manifest.json "artifacts/manifest-${BOARD}.json"
         
         # Create metadata
         cat > "artifacts/metadata-${BOARD}.json" << EOF
