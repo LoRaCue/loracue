@@ -112,10 +112,11 @@ jobs:
         head -100 sdkconfig
     
     - name: Build firmware
-      shell: bash
-      run: |
-        echo "Building LoRaCue v${{ needs.version.outputs.version }} for ${{ matrix.board.display_name }}"
-        make build
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
+        target: ${{ matrix.board.target }}
+        command: idf.py build
     
     - name: Verify sdkconfig after build
       shell: bash
@@ -277,10 +278,11 @@ jobs:
         head -100 sdkconfig
     
     - name: Build simulator firmware
-      shell: bash
-      run: |
-        echo "Building LoRaCue v${{ needs.version.outputs.version }} for Wokwi Simulator"
-        make sim
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
+        target: esp32s3
+        command: idf.py -DWOKWI_SIM=1 build
     
     - name: Prepare simulator artifacts
       run: |
