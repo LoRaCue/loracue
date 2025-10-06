@@ -139,13 +139,42 @@ jobs:
         
         echo "✓ All critical BLE settings verified"
     
-    - name: Calculate checksums
+    - name: Validate firmware manifest
       run: |
-        cd build
-        sha256sum loracue.bin > loracue.bin.sha256
-        sha256sum bootloader/bootloader.bin > bootloader.sha256
-        sha256sum partition_table/partition-table.bin > partition-table.sha256
-        cat loracue.bin.sha256
+        echo "=== Firmware Manifest Validation ==="
+        python3 << 'EOF'
+        import struct
+        import sys
+        
+        with open('build/loracue.bin', 'rb') as f:
+            data = f.read()
+            magic = 0x4C524355  # "LRCU"
+            
+            for i in range(len(data) - 60):
+                if struct.unpack('<I', data[i:i+4])[0] == magic:
+                    manifest_version = data[i+4]
+                    board_id = data[i+8:i+24].decode('utf-8', errors='ignore').rstrip('\x00')
+                    fw_version = data[i+24:i+56].decode('utf-8', errors='ignore').rstrip('\x00')
+                    
+                    print(f"✓ Manifest found at offset 0x{i:08X}")
+                    print(f"  Board ID: {board_id}")
+                    print(f"  Firmware Version: {fw_version}")
+                    print(f"  Manifest Version: {manifest_version}")
+                    
+                    # Validate board_id matches matrix
+                    expected_board = "${{ matrix.board.name }}"
+                    if board_id != expected_board:
+                        print(f"✗ ERROR: Board ID mismatch!")
+                        print(f"  Expected: {expected_board}")
+                        print(f"  Found: {board_id}")
+                        sys.exit(1)
+                    
+                    print(f"✓ Board ID validation passed")
+                    sys.exit(0)
+            
+            print("✗ ERROR: No valid manifest found!")
+            sys.exit(1)
+        EOF
     
     - name: Prepare artifacts
       run: |
@@ -159,10 +188,12 @@ jobs:
         cp build/bootloader/bootloader.bin "artifacts/bootloader-${BOARD}.bin"
         cp build/partition_table/partition-table.bin "artifacts/partition-table-${BOARD}.bin"
         
-        # Copy checksums
-        cp build/loracue.bin.sha256 "artifacts/loracue-${BOARD}-v${VERSION}.bin.sha256"
-        cp build/bootloader.sha256 "artifacts/bootloader-${BOARD}.bin.sha256"
-        cp build/partition-table.sha256 "artifacts/partition-table-${BOARD}.bin.sha256"
+        # Generate checksums
+        cd artifacts
+        sha256sum "loracue-${BOARD}-v${VERSION}.bin" > "loracue-${BOARD}-v${VERSION}.bin.sha256"
+        sha256sum "bootloader-${BOARD}.bin" > "bootloader-${BOARD}.bin.sha256"
+        sha256sum "partition-table-${BOARD}.bin" > "partition-table-${BOARD}.bin.sha256"
+        cd ..
         
         # Create metadata
         cat > "artifacts/metadata-${BOARD}.json" << EOF
