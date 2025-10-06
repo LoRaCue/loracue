@@ -137,17 +137,21 @@ jobs:
         restore-keys: |
           esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-
     
-    - name: Install ESP-IDF
+    - name: Install GitVersion in build environment
+      shell: bash
+      run: |
+        wget https://github.com/GitTools/GitVersion/releases/download/6.0.5/gitversion-linux-x64-6.0.5.tar.gz
+        tar -xzf gitversion-linux-x64-6.0.5.tar.gz
+        chmod +x gitversion
+        sudo mv gitversion /usr/local/bin/
+        gitversion version
+    
+    - name: Build firmware with ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
         target: ${{ matrix.board.target }}
-    
-    - name: Build firmware
-      shell: bash
-      run: |
-        echo "Building LoRaCue v${{ needs.version.outputs.version }} for ${{ matrix.board.display_name }}"
-        make build
+        command: idf.py build
     
     - name: Extract and validate firmware manifest
       id: manifest
