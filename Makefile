@@ -342,3 +342,8 @@ help:
 	@echo "🎮 Simulator quick start:"
 	@echo "  make sim          # Run local Wokwi simulation"
 	@echo "  make sim-web      # Use web simulator instead"
+
+# 🔍 Firmware Validation
+.PHONY: check-firmware
+check-firmware: ## Check firmware manifest (magic, board ID, version)
+	@python3 tools/check_firmware.py build/heltec_v3.bin
