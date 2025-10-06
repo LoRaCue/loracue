@@ -38,7 +38,8 @@ static void handle_ping(void)
 static void handle_get_version(void)
 {
     cJSON *response = cJSON_CreateObject();
-    cJSON_AddStringToObject(response, "version", "v0.1.0-alpha.39");
+    cJSON_AddStringToObject(response, "version", firmware_manifest_get_version());
+    cJSON_AddStringToObject(response, "board_id", firmware_manifest_get_board_id());
 
     char *json_string = cJSON_Print(response);
     g_send_response(json_string);
