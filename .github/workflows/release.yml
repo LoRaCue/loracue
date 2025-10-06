@@ -509,7 +509,7 @@ jobs:
     
     steps:
     - name: Download all firmware packages
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         path: firmware-packages/
         
