@@ -17,11 +17,8 @@ static const char *TAG = "FW_MANIFEST";
 // Build timestamp as string for logging
 static const char BUILD_TIME[] = __DATE__ " " __TIME__;
 
-// Firmware manifest embedded in .rodata section
-// Typically placed around offset 0x2D000 (~180KB) in the binary by the linker.
-// While ideally at the start, ESP-IDF's complex linker system makes fixed placement difficult.
-// Current location within first 256KB is acceptable for OTA validation - receivers can
-// quickly read this range to check compatibility before downloading full firmware.
+// Firmware manifest embedded in .rodata section (~180KB into binary)
+// Placed naturally by linker within first 256KB - suitable for OTA validation
 const firmware_manifest_t __attribute__((section(".rodata.manifest"), used, aligned(4))) 
     firmware_manifest = {
     .magic = FIRMWARE_MAGIC,
