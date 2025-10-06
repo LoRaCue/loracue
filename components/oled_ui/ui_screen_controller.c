@@ -12,6 +12,13 @@
 #include "freertos/task.h"
 #include "info_screens.h"
 #include "lora_settings_screen.h"
+#include "lora_submenu_screen.h"
+#include "lora_frequency_screen.h"
+#include "lora_sf_screen.h"
+#include "lora_bw_screen.h"
+#include "lora_cr_screen.h"
+#include "lora_txpower_screen.h"
+#include "lora_band_screen.h"
 #include "main_screen.h"
 #include "menu_screen.h"
 #include "pairing_screen.h"
@@ -120,8 +127,36 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status)
             device_mode_screen_draw();
             break;
 
+        case OLED_SCREEN_LORA_SUBMENU:
+            lora_submenu_screen_draw();
+            break;
+
         case OLED_SCREEN_LORA_SETTINGS:
             lora_settings_screen_draw();
+            break;
+
+        case OLED_SCREEN_LORA_FREQUENCY:
+            lora_frequency_screen_draw();
+            break;
+
+        case OLED_SCREEN_LORA_SF:
+            lora_sf_screen_draw();
+            break;
+
+        case OLED_SCREEN_LORA_BW:
+            lora_bw_screen_draw();
+            break;
+
+        case OLED_SCREEN_LORA_CR:
+            lora_cr_screen_draw();
+            break;
+
+        case OLED_SCREEN_LORA_TXPOWER:
+            lora_txpower_screen_draw();
+            break;
+
+        case OLED_SCREEN_LORA_BAND:
+            lora_band_screen_draw();
             break;
 
         case OLED_SCREEN_DEVICE_PAIRING:
@@ -266,8 +301,7 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press)
                         ui_screen_controller_set(OLED_SCREEN_DEVICE_MODE, NULL);
                         break;
                     case MENU_LORA_SETTINGS:
-                        lora_settings_screen_reset();
-                        ui_screen_controller_set(OLED_SCREEN_LORA_SETTINGS, NULL);
+                        ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
                         break;
                     case MENU_DEVICE_PAIRING:
                         pairing_screen_reset();
@@ -339,16 +373,105 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press)
             }
             break;
 
+        case OLED_SCREEN_LORA_SUBMENU:
+            if (button == OLED_BUTTON_PREV) {
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+            } else if (button == OLED_BUTTON_NEXT) {
+                lora_submenu_screen_navigate(MENU_DOWN);
+                lora_submenu_screen_draw();
+            } else if (button == OLED_BUTTON_BOTH) {
+                lora_submenu_screen_select();
+            }
+            break;
+
         case OLED_SCREEN_LORA_SETTINGS:
             if (button == OLED_BUTTON_PREV) {
-                // Back to menu
-                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
             } else if (button == OLED_BUTTON_NEXT) {
                 lora_settings_screen_navigate(MENU_DOWN);
                 lora_settings_screen_draw();
             } else if (button == OLED_BUTTON_BOTH) {
                 lora_settings_screen_select();
                 lora_settings_screen_draw();
+            }
+            break;
+
+        case OLED_SCREEN_LORA_FREQUENCY:
+            if (button == OLED_BUTTON_PREV) {
+                if (lora_frequency_screen_is_edit_mode()) {
+                    lora_frequency_screen_navigate(MENU_UP);
+                    lora_frequency_screen_draw();
+                } else {
+                    ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+                }
+            } else if (button == OLED_BUTTON_NEXT) {
+                if (lora_frequency_screen_is_edit_mode()) {
+                    lora_frequency_screen_navigate(MENU_DOWN);
+                    lora_frequency_screen_draw();
+                }
+            } else if (button == OLED_BUTTON_BOTH) {
+                lora_frequency_screen_select();
+                lora_frequency_screen_draw();
+            }
+            break;
+
+        case OLED_SCREEN_LORA_SF:
+            if (button == OLED_BUTTON_PREV) {
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            } else if (button == OLED_BUTTON_NEXT) {
+                lora_sf_screen_navigate(MENU_DOWN);
+                lora_sf_screen_draw();
+            } else if (button == OLED_BUTTON_BOTH) {
+                lora_sf_screen_select();
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            }
+            break;
+
+        case OLED_SCREEN_LORA_BW:
+            if (button == OLED_BUTTON_PREV) {
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            } else if (button == OLED_BUTTON_NEXT) {
+                lora_bw_screen_navigate(MENU_DOWN);
+                lora_bw_screen_draw();
+            } else if (button == OLED_BUTTON_BOTH) {
+                lora_bw_screen_select();
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            }
+            break;
+
+        case OLED_SCREEN_LORA_CR:
+            if (button == OLED_BUTTON_PREV) {
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            } else if (button == OLED_BUTTON_NEXT) {
+                lora_cr_screen_navigate(MENU_DOWN);
+                lora_cr_screen_draw();
+            } else if (button == OLED_BUTTON_BOTH) {
+                lora_cr_screen_select();
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            }
+            break;
+
+        case OLED_SCREEN_LORA_TXPOWER:
+            if (button == OLED_BUTTON_PREV) {
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            } else if (button == OLED_BUTTON_NEXT) {
+                lora_txpower_screen_navigate(MENU_DOWN);
+                lora_txpower_screen_draw();
+            } else if (button == OLED_BUTTON_BOTH) {
+                lora_txpower_screen_select();
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            }
+            break;
+
+        case OLED_SCREEN_LORA_BAND:
+            if (button == OLED_BUTTON_PREV) {
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            } else if (button == OLED_BUTTON_NEXT) {
+                lora_band_screen_navigate(MENU_DOWN);
+                lora_band_screen_draw();
+            } else if (button == OLED_BUTTON_BOTH) {
+                lora_band_screen_select();
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
             }
             break;
 

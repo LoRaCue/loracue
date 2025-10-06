@@ -28,7 +28,14 @@ typedef enum {
     OLED_SCREEN_MENU,            ///< Settings menu
     OLED_SCREEN_DEVICE_MODE,     ///< Device mode selection
     OLED_SCREEN_BATTERY,         ///< Battery status
-    OLED_SCREEN_LORA_SETTINGS,   ///< LoRa configuration
+    OLED_SCREEN_LORA_SUBMENU,    ///< LoRa settings submenu
+    OLED_SCREEN_LORA_SETTINGS,   ///< LoRa presets
+    OLED_SCREEN_LORA_FREQUENCY,  ///< LoRa frequency
+    OLED_SCREEN_LORA_SF,         ///< LoRa spreading factor
+    OLED_SCREEN_LORA_BW,         ///< LoRa bandwidth
+    OLED_SCREEN_LORA_CR,         ///< LoRa coding rate
+    OLED_SCREEN_LORA_TXPOWER,    ///< LoRa TX power
+    OLED_SCREEN_LORA_BAND,       ///< LoRa frequency band
     OLED_SCREEN_DEVICE_PAIRING,  ///< Device pairing
     OLED_SCREEN_DEVICE_REGISTRY, ///< Device registry
     OLED_SCREEN_BRIGHTNESS,      ///< Display brightness
