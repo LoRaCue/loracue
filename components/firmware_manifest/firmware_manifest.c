@@ -17,8 +17,9 @@ static const char *TAG = "FW_MANIFEST";
 // Build timestamp as string for logging
 static const char BUILD_TIME[] = __DATE__ " " __TIME__;
 
-// Firmware manifest embedded in .rodata section
-static const firmware_manifest_t __attribute__((section(".rodata.manifest"))) 
+// Firmware manifest embedded in .rodata section at fixed location
+// Must be externally visible for linker to place it predictably
+const firmware_manifest_t __attribute__((section(".rodata.manifest"), used, aligned(4))) 
     firmware_manifest = {
     .magic = FIRMWARE_MAGIC,
     .manifest_version = 1,

@@ -162,8 +162,11 @@ jobs:
         import sys
         import os
         
+        # Manifest is placed in flash_rodata, typically within first 256KB
+        SEARCH_SIZE = 256 * 1024
+        
         with open('build/loracue.bin', 'rb') as f:
-            data = f.read()
+            data = f.read(SEARCH_SIZE)
             magic = 0x4C524355
             
             for i in range(len(data) - 60):
@@ -182,10 +185,10 @@ jobs:
                         f.write(f"board_id={board_id}\n")
                         f.write(f"fw_version={fw_version}\n")
                     
-                    print(f"✓ Manifest validated: {board_id} v{fw_version}")
+                    print(f"✓ Manifest validated at offset 0x{i:08X}: {board_id} v{fw_version}")
                     sys.exit(0)
             
-            print("ERROR: No manifest found!")
+            print("ERROR: No manifest found in first 256KB!")
             sys.exit(1)
         EOF
     

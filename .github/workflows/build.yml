@@ -150,8 +150,12 @@ jobs:
         import struct
         import sys
         
+        # Manifest is placed in flash_rodata, typically within first 256KB
+        # Search in reasonable range to avoid reading entire multi-MB binary
+        SEARCH_SIZE = 256 * 1024  # 256KB should be more than enough
+        
         with open('build/loracue.bin', 'rb') as f:
-            data = f.read()
+            data = f.read(SEARCH_SIZE)
             magic = 0x4C524355  # "LRCU"
             
             for i in range(len(data) - 60):
@@ -176,7 +180,7 @@ jobs:
                     print(f"✓ Board ID validation passed")
                     sys.exit(0)
             
-            print("✗ ERROR: No valid manifest found!")
+            print("✗ ERROR: No valid manifest found in first 256KB!")
             sys.exit(1)
         EOF
     
