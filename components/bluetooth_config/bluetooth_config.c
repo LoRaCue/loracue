@@ -264,6 +264,10 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 
 esp_err_t bluetooth_config_init(void)
 {
+    // TODO: Migrate to BLE 5.0 Extended Advertising API
+    // Currently using BLE 4.2 legacy advertising (CONFIG_BT_BLE_42_ADV_EN)
+    // See: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/bluetooth/esp_gap_ble.html
+    
     // Check if Bluetooth should be enabled
     device_config_t config;
     device_config_get(&config);
