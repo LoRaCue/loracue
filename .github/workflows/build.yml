@@ -90,12 +90,6 @@ jobs:
           esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-
           esp-idf-${{ env.ESP_IDF_VERSION }}-
     
-    - name: Install ESP-IDF
-      uses: espressif/esp-idf-ci-action@v1
-      with:
-        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
-        target: ${{ matrix.board.target }}
-    
     - name: Verify sdkconfig before build
       shell: bash
       run: |
@@ -111,7 +105,7 @@ jobs:
         echo "=== Full sdkconfig (first 100 lines) ==="
         head -100 sdkconfig
     
-    - name: Build firmware
+    - name: Build firmware with ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
@@ -266,19 +260,13 @@ jobs:
         restore-keys: |
           esp-idf-${{ env.ESP_IDF_VERSION }}-esp32s3-
     
-    - name: Install ESP-IDF
-      uses: espressif/esp-idf-ci-action@v1
-      with:
-        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
-        target: esp32s3
-    
     - name: Verify sdkconfig before build
       shell: bash
       run: |
         echo "=== Simulator SDK Configuration Verification ==="
         head -100 sdkconfig
     
-    - name: Build simulator firmware
+    - name: Build simulator firmware with ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
