@@ -16,6 +16,9 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: write
+
 env:
   ESP_IDF_VERSION: v5.5
 
