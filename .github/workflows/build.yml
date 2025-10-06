@@ -96,11 +96,44 @@ jobs:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
         target: ${{ matrix.board.target }}
     
+    - name: Verify sdkconfig before build
+      shell: bash
+      run: |
+        echo "=== Critical SDK Configuration Verification ==="
+        echo "Checking BLE 4.2 settings required for bluetooth_config.c..."
+        
+        grep -E "CONFIG_BT_(GATTS|GATTC|BLE_42)" sdkconfig || {
+          echo "ERROR: Required BLE settings not found in sdkconfig!"
+          exit 1
+        }
+        
+        echo ""
+        echo "=== Full sdkconfig (first 100 lines) ==="
+        head -100 sdkconfig
+    
     - name: Build firmware
       shell: bash
       run: |
         echo "Building LoRaCue v${{ needs.version.outputs.version }} for ${{ matrix.board.display_name }}"
         make build
+    
+    - name: Verify sdkconfig after build
+      shell: bash
+      run: |
+        echo "=== Post-Build SDK Configuration Verification ==="
+        echo "Verifying BLE settings were not overwritten during build..."
+        
+        grep "CONFIG_BT_BLE_42_ADV_EN=y" sdkconfig || {
+          echo "ERROR: CONFIG_BT_BLE_42_ADV_EN was overwritten!"
+          exit 1
+        }
+        
+        grep "CONFIG_BT_BLE_42_SCAN_EN=y" sdkconfig || {
+          echo "ERROR: CONFIG_BT_BLE_42_SCAN_EN was overwritten!"
+          exit 1
+        }
+        
+        echo "✓ All critical BLE settings verified"
     
     - name: Extract and validate firmware manifest
       shell: bash
@@ -236,6 +269,12 @@ jobs:
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
         target: esp32s3
+    
+    - name: Verify sdkconfig before build
+      shell: bash
+      run: |
+        echo "=== Simulator SDK Configuration Verification ==="
+        head -100 sdkconfig
     
     - name: Build simulator firmware
       shell: bash
