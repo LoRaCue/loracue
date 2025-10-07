@@ -387,26 +387,29 @@ static void button_handler(button_event_type_t event, void *arg)
         return;
     }
 
-    lora_command_t cmd;
+    // Map button events to keyboard HID codes (V2 protocol)
+    uint8_t modifiers = 0;
+    uint8_t keycode   = 0;
+    
     switch (event) {
         case BUTTON_EVENT_PREV_SHORT:
-            cmd = CMD_PREV_SLIDE;
+            keycode = HID_KEY_PAGE_UP; // Previous slide
             break;
         case BUTTON_EVENT_NEXT_SHORT:
-            cmd = CMD_NEXT_SLIDE;
+            keycode = HID_KEY_PAGE_DOWN; // Next slide
             break;
         case BUTTON_EVENT_PREV_LONG:
-            cmd = CMD_BLACK_SCREEN;
+            keycode = HID_KEY_B; // Black screen
             break;
         case BUTTON_EVENT_NEXT_LONG:
-            cmd = CMD_START_PRESENTATION;
+            keycode = HID_KEY_F5; // Start presentation
             break;
         default:
             return;
     }
 
-    ESP_LOGI(TAG, "Presenter mode: sending LoRa command 0x%02X", cmd);
-    lora_comm_send_command_reliable(cmd, NULL, 0);
+    ESP_LOGI(TAG, "Presenter mode: sending keyboard HID (mod=0x%02X, key=0x%02X)", modifiers, keycode);
+    lora_protocol_send_keyboard_reliable(modifiers, keycode, 1000, 3);
 }
 
 void app_main(void)
