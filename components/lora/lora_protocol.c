@@ -164,6 +164,52 @@ esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_t *payl
     return ESP_OK;
 }
 
+esp_err_t lora_protocol_send_keyboard(uint8_t modifiers, uint8_t keycode)
+{
+    if (!protocol_initialized) {
+        ESP_LOGE(TAG, "Protocol not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    ESP_LOGI(TAG, "Sending keyboard: mod=0x%02X key=0x%02X", modifiers, keycode);
+
+    // Build V2 payload
+    lora_payload_v2_t payload_v2;
+    payload_v2.version_type                  = LORA_MAKE_VT(LORA_PROTOCOL_VERSION, HID_TYPE_KEYBOARD);
+    payload_v2.hid_report.keyboard.modifiers = modifiers;
+    payload_v2.hid_report.keyboard.reserved  = 0;
+    payload_v2.hid_report.keyboard.keycode[0] = keycode;
+    payload_v2.hid_report.keyboard.keycode[1] = 0;
+    payload_v2.hid_report.keyboard.keycode[2] = 0;
+    payload_v2.hid_report.keyboard.keycode[3] = 0;
+
+    // Send as CMD_HID_REPORT with V2 payload
+    return lora_protocol_send_command(CMD_HID_REPORT, (const uint8_t *)&payload_v2, sizeof(lora_payload_v2_t));
+}
+
+esp_err_t lora_protocol_send_keyboard_reliable(uint8_t modifiers, uint8_t keycode, uint32_t timeout_ms,
+                                               uint8_t max_retries)
+{
+    if (!protocol_initialized) {
+        ESP_LOGE(TAG, "Protocol not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    // Build V2 payload
+    lora_payload_v2_t payload_v2;
+    payload_v2.version_type                  = LORA_MAKE_VT(LORA_PROTOCOL_VERSION, HID_TYPE_KEYBOARD);
+    payload_v2.hid_report.keyboard.modifiers = modifiers;
+    payload_v2.hid_report.keyboard.reserved  = 0;
+    payload_v2.hid_report.keyboard.keycode[0] = keycode;
+    payload_v2.hid_report.keyboard.keycode[1] = 0;
+    payload_v2.hid_report.keyboard.keycode[2] = 0;
+    payload_v2.hid_report.keyboard.keycode[3] = 0;
+
+    // Send as CMD_HID_REPORT with V2 payload
+    return lora_protocol_send_reliable(CMD_HID_REPORT, (const uint8_t *)&payload_v2, sizeof(lora_payload_v2_t),
+                                      timeout_ms, max_retries);
+}
+
 esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
                                       uint32_t timeout_ms, uint8_t max_retries)
 {
