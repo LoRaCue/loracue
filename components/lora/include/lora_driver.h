@@ -27,6 +27,7 @@ typedef struct {
     uint16_t bandwidth;       ///< 500kHz for low latency
     uint8_t coding_rate;      ///< 4/5 for minimal overhead
     int8_t tx_power;          ///< TX power in dBm
+    char band_id[16];         ///< Hardware band ID (e.g., "HW_868")
 } lora_config_t;
 
 /**

@@ -10,5 +10,5 @@ endif()
 idf_component_register(
     SRCS ${BSP_SRCS}
     INCLUDE_DIRS "include"
-    REQUIRES driver esp_adc esp_driver_spi esp_driver_i2c spi_flash u8g2 u8g2-hal-esp-idf
+    REQUIRES driver esp_adc esp_driver_spi spi_flash u8g2 u8g2-hal-esp-idf
 )

@@ -1,0 +1,103 @@
+{
+  "HardwareProfiles": [
+    {
+      "id": "HW_433",
+      "name": "Low-Band Hardware (433/470MHz)",
+      "physical_freq_min_khz": 410000,
+      "physical_freq_max_khz": 525000,
+      "optimal_center_khz": 433000,
+      "optimal_freq_min_khz": 430000,
+      "optimal_freq_max_khz": 440000,
+      "notes": "Hardware optimized for peak performance around 433 MHz.",
+      "public_bands": [
+        {
+          "id": "EU433",
+          "region": "EU",
+          "freq_min_khz": 433050,
+          "freq_max_khz": 434790,
+          "power_dbm": 10,
+          "airtime_type": "duty_cycle",
+          "airtime_limit": 10
+        },
+        {
+          "id": "CN433",
+          "region": "CN",
+          "freq_min_khz": 433050,
+          "freq_max_khz": 434790,
+          "power_dbm": 10,
+          "airtime_type": "duty_cycle",
+          "airtime_limit": 10
+        },
+        {
+          "id": "CN470",
+          "region": "CN",
+          "freq_min_khz": 470000,
+          "freq_max_khz": 510000,
+          "power_dbm": 17,
+          "airtime_type": "fhss",
+          "airtime_limit": 5000
+        }
+      ]
+    },
+    {
+      "id": "HW_868",
+      "name": "Mid-Band Hardware (EU 868MHz)",
+      "physical_freq_min_khz": 862000,
+      "physical_freq_max_khz": 930000,
+      "optimal_center_khz": 868000,
+      "optimal_freq_min_khz": 863000,
+      "optimal_freq_max_khz": 870000,
+      "notes": "Hardware specifically tuned for peak performance across the EU868 bands.",
+      "public_bands": [
+        {
+          "id": "EU868_GEN",
+          "region": "EU",
+          "freq_min_khz": 863000,
+          "freq_max_khz": 868000,
+          "power_dbm": 14,
+          "airtime_type": "duty_cycle",
+          "airtime_limit": 1
+        },
+        {
+          "id": "EU868_LORAWAN",
+          "region": "EU",
+          "freq_min_khz": 868000,
+          "freq_max_khz": 868600,
+          "power_dbm": 14,
+          "airtime_type": "duty_cycle",
+          "airtime_limit": 1
+        },
+        {
+          "id": "EU868_HP",
+          "region": "EU",
+          "freq_min_khz": 869400,
+          "freq_max_khz": 869650,
+          "power_dbm": 27,
+          "airtime_type": "duty_cycle",
+          "airtime_limit": 10
+        }
+      ]
+    },
+    {
+      "id": "HW_915",
+      "name": "High-Band Hardware (US 915MHz)",
+      "physical_freq_min_khz": 862000,
+      "physical_freq_max_khz": 930000,
+      "optimal_center_khz": 915000,
+      "optimal_freq_min_khz": 902000,
+      "optimal_freq_max_khz": 928000,
+      "notes": "Hardware specifically tuned for peak performance across the US915 band.",
+      "public_bands": [
+        {
+          "id": "US915",
+          "region": "US",
+          "freq_min_khz": 902000,
+          "freq_max_khz": 928000,
+          "power_dbm": 30,
+          "airtime_type": "fhss",
+          "airtime_limit": 400
+        }
+      ]
+    }
+  ]
+}

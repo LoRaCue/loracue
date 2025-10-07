@@ -10,7 +10,7 @@
 // Layout constants
 #define HEADER_HEIGHT 9
 #define FOOTER_HEIGHT 10
-#define SEPARATOR_Y_TOP 9
+#define SEPARATOR_Y_TOP 10
 #define SEPARATOR_Y_BOTTOM 53
 
 // Status icons configuration

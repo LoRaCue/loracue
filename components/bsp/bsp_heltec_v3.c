@@ -11,7 +11,6 @@
 
 #include "bsp.h"
 #include "driver/gpio.h"
-#include "driver/i2c_master.h"
 #include "driver/spi_master.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
@@ -147,38 +146,9 @@ uint8_t bsp_sx1262_read_register(uint16_t reg)
 
 esp_err_t bsp_init_i2c(void)
 {
-    ESP_LOGI(TAG, "Initializing I2C bus for SH1106 OLED");
-
-    // Configure I2C master bus
-    i2c_master_bus_config_t i2c_bus_config = {
-        .clk_source                   = I2C_CLK_SRC_DEFAULT,
-        .i2c_port                     = I2C_NUM_0,
-        .scl_io_num                   = OLED_SCL_PIN,
-        .sda_io_num                   = OLED_SDA_PIN,
-        .glitch_ignore_cnt            = 7,
-        .flags.enable_internal_pullup = true,
-    };
-
-    esp_err_t ret = i2c_new_master_bus(&i2c_bus_config, &i2c_bus_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create I2C master bus: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    // Configure SH1106 device
-    i2c_device_config_t oled_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address  = 0x3C,   // SH1106 I2C address
-        .scl_speed_hz    = 400000, // 400kHz
-    };
-
-    ret = i2c_master_bus_add_device(i2c_bus_handle, &oled_cfg, &oled_dev_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to add OLED device: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    ESP_LOGI(TAG, "I2C bus initialized successfully");
+    // I2C initialization handled by u8g2 HAL (old driver)
+    // Removed new driver init to avoid conflict
+    ESP_LOGI(TAG, "I2C initialization delegated to u8g2 HAL");
     return ESP_OK;
 }
 
