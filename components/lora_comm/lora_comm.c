@@ -92,16 +92,6 @@ esp_err_t lora_comm_register_state_callback(lora_comm_state_callback_t callback,
     return ESP_OK;
 }
 
-esp_err_t lora_comm_send_command(lora_command_t command, const uint8_t *payload, uint8_t payload_length)
-{
-    return lora_protocol_send_command(command, payload, payload_length);
-}
-
-esp_err_t lora_comm_send_command_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length)
-{
-    return lora_protocol_send_reliable(command, payload, payload_length, 1000, 2);
-}
-
 esp_err_t lora_comm_start(void)
 {
     ESP_LOGI(TAG, "Starting LoRa communication task");

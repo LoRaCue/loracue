@@ -309,7 +309,7 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
     usb_hid_keycode_t keycode = 0;
     const char *cmd_name = "UNKNOWN";
 
-    // V2: Parse HID report from payload
+    // Parse HID report from payload
     if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_v2_t)) {
         const lora_payload_v2_t *payload_v2 = (const lora_payload_v2_t *)payload;
         uint8_t hid_type = LORA_HID_TYPE(payload_v2->version_type);
@@ -326,30 +326,9 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
                 default:                cmd_name = "KEY"; break;
             }
         }
-    }
-    // V1: Legacy command support (deprecated)
-    else {
-        switch (command) {
-            case CMD_NEXT_SLIDE:
-                keycode  = HID_KEY_PAGE_DOWN;
-                cmd_name = "NEXT";
-                break;
-            case CMD_PREV_SLIDE:
-                keycode  = HID_KEY_PAGE_UP;
-                cmd_name = "PREV";
-                break;
-            case CMD_BLACK_SCREEN:
-                keycode  = HID_KEY_B;
-                cmd_name = "BLACK";
-                break;
-            case CMD_START_PRESENTATION:
-                keycode  = HID_KEY_F5;
-                cmd_name = "START";
-                break;
-            default:
-                ESP_LOGW(TAG, "Unknown command: 0x%02X", command);
-                return;
-        }
+    } else {
+        ESP_LOGW(TAG, "Invalid command or payload: cmd=0x%02X len=%d", command, payload_length);
+        return;
     }
 
     if (keycode == 0) {

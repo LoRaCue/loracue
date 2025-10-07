@@ -95,73 +95,31 @@ static esp_err_t calculate_mac(const uint8_t *data, size_t data_len, uint8_t *ma
     return ESP_OK;
 }
 
-esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_t *payload, uint8_t payload_length)
+static esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_t *payload, uint8_t payload_length)
 {
-    if (!protocol_initialized) {
-        ESP_LOGE(TAG, "Protocol not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    if (payload_length > LORA_PAYLOAD_MAX_SIZE) {
-        ESP_LOGE(TAG, "Payload too large: %d bytes", payload_length);
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    ESP_LOGI(TAG, "Sending command 0x%02X with %d byte payload", command, payload_length);
-
-    // Create packet data
-    lora_packet_data_t packet_data = {
-        .device_id      = local_device_id,
-        .sequence_num   = ++sequence_counter,
-        .command        = command,
-        .payload_length = payload_length,
-    };
-
-    if (payload && payload_length > 0) {
-        memcpy(packet_data.payload, payload, payload_length);
-    }
-
-    // Create final packet
     lora_packet_t packet;
     packet.device_id = local_device_id;
 
-    // Prepare data to encrypt (everything except device_id and mac)
-    uint8_t plaintext[16] = {0}; // AES requires 16-byte blocks
-    plaintext[0]          = (packet_data.sequence_num >> 8) & 0xFF;
-    plaintext[1]          = packet_data.sequence_num & 0xFF;
-    plaintext[2]          = packet_data.command;
-    plaintext[3]          = packet_data.payload_length;
-    if (payload_length > 0) {
-        memcpy(&plaintext[4], packet_data.payload, payload_length);
+    uint8_t plaintext[16] = {0};
+    plaintext[0] = (sequence_counter >> 8) & 0xFF;
+    plaintext[1] = sequence_counter & 0xFF;
+    plaintext[2] = command;
+    plaintext[3] = payload_length;
+    if (payload && payload_length > 0) {
+        memcpy(&plaintext[4], payload, payload_length);
     }
-    // Remaining bytes are already zero-padded
 
-    // Encrypt data (AES ECB with 16-byte blocks)
     mbedtls_aes_crypt_ecb(&aes_ctx, MBEDTLS_AES_ENCRYPT, plaintext, packet.encrypted_data);
 
-    // Calculate MAC over device_id + encrypted_data
-    uint8_t mac_data[18]; // 2 + 16 bytes
-    mac_data[0] = (packet.device_id >> 8) & 0xFF;
-    mac_data[1] = packet.device_id & 0xFF;
+    uint8_t mac_data[18];
+    memcpy(mac_data, &packet.device_id, 2);
     memcpy(&mac_data[2], packet.encrypted_data, 16);
+    calculate_mac(mac_data, 18, packet.mac);
 
-    esp_err_t ret = calculate_mac(mac_data, 18, packet.mac);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "MAC calculation failed");
-        return ret;
-    }
-
-    // Send packet
-    ret = lora_send_packet((uint8_t *)&packet, sizeof(packet));
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to send packet: %s", esp_err_to_name(ret));
-        connection_stats.failed_transmissions++;
-        return ret;
-    }
-
+    sequence_counter++;
     connection_stats.packets_sent++;
-    ESP_LOGI(TAG, "Packet sent successfully (seq: %d)", packet_data.sequence_num);
-    return ESP_OK;
+
+    return lora_send_packet((uint8_t *)&packet, sizeof(packet));
 }
 
 esp_err_t lora_protocol_send_keyboard(uint8_t modifiers, uint8_t keycode)

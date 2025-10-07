@@ -31,20 +31,11 @@ extern "C" {
 #define LORA_MAKE_VT(v, t)    ((((v) & 0x0F) << 4) | ((t) & 0x0F))
 
 /**
- * @brief LoRa command types (V1 + V2)
+ * @brief LoRa command types
  */
 typedef enum {
-    // V1 commands (deprecated)
-    CMD_NEXT_SLIDE         = 0x01, ///< Next slide command
-    CMD_PREV_SLIDE         = 0x02, ///< Previous slide command
-    CMD_BLACK_SCREEN       = 0x03, ///< Black screen toggle
-    CMD_START_PRESENTATION = 0x04, ///< Start presentation (F5)
-    
-    // V2 commands
-    CMD_HID_REPORT = 0x10, ///< HID report with structured payload
-    
-    // System commands
-    CMD_ACK = 0x80, ///< Acknowledgment
+    CMD_HID_REPORT = 0x01, ///< HID report with structured payload
+    CMD_ACK        = 0x80, ///< Acknowledgment
 } lora_command_t;
 
 /**
@@ -103,23 +94,12 @@ typedef struct __attribute__((packed)) {
 esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *aes_key);
 
 /**
- * @brief Send LoRa packet (V1)
- */
-esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_t *payload, uint8_t payload_length);
-
-/**
- * @brief Send with ACK (V1)
- */
-esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
-                                      uint32_t timeout_ms, uint8_t max_retries);
-
-/**
- * @brief Send keyboard key press (V2)
+ * @brief Send keyboard key press
  */
 esp_err_t lora_protocol_send_keyboard(uint8_t modifiers, uint8_t keycode);
 
 /**
- * @brief Send keyboard with ACK (V2)
+ * @brief Send keyboard with ACK
  */
 esp_err_t lora_protocol_send_keyboard_reliable(uint8_t modifiers, uint8_t keycode, uint32_t timeout_ms,
                                                uint8_t max_retries);
@@ -128,6 +108,12 @@ esp_err_t lora_protocol_send_keyboard_reliable(uint8_t modifiers, uint8_t keycod
  * @brief Receive and decrypt LoRa packet
  */
 esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t timeout_ms);
+
+/**
+ * @brief Send command with ACK and retries
+ */
+esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
+                                     uint32_t timeout_ms, uint8_t max_retries);
 
 /**
  * @brief Send ACK packet
