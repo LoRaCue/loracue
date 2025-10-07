@@ -9,6 +9,7 @@
  */
 
 #include "lora_driver.h"
+#include "lora_bands.h"
 #include "bsp.h"
 #include "esp_log.h"
 #include "nvs.h"
@@ -23,11 +24,12 @@ static const char *TAG = "LORA_DRIVER";
 
 // LoRa configuration
 static lora_config_t current_config = {
-    .frequency        = 915000000, // 915MHz
+    .frequency        = 868000000, // 868MHz default
     .spreading_factor = 7,         // SF7 for low latency
     .bandwidth        = 500,       // 500kHz for high throughput
     .coding_rate      = 5,         // 4/5 coding rate
-    .tx_power         = 14         // 14dBm
+    .tx_power         = 14,        // 14dBm
+    .band_id          = "HW_868"   // Default to 868 MHz band
 };
 
 #ifdef SIMULATOR_BUILD
@@ -54,6 +56,13 @@ static esp_err_t lora_sim_receive_packet(uint8_t *data, size_t max_length, size_
 
 esp_err_t lora_driver_init(void)
 {
+    // Initialize band profiles from JSON
+    esp_err_t ret = lora_bands_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize band profiles");
+        return ret;
+    }
+
     // Load LoRa config from NVS (or use defaults)
     lora_load_config_from_nvs();
 

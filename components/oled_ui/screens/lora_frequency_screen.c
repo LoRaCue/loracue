@@ -1,9 +1,11 @@
 #include "lora_frequency_screen.h"
 #include "lora_driver.h"
+#include "lora_bands.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_icons.h"
 #include <stdio.h>
+#include <string.h>
 
 extern u8g2_t u8g2;
 
@@ -19,15 +21,14 @@ void lora_frequency_screen_init(void) {
     lora_get_config(&config);
     frequency_khz = config.frequency / 1000;
     
-    // Set limits based on current band
-    if (frequency_khz >= 430000 && frequency_khz <= 440000) {
+    // Get limits from band profile
+    const lora_band_profile_t *profile = lora_bands_get_profile_by_id(config.band_id);
+    if (profile) {
+        min_freq_khz = profile->optimal_freq_min_khz;
+        max_freq_khz = profile->optimal_freq_max_khz;
+    } else {
+        // Fallback to wide range if band not found
         min_freq_khz = 430000;
-        max_freq_khz = 440000;
-    } else if (frequency_khz >= 863000 && frequency_khz <= 870000) {
-        min_freq_khz = 863000;
-        max_freq_khz = 870000;
-    } else if (frequency_khz >= 902000 && frequency_khz <= 928000) {
-        min_freq_khz = 902000;
         max_freq_khz = 928000;
     }
     

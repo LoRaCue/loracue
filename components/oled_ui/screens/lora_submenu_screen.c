@@ -10,7 +10,7 @@ extern u8g2_t u8g2;
 static int selected_item = 0;
 static int scroll_offset = 0;
 
-#define VIEWPORT_SIZE 4
+#define VIEWPORT_SIZE 3
 
 static const char *menu_items[] = {
     "Presets",

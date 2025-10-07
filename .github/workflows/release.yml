@@ -162,34 +162,40 @@ jobs:
         import sys
         import os
         
-        # Manifest is placed in flash_rodata, typically within first 256KB
-        SEARCH_SIZE = 256 * 1024
-        
+        # ESP-IDF app descriptor is at fixed offset 0x20 in the binary
         with open('build/loracue.bin', 'rb') as f:
-            data = f.read(SEARCH_SIZE)
-            magic = 0x4C524355
+            f.seek(0x20)
+            data = f.read(256)
             
-            for i in range(len(data) - 60):
-                if struct.unpack('<I', data[i:i+4])[0] == magic:
-                    board_id = data[i+8:i+24].decode('utf-8', errors='ignore').rstrip('\x00')
-                    fw_version = data[i+24:i+56].decode('utf-8', errors='ignore').rstrip('\x00')
-                    
-                    # Validate
-                    expected = "${{ matrix.board.name }}"
-                    if board_id != expected:
-                        print(f"ERROR: Board mismatch! Expected {expected}, got {board_id}")
-                        sys.exit(1)
-                    
-                    # Export for GitHub Actions
-                    with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                        f.write(f"board_id={board_id}\n")
-                        f.write(f"fw_version={fw_version}\n")
-                    
-                    print(f"✓ Manifest validated at offset 0x{i:08X}: {board_id} v{fw_version}")
-                    sys.exit(0)
+            # esp_app_desc_t structure offsets
+            magic_word = struct.unpack('<I', data[0:4])[0]
+            version = data[16:48].decode('utf-8', errors='ignore').rstrip('\x00')
+            project_name = data[48:80].decode('utf-8', errors='ignore').rstrip('\x00')
+            time = data[80:96].decode('utf-8', errors='ignore').rstrip('\x00')
+            date = data[96:112].decode('utf-8', errors='ignore').rstrip('\x00')
+            idf_ver = data[112:144].decode('utf-8', errors='ignore').rstrip('\x00')
             
-            print("ERROR: No manifest found in first 256KB!")
-            sys.exit(1)
+            print(f"✓ ESP-IDF app descriptor found at 0x20")
+            print(f"  Magic: 0x{magic_word:08X}")
+            print(f"  Board ID (project_name): {project_name}")
+            print(f"  Version: {version}")
+            print(f"  Build: {date} {time}")
+            print(f"  IDF Version: {idf_ver}")
+            
+            # Validate board_id matches matrix
+            expected = "${{ matrix.board.name }}"
+            if project_name != expected:
+                print(f"✗ ERROR: Board ID mismatch!")
+                print(f"  Expected: {expected}")
+                print(f"  Found: {project_name}")
+                sys.exit(1)
+            
+            # Export for GitHub Actions
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+                f.write(f"board_id={project_name}\n")
+                f.write(f"fw_version={version}\n")
+            
+            print(f"✓ Manifest validated: {project_name} v{version}")
         EOF
     
     - name: Calculate checksums

@@ -1,16 +1,15 @@
 #include "lora_band_screen.h"
 #include "lora_driver.h"
+#include "lora_bands.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_icons.h"
+#include <stdio.h>
+#include <string.h>
 
 extern u8g2_t u8g2;
 
 static int selected_item = 0;
-
-static const char *band_items[] = {"433 MHz", "868 MHz", "915 MHz"};
-static const uint32_t band_frequencies[] = {433000000, 868000000, 915000000};
-static const int band_count = 3;
 
 void lora_band_screen_draw(void) {
     u8g2_ClearBuffer(&u8g2);
@@ -24,12 +23,16 @@ void lora_band_screen_draw(void) {
     lora_config_t config;
     lora_get_config(&config);
     
+    int band_count = lora_bands_get_count();
     const int viewport_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
     const int item_height = viewport_height / band_count;
     
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
     for (int i = 0; i < band_count; i++) {
+        const lora_band_profile_t *profile = lora_bands_get_profile(i);
+        if (!profile) continue;
+        
         int item_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) + 3;
         
         if (i == selected_item) {
@@ -42,17 +45,17 @@ void lora_band_screen_draw(void) {
         }
         
         // Show checkmark for current band
-        bool is_current = false;
-        if (i == 0 && config.frequency >= 430000000 && config.frequency <= 440000000) is_current = true;
-        if (i == 1 && config.frequency >= 863000000 && config.frequency <= 870000000) is_current = true;
-        if (i == 2 && config.frequency >= 902000000 && config.frequency <= 928000000) is_current = true;
+        bool is_current = (strcmp(config.band_id, profile->id) == 0);
+        
+        // Display band name (e.g., "433 MHz")
+        char band_label[32];
+        snprintf(band_label, sizeof(band_label), "%lu MHz", (unsigned long)(profile->optimal_center_khz / 1000));
         
         if (is_current) {
-            int icon_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) - (checkmark_height / 2);
-            u8g2_DrawXBM(&u8g2, 4, icon_y, checkmark_width, checkmark_height, checkmark_bits);
-            u8g2_DrawStr(&u8g2, 16, item_y, band_items[i]);
+            u8g2_DrawXBM(&u8g2, 2, item_y - 6, checkmark_width, checkmark_height, checkmark_bits);
+            u8g2_DrawStr(&u8g2, 16, item_y, band_label);
         } else {
-            u8g2_DrawStr(&u8g2, 16, item_y, band_items[i]);
+            u8g2_DrawStr(&u8g2, 16, item_y, band_label);
         }
         
         if (i == selected_item) {
@@ -79,6 +82,7 @@ void lora_band_screen_draw(void) {
 }
 
 void lora_band_screen_navigate(menu_direction_t direction) {
+    int band_count = lora_bands_get_count();
     if (direction == MENU_DOWN) {
         selected_item = (selected_item + 1) % band_count;
     } else if (direction == MENU_UP) {
@@ -87,8 +91,15 @@ void lora_band_screen_navigate(menu_direction_t direction) {
 }
 
 void lora_band_screen_select(void) {
+    const lora_band_profile_t *profile = lora_bands_get_profile(selected_item);
+    if (!profile) return;
+    
     lora_config_t config;
     lora_get_config(&config);
-    config.frequency = band_frequencies[selected_item];
+    
+    // Set band ID and center frequency
+    strncpy(config.band_id, profile->id, sizeof(config.band_id) - 1);
+    config.frequency = profile->optimal_center_khz * 1000; // Convert kHz to Hz
+    
     lora_set_config(&config);
 }
