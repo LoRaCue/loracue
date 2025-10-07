@@ -1,10 +1,10 @@
 /**
  * @file lora_protocol.h
- * @brief LoRaCue custom LoRa protocol implementation
+ * @brief LoRaCue LoRa Protocol - Migrating to V2
  *
- * CONTEXT: Ticket 2.2 - Custom Protocol Implementation
- * PACKET: DeviceID(2) + SequenceNum(2) + Command(1) + Payload(0-7) + MAC(4)
- * SECURITY: AES-256 encryption with replay protection
+ * PACKET: DeviceID(2) + Encrypted[SeqNum(2) + Cmd(1) + Payload(7)] + MAC(4)
+ * V1: Uses simple commands (CMD_NEXT_SLIDE, etc.) with unused payload
+ * V2: Uses CMD_HID_REPORT with structured payload for extensible HID support
  */
 
 #pragma once
@@ -17,23 +17,65 @@
 extern "C" {
 #endif
 
-#define LORA_PACKET_MAX_SIZE 22 // 2 + 16 + 4 bytes
+#define LORA_PACKET_MAX_SIZE 22
 #define LORA_DEVICE_ID_SIZE 2
 #define LORA_SEQUENCE_NUM_SIZE 2
 #define LORA_COMMAND_SIZE 1
 #define LORA_PAYLOAD_MAX_SIZE 7
 #define LORA_MAC_SIZE 4
 
+// V2 Protocol macros
+#define LORA_PROTOCOL_VERSION 0x01
+#define LORA_VERSION(vt)      (((vt) >> 4) & 0x0F)
+#define LORA_HID_TYPE(vt)     ((vt) & 0x0F)
+#define LORA_MAKE_VT(v, t)    ((((v) & 0x0F) << 4) | ((t) & 0x0F))
+
 /**
- * @brief LoRaCue command types
+ * @brief LoRa command types (V1 + V2)
  */
 typedef enum {
+    // V1 commands (deprecated)
     CMD_NEXT_SLIDE         = 0x01, ///< Next slide command
     CMD_PREV_SLIDE         = 0x02, ///< Previous slide command
     CMD_BLACK_SCREEN       = 0x03, ///< Black screen toggle
     CMD_START_PRESENTATION = 0x04, ///< Start presentation (F5)
-    CMD_ACK                = 0x80, ///< Acknowledgment
+    
+    // V2 commands
+    CMD_HID_REPORT = 0x10, ///< HID report with structured payload
+    
+    // System commands
+    CMD_ACK = 0x80, ///< Acknowledgment
 } lora_command_t;
+
+/**
+ * @brief HID device types (V2)
+ */
+typedef enum {
+    HID_TYPE_NONE     = 0x0, ///< No HID device
+    HID_TYPE_KEYBOARD = 0x1, ///< Keyboard
+    HID_TYPE_MOUSE    = 0x2, ///< Mouse
+    HID_TYPE_MEDIA    = 0x3, ///< Media keys
+} lora_hid_type_t;
+
+/**
+ * @brief Keyboard HID report (V2, 6 bytes)
+ */
+typedef struct __attribute__((packed)) {
+    uint8_t modifiers;  ///< Bit 0=Ctrl, 1=Shift, 2=Alt, 3=GUI
+    uint8_t reserved;   ///< Always 0
+    uint8_t keycode[4]; ///< Up to 4 simultaneous keys
+} lora_keyboard_report_t;
+
+/**
+ * @brief V2 Payload structure (7 bytes)
+ */
+typedef struct __attribute__((packed)) {
+    uint8_t version_type;  ///< [7:4]=protocol_ver, [3:0]=hid_type
+    union {
+        uint8_t raw[6];
+        lora_keyboard_report_t keyboard;
+    } hid_report;
+} lora_payload_v2_t;
 
 /**
  * @brief LoRa packet structure (before encryption)
@@ -57,42 +99,33 @@ typedef struct __attribute__((packed)) {
 
 /**
  * @brief Initialize LoRa protocol
- *
- * @param device_id This device's unique ID
- * @param aes_key 32-byte AES-256 key for encryption
- * @return ESP_OK on success
  */
 esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *aes_key);
 
 /**
- * @brief Create and send LoRa packet
- *
- * @param command Command to send
- * @param payload Optional payload data
- * @param payload_length Payload length (0-7)
- * @return ESP_OK on success
+ * @brief Send LoRa packet (V1)
  */
 esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_t *payload, uint8_t payload_length);
 
 /**
- * @brief Send command with ACK and retransmission
- *
- * @param command Command to send
- * @param payload Optional payload data
- * @param payload_length Payload length (0-7)
- * @param timeout_ms Timeout for ACK reception
- * @param max_retries Maximum retry attempts
- * @return ESP_OK on success, ESP_ERR_TIMEOUT if no ACK received
+ * @brief Send with ACK (V1)
  */
 esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
                                       uint32_t timeout_ms, uint8_t max_retries);
 
 /**
- * @brief Receive and validate LoRa packet
- *
- * @param packet_data Decoded packet data
- * @param timeout_ms Receive timeout in milliseconds
- * @return ESP_OK on success, ESP_ERR_TIMEOUT on timeout
+ * @brief Send keyboard key press (V2)
+ */
+esp_err_t lora_protocol_send_keyboard(uint8_t modifiers, uint8_t keycode);
+
+/**
+ * @brief Send keyboard with ACK (V2)
+ */
+esp_err_t lora_protocol_send_keyboard_reliable(uint8_t modifiers, uint8_t keycode, uint32_t timeout_ms,
+                                               uint8_t max_retries);
+
+/**
+ * @brief Receive and decrypt LoRa packet
  */
 esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t timeout_ms);
 
