@@ -306,28 +306,55 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
         return;
     }
 
-    usb_hid_keycode_t keycode;
-    const char *cmd_name;
-    switch (command) {
-        case CMD_NEXT_SLIDE:
-            keycode  = HID_KEY_PAGE_DOWN;
-            cmd_name = "NEXT";
-            break;
-        case CMD_PREV_SLIDE:
-            keycode  = HID_KEY_PAGE_UP;
-            cmd_name = "PREV";
-            break;
-        case CMD_BLACK_SCREEN:
-            keycode  = HID_KEY_B;
-            cmd_name = "BLACK";
-            break;
-        case CMD_START_PRESENTATION:
-            keycode  = HID_KEY_F5;
-            cmd_name = "START";
-            break;
-        default:
-            ESP_LOGW(TAG, "Unknown command: 0x%02X", command);
-            return;
+    usb_hid_keycode_t keycode = 0;
+    const char *cmd_name = "UNKNOWN";
+
+    // V2: Parse HID report from payload
+    if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_v2_t)) {
+        const lora_payload_v2_t *payload_v2 = (const lora_payload_v2_t *)payload;
+        uint8_t hid_type = LORA_HID_TYPE(payload_v2->version_type);
+        
+        if (hid_type == HID_TYPE_KEYBOARD) {
+            keycode = payload_v2->hid_report.keyboard.keycode[0];
+            
+            // Map keycode to command name for logging
+            switch (keycode) {
+                case HID_KEY_PAGE_DOWN: cmd_name = "NEXT"; break;
+                case HID_KEY_PAGE_UP:   cmd_name = "PREV"; break;
+                case HID_KEY_B:         cmd_name = "BLACK"; break;
+                case HID_KEY_F5:        cmd_name = "START"; break;
+                default:                cmd_name = "KEY"; break;
+            }
+        }
+    }
+    // V1: Legacy command support (deprecated)
+    else {
+        switch (command) {
+            case CMD_NEXT_SLIDE:
+                keycode  = HID_KEY_PAGE_DOWN;
+                cmd_name = "NEXT";
+                break;
+            case CMD_PREV_SLIDE:
+                keycode  = HID_KEY_PAGE_UP;
+                cmd_name = "PREV";
+                break;
+            case CMD_BLACK_SCREEN:
+                keycode  = HID_KEY_B;
+                cmd_name = "BLACK";
+                break;
+            case CMD_START_PRESENTATION:
+                keycode  = HID_KEY_F5;
+                cmd_name = "START";
+                break;
+            default:
+                ESP_LOGW(TAG, "Unknown command: 0x%02X", command);
+                return;
+        }
+    }
+
+    if (keycode == 0) {
+        ESP_LOGW(TAG, "No valid keycode extracted");
+        return;
     }
 
     usb_hid_send_key(keycode);
