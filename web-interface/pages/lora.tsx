@@ -8,7 +8,6 @@ interface LoRaSettings {
   bandwidth: number
   codingRate: number
   txPower: number
-  syncWord: number
   band_id: string
 }
 
@@ -27,7 +26,6 @@ export default function LoRaPage() {
     bandwidth: 500000,
     codingRate: 5,
     txPower: 14,
-    syncWord: 0x12,
     band_id: 'HW_868'
   })
   const [bands, setBands] = useState<Band[]>([])
@@ -237,17 +235,19 @@ export default function LoRaPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Frequency
+                  Frequency (MHz)
                 </label>
                 <input
                   type="number"
-                  value={settings.frequency}
-                  onChange={(e) => setSettings({ ...settings, frequency: Number(e.target.value) })}
+                  value={(settings.frequency / 1000000).toFixed(1)}
+                  onChange={(e) => setSettings({ ...settings, frequency: Math.round(parseFloat(e.target.value) * 1000000) })}
                   className="input"
-                  step="1000"
+                  step="0.1"
+                  min={(bands.find(b => b.id === settings.band_id)?.min_khz || 430000) / 1000}
+                  max={(bands.find(b => b.id === settings.band_id)?.max_khz || 440000) / 1000}
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  Frequency in Hz
+                  1 kHz resolution (e.g., 868.1 MHz)
                 </p>
               </div>
 
@@ -318,24 +318,6 @@ export default function LoRaPage() {
                   <span className="font-medium">{settings.txPower} dBm</span>
                   <span>20 dBm</span>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Sync Word (Hex)
-                </label>
-                <input
-                  type="text"
-                  value={`0x${settings.syncWord.toString(16).toUpperCase().padStart(2, '0')}`}
-                  onChange={(e) => {
-                    const hex = e.target.value.replace('0x', '').replace(/[^0-9A-Fa-f]/g, '')
-                    if (hex.length <= 2) {
-                      setSettings({ ...settings, syncWord: parseInt(hex || '0', 16) })
-                    }
-                  }}
-                  className="input font-mono"
-                  placeholder="0x12"
-                />
               </div>
             </div>
 
