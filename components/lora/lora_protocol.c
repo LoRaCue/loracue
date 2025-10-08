@@ -132,13 +132,13 @@ esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_
     ESP_LOGI(TAG, "Sending keyboard: slot=%d mod=0x%02X key=0x%02X", slot_id, modifiers, keycode);
 
     lora_payload_v2_t payload_v2;
-    payload_v2.version_slot                   = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
-    payload_v2.hid_report.keyboard.hid_type   = HID_TYPE_KEYBOARD;
-    payload_v2.hid_report.keyboard.modifiers  = modifiers;
-    payload_v2.hid_report.keyboard.keycode[0] = keycode;
-    payload_v2.hid_report.keyboard.keycode[1] = 0;
-    payload_v2.hid_report.keyboard.keycode[2] = 0;
-    payload_v2.hid_report.keyboard.keycode[3] = 0;
+    payload_v2.version_slot                    = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
+    payload_v2.type_flags                      = LORA_MAKE_TF(HID_TYPE_KEYBOARD, 0);
+    payload_v2.hid_report.keyboard.modifiers   = modifiers;
+    payload_v2.hid_report.keyboard.keycode[0]  = keycode;
+    payload_v2.hid_report.keyboard.keycode[1]  = 0;
+    payload_v2.hid_report.keyboard.keycode[2]  = 0;
+    payload_v2.hid_report.keyboard.keycode[3]  = 0;
 
     return lora_protocol_send_command(CMD_HID_REPORT, (const uint8_t *)&payload_v2, sizeof(lora_payload_v2_t));
 }
@@ -152,13 +152,13 @@ esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifier
     }
 
     lora_payload_v2_t payload_v2;
-    payload_v2.version_slot                   = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
-    payload_v2.hid_report.keyboard.hid_type   = HID_TYPE_KEYBOARD;
-    payload_v2.hid_report.keyboard.modifiers  = modifiers;
-    payload_v2.hid_report.keyboard.keycode[0] = keycode;
-    payload_v2.hid_report.keyboard.keycode[1] = 0;
-    payload_v2.hid_report.keyboard.keycode[2] = 0;
-    payload_v2.hid_report.keyboard.keycode[3] = 0;
+    payload_v2.version_slot                    = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
+    payload_v2.type_flags                      = LORA_MAKE_TF(HID_TYPE_KEYBOARD, 0);
+    payload_v2.hid_report.keyboard.modifiers   = modifiers;
+    payload_v2.hid_report.keyboard.keycode[0]  = keycode;
+    payload_v2.hid_report.keyboard.keycode[1]  = 0;
+    payload_v2.hid_report.keyboard.keycode[2]  = 0;
+    payload_v2.hid_report.keyboard.keycode[3]  = 0;
 
     return lora_protocol_send_reliable(CMD_HID_REPORT, (const uint8_t *)&payload_v2, sizeof(lora_payload_v2_t),
                                       timeout_ms, max_retries);

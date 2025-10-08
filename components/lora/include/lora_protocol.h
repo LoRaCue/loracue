@@ -27,9 +27,16 @@ extern "C" {
 // V2 Protocol macros
 #define LORA_PROTOCOL_VERSION 0x01
 #define LORA_DEFAULT_SLOT     1
+
+// Byte 0: version_slot
 #define LORA_VERSION(vs)      (((vs) >> 4) & 0x0F)
 #define LORA_SLOT(vs)         ((vs) & 0x0F)
 #define LORA_MAKE_VS(v, s)    ((((v) & 0x0F) << 4) | ((s) & 0x0F))
+
+// Byte 1: type_flags
+#define LORA_HID_TYPE(tf)     (((tf) >> 4) & 0x0F)
+#define LORA_FLAGS(tf)        ((tf) & 0x0F)
+#define LORA_MAKE_TF(t, f)    ((((t) & 0x0F) << 4) | ((f) & 0x0F))
 
 /**
  * @brief LoRa command types
@@ -50,10 +57,9 @@ typedef enum {
 } lora_hid_type_t;
 
 /**
- * @brief Keyboard HID report (6 bytes)
+ * @brief Keyboard HID report (5 bytes)
  */
 typedef struct __attribute__((packed)) {
-    uint8_t hid_type;   ///< HID device type (keyboard=1, mouse=2, media=3)
     uint8_t modifiers;  ///< Bit 0=Ctrl, 1=Shift, 2=Alt, 3=GUI
     uint8_t keycode[4]; ///< Up to 4 simultaneous keys
 } lora_keyboard_report_t;
@@ -62,9 +68,10 @@ typedef struct __attribute__((packed)) {
  * @brief V2 Payload structure (7 bytes)
  */
 typedef struct __attribute__((packed)) {
-    uint8_t version_slot;  ///< [7:4]=protocol_ver, [3:0]=slot_id (1-16, default=1)
+    uint8_t version_slot;  ///< [7:4]=protocol_ver, [3:0]=slot_id (1-16)
+    uint8_t type_flags;    ///< [7:4]=hid_type, [3:0]=flags/reserved
     union {
-        uint8_t raw[6];
+        uint8_t raw[5];
         lora_keyboard_report_t keyboard;
     } hid_report;
 } lora_payload_v2_t;

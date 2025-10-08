@@ -314,7 +314,7 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
     if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_v2_t)) {
         const lora_payload_v2_t *payload_v2 = (const lora_payload_v2_t *)payload;
         slot_id = LORA_SLOT(payload_v2->version_slot);
-        uint8_t hid_type = payload_v2->hid_report.keyboard.hid_type;
+        uint8_t hid_type = LORA_HID_TYPE(payload_v2->type_flags);
         
         if (hid_type == HID_TYPE_KEYBOARD) {
             keycode = payload_v2->hid_report.keyboard.keycode[0];
