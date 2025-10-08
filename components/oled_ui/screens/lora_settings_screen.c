@@ -1,5 +1,6 @@
 #include "lora_settings_screen.h"
 #include "esp_log.h"
+#include "lora_bands.h"
 #include "lora_driver.h"
 #include "u8g2.h"
 #include "ui_config.h"
@@ -44,17 +45,15 @@ static const char *preset_details[] = {"SF7, 500kHz, CR4/5", "SF9, 125kHz, CR4/7
 
 static const int preset_count = sizeof(preset_names) / sizeof(preset_names[0]);
 
-// Get TX power based on frequency
-static int8_t get_tx_power_for_frequency(uint32_t frequency)
+// Get TX power from band profile
+static int8_t get_tx_power_for_band(const char *band_id)
 {
-    if (frequency >= 430000000 && frequency <= 440000000) {
-        return 10; // 433MHz: 10dBm
-    } else if (frequency >= 863000000 && frequency <= 870000000) {
-        return 14; // 868MHz: 14dBm
-    } else if (frequency >= 902000000 && frequency <= 928000000) {
-        return 17; // 915MHz: 17dBm (power constrained)
+    extern const lora_band_profile_t *lora_bands_get_profile_by_id(const char *id);
+    const lora_band_profile_t *band = lora_bands_get_profile_by_id(band_id);
+    if (band) {
+        return band->max_power_dbm;
     }
-    return 14; // Default to 14dBm
+    return 14; // Default to 14dBm if band not found
 }
 
 static int get_current_preset(void)
@@ -200,10 +199,11 @@ void lora_settings_screen_select(void)
         return;
     }
 
-    // Apply preset but keep current frequency and set appropriate power
+    // Apply preset but keep current frequency/band and set appropriate power
     lora_config_t new_config = presets[selected_preset];
     new_config.frequency = current_config.frequency;
-    new_config.tx_power = get_tx_power_for_frequency(current_config.frequency);
+    strncpy(new_config.band_id, current_config.band_id, sizeof(new_config.band_id) - 1);
+    new_config.tx_power = get_tx_power_for_band(current_config.band_id);
 
     esp_err_t ret = lora_set_config(&new_config);
     if (ret == ESP_OK) {
