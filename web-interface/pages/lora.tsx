@@ -318,6 +318,24 @@ export default function LoRaPage() {
                   <span className="font-medium">{settings.txPower} dBm</span>
                   <span>20 dBm</span>
                 </div>
+                {(() => {
+                  const freq = settings.frequency;
+                  let maxPower = 20;
+                  let region = '';
+                  if (freq >= 430000000 && freq <= 440000000) { maxPower = 10; region = 'EU/CN 433 MHz'; }
+                  else if (freq >= 863000000 && freq <= 870000000) { maxPower = 14; region = 'EU 868 MHz'; }
+                  else if (freq >= 902000000 && freq <= 928000000) { maxPower = 20; region = 'US 915 MHz'; }
+                  
+                  if (settings.txPower > maxPower) {
+                    return (
+                      <div className="mt-2 text-sm text-amber-600 dark:text-amber-400 flex items-start space-x-1">
+                        <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                        <span>Warning: {settings.txPower} dBm exceeds {region} limit ({maxPower} dBm)</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
 
