@@ -2,7 +2,7 @@
   "HardwareProfiles": [
     {
       "id": "HW_433",
-      "name": "Low-Band Hardware (433/470MHz)",
+      "name": "433/470 MHz Band",
       "physical_freq_min_khz": 410000,
       "physical_freq_max_khz": 525000,
       "optimal_center_khz": 433000,
@@ -41,7 +41,7 @@
     },
     {
       "id": "HW_868",
-      "name": "Mid-Band Hardware (EU 868MHz)",
+      "name": "868 MHz Band",
       "physical_freq_min_khz": 862000,
       "physical_freq_max_khz": 930000,
       "optimal_center_khz": 868000,
@@ -80,7 +80,7 @@
     },
     {
       "id": "HW_915",
-      "name": "High-Band Hardware (US 915MHz)",
+      "name": "915 MHz Band",
       "physical_freq_min_khz": 862000,
       "physical_freq_max_khz": 930000,
       "optimal_center_khz": 915000,

@@ -8,6 +8,7 @@ interface DeviceSettings {
   sleepTimeout: number
   autoSleep: boolean
   brightness: number
+  slot_id: number
 }
 
 export default function DevicePage() {
@@ -16,7 +17,8 @@ export default function DevicePage() {
     mode: 'presenter',
     sleepTimeout: 300000,
     autoSleep: true,
-    brightness: 128
+    brightness: 128,
+    slot_id: 1
   })
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -106,6 +108,22 @@ export default function DevicePage() {
                 onChange={(e) => setSettings({ ...settings, brightness: parseInt(e.target.value) })}
                 className="w-full"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Slot ID (Multi-PC Routing)</label>
+              <select
+                value={settings.slot_id}
+                onChange={(e) => setSettings({ ...settings, slot_id: parseInt(e.target.value) })}
+                className="input"
+              >
+                {Array.from({ length: 16 }, (_, i) => i + 1).map(slot => (
+                  <option key={slot} value={slot}>Slot {slot}</option>
+                ))}
+              </select>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Select which PC this presenter controls (1-16)
+              </p>
             </div>
 
             <div>

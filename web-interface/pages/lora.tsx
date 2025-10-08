@@ -9,6 +9,15 @@ interface LoRaSettings {
   codingRate: number
   txPower: number
   syncWord: number
+  band_id: string
+}
+
+interface Band {
+  id: string
+  name: string
+  center_khz: number
+  min_khz: number
+  max_khz: number
 }
 
 export default function LoRaPage() {
@@ -18,16 +27,36 @@ export default function LoRaPage() {
     bandwidth: 500000,
     codingRate: 5,
     txPower: 14,
-    syncWord: 0x12
+    syncWord: 0x12,
+    band_id: 'HW_868'
   })
+  const [bands, setBands] = useState<Band[]>([])
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
   useEffect(() => {
+    // Fetch current settings
     fetch('/api/lora/settings')
       .then(res => res.json())
       .then(data => setSettings(data))
       .catch(() => {})
+    
+    // Fetch available bands
+    fetch('/api/lora/bands')
+      .then(res => res.json())
+      .then(data => {
+        console.log('Bands loaded:', data)
+        setBands(data)
+      })
+      .catch((err) => {
+        console.error('Failed to load bands:', err)
+        // Fallback to default bands if API not available
+        setBands([
+          { id: 'HW_433', name: '433 MHz Band', center_khz: 433000, min_khz: 430000, max_khz: 440000 },
+          { id: 'HW_868', name: '868 MHz Band', center_khz: 868000, min_khz: 863000, max_khz: 870000 },
+          { id: 'HW_915', name: '915 MHz Band', center_khz: 915000, min_khz: 902000, max_khz: 928000 }
+        ])
+      })
   }, [])
 
   const handleSave = async () => {
@@ -177,22 +206,49 @@ export default function LoRaPage() {
         <div className="card p-8">
           <h2 className="text-xl font-semibold mb-6">Advanced Settings</h2>
           <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Hardware Band
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {bands.map(band => (
+                  <button
+                    key={band.id}
+                    onClick={() => setSettings({ 
+                      ...settings, 
+                      band_id: band.id,
+                      frequency: band.center_khz * 1000
+                    })}
+                    className={`p-4 border-2 rounded-lg transition-colors text-left ${
+                      settings.band_id === band.id 
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' 
+                        : 'border-gray-300 dark:border-gray-600 hover:border-primary-300'
+                    }`}
+                  >
+                    <div className="font-semibold mb-1">{band.name}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {band.min_khz / 1000} - {band.max_khz / 1000} MHz
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Frequency
                 </label>
-                <select
+                <input
+                  type="number"
                   value={settings.frequency}
                   onChange={(e) => setSettings({ ...settings, frequency: Number(e.target.value) })}
                   className="input"
-                >
-                  {frequencyOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                  step="1000"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Frequency in Hz
+                </p>
               </div>
 
               <div>
