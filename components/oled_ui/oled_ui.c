@@ -111,11 +111,6 @@ esp_err_t oled_ui_show_message(const char *title, const char *message, uint32_t 
     return ESP_OK;
 }
 
-void oled_ui_handle_button(oled_button_t button, bool long_press)
-{
-    ui_screen_controller_handle_button(button, long_press);
-}
-
 esp_err_t oled_ui_update_status(const oled_status_t *status)
 {
     if (!status) {

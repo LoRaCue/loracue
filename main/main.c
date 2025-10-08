@@ -385,7 +385,7 @@ static void button_handler(button_event_type_t event, void *arg)
 {
     oled_screen_t screen = oled_ui_get_screen();
 
-    // Allow both button press for menu on both MAIN and PC_MODE screens
+    // Allow long press for menu on both MAIN and PC_MODE screens
     if (screen != OLED_SCREEN_MAIN && screen != OLED_SCREEN_PC_MODE) {
         return;
     }
@@ -401,18 +401,15 @@ static void button_handler(button_event_type_t event, void *arg)
     uint8_t keycode   = 0;
     
     switch (event) {
-        case BUTTON_EVENT_PREV_SHORT:
-            keycode = HID_KEY_PAGE_UP; // Previous slide
-            break;
-        case BUTTON_EVENT_NEXT_SHORT:
+        case BUTTON_EVENT_SHORT:
             keycode = HID_KEY_PAGE_DOWN; // Next slide
             break;
-        case BUTTON_EVENT_PREV_LONG:
-            keycode = HID_KEY_B; // Black screen
+        case BUTTON_EVENT_DOUBLE:
+            keycode = HID_KEY_PAGE_UP; // Previous slide
             break;
-        case BUTTON_EVENT_NEXT_LONG:
-            keycode = HID_KEY_F5; // Start presentation
-            break;
+        case BUTTON_EVENT_LONG:
+            // Long press opens menu, don't send HID
+            return;
         default:
             return;
     }

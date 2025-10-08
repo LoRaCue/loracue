@@ -106,14 +106,6 @@ typedef struct {
 esp_err_t oled_ui_init(void);
 
 /**
- * @brief Handle button press events
- *
- * @param button Button that was pressed
- * @param long_press True if long press detected
- */
-void oled_ui_handle_button(oled_button_t button, bool long_press);
-
-/**
  * @brief Update device status and refresh display
  *
  * @param status Device status structure

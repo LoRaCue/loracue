@@ -44,20 +44,18 @@ typedef struct {
     uint8_t modifier;
 } key_mapping_t;
 
-// PC Mode key mappings
+// PC Mode key mappings (one-button UI)
 static const key_mapping_t pc_mode_keys[] = {
-    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},   // Previous slide
-    [BUTTON_EVENT_PREV_LONG]  = {0x29, 0},              // Escape key
-    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0}, // Next slide
-    [BUTTON_EVENT_NEXT_LONG]  = {HID_KEY_F5, 0},        // Start slideshow
+    [BUTTON_EVENT_SHORT]  = {HID_KEY_PAGE_DOWN, 0}, // Next slide
+    [BUTTON_EVENT_DOUBLE] = {HID_KEY_PAGE_UP, 0},   // Previous slide
+    [BUTTON_EVENT_LONG]   = {HID_KEY_F5, 0},        // Start slideshow
 };
 
-// Presenter Mode key mappings
+// Presenter Mode key mappings (one-button UI)
 static const key_mapping_t presenter_mode_keys[] = {
-    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},   // Previous slide
-    [BUTTON_EVENT_PREV_LONG]  = {HID_KEY_B, 0},         // Blank screen
-    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0}, // Next slide
-    [BUTTON_EVENT_NEXT_LONG]  = {0x2C, 0},              // Space key
+    [BUTTON_EVENT_SHORT]  = {HID_KEY_PAGE_DOWN, 0}, // Next slide
+    [BUTTON_EVENT_DOUBLE] = {HID_KEY_PAGE_UP, 0},   // Previous slide
+    [BUTTON_EVENT_LONG]   = {HID_KEY_B, 0},         // Blank screen
 };
 
 static void button_event_handler(button_event_type_t event, void *arg)
