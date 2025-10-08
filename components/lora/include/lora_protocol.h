@@ -26,9 +26,10 @@ extern "C" {
 
 // V2 Protocol macros
 #define LORA_PROTOCOL_VERSION 0x01
-#define LORA_VERSION(vt)      (((vt) >> 4) & 0x0F)
-#define LORA_HID_TYPE(vt)     ((vt) & 0x0F)
-#define LORA_MAKE_VT(v, t)    ((((v) & 0x0F) << 4) | ((t) & 0x0F))
+#define LORA_DEFAULT_SLOT     1
+#define LORA_VERSION(vs)      (((vs) >> 4) & 0x0F)
+#define LORA_SLOT(vs)         ((vs) & 0x0F)
+#define LORA_MAKE_VS(v, s)    ((((v) & 0x0F) << 4) | ((s) & 0x0F))
 
 /**
  * @brief LoRa command types
@@ -49,11 +50,11 @@ typedef enum {
 } lora_hid_type_t;
 
 /**
- * @brief Keyboard HID report (V2, 6 bytes)
+ * @brief Keyboard HID report (6 bytes)
  */
 typedef struct __attribute__((packed)) {
+    uint8_t hid_type;   ///< HID device type (keyboard=1, mouse=2, media=3)
     uint8_t modifiers;  ///< Bit 0=Ctrl, 1=Shift, 2=Alt, 3=GUI
-    uint8_t reserved;   ///< Always 0
     uint8_t keycode[4]; ///< Up to 4 simultaneous keys
 } lora_keyboard_report_t;
 
@@ -61,7 +62,7 @@ typedef struct __attribute__((packed)) {
  * @brief V2 Payload structure (7 bytes)
  */
 typedef struct __attribute__((packed)) {
-    uint8_t version_type;  ///< [7:4]=protocol_ver, [3:0]=hid_type
+    uint8_t version_slot;  ///< [7:4]=protocol_ver, [3:0]=slot_id (1-16, default=1)
     union {
         uint8_t raw[6];
         lora_keyboard_report_t keyboard;
@@ -96,13 +97,13 @@ esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *aes_key);
 /**
  * @brief Send keyboard key press
  */
-esp_err_t lora_protocol_send_keyboard(uint8_t modifiers, uint8_t keycode);
+esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_t keycode);
 
 /**
  * @brief Send keyboard with ACK
  */
-esp_err_t lora_protocol_send_keyboard_reliable(uint8_t modifiers, uint8_t keycode, uint32_t timeout_ms,
-                                               uint8_t max_retries);
+esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifiers, uint8_t keycode,
+                                               uint32_t timeout_ms, uint8_t max_retries);
 
 /**
  * @brief Receive and decrypt LoRa packet

@@ -3,27 +3,7 @@
 ## Overview
 Future-proof protocol design for extensible HID device support.
 
-## Current Protocol V1 (MVP)
-```
-Packet: 22 bytes total
-├─ Device ID:       2 bytes (unencrypted)
-├─ Encrypted data: 16 bytes
-│  ├─ Sequence:     2 bytes
-│  ├─ Command:      1 byte (0x01-0x04, 0x80)
-│  ├─ Payload len:  1 byte
-│  ├─ Payload:      0-7 bytes (UNUSED)
-│  └─ Padding:      remaining
-└─ MAC:             4 bytes
-
-Commands:
-- 0x01: CMD_NEXT_SLIDE
-- 0x02: CMD_PREV_SLIDE
-- 0x03: CMD_BLACK_SCREEN
-- 0x04: CMD_START_PRESENTATION
-- 0x80: CMD_ACK
-```
-
-## Proposed Protocol V2
+## Protocol
 
 ### Payload Structure (7 bytes)
 ```c

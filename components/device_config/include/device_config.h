@@ -40,6 +40,7 @@ typedef struct {
     bool auto_sleep_enabled;    ///< Auto sleep enabled
     uint8_t display_brightness; ///< Display brightness (0-255)
     bool bluetooth_enabled;     ///< Bluetooth configuration mode enabled
+    uint8_t slot_id;            ///< LoRa slot ID (1-16, default=1)
 } device_config_t;
 
 /**

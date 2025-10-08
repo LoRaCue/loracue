@@ -307,12 +307,14 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
     }
 
     usb_hid_keycode_t keycode = 0;
+    uint8_t slot_id = 0;
     const char *cmd_name = "UNKNOWN";
 
     // Parse HID report from payload
     if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_v2_t)) {
         const lora_payload_v2_t *payload_v2 = (const lora_payload_v2_t *)payload;
-        uint8_t hid_type = LORA_HID_TYPE(payload_v2->version_type);
+        slot_id = LORA_SLOT(payload_v2->version_slot);
+        uint8_t hid_type = payload_v2->hid_report.keyboard.hid_type;
         
         if (hid_type == HID_TYPE_KEYBOARD) {
             keycode = payload_v2->hid_report.keyboard.keycode[0];
@@ -336,6 +338,7 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
         return;
     }
 
+    ESP_LOGI(TAG, "PC mode: forwarding to USB slot %d", slot_id);
     usb_hid_send_key(keycode);
 
     // Add to command history
@@ -414,8 +417,12 @@ static void button_handler(button_event_type_t event, void *arg)
             return;
     }
 
-    ESP_LOGI(TAG, "Presenter mode: sending keyboard HID (mod=0x%02X, key=0x%02X)", modifiers, keycode);
-    lora_protocol_send_keyboard_reliable(modifiers, keycode, 1000, 3);
+    device_config_t config;
+    device_config_get(&config);
+    
+    ESP_LOGI(TAG, "Presenter mode: sending keyboard HID (slot=%d, mod=0x%02X, key=0x%02X)", config.slot_id,
+             modifiers, keycode);
+    lora_protocol_send_keyboard_reliable(config.slot_id, modifiers, keycode, 1000, 3);
 }
 
 void app_main(void)

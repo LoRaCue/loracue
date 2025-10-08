@@ -26,6 +26,7 @@ static const device_config_t default_config = {
     .auto_sleep_enabled = true,
     .display_brightness = 128, // 50% brightness
     .bluetooth_enabled  = true, // Enabled by default
+    .slot_id            = 1,    // Default slot
 };
 
 // Cached configuration

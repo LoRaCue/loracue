@@ -5,9 +5,9 @@
 
 extern u8g2_t u8g2;
 
-static const char *menu_items[] = {"Device Mode",     "Battery Status",     "LoRa Settings",      "Device Pairing",
-                                   "Device Registry", "Display Brightness", "Bluetooth",          "Configuration Mode",
-                                   "Device Info",     "System Info",        "Factory Reset"};
+static const char *menu_items[] = {"Device Mode",     "Slot",               "LoRa Settings",      "Device Pairing",
+                                   "Device Registry", "Display Brightness", "Battery Status",     "Bluetooth",
+                                   "Configuration Mode", "Device Info",     "System Info",        "Factory Reset"};
 
 static const int menu_item_count = sizeof(menu_items) / sizeof(menu_items[0]);
 static int selected_item         = 0;

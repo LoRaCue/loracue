@@ -19,6 +19,7 @@
 #include "lora_cr_screen.h"
 #include "lora_txpower_screen.h"
 #include "lora_band_screen.h"
+#include "lora_slot_screen.h"
 #include "main_screen.h"
 #include "menu_screen.h"
 #include "pairing_screen.h"
@@ -157,6 +158,10 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status)
 
         case OLED_SCREEN_LORA_BAND:
             lora_band_screen_draw();
+            break;
+
+        case OLED_SCREEN_LORA_SLOT:
+            lora_slot_screen_draw();
             break;
 
         case OLED_SCREEN_DEVICE_PAIRING:
@@ -299,6 +304,10 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press)
                     case MENU_DEVICE_MODE:
                         device_mode_screen_reset();
                         ui_screen_controller_set(OLED_SCREEN_DEVICE_MODE, NULL);
+                        break;
+                    case MENU_SLOT:
+                        lora_slot_screen_init();
+                        ui_screen_controller_set(OLED_SCREEN_LORA_SLOT, NULL);
                         break;
                     case MENU_LORA_SETTINGS:
                         ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
@@ -472,6 +481,17 @@ void ui_screen_controller_handle_button(oled_button_t button, bool long_press)
             } else if (button == OLED_BUTTON_BOTH) {
                 lora_band_screen_select();
                 ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            }
+            break;
+
+        case OLED_SCREEN_LORA_SLOT:
+            if (button == OLED_BUTTON_PREV) {
+                ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
+            } else if (button == OLED_BUTTON_NEXT) {
+                lora_slot_screen_navigate(MENU_DOWN);
+                lora_slot_screen_draw();
+            } else if (button == OLED_BUTTON_BOTH) {
+                lora_slot_screen_select();
             }
             break;
 
