@@ -59,11 +59,26 @@ esp_err_t lora_bands_init(void)
             band_profiles[band_count].optimal_freq_min_khz = optimal_min->valueint;
             band_profiles[band_count].optimal_freq_max_khz = optimal_max->valueint;
 
-            ESP_LOGI(TAG, "Loaded band: %s (%s) - %d-%d kHz", 
+            // Get max power from first public_bands entry
+            cJSON *public_bands = cJSON_GetObjectItem(profile, "public_bands");
+            if (cJSON_IsArray(public_bands) && cJSON_GetArraySize(public_bands) > 0) {
+                cJSON *first_band = cJSON_GetArrayItem(public_bands, 0);
+                cJSON *power_dbm = cJSON_GetObjectItem(first_band, "power_dbm");
+                if (cJSON_IsNumber(power_dbm)) {
+                    band_profiles[band_count].max_power_dbm = power_dbm->valueint;
+                } else {
+                    band_profiles[band_count].max_power_dbm = 20; // Default
+                }
+            } else {
+                band_profiles[band_count].max_power_dbm = 20; // Default
+            }
+
+            ESP_LOGI(TAG, "Loaded band: %s (%s) - %d-%d kHz, max %d dBm", 
                      band_profiles[band_count].id,
                      band_profiles[band_count].name,
                      band_profiles[band_count].optimal_freq_min_khz,
-                     band_profiles[band_count].optimal_freq_max_khz);
+                     band_profiles[band_count].optimal_freq_max_khz,
+                     band_profiles[band_count].max_power_dbm);
 
             band_count++;
         }

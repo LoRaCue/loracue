@@ -25,6 +25,7 @@ typedef struct {
     uint32_t optimal_center_khz;         ///< Optimal center frequency in kHz
     uint32_t optimal_freq_min_khz;       ///< Optimal minimum frequency in kHz
     uint32_t optimal_freq_max_khz;       ///< Optimal maximum frequency in kHz
+    int8_t max_power_dbm;                ///< Maximum regulatory TX power (from first public_bands entry)
 } lora_band_profile_t;
 
 /**

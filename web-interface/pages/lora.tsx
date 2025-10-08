@@ -17,6 +17,7 @@ interface Band {
   center_khz: number
   min_khz: number
   max_khz: number
+  max_power_dbm: number
 }
 
 export default function LoRaPage() {
@@ -50,9 +51,9 @@ export default function LoRaPage() {
         console.error('Failed to load bands:', err)
         // Fallback to default bands if API not available
         setBands([
-          { id: 'HW_433', name: '433 MHz Band', center_khz: 433000, min_khz: 430000, max_khz: 440000 },
-          { id: 'HW_868', name: '868 MHz Band', center_khz: 868000, min_khz: 863000, max_khz: 870000 },
-          { id: 'HW_915', name: '915 MHz Band', center_khz: 915000, min_khz: 902000, max_khz: 928000 }
+          { id: 'HW_433', name: '433 MHz Band', center_khz: 433000, min_khz: 430000, max_khz: 440000, max_power_dbm: 10 },
+          { id: 'HW_868', name: '868 MHz Band', center_khz: 868000, min_khz: 863000, max_khz: 870000, max_power_dbm: 14 },
+          { id: 'HW_915', name: '915 MHz Band', center_khz: 915000, min_khz: 902000, max_khz: 928000, max_power_dbm: 20 }
         ])
       })
   }, [])
@@ -319,18 +320,12 @@ export default function LoRaPage() {
                   <span>20 dBm</span>
                 </div>
                 {(() => {
-                  const freq = settings.frequency;
-                  let maxPower = 20;
-                  let region = '';
-                  if (freq >= 430000000 && freq <= 440000000) { maxPower = 10; region = 'EU/CN 433 MHz'; }
-                  else if (freq >= 863000000 && freq <= 870000000) { maxPower = 14; region = 'EU 868 MHz'; }
-                  else if (freq >= 902000000 && freq <= 928000000) { maxPower = 20; region = 'US 915 MHz'; }
-                  
-                  if (settings.txPower > maxPower) {
+                  const currentBand = bands.find(b => b.id === settings.band_id);
+                  if (currentBand && settings.txPower > currentBand.max_power_dbm) {
                     return (
                       <div className="mt-2 text-sm text-amber-600 dark:text-amber-400 flex items-start space-x-1">
                         <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-                        <span>Warning: {settings.txPower} dBm exceeds {region} limit ({maxPower} dBm)</span>
+                        <span>Warning: {settings.txPower} dBm exceeds {currentBand.name} regulatory limit ({currentBand.max_power_dbm} dBm)</span>
                       </div>
                     );
                   }

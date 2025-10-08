@@ -253,6 +253,7 @@ static void handle_get_lora_bands(void)
             cJSON_AddNumberToObject(band_obj, "center_khz", band->optimal_center_khz);
             cJSON_AddNumberToObject(band_obj, "min_khz", band->optimal_freq_min_khz);
             cJSON_AddNumberToObject(band_obj, "max_khz", band->optimal_freq_max_khz);
+            cJSON_AddNumberToObject(band_obj, "max_power_dbm", band->max_power_dbm);
             cJSON_AddItemToArray(bands_array, band_obj);
         }
     }
