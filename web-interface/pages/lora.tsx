@@ -94,9 +94,9 @@ export default function LoRaPage() {
   ]
 
   const presets = [
-    { name: 'Conference (100m)', sf: 7, bw: 500000, cr: 5, desc: 'Fast, low latency' },
-    { name: 'Auditorium (250m)', sf: 9, bw: 125000, cr: 7, desc: 'Balanced range' },
-    { name: 'Stadium (500m)', sf: 10, bw: 125000, cr: 8, desc: 'Maximum range' }
+    { name: 'Conference (100m)', sf: 7, bw: 500000, cr: 5, power: 14, desc: 'Fast, low latency' },
+    { name: 'Auditorium (250m)', sf: 9, bw: 125000, cr: 7, power: 14, desc: 'Balanced range' },
+    { name: 'Stadium (500m)', sf: 10, bw: 125000, cr: 8, power: 17, desc: 'Maximum range' }
   ]
 
   // Get TX power based on frequency
@@ -121,7 +121,7 @@ export default function LoRaPage() {
       spreadingFactor: preset.sf,
       bandwidth: preset.bw,
       codingRate: preset.cr,
-      txPower: getTxPowerForFrequency(settings.frequency)
+      txPower: preset.power
     })
   }
 
