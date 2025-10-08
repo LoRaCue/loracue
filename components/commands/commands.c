@@ -8,11 +8,12 @@
 #include "esp_partition.h"
 #include "esp_system.h"
 #include "firmware_manifest.h"
+#include "lora_bands.h"
+#include "lora_driver.h"
 #include "ota_compatibility.h"
 #include "ota_error_screen.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "lora_driver.h"
 #include "u8g2.h"
 #include <string.h>
 
@@ -62,6 +63,7 @@ static void handle_get_device_config(void)
     cJSON_AddBoolToObject(response, "autoSleep", config.auto_sleep_enabled);
     cJSON_AddNumberToObject(response, "brightness", config.display_brightness);
     cJSON_AddBoolToObject(response, "bluetooth", config.bluetooth_enabled);
+    cJSON_AddNumberToObject(response, "slot_id", config.slot_id);
 
     char *json_string = cJSON_Print(response);
     g_send_response(json_string);
@@ -104,6 +106,16 @@ static void handle_set_device_config(cJSON *config_json)
     if (bluetooth && cJSON_IsBool(bluetooth))
         config.bluetooth_enabled = cJSON_IsTrue(bluetooth);
 
+    cJSON *slot_id = cJSON_GetObjectItem(config_json, "slot_id");
+    if (slot_id && cJSON_IsNumber(slot_id)) {
+        int slot = slot_id->valueint;
+        if (slot < 1 || slot > 16) {
+            g_send_response("ERROR Invalid slot_id (must be 1-16)");
+            return;
+        }
+        config.slot_id = slot;
+    }
+
     ret = device_config_set(&config);
     if (ret != ESP_OK) {
         g_send_response("ERROR Failed to save device config");
@@ -124,6 +136,7 @@ static void handle_get_lora_config(void)
     }
 
     cJSON *response = cJSON_CreateObject();
+    cJSON_AddStringToObject(response, "band_id", config.band_id);
     cJSON_AddNumberToObject(response, "frequency", config.frequency);
     cJSON_AddNumberToObject(response, "spreading_factor", config.spreading_factor);
     cJSON_AddNumberToObject(response, "bandwidth", config.bandwidth);
@@ -146,11 +159,12 @@ static void handle_set_lora_config(cJSON *config_json)
         return;
     }
 
-    cJSON *freq  = cJSON_GetObjectItem(config_json, "frequency");
-    cJSON *sf    = cJSON_GetObjectItem(config_json, "spreading_factor");
-    cJSON *bw    = cJSON_GetObjectItem(config_json, "bandwidth");
-    cJSON *cr    = cJSON_GetObjectItem(config_json, "coding_rate");
-    cJSON *power = cJSON_GetObjectItem(config_json, "tx_power");
+    cJSON *freq    = cJSON_GetObjectItem(config_json, "frequency");
+    cJSON *sf      = cJSON_GetObjectItem(config_json, "spreading_factor");
+    cJSON *bw      = cJSON_GetObjectItem(config_json, "bandwidth");
+    cJSON *cr      = cJSON_GetObjectItem(config_json, "coding_rate");
+    cJSON *power   = cJSON_GetObjectItem(config_json, "tx_power");
+    cJSON *band_id = cJSON_GetObjectItem(config_json, "band_id");
 
     if (cJSON_IsNumber(freq))
         config.frequency = freq->valueint;
@@ -162,6 +176,29 @@ static void handle_set_lora_config(cJSON *config_json)
         config.coding_rate = cr->valueint;
     if (cJSON_IsNumber(power))
         config.tx_power = power->valueint;
+    if (cJSON_IsString(band_id)) {
+        strncpy(config.band_id, band_id->valuestring, sizeof(config.band_id) - 1);
+        config.band_id[sizeof(config.band_id) - 1] = '\0';
+    }
+
+    // Validate frequency against band limits
+    extern const lora_band_profile_t *lora_bands_get_profile_by_id(const char *band_id);
+    const lora_band_profile_t *band = lora_bands_get_profile_by_id(config.band_id);
+    if (band) {
+        uint32_t freq_khz = config.frequency / 1000;
+        if (freq_khz < band->optimal_freq_min_khz || freq_khz > band->optimal_freq_max_khz) {
+            cJSON *error = cJSON_CreateObject();
+            cJSON_AddStringToObject(error, "status", "error");
+            cJSON_AddStringToObject(error, "reason", "Frequency out of band range");
+            cJSON_AddNumberToObject(error, "min_khz", band->optimal_freq_min_khz);
+            cJSON_AddNumberToObject(error, "max_khz", band->optimal_freq_max_khz);
+            char *error_str = cJSON_PrintUnformatted(error);
+            g_send_response(error_str);
+            free(error_str);
+            cJSON_Delete(error);
+            return;
+        }
+    }
 
     ret = lora_set_config(&config);
     if (ret == ESP_OK) {
@@ -197,6 +234,33 @@ static void handle_get_paired_devices(void)
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(devices_array);
+}
+
+static void handle_get_lora_bands(void)
+{
+    extern int lora_bands_get_count(void);
+    extern const lora_band_profile_t *lora_bands_get_profile(int index);
+    
+    int band_count = lora_bands_get_count();
+    cJSON *bands_array = cJSON_CreateArray();
+
+    for (int i = 0; i < band_count; i++) {
+        const lora_band_profile_t *band = lora_bands_get_profile(i);
+        if (band) {
+            cJSON *band_obj = cJSON_CreateObject();
+            cJSON_AddStringToObject(band_obj, "id", band->id);
+            cJSON_AddStringToObject(band_obj, "name", band->name);
+            cJSON_AddNumberToObject(band_obj, "center_khz", band->optimal_center_khz);
+            cJSON_AddNumberToObject(band_obj, "min_khz", band->optimal_freq_min_khz);
+            cJSON_AddNumberToObject(band_obj, "max_khz", band->optimal_freq_max_khz);
+            cJSON_AddItemToArray(bands_array, band_obj);
+        }
+    }
+
+    char *json_string = cJSON_Print(bands_array);
+    g_send_response(json_string);
+    free(json_string);
+    cJSON_Delete(bands_array);
 }
 
 static void handle_pair_device(cJSON *pair_json)
@@ -541,6 +605,11 @@ void commands_execute(const char *command_line, response_fn_t send_response)
 
     if (strcmp(command_line, "GET_PAIRED_DEVICES") == 0) {
         handle_get_paired_devices();
+        return;
+    }
+
+    if (strcmp(command_line, "GET_LORA_BANDS") == 0) {
+        handle_get_lora_bands();
         return;
     }
 
