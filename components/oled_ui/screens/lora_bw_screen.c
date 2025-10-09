@@ -30,10 +30,10 @@ void lora_bw_screen_draw(void) {
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
     for (int i = 0; i < bw_count; i++) {
-        int item_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) + 3;
+        int item_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) + 3;
         
         if (i == selected_item) {
-            int bar_y = SEPARATOR_Y_TOP + (i * item_height) + 1;
+            int bar_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + 1;
             int bar_height = item_height - 2;
             if (i == bw_count - 1) bar_height -= 1;
             
@@ -45,7 +45,7 @@ void lora_bw_screen_draw(void) {
         snprintf(bw_str, sizeof(bw_str), "%d kHz", bw_values[i]);
         
         if (bw_values[i] == config.bandwidth) {
-            int icon_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) - (checkmark_height / 2);
+            int icon_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) - (checkmark_height / 2);
             u8g2_DrawXBM(&u8g2, 4, icon_y, checkmark_width, checkmark_height, checkmark_bits);
             u8g2_DrawStr(&u8g2, 16, item_y, bw_str);
         } else {

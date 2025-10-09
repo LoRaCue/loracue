@@ -39,7 +39,7 @@ void device_mode_screen_draw(void)
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
 
     for (int i = 0; i < mode_item_count; i++) {
-        int item_y_start = SEPARATOR_Y_TOP + (i * item_height);
+        int item_y_start = SEPARATOR_Y_TOP + 2 + (i * item_height);
         int bar_y_center = item_y_start + (item_height / 2);
 
         // Calculate lightbar position

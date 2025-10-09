@@ -34,10 +34,10 @@ void lora_band_screen_draw(void) {
         const lora_band_profile_t *profile = lora_bands_get_profile(i);
         if (!profile) continue;
         
-        int item_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) + 3;
+        int item_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) + 3;
         
         if (i == selected_item) {
-            int bar_y = SEPARATOR_Y_TOP + (i * item_height) + 1;
+            int bar_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + 1;
             int bar_height = item_height - 2;
             if (i == band_count - 1) bar_height -= 1;
             

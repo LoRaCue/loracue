@@ -42,10 +42,10 @@ void lora_txpower_screen_draw(void) {
     
     for (int i = 0; i < VIEWPORT_SIZE && (scroll_offset + i) < txpower_count; i++) {
         int item_idx = scroll_offset + i;
-        int item_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) + 3;
+        int item_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) + 3;
         
         if (item_idx == selected_item) {
-            int bar_y = SEPARATOR_Y_TOP + (i * item_height) + 1;
+            int bar_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + 1;
             int bar_height = item_height - 2;
             u8g2_DrawBox(&u8g2, 0, bar_y, DISPLAY_WIDTH, bar_height);
             u8g2_SetDrawColor(&u8g2, 0);
@@ -55,7 +55,7 @@ void lora_txpower_screen_draw(void) {
         snprintf(power_str, sizeof(power_str), "%d dBm", txpower_values[item_idx]);
         
         if (txpower_values[item_idx] == config.tx_power) {
-            int icon_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) - (checkmark_height / 2);
+            int icon_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) - (checkmark_height / 2);
             u8g2_DrawXBM(&u8g2, 4, icon_y, checkmark_width, checkmark_height, checkmark_bits);
             u8g2_DrawStr(&u8g2, 16, item_y, power_str);
         } else {

@@ -31,10 +31,10 @@ void lora_cr_screen_draw(void) {
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
     for (int i = 0; i < cr_count; i++) {
-        int item_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) + 3;
+        int item_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) + 3;
         
         if (i == selected_item) {
-            int bar_y = SEPARATOR_Y_TOP + (i * item_height) + 1;
+            int bar_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + 1;
             int bar_height = item_height - 2;
             if (i == cr_count - 1) bar_height -= 1;
             
@@ -43,7 +43,7 @@ void lora_cr_screen_draw(void) {
         }
         
         if (cr_values[i] == config.coding_rate) {
-            int icon_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) - (checkmark_height / 2);
+            int icon_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) - (checkmark_height / 2);
             u8g2_DrawXBM(&u8g2, 4, icon_y, checkmark_width, checkmark_height, checkmark_bits);
             u8g2_DrawStr(&u8g2, 16, item_y, cr_labels[i]);
         } else {

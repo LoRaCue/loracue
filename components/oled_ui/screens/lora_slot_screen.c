@@ -49,10 +49,10 @@ void lora_slot_screen_draw(void) {
     for (int i = 0; i < VIEWPORT_SIZE && (scroll_offset + i) < SLOT_COUNT; i++) {
         int slot_idx = scroll_offset + i;
         int slot_num = slot_idx + 1; // Display 1-16
-        int item_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) + 3;
+        int item_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) + 3;
         
         if (slot_idx == selected_slot) {
-            int bar_y = SEPARATOR_Y_TOP + (i * item_height) + 1;
+            int bar_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + 1;
             int bar_height = item_height - 2;
             u8g2_DrawBox(&u8g2, 0, bar_y, DISPLAY_WIDTH, bar_height);
             u8g2_SetDrawColor(&u8g2, 0);

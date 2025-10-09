@@ -76,10 +76,10 @@ void lora_submenu_screen_draw(void) {
     
     for (int i = 0; i < VIEWPORT_SIZE && (scroll_offset + i) < menu_item_count; i++) {
         int item_idx = scroll_offset + i;
-        int item_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) + 3;
+        int item_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) + 3;
         
         if (item_idx == selected_item) {
-            int bar_y = SEPARATOR_Y_TOP + (i * item_height) + 1;
+            int bar_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + 1;
             int bar_height = item_height - 2;
             u8g2_DrawBox(&u8g2, 0, bar_y, DISPLAY_WIDTH, bar_height);
             u8g2_SetDrawColor(&u8g2, 0);
