@@ -91,5 +91,5 @@ void lora_slot_screen_select(void) {
     device_config_get(&config);
     config.slot_id = selected_slot + 1; // Convert 0-15 to 1-16
     device_config_set(&config);
-    oled_ui_set_screen(OLED_SCREEN_LORA_SUBMENU);
+    oled_ui_set_screen(OLED_SCREEN_MENU);
 }
