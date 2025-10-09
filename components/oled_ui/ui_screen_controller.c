@@ -474,12 +474,15 @@ void ui_screen_controller_handle_button(button_event_type_t event)
                     brightness_screen_navigate(MENU_UP);
                     brightness_screen_draw();
                 } else if (event == BUTTON_EVENT_LONG) {
-                    brightness_screen_select();
-                    brightness_screen_draw();
+                    brightness_screen_select(); // Saves and exits edit mode
+                    ui_screen_controller_set(OLED_SCREEN_MENU, NULL); // Return to menu
                 }
             } else {
-                if (event == BUTTON_EVENT_LONG) {
-                    brightness_screen_select();
+                if (event == BUTTON_EVENT_DOUBLE) {
+                    // Double press = back to menu
+                    ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+                } else if (event == BUTTON_EVENT_LONG) {
+                    brightness_screen_select(); // Enter edit mode
                     brightness_screen_draw();
                 }
             }
