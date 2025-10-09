@@ -29,6 +29,19 @@ static const unsigned char battery_1_bar[] = {
 static const unsigned char battery_0_bars[] = {
     0xfe, 0x3f, 0x01, 0x40, 0x01, 0xc0, 0x01, 0xc0, 0x01, 0xc0, 0x01, 0xc0, 0x01, 0x40, 0xfe, 0x3f};
 
+// Button press icons for one-button UI
+// Short press icon (7x7)
+static const unsigned char button_short_press[] = {
+    0x9c, 0xa2, 0xc1, 0xc1, 0xc1, 0xa2, 0x9c};
+
+// Double press icon (13x7)
+static const unsigned char button_double_press[] = {
+    0x1c, 0xe7, 0xa2, 0xe8, 0x41, 0xf0, 0x41, 0xf0, 0x41, 0xf0, 0xa2, 0xe8, 0x1c, 0xe7};
+
+// Long press icon (13x7)
+static const unsigned char button_long_press[] = {
+    0x1c, 0xe0, 0x22, 0xe0, 0x41, 0xe0, 0xc1, 0xff, 0x41, 0xe0, 0x22, 0xe0, 0x1c, 0xe0};
+
 // RF signal icons (11x8)
 static const unsigned char rf_4_bars[] = {
     0x00, 0xfe, 0x00, 0xfe, 0xc0, 0xfe, 0xc0, 0xfe, 0xd8, 0xfe, 0xd8, 0xfe, 0xdb, 0xfe, 0xdb, 0xfe};
@@ -115,4 +128,19 @@ void ui_rf_draw(signal_strength_t strength)
     }
 
     u8g2_DrawXBM(&u8g2, RF_ICON_X, RF_ICON_Y, 11, 8, bitmap);
+}
+
+void ui_button_short_draw_at(int x, int y)
+{
+    u8g2_DrawXBM(&u8g2, x, y, 7, 7, button_short_press);
+}
+
+void ui_button_double_draw_at(int x, int y)
+{
+    u8g2_DrawXBM(&u8g2, x, y, 13, 7, button_double_press);
+}
+
+void ui_button_long_draw_at(int x, int y)
+{
+    u8g2_DrawXBM(&u8g2, x, y, 13, 7, button_long_press);
 }
