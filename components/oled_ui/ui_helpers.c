@@ -26,7 +26,7 @@ void ui_draw_footer(footer_context_t context, const char *custom_labels[3])
             ui_button_short_draw_at(2, 56);
             u8g2_DrawStr(&u8g2, 11, 64, "Next");
             ui_button_double_draw_at(40, 56);
-            u8g2_DrawStr(&u8g2, 55, 64, "Prev");
+            u8g2_DrawStr(&u8g2, 55, 64, "Back");
             ui_button_long_draw_at(90, 56);
             u8g2_DrawStr(&u8g2, 105, 64, "Select");
             break;
@@ -41,7 +41,7 @@ void ui_draw_footer(footer_context_t context, const char *custom_labels[3])
             break;
             
         case FOOTER_CONTEXT_INFO:
-            ui_button_long_draw_at(2, 56);
+            ui_button_double_draw_at(2, 56);
             u8g2_DrawStr(&u8g2, 17, 64, "Back");
             break;
             
