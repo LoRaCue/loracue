@@ -98,7 +98,7 @@ void lora_settings_screen_draw(void)
 
     for (int i = 0; i < VIEWPORT_SIZE && (scroll_offset + i) < preset_count; i++) {
         int preset_idx = scroll_offset + i;
-        int y_base     = 21 + (i * 20); // 20px spacing for 2-line items, moved 1px down
+        int y_base     = 22 + (i * 20); // 20px spacing for 2-line items, moved 1px down
 
         if (preset_idx == selected_preset) {
             // Highlight selected preset with full box (exactly half viewport height)
