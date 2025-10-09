@@ -418,21 +418,18 @@ void ui_screen_controller_handle_button(button_event_type_t event)
         case OLED_SCREEN_LORA_CR:
         case OLED_SCREEN_LORA_TXPOWER:
         case OLED_SCREEN_LORA_BAND:
-        case OLED_SCREEN_LORA_SLOT:
             if (event == BUTTON_EVENT_SHORT) {
                 if (current_screen == OLED_SCREEN_LORA_SF) lora_sf_screen_navigate(MENU_DOWN);
                 else if (current_screen == OLED_SCREEN_LORA_BW) lora_bw_screen_navigate(MENU_DOWN);
                 else if (current_screen == OLED_SCREEN_LORA_CR) lora_cr_screen_navigate(MENU_DOWN);
                 else if (current_screen == OLED_SCREEN_LORA_TXPOWER) lora_txpower_screen_navigate(MENU_DOWN);
                 else if (current_screen == OLED_SCREEN_LORA_BAND) lora_band_screen_navigate(MENU_DOWN);
-                else if (current_screen == OLED_SCREEN_LORA_SLOT) lora_slot_screen_navigate(MENU_DOWN);
                 
                 if (current_screen == OLED_SCREEN_LORA_SF) lora_sf_screen_draw();
                 else if (current_screen == OLED_SCREEN_LORA_BW) lora_bw_screen_draw();
                 else if (current_screen == OLED_SCREEN_LORA_CR) lora_cr_screen_draw();
                 else if (current_screen == OLED_SCREEN_LORA_TXPOWER) lora_txpower_screen_draw();
                 else if (current_screen == OLED_SCREEN_LORA_BAND) lora_band_screen_draw();
-                else if (current_screen == OLED_SCREEN_LORA_SLOT) lora_slot_screen_draw();
             } else if (event == BUTTON_EVENT_DOUBLE) {
                 // Double press = back to submenu
                 ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
@@ -452,9 +449,19 @@ void ui_screen_controller_handle_button(button_event_type_t event)
                 } else if (current_screen == OLED_SCREEN_LORA_BAND) {
                     lora_band_screen_select();
                     ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
-                } else if (current_screen == OLED_SCREEN_LORA_SLOT) {
-                    lora_slot_screen_select();
                 }
+            }
+            break;
+
+        case OLED_SCREEN_LORA_SLOT:
+            if (event == BUTTON_EVENT_SHORT) {
+                lora_slot_screen_navigate(MENU_DOWN);
+                lora_slot_screen_draw();
+            } else if (event == BUTTON_EVENT_DOUBLE) {
+                // Double press = back to main menu (slot is accessed from main menu, not submenu)
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+            } else if (event == BUTTON_EVENT_LONG) {
+                lora_slot_screen_select();
             }
             break;
 
