@@ -348,7 +348,10 @@ void ui_screen_controller_handle_button(button_event_type_t event)
             break;
 
         case OLED_SCREEN_FACTORY_RESET:
-            if (event == BUTTON_EVENT_LONG) {
+            if (event == BUTTON_EVENT_DOUBLE) {
+                // Double press = back to menu
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+            } else if (event == BUTTON_EVENT_LONG) {
                 factory_reset_screen_execute();
             }
             break;
@@ -491,18 +494,25 @@ void ui_screen_controller_handle_button(button_event_type_t event)
         case OLED_SCREEN_BLUETOOTH:
             if (event == BUTTON_EVENT_SHORT) {
                 bluetooth_screen_handle_input(1);
+            } else if (event == BUTTON_EVENT_DOUBLE) {
+                // Double press = back to menu
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
             } else if (event == BUTTON_EVENT_LONG) {
                 bluetooth_screen_handle_input(2);
             }
             break;
 
         case OLED_SCREEN_CONFIG_ACTIVE:
-            if (event == BUTTON_EVENT_LONG) {
-                config_wifi_server_stop();
-                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
-            } else if (event == BUTTON_EVENT_SHORT) {
+            if (event == BUTTON_EVENT_SHORT) {
                 config_mode_screen_toggle_display();
                 config_mode_screen_draw();
+            } else if (event == BUTTON_EVENT_DOUBLE) {
+                // Double press = back to menu
+                config_wifi_server_stop();
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+            } else if (event == BUTTON_EVENT_LONG) {
+                config_wifi_server_stop();
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
             }
             break;
 
