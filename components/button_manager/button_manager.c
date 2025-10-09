@@ -3,7 +3,7 @@
  * @brief Button manager implementation with timing and debouncing
  *
  * CONTEXT: Converts raw button states to UI events with proper timing
- * TIMING: Short press <1.5s, Long press >1.5s, Both buttons >3s
+ * TIMING: Short press <500ms, Double press 2 clicks <500ms, Long press >2s
  */
 
 #include "button_manager.h"
@@ -22,7 +22,7 @@ static const char *TAG = "BUTTON_MGR";
 #define DEBOUNCE_TIME_MS 50
 #define SHORT_PRESS_MAX_MS 500
 #define DOUBLE_CLICK_WINDOW_MS 500
-#define LONG_PRESS_TIME_MS 3000
+#define LONG_PRESS_TIME_MS 2000
 #define INACTIVITY_TIMEOUT_MS 300000 // 5 minutes
 
 // Button manager state
