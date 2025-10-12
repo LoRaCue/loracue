@@ -44,7 +44,7 @@ void slot_screen_draw(void) {
     if (edit_mode) {
         ui_draw_footer(FOOTER_CONTEXT_EDIT, NULL);
     } else {
-        const char *labels[] = {NULL, NULL, "Edit"};
+        const char *labels[] = {NULL, "Back", "Edit"};
         ui_draw_footer(FOOTER_CONTEXT_CUSTOM, labels);
     }
     

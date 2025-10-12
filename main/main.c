@@ -26,6 +26,7 @@
 #include "nvs_flash.h"
 #include "oled_ui.h"
 #include "power_mgmt.h"
+#include "power_mgmt_config.h"
 #include "usb_hid.h"
 #include "uart_commands.h"
 #include "version.h"
@@ -483,6 +484,9 @@ void app_main(void)
 
     // Initialize power management with settings from NVS
     ESP_LOGI(TAG, "Initializing power management...");
+    power_mgmt_config_t pwr_cfg;
+    power_mgmt_config_get(&pwr_cfg);
+    
     power_config_t power_config = {
 #ifdef SIMULATOR_BUILD
         .light_sleep_timeout_ms  = 0,
@@ -490,14 +494,15 @@ void app_main(void)
         .enable_auto_light_sleep = false,
         .enable_auto_deep_sleep  = false,
 #else
-        .light_sleep_timeout_ms  = 0, // TODO: Re-enable after I2C restoration
-        .deep_sleep_timeout_ms   = config.auto_sleep_enabled ? config.sleep_timeout_ms : 0,
-        .enable_auto_light_sleep = false, // FIXME: Disabled due to I2C corruption
-        .enable_auto_deep_sleep  = config.auto_sleep_enabled,
+        .light_sleep_timeout_ms  = pwr_cfg.light_sleep_timeout_ms,
+        .deep_sleep_timeout_ms   = pwr_cfg.deep_sleep_timeout_ms,
+        .enable_auto_light_sleep = pwr_cfg.light_sleep_enabled,
+        .enable_auto_deep_sleep  = pwr_cfg.deep_sleep_enabled,
 #endif
         .cpu_freq_mhz = 80,
     };
-    ESP_LOGI(TAG, "Power config: deep_sleep=%lums, auto_sleep=%s", power_config.deep_sleep_timeout_ms,
+    ESP_LOGI(TAG, "Power config: light_sleep=%s, deep_sleep=%s",
+             power_config.enable_auto_light_sleep ? "enabled" : "disabled",
              power_config.enable_auto_deep_sleep ? "enabled" : "disabled");
     ret = power_mgmt_init(&power_config);
     if (ret != ESP_OK) {

@@ -13,10 +13,13 @@
 #include "freertos/task.h"
 #include "led_manager.h"
 #include "power_mgmt.h"
+#include "u8g2.h"
 #include "ui_screen_controller.h"
 #include <string.h>
 
 static const char *TAG = "BUTTON_MGR";
+
+extern u8g2_t u8g2;
 
 // Timing constants (in milliseconds)
 #define DEBOUNCE_TIME_MS 50
@@ -72,6 +75,12 @@ static void button_manager_task(void *pvParameters)
             button.press_start_time = current_time;
             button.long_press_sent = false;
             last_activity_time = current_time;
+            led_manager_button_feedback(true);  // Turn off LED
+            
+            // Wake display if in power save mode
+            extern u8g2_t u8g2;
+            u8g2_SetPowerSave(&u8g2, 0);
+            
             ESP_LOGD(TAG, "Button pressed");
         }
         // Button release detection
@@ -79,6 +88,7 @@ static void button_manager_task(void *pvParameters)
             button.pressed = false;
             uint32_t press_duration = current_time - button.press_start_time;
             last_activity_time = current_time;
+            led_manager_button_feedback(false);  // Restore LED
             
             // Check if long press was already sent
             if (button.long_press_sent) {
@@ -133,6 +143,9 @@ static void button_manager_task(void *pvParameters)
             if (recommended_mode == POWER_MODE_LIGHT_SLEEP) {
                 ESP_LOGI(TAG, "Entering light sleep due to inactivity");
                 power_mgmt_light_sleep(30000);
+                u8g2_InitDisplay(&u8g2);
+                u8g2_SetPowerSave(&u8g2, 0);
+                ui_screen_controller_update(NULL);
                 last_activity_time = current_time;
             } else if (recommended_mode == POWER_MODE_DEEP_SLEEP) {
                 ESP_LOGI(TAG, "Entering deep sleep due to extended inactivity");

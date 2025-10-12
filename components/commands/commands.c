@@ -4,6 +4,7 @@
 #include "device_registry.h"
 #include "esp_app_format.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_system.h"
@@ -12,6 +13,8 @@
 #include "lora_driver.h"
 #include "ota_compatibility.h"
 #include "ota_error_screen.h"
+#include "power_mgmt.h"
+#include "power_mgmt_config.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "u8g2.h"
@@ -41,8 +44,16 @@ static void handle_get_version(void)
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "version", firmware_manifest_get_version());
     cJSON_AddStringToObject(response, "board_id", firmware_manifest_get_board_id());
+    
+    // Add MAC address
+    uint8_t mac[6];
+    esp_efuse_mac_get_default(mac);
+    char mac_str[18];
+    snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    cJSON_AddStringToObject(response, "mac", mac_str);
 
-    char *json_string = cJSON_Print(response);
+    char *json_string = cJSON_PrintUnformatted(response);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
@@ -59,13 +70,11 @@ static void handle_get_device_config(void)
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "name", config.device_name);
     cJSON_AddStringToObject(response, "mode", device_mode_to_string(config.device_mode));
-    cJSON_AddNumberToObject(response, "sleepTimeout", config.sleep_timeout_ms);
-    cJSON_AddBoolToObject(response, "autoSleep", config.auto_sleep_enabled);
     cJSON_AddNumberToObject(response, "brightness", config.display_brightness);
     cJSON_AddBoolToObject(response, "bluetooth", config.bluetooth_enabled);
     cJSON_AddNumberToObject(response, "slot_id", config.slot_id);
 
-    char *json_string = cJSON_Print(response);
+    char *json_string = cJSON_PrintUnformatted(response);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
@@ -86,18 +95,9 @@ static void handle_set_device_config(cJSON *config_json)
         config.device_name[sizeof(config.device_name) - 1] = '\0';
     }
 
-    cJSON *sleepTimeout = cJSON_GetObjectItem(config_json, "sleepTimeout");
-    if (sleepTimeout && cJSON_IsNumber(sleepTimeout))
-        config.sleep_timeout_ms = sleepTimeout->valueint;
-
-    cJSON *autoSleep = cJSON_GetObjectItem(config_json, "autoSleep");
-    if (autoSleep && cJSON_IsBool(autoSleep))
-        config.auto_sleep_enabled = cJSON_IsTrue(autoSleep);
-
     cJSON *brightness = cJSON_GetObjectItem(config_json, "brightness");
     if (brightness && cJSON_IsNumber(brightness)) {
         config.display_brightness = brightness->valueint;
-        // Apply immediately
         extern u8g2_t u8g2;
         u8g2_SetContrast(&u8g2, config.display_brightness);
     }
@@ -125,6 +125,58 @@ static void handle_set_device_config(cJSON *config_json)
     g_send_response("OK Device config updated");
 }
 
+static void handle_get_power_management(void)
+{
+    power_mgmt_config_t config;
+    if (power_mgmt_config_get(&config) != ESP_OK) {
+        g_send_response("ERROR Failed to get power config");
+        return;
+    }
+
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddBoolToObject(response, "display_sleep_enabled", config.display_sleep_enabled);
+    cJSON_AddNumberToObject(response, "display_sleep_timeout_ms", config.display_sleep_timeout_ms);
+    cJSON_AddBoolToObject(response, "light_sleep_enabled", config.light_sleep_enabled);
+    cJSON_AddNumberToObject(response, "light_sleep_timeout_ms", config.light_sleep_timeout_ms);
+    cJSON_AddBoolToObject(response, "deep_sleep_enabled", config.deep_sleep_enabled);
+    cJSON_AddNumberToObject(response, "deep_sleep_timeout_ms", config.deep_sleep_timeout_ms);
+
+    char *json_string = cJSON_PrintUnformatted(response);
+    g_send_response(json_string);
+    free(json_string);
+    cJSON_Delete(response);
+}
+
+static void handle_set_power_management(cJSON *config_json)
+{
+    power_mgmt_config_t config;
+    if (power_mgmt_config_get(&config) != ESP_OK) {
+        g_send_response("ERROR Failed to get current power config");
+        return;
+    }
+
+    cJSON *item;
+    if ((item = cJSON_GetObjectItem(config_json, "display_sleep_enabled")) && cJSON_IsBool(item))
+        config.display_sleep_enabled = cJSON_IsTrue(item);
+    if ((item = cJSON_GetObjectItem(config_json, "display_sleep_timeout_ms")) && cJSON_IsNumber(item))
+        config.display_sleep_timeout_ms = item->valueint;
+    if ((item = cJSON_GetObjectItem(config_json, "light_sleep_enabled")) && cJSON_IsBool(item))
+        config.light_sleep_enabled = cJSON_IsTrue(item);
+    if ((item = cJSON_GetObjectItem(config_json, "light_sleep_timeout_ms")) && cJSON_IsNumber(item))
+        config.light_sleep_timeout_ms = item->valueint;
+    if ((item = cJSON_GetObjectItem(config_json, "deep_sleep_enabled")) && cJSON_IsBool(item))
+        config.deep_sleep_enabled = cJSON_IsTrue(item);
+    if ((item = cJSON_GetObjectItem(config_json, "deep_sleep_timeout_ms")) && cJSON_IsNumber(item))
+        config.deep_sleep_timeout_ms = item->valueint;
+
+    if (power_mgmt_config_set(&config) != ESP_OK) {
+        g_send_response("ERROR Failed to save power config");
+        return;
+    }
+
+    g_send_response("OK Power config updated - restart required");
+}
+
 static void handle_get_lora_config(void)
 {
     lora_config_t config;
@@ -143,7 +195,7 @@ static void handle_get_lora_config(void)
     cJSON_AddNumberToObject(response, "coding_rate", config.coding_rate);
     cJSON_AddNumberToObject(response, "tx_power", config.tx_power);
 
-    char *json_string = cJSON_Print(response);
+    char *json_string = cJSON_PrintUnformatted(response);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
@@ -230,7 +282,7 @@ static void handle_get_paired_devices(void)
         }
     }
 
-    char *json_string = cJSON_Print(devices_array);
+    char *json_string = cJSON_PrintUnformatted(devices_array);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(devices_array);
@@ -258,7 +310,7 @@ static void handle_get_lora_bands(void)
         }
     }
 
-    char *json_string = cJSON_Print(bands_array);
+    char *json_string = cJSON_PrintUnformatted(bands_array);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(bands_array);
@@ -583,19 +635,27 @@ static void handle_fw_update_commit(void)
 void commands_execute(const char *command_line, response_fn_t send_response)
 {
     g_send_response = send_response;
+    
+    // Reset sleep timer on any command activity
+    power_mgmt_update_activity();
 
     if (strcmp(command_line, "PING") == 0) {
         handle_ping();
         return;
     }
 
-    if (strcmp(command_line, "GET_VERSION") == 0) {
+    if (strcmp(command_line, "GET_DEVICE_INFO") == 0) {
         handle_get_version();
         return;
     }
 
     if (strcmp(command_line, "GET_DEVICE_CONFIG") == 0) {
         handle_get_device_config();
+        return;
+    }
+
+    if (strcmp(command_line, "GET_POWER_MANAGEMENT") == 0) {
+        handle_get_power_management();
         return;
     }
 
@@ -611,6 +671,17 @@ void commands_execute(const char *command_line, response_fn_t send_response)
 
     if (strcmp(command_line, "GET_LORA_BANDS") == 0) {
         handle_get_lora_bands();
+        return;
+    }
+
+    if (strncmp(command_line, "SET_POWER_MANAGEMENT ", 21) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 21);
+        if (json) {
+            handle_set_power_management(json);
+            cJSON_Delete(json);
+        } else {
+            g_send_response("ERROR Invalid JSON");
+        }
         return;
     }
 

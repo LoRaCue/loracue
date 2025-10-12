@@ -4,6 +4,7 @@
  *
  * CONTEXT: LoRaCue hardware
  * HARDWARE: Heltec LoRa V3 development board
+ * DISPLAY: SSD1306 128x64 OLED (not SH1106 as commonly documented)
  * PINS: SPI(8-14)=LoRa, I2C(17-18)=OLED, GPIO(0)=Button, ADC(1,37)=Battery
  * ARCHITECTURE: BSP abstraction layer for multi-board support
  */
@@ -39,7 +40,7 @@ u8g2_t u8g2;
 #define LORA_BUSY_PIN GPIO_NUM_13
 #define LORA_DIO1_PIN GPIO_NUM_14
 
-// OLED SH1106 Pins
+// OLED SSD1306 Pins (not SH1106 as commonly documented)
 #define OLED_SDA_PIN GPIO_NUM_17
 #define OLED_SCL_PIN GPIO_NUM_18
 #define OLED_RST_PIN GPIO_NUM_21
@@ -405,17 +406,17 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     // Wait for I2C bus to stabilize
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    // Initialize u8g2 with SH1106 128x64 display using HAL callbacks
-    u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2_local, U8G2_R0, 
-                                          u8g2_esp32_i2c_byte_cb, 
-                                          u8g2_esp32_gpio_and_delay_cb);
+    // Initialize u8g2 with SSD1306 128x64 display (Heltec V3 may use SSD1306 not SH1106)
+    u8g2_Setup_ssd1306_i2c_128x64_noname_f(u8g2_local, U8G2_R0, 
+                                           u8g2_esp32_i2c_byte_cb, 
+                                           u8g2_esp32_gpio_and_delay_cb);
 
     // Initialize display
     u8g2_InitDisplay(u8g2_local);
     u8g2_SetPowerSave(u8g2_local, 0);
     u8g2_ClearDisplay(u8g2_local);
 
-    ESP_LOGI(TAG, "u8g2 initialized successfully for SH1106");
+    ESP_LOGI(TAG, "u8g2 initialized successfully for SSD1306");
     return ESP_OK;
 }
 

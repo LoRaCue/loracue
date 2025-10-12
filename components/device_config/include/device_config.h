@@ -36,8 +36,6 @@ const char *device_mode_to_string(device_mode_t mode);
 typedef struct {
     char device_name[32];       ///< Device name
     device_mode_t device_mode;  ///< Current device mode (PRESENTER/PC)
-    uint32_t sleep_timeout_ms;  ///< Sleep timeout in milliseconds
-    bool auto_sleep_enabled;    ///< Auto sleep enabled
     uint8_t display_brightness; ///< Display brightness (0-255)
     bool bluetooth_enabled;     ///< Bluetooth configuration mode enabled
     uint8_t slot_id;            ///< LoRa slot ID (1-16, default=1)

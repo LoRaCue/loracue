@@ -29,7 +29,7 @@ static SemaphoreHandle_t lora_spi_mutex = NULL;
 
 // LoRa configuration
 static lora_config_t current_config = {
-    .frequency        = 868000000, // 868MHz default
+    .frequency        = 868100000, // 868.1 MHz default
     .spreading_factor = 7,         // SF7 for low latency
     .bandwidth        = 500,       // 500kHz for high throughput
     .coding_rate      = 5,         // 4/5 coding rate

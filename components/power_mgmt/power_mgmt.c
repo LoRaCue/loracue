@@ -12,6 +12,7 @@
 #include "driver/i2c.h"
 #include "driver/rtc_io.h"
 #include "driver/spi_master.h"
+#include "driver/uart.h"
 #include "esp_log.h"
 #include "esp_pm.h"
 #include "esp_sleep.h"
@@ -38,9 +39,8 @@ static const power_config_t default_config = {
     .cpu_freq_mhz            = 80, // 80MHz for power efficiency
 };
 
-// GPIO pins for wake (buttons)
-#define WAKE_GPIO_PREV 45 // PREV button
-#define WAKE_GPIO_NEXT 46 // NEXT button
+// GPIO pins for wake (button)
+#define WAKE_GPIO_BUTTON 0 // User button on Heltec V3
 
 esp_err_t power_mgmt_init(const power_config_t *config)
 {
@@ -71,12 +71,12 @@ esp_err_t power_mgmt_init(const power_config_t *config)
         ESP_LOGI(TAG, "Power management configured successfully");
     }
 
-    // Configure GPIO wake sources (buttons)
-    esp_sleep_enable_ext1_wakeup((1ULL << WAKE_GPIO_PREV) | (1ULL << WAKE_GPIO_NEXT), ESP_EXT1_WAKEUP_ANY_HIGH);
+    // Configure GPIO wake sources (button)
+    esp_sleep_enable_ext0_wakeup(WAKE_GPIO_BUTTON, 0); // Wake on LOW (button pressed)
 
-    // Configure GPIO pins for wake
+    // Configure GPIO pin for wake
     gpio_config_t wake_gpio_config = {
-        .pin_bit_mask = (1ULL << WAKE_GPIO_PREV) | (1ULL << WAKE_GPIO_NEXT),
+        .pin_bit_mask = (1ULL << WAKE_GPIO_BUTTON),
         .mode         = GPIO_MODE_INPUT,
         .pull_up_en   = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -123,25 +123,21 @@ esp_err_t power_mgmt_light_sleep(uint32_t timeout_ms)
 
     ESP_LOGI(TAG, "Entering light sleep for %dms", timeout_ms);
 
-    // Prepare for sleep
-    power_mgmt_prepare_sleep();
-
     uint64_t sleep_start = esp_timer_get_time();
 
     if (timeout_ms > 0) {
-        esp_sleep_enable_timer_wakeup(timeout_ms * 1000ULL); // Convert to microseconds
+        esp_sleep_enable_timer_wakeup(timeout_ms * 1000ULL);
     }
+    
+    esp_sleep_enable_uart_wakeup(UART_NUM_0);
 
-    // Enter light sleep
     esp_err_t ret = esp_light_sleep_start();
 
-    uint64_t sleep_end      = esp_timer_get_time();
-    uint32_t sleep_duration = (sleep_end - sleep_start) / 1000; // Convert to milliseconds
+    uint64_t sleep_end = esp_timer_get_time();
+    uint32_t sleep_duration = (sleep_end - sleep_start) / 1000;
 
     power_stats.light_sleep_time_ms += sleep_duration;
-
-    // Restore after wake
-    power_mgmt_restore_wake();
+    power_mgmt_update_activity();
 
     ESP_LOGI(TAG, "Woke from light sleep after %dms", sleep_duration);
 

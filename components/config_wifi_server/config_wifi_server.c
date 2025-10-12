@@ -113,8 +113,6 @@ static esp_err_t device_settings_get_handler(httpd_req_t *req)
     cJSON *json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "name", config.device_name);
     cJSON_AddStringToObject(json, "mode", device_mode_to_string(config.device_mode));
-    cJSON_AddNumberToObject(json, "sleepTimeout", config.sleep_timeout_ms);
-    cJSON_AddBoolToObject(json, "autoSleep", config.auto_sleep_enabled);
     cJSON_AddNumberToObject(json, "brightness", config.display_brightness);
     cJSON_AddBoolToObject(json, "bluetooth", config.bluetooth_enabled);
 
@@ -158,16 +156,6 @@ static esp_err_t device_settings_post_handler(httpd_req_t *req)
         } else if (strcmp(mode->valuestring, "pc") == 0) {
             config.device_mode = DEVICE_MODE_PC;
         }
-    }
-
-    cJSON *sleepTimeout = cJSON_GetObjectItem(json, "sleepTimeout");
-    if (sleepTimeout && cJSON_IsNumber(sleepTimeout)) {
-        config.sleep_timeout_ms = sleepTimeout->valueint;
-    }
-
-    cJSON *autoSleep = cJSON_GetObjectItem(json, "autoSleep");
-    if (autoSleep && cJSON_IsBool(autoSleep)) {
-        config.auto_sleep_enabled = cJSON_IsTrue(autoSleep);
     }
 
     cJSON *brightness = cJSON_GetObjectItem(json, "brightness");

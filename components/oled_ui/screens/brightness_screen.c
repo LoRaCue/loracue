@@ -45,27 +45,11 @@ void brightness_screen_draw(void)
     }
 
     // Footer
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
-
     if (edit_mode) {
-        // Edit mode: Up/Down | Save
-        u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-        u8g2_DrawXBM(&u8g2, 8, 56, track_next_width, track_next_height, track_next_bits);
-        u8g2_DrawStr(&u8g2, 14, 64, "Up/Down");
-
-        int save_text_width = u8g2_GetStrWidth(&u8g2, "Save");
-        int save_x          = DISPLAY_WIDTH - both_buttons_width - save_text_width - 2;
-        u8g2_DrawXBM(&u8g2, save_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-        u8g2_DrawStr(&u8g2, save_x + both_buttons_width + 2, 64, "Save");
+        ui_draw_footer(FOOTER_CONTEXT_EDIT, NULL);
     } else {
-        // View mode: Back | Edit
-        u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-        u8g2_DrawStr(&u8g2, 8, 64, "Back");
-
-        int change_text_width = u8g2_GetStrWidth(&u8g2, "Edit");
-        int change_x          = DISPLAY_WIDTH - both_buttons_width - change_text_width - 2;
-        u8g2_DrawXBM(&u8g2, change_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-        u8g2_DrawStr(&u8g2, change_x + both_buttons_width + 2, 64, "Edit");
+        const char *labels[] = {NULL, "Back", "Edit"};
+        ui_draw_footer(FOOTER_CONTEXT_CUSTOM, labels);
     }
 
     u8g2_SendBuffer(&u8g2);
