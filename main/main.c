@@ -616,6 +616,7 @@ void app_main(void)
         // Non-fatal - continue without Bluetooth
     }
 
+#ifdef CONFIG_UART_COMMANDS_ENABLED
     // Initialize UART command interface
     ESP_LOGI(TAG, "Initializing UART command interface...");
     ret = uart_commands_init();
@@ -627,6 +628,7 @@ void app_main(void)
             ESP_LOGW(TAG, "UART commands start failed: %s", esp_err_to_name(ret));
         }
     }
+#endif
 
     // Validate hardware
     ESP_LOGI(TAG, "Running hardware validation...");

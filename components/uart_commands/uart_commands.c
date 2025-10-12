@@ -4,6 +4,9 @@
  */
 
 #include "uart_commands.h"
+
+#ifdef CONFIG_UART_COMMANDS_ENABLED
+
 #include "commands.h"
 #include "driver/uart.h"
 #include "esp_log.h"
@@ -132,3 +135,23 @@ esp_err_t uart_commands_stop(void)
     ESP_LOGI(TAG, "UART command task stopped");
     return ESP_OK;
 }
+
+#else // CONFIG_UART_COMMANDS_ENABLED not defined
+
+// Stub implementations when UART commands are disabled
+esp_err_t uart_commands_init(void)
+{
+    return ESP_OK;
+}
+
+esp_err_t uart_commands_start(void)
+{
+    return ESP_OK;
+}
+
+esp_err_t uart_commands_stop(void)
+{
+    return ESP_OK;
+}
+
+#endif // CONFIG_UART_COMMANDS_ENABLED
