@@ -1,5 +1,5 @@
 #include "bluetooth_config.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "esp_log.h"
 #include <string.h>
 
@@ -150,8 +150,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         gatts_if_global = gatts_if;
         
         // Set device name
-        device_config_t config;
-        device_config_get(&config);
+        general_config_t config;
+        general_config_get(&config);
         char ble_name[48];  // "LoRaCue " (8) + device_name (31) + null (1) = 40 bytes minimum
         snprintf(ble_name, sizeof(ble_name), "LoRaCue %s", config.device_name);
         esp_ble_gap_set_device_name(ble_name);
@@ -269,8 +269,8 @@ esp_err_t bluetooth_config_init(void)
     // See: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/bluetooth/esp_gap_ble.html
     
     // Check if Bluetooth should be enabled
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     
     if (!config.bluetooth_enabled) {
         ESP_LOGI(TAG, "Bluetooth disabled in config");
@@ -330,10 +330,10 @@ esp_err_t bluetooth_config_init(void)
 
 esp_err_t bluetooth_config_set_enabled(bool enabled)
 {
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     config.bluetooth_enabled = enabled;
-    return device_config_set(&config);
+    return general_config_set(&config);
 }
 
 bool bluetooth_config_is_enabled(void)

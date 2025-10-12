@@ -1,6 +1,6 @@
 #include "bluetooth_screen.h"
 #include "bluetooth_config.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "oled_ui.h"
 #include "u8g2.h"
 #include "ui_config.h"
@@ -23,8 +23,8 @@ void bluetooth_screen_draw(void)
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
 
     // Get current config
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     const int viewport_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
     const int item_height     = viewport_height / bt_item_count;
@@ -98,12 +98,12 @@ void bluetooth_screen_handle_input(int button)
         selected_item = (selected_item + 1) % bt_item_count;
         bluetooth_screen_draw();
     } else if (button == 2) { // SELECT
-        device_config_t config;
-        device_config_get(&config);
+        general_config_t config;
+        general_config_get(&config);
         
         // Toggle bluetooth based on selection
         config.bluetooth_enabled = (selected_item == 0);
-        device_config_set(&config);
+        general_config_set(&config);
         
         // Apply immediately
         bluetooth_config_set_enabled(config.bluetooth_enabled);

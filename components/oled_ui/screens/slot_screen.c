@@ -1,5 +1,5 @@
 #include "slot_screen.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "oled_ui.h"
 #include "u8g2.h"
 #include "ui_config.h"
@@ -14,8 +14,8 @@ static bool edit_mode = false;
 #define SLOT_COUNT 16
 
 void slot_screen_init(void) {
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     selected_slot = config.slot_id - 1; // Convert 1-16 to 0-15
     edit_mode = false;
 }
@@ -23,8 +23,8 @@ void slot_screen_init(void) {
 void slot_screen_draw(void) {
     u8g2_ClearBuffer(&u8g2);
     
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     
     // Header
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
@@ -64,10 +64,10 @@ void slot_screen_navigate(menu_direction_t direction) {
 void slot_screen_select(void) {
     if (edit_mode) {
         // Save
-        device_config_t config;
-        device_config_get(&config);
+        general_config_t config;
+        general_config_get(&config);
         config.slot_id = selected_slot + 1; // Convert 0-15 to 1-16
-        device_config_set(&config);
+        general_config_set(&config);
         oled_ui_set_screen(OLED_SCREEN_MENU);
     } else {
         // Enter edit mode

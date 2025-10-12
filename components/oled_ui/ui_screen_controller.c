@@ -4,7 +4,7 @@
 #include "brightness_screen.h"
 #include "config_mode_screen.h"
 #include "config_wifi_server.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "device_mode_screen.h"
 #include "device_registry_screen.h"
 #include "esp_log.h"
@@ -273,12 +273,12 @@ void ui_screen_controller_handle_button(button_event_type_t event)
 
         case OLED_SCREEN_MAIN:
             if (event == BUTTON_EVENT_SHORT) {
-                device_config_t config;
-                device_config_get(&config);
+                general_config_t config;
+                general_config_get(&config);
                 lora_protocol_send_keyboard(config.slot_id, 0, 0x4E); // Page Down
             } else if (event == BUTTON_EVENT_DOUBLE) {
-                device_config_t config;
-                device_config_get(&config);
+                general_config_t config;
+                general_config_get(&config);
                 lora_protocol_send_keyboard(config.slot_id, 0, 0x4B); // Page Up
             } else if (event == BUTTON_EVENT_LONG) {
                 menu_screen_reset();

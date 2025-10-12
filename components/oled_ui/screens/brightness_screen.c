@@ -1,5 +1,5 @@
 #include "brightness_screen.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
@@ -12,8 +12,8 @@ static bool edit_mode           = false;
 
 void brightness_screen_init(void)
 {
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     brightness_value = config.display_brightness;
     edit_mode        = false;
 }
@@ -79,10 +79,10 @@ void brightness_screen_select(void)
 {
     if (edit_mode) {
         // Save
-        device_config_t config;
-        device_config_get(&config);
+        general_config_t config;
+        general_config_get(&config);
         config.display_brightness = brightness_value;
-        device_config_set(&config);
+        general_config_set(&config);
         u8g2_SetContrast(&u8g2, brightness_value);
         edit_mode = false;
     } else {

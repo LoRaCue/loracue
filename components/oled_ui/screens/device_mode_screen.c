@@ -1,5 +1,5 @@
 #include "device_mode_screen.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
@@ -27,8 +27,8 @@ void device_mode_screen_draw(void)
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
 
     // Get current mode from persistent config
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     // Viewport height: 54 - 10 = 44px, each item gets 44/2 = 22px
     const int viewport_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
@@ -99,8 +99,8 @@ void device_mode_screen_navigate(menu_direction_t direction)
 void device_mode_screen_select(void)
 {
     // Get current config
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     // Update mode based on selection
     device_mode_t new_mode;
@@ -126,8 +126,8 @@ void device_mode_screen_select(void)
 
 device_mode_t device_mode_get_current(void)
 {
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     return config.device_mode;
 }
 

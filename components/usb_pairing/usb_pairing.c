@@ -5,7 +5,7 @@
 
 #include "usb_pairing.h"
 #include "cJSON.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -76,7 +76,7 @@ static void new_dev_callback(usb_device_handle_t usb_dev)
 {
     ESP_LOGI(TAG, "USB device detected");
     
-    const cdc_acm_host_device_config_t dev_config = {
+    const cdc_acm_host_general_config_t dev_config = {
         .connection_timeout_ms = 5000,
         .out_buffer_size = 512,
         .event_cb = NULL,
@@ -193,8 +193,8 @@ static void pairing_task(void *arg)
         return;
     }
 
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     uint8_t mac[6], aes_key[32];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);

@@ -1,7 +1,7 @@
 #include "commands.h"
 #include "cJSON.h"
 #include "bluetooth_config.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "device_registry.h"
 #include "esp_app_format.h"
 #include "esp_log.h"
@@ -62,8 +62,8 @@ static void handle_get_version(void)
 
 static void handle_get_device_config(void)
 {
-    device_config_t config;
-    if (device_config_get(&config) != ESP_OK) {
+    general_config_t config;
+    if (general_config_get(&config) != ESP_OK) {
         g_send_response("ERROR Failed to get device config");
         return;
     }
@@ -83,8 +83,8 @@ static void handle_get_device_config(void)
 
 static void handle_set_device_config(cJSON *config_json)
 {
-    device_config_t config;
-    esp_err_t ret = device_config_get(&config);
+    general_config_t config;
+    esp_err_t ret = general_config_get(&config);
     if (ret != ESP_OK) {
         g_send_response("ERROR Failed to get current device config");
         return;
@@ -135,7 +135,7 @@ static void handle_set_device_config(cJSON *config_json)
         config.slot_id = slot;
     }
 
-    ret = device_config_set(&config);
+    ret = general_config_set(&config);
     if (ret != ESP_OK) {
         g_send_response("ERROR Failed to save device config");
         return;

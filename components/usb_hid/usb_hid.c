@@ -8,7 +8,7 @@
 #include "cJSON.h"
 #include "class/cdc/cdc_device.h"
 #include "class/hid/hid_device.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "tinyusb.h"
@@ -60,8 +60,8 @@ static const key_mapping_t presenter_mode_keys[] = {
 
 static void button_event_handler(button_event_type_t event, void *arg)
 {
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     const key_mapping_t *key_map = (config.device_mode == DEVICE_MODE_PC) ? pc_mode_keys : presenter_mode_keys;
 
     if (event >= sizeof(pc_mode_keys) / sizeof(key_mapping_t)) {

@@ -9,7 +9,7 @@
 
 #include "bsp.h"
 #include "button_manager.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -416,8 +416,8 @@ static void button_handler(button_event_type_t event, void *arg)
             return;
     }
 
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     
     ESP_LOGI(TAG, "Presenter mode: sending keyboard HID (slot=%d, mod=0x%02X, key=0x%02X)", config.slot_id,
              modifiers, keycode);
@@ -472,15 +472,15 @@ void app_main(void)
 
     // Initialize device configuration
     ESP_LOGI(TAG, "Initializing device configuration system...");
-    ret = device_config_init();
+    ret = general_config_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Device config initialization failed: %s", esp_err_to_name(ret));
         return;
     }
 
     // Get device config for power management settings
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     // Initialize power management with settings from NVS
     ESP_LOGI(TAG, "Initializing power management...");
@@ -540,7 +540,7 @@ void app_main(void)
     }
 
     // Apply brightness from config (reuse config from power mgmt)
-    device_config_get(&config);
+    general_config_get(&config);
     extern u8g2_t u8g2;
     u8g2_SetContrast(&u8g2, config.display_brightness);
     ESP_LOGI(TAG, "OLED brightness set to %d", config.display_brightness);
@@ -581,7 +581,7 @@ void app_main(void)
     }
 
     // Get device mode from NVS (reuse config from brightness setting)
-    device_config_get(&config);
+    general_config_get(&config);
     current_device_mode = config.device_mode;
 
     // Generate device ID from MAC address (static identity)
@@ -690,8 +690,8 @@ void app_main(void)
     g_oled_status.device_id      = 0x1234;
 
     // Load device name from config
-    device_config_t dev_config;
-    device_config_get(&dev_config);
+    general_config_t dev_config;
+    general_config_get(&dev_config);
     strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
 
     strcpy(g_oled_status.last_command, "");
@@ -751,23 +751,23 @@ void app_main(void)
             ESP_LOGI(TAG, "Device mode changed to: %s", device_mode_to_string(current_device_mode));
 
             // Save to NVS
-            device_config_t cfg;
-            device_config_get(&cfg);
+            general_config_t cfg;
+            general_config_get(&cfg);
             cfg.device_mode = current_device_mode;
-            device_config_set(&cfg);
+            general_config_set(&cfg);
 
             // Force screen redraw with new mode
             oled_ui_update_status(&g_oled_status);
         }
 
         // Check if device mode changed and persist to NVS (fallback for missed events)
-        device_config_get(&config);
+        general_config_get(&config);
         if (config.device_mode != current_device_mode) {
             ESP_LOGI(TAG, "Device mode changed to: %s (fallback)", device_mode_to_string(current_device_mode));
 
             // Save to NVS
             config.device_mode = current_device_mode;
-            device_config_set(&config);
+            general_config_set(&config);
         }
     }
 }
