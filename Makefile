@@ -78,6 +78,28 @@ clean:
 
 # Flash firmware to device
 flash: check-idf
+	@echo "🔍 Checking firmware type..."
+	@if [ -f build/wokwi_sim.bin ]; then \
+		echo "❌ ERROR: Cannot flash simulator build to real hardware!"; \
+		echo ""; \
+		echo "You built with 'make sim' which creates a Wokwi simulator binary."; \
+		echo "This binary uses bsp_wokwi.c (SSD1306) instead of bsp_heltec_v3.c (SH1106)."; \
+		echo ""; \
+		echo "To flash to real hardware:"; \
+		echo "  1. Clean: make clean"; \
+		echo "  2. Build: make build"; \
+		echo "  3. Flash: make flash"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@if [ ! -f build/LoRaCue.bin ]; then \
+		echo "❌ ERROR: Firmware not found!"; \
+		echo ""; \
+		echo "Please build first: make build"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo "✅ Hardware firmware detected"
 	@echo "📡 Flashing firmware to device..."
 	$(IDF_SETUP) idf.py flash
 

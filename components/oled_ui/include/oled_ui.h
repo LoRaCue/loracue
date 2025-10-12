@@ -36,7 +36,7 @@ typedef enum {
     OLED_SCREEN_LORA_CR,         ///< LoRa coding rate
     OLED_SCREEN_LORA_TXPOWER,    ///< LoRa TX power
     OLED_SCREEN_LORA_BAND,       ///< LoRa frequency band
-    OLED_SCREEN_LORA_SLOT,       ///< LoRa slot selection
+    OLED_SCREEN_SLOT,       ///< LoRa slot selection
     OLED_SCREEN_DEVICE_PAIRING,  ///< Device pairing
     OLED_SCREEN_DEVICE_REGISTRY, ///< Device registry
     OLED_SCREEN_BRIGHTNESS,      ///< Display brightness

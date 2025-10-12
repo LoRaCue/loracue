@@ -15,7 +15,7 @@ static uint32_t min_freq_khz = 863000;
 static uint32_t max_freq_khz = 870000;
 static bool edit_mode = false;
 
-#define FREQ_STEP_KHZ 200
+#define FREQ_STEP_KHZ 100
 
 void lora_frequency_screen_init(void) {
     lora_config_t config;
@@ -58,7 +58,7 @@ void lora_frequency_screen_draw(void) {
     if (edit_mode) {
         ui_draw_footer(FOOTER_CONTEXT_EDIT, NULL);
     } else {
-        const char *labels[] = {NULL, NULL, "Change"};
+        const char *labels[] = {NULL, NULL, "Edit"};
         ui_draw_footer(FOOTER_CONTEXT_CUSTOM, labels);
     }
     

@@ -27,8 +27,8 @@ void ui_draw_footer(footer_context_t context, const char *custom_labels[3])
             u8g2_DrawStr(&u8g2, 11, 64, "Next");
             ui_button_double_draw_at(40, 56);
             u8g2_DrawStr(&u8g2, 55, 64, "Back");
-            ui_button_long_draw_at(90, 56);
-            u8g2_DrawStr(&u8g2, 105, 64, "Select");
+            ui_button_long_draw_at(86, 56);  // -1px (was 87)
+            u8g2_DrawStr(&u8g2, 101, 64, "Select");  // -1px (was 102)
             break;
             
         case FOOTER_CONTEXT_EDIT:
@@ -36,8 +36,8 @@ void ui_draw_footer(footer_context_t context, const char *custom_labels[3])
             u8g2_DrawStr(&u8g2, 11, 64, "+");
             ui_button_double_draw_at(30, 56);
             u8g2_DrawStr(&u8g2, 45, 64, "-");
-            ui_button_long_draw_at(70, 56);
-            u8g2_DrawStr(&u8g2, 85, 64, "Save");
+            ui_button_long_draw_at(79, 56);  // +9px (was 70)
+            u8g2_DrawStr(&u8g2, 107, 64, "Save");  // +22px total (was 85, +13 = 98, +9 = 107)
             break;
             
         case FOOTER_CONTEXT_INFO:
@@ -62,8 +62,8 @@ void ui_draw_footer(footer_context_t context, const char *custom_labels[3])
                 u8g2_DrawStr(&u8g2, 55, 64, custom_labels[1]);
             }
             if (custom_labels && custom_labels[2]) {
-                ui_button_long_draw_at(90, 56);
-                u8g2_DrawStr(&u8g2, 105, 64, custom_labels[2]);
+                ui_button_long_draw_at(94, 56);  // +5px (was 89)
+                u8g2_DrawStr(&u8g2, 109, 64, custom_labels[2]);  // +5px (was 104)
             }
             break;
     }

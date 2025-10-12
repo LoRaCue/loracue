@@ -58,14 +58,14 @@ void brightness_screen_draw(void)
         u8g2_DrawXBM(&u8g2, save_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
         u8g2_DrawStr(&u8g2, save_x + both_buttons_width + 2, 64, "Save");
     } else {
-        // View mode: Back | Change
+        // View mode: Back | Edit
         u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
         u8g2_DrawStr(&u8g2, 8, 64, "Back");
 
-        int change_text_width = u8g2_GetStrWidth(&u8g2, "Change");
+        int change_text_width = u8g2_GetStrWidth(&u8g2, "Edit");
         int change_x          = DISPLAY_WIDTH - both_buttons_width - change_text_width - 2;
         u8g2_DrawXBM(&u8g2, change_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-        u8g2_DrawStr(&u8g2, change_x + both_buttons_width + 2, 64, "Change");
+        u8g2_DrawStr(&u8g2, change_x + both_buttons_width + 2, 64, "Edit");
     }
 
     u8g2_SendBuffer(&u8g2);

@@ -2,10 +2,9 @@
  * @file bsp_heltec_v3.c
  * @brief Board Support Package for Heltec LoRa V3 (ESP32-S3 + SX1262)
  *
- * CONTEXT: LoRaCue enterprise presentation clicker
+ * CONTEXT: LoRaCue hardware
  * HARDWARE: Heltec LoRa V3 development board
- * PINS: SPI(8-14)=LoRa, I2C(17-18)=OLED, GPIO(45-46)=Buttons, ADC(1,37)=Battery
- * PROTOCOL: SF7/BW500kHz LoRa with AES-128 encryption
+ * PINS: SPI(8-14)=LoRa, I2C(17-18)=OLED, GPIO(0)=Button, ADC(1,37)=Battery
  * ARCHITECTURE: BSP abstraction layer for multi-board support
  */
 
@@ -16,6 +15,7 @@
 #include "esp_log.h"
 #include "esp_sleep.h"
 #include "u8g2.h"
+#include "u8g2_esp32_hal.h"
 #include <string.h>
 
 static const char *TAG = "BSP_HELTEC_V3";
@@ -24,20 +24,19 @@ static const char *TAG = "BSP_HELTEC_V3";
 u8g2_t u8g2;
 
 // Heltec LoRa V3 Pin Definitions
-#define BUTTON_PREV_PIN GPIO_NUM_46
-#define BUTTON_NEXT_PIN GPIO_NUM_45
+#define BUTTON_PIN GPIO_NUM_0
 #define STATUS_LED_PIN GPIO_NUM_35
 #define BATTERY_ADC_PIN GPIO_NUM_1
 #define BATTERY_CTRL_PIN GPIO_NUM_37
 
 // LoRa SX1262 Pins
-#define LORA_MOSI_PIN GPIO_NUM_11
-#define LORA_MISO_PIN GPIO_NUM_10
-#define LORA_SCK_PIN GPIO_NUM_9
 #define LORA_CS_PIN GPIO_NUM_8
+#define LORA_SCK_PIN GPIO_NUM_9
+#define LORA_MOSI_PIN GPIO_NUM_10
+#define LORA_MISO_PIN GPIO_NUM_11
+#define LORA_RST_PIN GPIO_NUM_12
 #define LORA_BUSY_PIN GPIO_NUM_13
 #define LORA_DIO1_PIN GPIO_NUM_14
-#define LORA_RST_PIN GPIO_NUM_12
 
 // OLED SH1106 Pins
 #define OLED_SDA_PIN GPIO_NUM_17
@@ -45,10 +44,8 @@ u8g2_t u8g2;
 #define OLED_RST_PIN GPIO_NUM_21
 
 // Static handles
-static adc_oneshot_unit_handle_t adc_handle    = NULL;
-static spi_device_handle_t spi_handle          = NULL;
-static i2c_master_bus_handle_t i2c_bus_handle  = NULL;
-static i2c_master_dev_handle_t oled_dev_handle = NULL;
+static adc_oneshot_unit_handle_t adc_handle = NULL;
+static spi_device_handle_t spi_handle       = NULL;
 
 esp_err_t bsp_init_spi(void)
 {
@@ -144,174 +141,6 @@ uint8_t bsp_sx1262_read_register(uint16_t reg)
     return rx_data[3]; // Register value is in the 4th byte
 }
 
-esp_err_t bsp_init_i2c(void)
-{
-    // I2C initialization handled by u8g2 HAL (old driver)
-    // Removed new driver init to avoid conflict
-    ESP_LOGI(TAG, "I2C initialization delegated to u8g2 HAL");
-    return ESP_OK;
-}
-
-esp_err_t bsp_oled_write_command(uint8_t cmd)
-{
-    if (oled_dev_handle == NULL) {
-        ESP_LOGE(TAG, "I2C not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
-
-    uint8_t data[2] = {0x00, cmd}; // Control byte + command
-    return i2c_master_transmit(oled_dev_handle, data, 2, 1000);
-}
-
-esp_err_t bsp_oled_init(void)
-{
-    ESP_LOGI(TAG, "Initializing SH1106 OLED display");
-
-    // Configure and pulse reset pin
-    gpio_config_t rst_config = {
-        .pin_bit_mask = (1ULL << OLED_RST_PIN),
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&rst_config);
-
-    // Reset sequence: LOW -> HIGH
-    gpio_set_level(OLED_RST_PIN, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
-    gpio_set_level(OLED_RST_PIN, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
-
-    // SH1106 initialization sequence
-    esp_err_t ret;
-
-    ret = bsp_oled_write_command(0xAE); // Display OFF
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0x02); // Set lower column address
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0x10); // Set higher column address
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0x40); // Set display start line
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0x81); // Set contrast control
-    if (ret != ESP_OK)
-        return ret;
-    ret = bsp_oled_write_command(0xCF); // Contrast value
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xA1); // Set segment re-map
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xC8); // Set COM output scan direction
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xA6); // Set normal display
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xA8); // Set multiplex ratio
-    if (ret != ESP_OK)
-        return ret;
-    ret = bsp_oled_write_command(0x3F); // 64 lines
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xA4); // Set entire display ON/OFF
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xD3); // Set display offset
-    if (ret != ESP_OK)
-        return ret;
-    ret = bsp_oled_write_command(0x00); // No offset
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xD5); // Set display clock
-    if (ret != ESP_OK)
-        return ret;
-    ret = bsp_oled_write_command(0x80); // Default clock
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xD9); // Set pre-charge period
-    if (ret != ESP_OK)
-        return ret;
-    ret = bsp_oled_write_command(0xF1); // Pre-charge value
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xDA); // Set COM pins configuration
-    if (ret != ESP_OK)
-        return ret;
-    ret = bsp_oled_write_command(0x12); // COM pins config
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xDB); // Set VCOM deselect level
-    if (ret != ESP_OK)
-        return ret;
-    ret = bsp_oled_write_command(0x40); // VCOM level
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0x20); // Set memory addressing mode
-    if (ret != ESP_OK)
-        return ret;
-    ret = bsp_oled_write_command(0x02); // Page addressing mode
-    if (ret != ESP_OK)
-        return ret;
-
-    ret = bsp_oled_write_command(0xAF); // Display ON
-    if (ret != ESP_OK)
-        return ret;
-
-    ESP_LOGI(TAG, "SH1106 OLED initialized successfully");
-    return ESP_OK;
-}
-
-esp_err_t bsp_oled_clear(void)
-{
-    ESP_LOGI(TAG, "Clearing OLED display");
-
-    for (int page = 0; page < 8; page++) {
-        // Set page address
-        esp_err_t ret = bsp_oled_write_command(0xB0 + page);
-        if (ret != ESP_OK)
-            return ret;
-
-        // Set column address
-        ret = bsp_oled_write_command(0x02); // Lower column
-        if (ret != ESP_OK)
-            return ret;
-        ret = bsp_oled_write_command(0x10); // Higher column
-        if (ret != ESP_OK)
-            return ret;
-
-        // Clear page data
-        uint8_t clear_data[130] = {0x40}; // Data control byte + 128 zeros
-        memset(&clear_data[1], 0x00, 128);
-
-        ret = i2c_master_transmit(oled_dev_handle, clear_data, 129, 1000);
-        if (ret != ESP_OK)
-            return ret;
-    }
-
-    return ESP_OK;
-}
-
 esp_err_t bsp_init(void)
 {
     ESP_LOGI(TAG, "Initializing Heltec LoRa V3 BSP");
@@ -355,10 +184,10 @@ esp_err_t bsp_init(void)
         return ret;
     }
 
-    // Initialize I2C for OLED
-    ret = bsp_init_i2c();
+    // Initialize u8g2 for OLED
+    ret = bsp_u8g2_init(&u8g2);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize I2C: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to initialize u8g2: %s", esp_err_to_name(ret));
         return ret;
     }
 
@@ -368,10 +197,10 @@ esp_err_t bsp_init(void)
 
 esp_err_t bsp_init_buttons(void)
 {
-    ESP_LOGI(TAG, "Configuring buttons GPIO%d (PREV) and GPIO%d (NEXT)", BUTTON_PREV_PIN, BUTTON_NEXT_PIN);
+    ESP_LOGI(TAG, "Configuring button GPIO%d", BUTTON_PIN);
 
     gpio_config_t button_config = {
-        .pin_bit_mask = (1ULL << BUTTON_PREV_PIN) | (1ULL << BUTTON_NEXT_PIN),
+        .pin_bit_mask = (1ULL << BUTTON_PIN),
         .mode         = GPIO_MODE_INPUT,
         .pull_up_en   = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -380,11 +209,11 @@ esp_err_t bsp_init_buttons(void)
 
     esp_err_t ret = gpio_config(&button_config);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure button GPIOs: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to configure button GPIO: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    ESP_LOGI(TAG, "Buttons configured successfully");
+    ESP_LOGI(TAG, "Button configured successfully");
     return ESP_OK;
 }
 
@@ -443,8 +272,7 @@ void bsp_toggle_led(void)
 
 bool bsp_read_button(bsp_button_t button)
 {
-    gpio_num_t pin = (button == BSP_BUTTON_PREV) ? BUTTON_PREV_PIN : BUTTON_NEXT_PIN;
-    return gpio_get_level(pin) == 0; // Active low (pulled up, pressed = low)
+    return gpio_get_level(BUTTON_PIN) == 0; // Active low (pulled up, pressed = low)
 }
 
 float bsp_read_battery(void)
@@ -487,8 +315,8 @@ esp_err_t bsp_enter_sleep(void)
 {
     ESP_LOGI(TAG, "Entering deep sleep, wake on button press");
 
-    // Configure both buttons as wake sources
-    esp_sleep_enable_ext1_wakeup((1ULL << BUTTON_PREV_PIN) | (1ULL << BUTTON_NEXT_PIN), ESP_EXT1_WAKEUP_ANY_LOW);
+    // Configure button as wake source
+    esp_sleep_enable_ext1_wakeup((1ULL << BUTTON_PIN), ESP_EXT1_WAKEUP_ANY_LOW);
 
     // Enter deep sleep
     esp_deep_sleep_start();
@@ -517,17 +345,6 @@ esp_err_t bsp_validate_hardware(void)
 {
     ESP_LOGI(TAG, "Validating Heltec LoRa V3 hardware");
 
-    // Test SH1106 OLED display
-    ESP_LOGI(TAG, "Testing SH1106 OLED display...");
-    esp_err_t ret = bsp_oled_init();
-    if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "✓ SH1106 OLED initialized successfully");
-        bsp_oled_clear();
-        ESP_LOGI(TAG, "✓ OLED display cleared");
-    } else {
-        ESP_LOGW(TAG, "⚠ SH1106 OLED initialization failed: %s", esp_err_to_name(ret));
-    }
-
     // Test battery monitoring
     float battery_voltage = bsp_read_battery();
     if (battery_voltage > 0) {
@@ -541,71 +358,23 @@ esp_err_t bsp_validate_hardware(void)
     return ESP_OK;
 }
 
-// u8g2 HAL callbacks for SH1106
-uint8_t u8g2_esp32_i2c_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
-{
-    switch (msg) {
-        case U8X8_MSG_BYTE_SEND:
-            if (oled_dev_handle != NULL) {
-                uint8_t *data = (uint8_t *)arg_ptr;
-                esp_err_t ret = i2c_master_transmit(oled_dev_handle, data, arg_int, 1000);
-                return (ret == ESP_OK) ? 1 : 0;
-            }
-            return 0;
-
-        case U8X8_MSG_BYTE_INIT:
-            return 1;
-
-        case U8X8_MSG_BYTE_SET_DC:
-            return 1;
-
-        case U8X8_MSG_BYTE_START_TRANSFER:
-            return 1;
-
-        case U8X8_MSG_BYTE_END_TRANSFER:
-            return 1;
-
-        default:
-            return 0;
-    }
-}
-
-uint8_t u8g2_esp32_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
-{
-    switch (msg) {
-        case U8X8_MSG_GPIO_AND_DELAY_INIT:
-            return 1;
-
-        case U8X8_MSG_DELAY_MILLI:
-            vTaskDelay(pdMS_TO_TICKS(arg_int));
-            return 1;
-
-        case U8X8_MSG_GPIO_RESET:
-            gpio_set_level(OLED_RST_PIN, arg_int);
-            return 1;
-
-        default:
-            return 0;
-    }
-}
-
 esp_err_t bsp_u8g2_init(void *u8g2_ptr)
 {
     u8g2_t *u8g2_local = (u8g2_t *)u8g2_ptr;
 
     ESP_LOGI(TAG, "Initializing u8g2 with SH1106 for Heltec V3");
 
-    // Initialize I2C if not already done
-    if (i2c_bus_handle == NULL) {
-        esp_err_t ret = bsp_init_i2c();
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to initialize I2C for u8g2");
-            return ret;
-        }
-    }
+    // Configure u8g2 HAL
+    u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
+    u8g2_esp32_hal.bus.i2c.sda = OLED_SDA_PIN;
+    u8g2_esp32_hal.bus.i2c.scl = OLED_SCL_PIN;
+    u8g2_esp32_hal.reset = OLED_RST_PIN;
+    u8g2_esp32_hal_init(u8g2_esp32_hal);
 
-    // Initialize u8g2 with SH1106 128x64 display
-    u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2_local, U8G2_R0, u8g2_esp32_i2c_byte_cb, u8g2_esp32_gpio_and_delay_cb);
+    // Initialize u8g2 with SH1106 128x64 display using HAL callbacks
+    u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2_local, U8G2_R0, 
+                                          u8g2_esp32_i2c_byte_cb, 
+                                          u8g2_esp32_gpio_and_delay_cb);
 
     // Initialize display
     u8g2_InitDisplay(u8g2_local);

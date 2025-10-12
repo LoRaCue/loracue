@@ -1,47 +1,60 @@
 /**
  * @file bsp_wokwi.c
- * @brief Minimal BSP for Wokwi simulator - buttons and LEDs only
+ * @brief Board Support Package for Wokwi Simulator (ESP32-S3)
+ *
+ * CONTEXT: LoRaCue Wokwi simulation
+ * HARDWARE: Wokwi simulator with SSD1306 OLED
+ * DIFFERENCES FROM HELTEC V3:
+ *   - SSD1306 OLED instead of SH1106
+ *   - No LoRa hardware (simulated)
+ *   - Three buttons: GPIO0 (main), GPIO46 (second), GPIO21 (both simulator)
  */
 
 #include "bsp.h"
 #include "driver/gpio.h"
-#include "driver/i2c_master.h"
+#include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include "esp_sleep.h"
 #include "u8g2.h"
 #include "u8g2_esp32_hal.h"
+#include <string.h>
 
 static const char *TAG = "BSP_WOKWI";
 
 // Global u8g2 instance
 u8g2_t u8g2;
 
-// GPIO pin definitions for Wokwi
-#define BUTTON_PREV_PIN GPIO_NUM_46
-#define BUTTON_NEXT_PIN GPIO_NUM_45
-#define BUTTON_BOTH_PIN GPIO_NUM_21 // Wokwi "BOTH" button
+// Wokwi Pin Definitions (matching Heltec V3 where possible)
+#define BUTTON_PIN GPIO_NUM_0       // Main button (same as Heltec V3)
+#define BUTTON_SECOND_PIN GPIO_NUM_46  // Second button (Wokwi only)
+#define BUTTON_BOTH_PIN GPIO_NUM_21    // Both button simulator (Wokwi only)
 #define STATUS_LED_PIN GPIO_NUM_35
-#define I2C_SDA_PIN GPIO_NUM_17
-#define I2C_SCL_PIN GPIO_NUM_18
+#define BATTERY_ADC_PIN GPIO_NUM_1
+#define BATTERY_CTRL_PIN GPIO_NUM_37
+
+// OLED SSD1306 Pins (same as Heltec V3)
+#define OLED_SDA_PIN GPIO_NUM_17
+#define OLED_SCL_PIN GPIO_NUM_18
+#define OLED_RST_PIN GPIO_NUM_21
+
+// Static handles
+static adc_oneshot_unit_handle_t adc_handle = NULL;
 
 esp_err_t bsp_init(void)
 {
     ESP_LOGI(TAG, "Initializing Wokwi Simulator BSP");
 
+    esp_err_t ret = ESP_OK;
+
     // Initialize GPIO for buttons
-    gpio_config_t button_config = {
-        .pin_bit_mask = (1ULL << BUTTON_PREV_PIN) | (1ULL << BUTTON_NEXT_PIN) | (1ULL << BUTTON_BOTH_PIN),
-        .mode         = GPIO_MODE_INPUT,
-        .pull_up_en   = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
-    esp_err_t ret = gpio_config(&button_config);
-    if (ret != ESP_OK)
+    ret = bsp_init_buttons();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize buttons: %s", esp_err_to_name(ret));
         return ret;
+    }
 
     // Initialize status LED
+    ESP_LOGI(TAG, "Configuring status LED on GPIO%d", STATUS_LED_PIN);
     gpio_config_t led_config = {
         .pin_bit_mask = (1ULL << STATUS_LED_PIN),
         .mode         = GPIO_MODE_OUTPUT,
@@ -50,47 +63,98 @@ esp_err_t bsp_init(void)
         .intr_type    = GPIO_INTR_DISABLE,
     };
     ret = gpio_config(&led_config);
-    if (ret != ESP_OK)
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure LED GPIO: %s", esp_err_to_name(ret));
         return ret;
+    }
+    bsp_set_led(false);
 
-    // Initialize u8g2 HAL for I2C
-    u8g2_esp32_hal_t u8g2_hal = U8G2_ESP32_HAL_DEFAULT;
-    u8g2_hal.bus.i2c.sda      = I2C_SDA_PIN;
-    u8g2_hal.bus.i2c.scl      = I2C_SCL_PIN;
-    u8g2_esp32_hal_init(u8g2_hal);
+    // Initialize battery monitoring (simulated)
+    ret = bsp_init_battery();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize battery monitoring: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
-    // Initialize u8g2 for SSD1306 (Wokwi)
-    u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0, u8g2_esp32_i2c_byte_cb, u8g2_esp32_gpio_and_delay_cb);
-    u8x8_SetI2CAddress(&u8g2.u8x8, 0x3C << 1);
-    u8g2_InitDisplay(&u8g2);
-    u8g2_SetPowerSave(&u8g2, 0);
+    // Initialize SPI (simulated, no actual LoRa)
+    ret = bsp_init_spi();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize SPI: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
-    ESP_LOGI(TAG, "Wokwi BSP initialization complete");
+    // Initialize u8g2 for OLED
+    ret = bsp_u8g2_init(&u8g2);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize u8g2: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "BSP initialization complete");
     return ESP_OK;
 }
 
 esp_err_t bsp_init_buttons(void)
 {
-    ESP_LOGI(TAG, "Buttons initialized (simulated)");
-    return ESP_OK;
-}
+    ESP_LOGI(TAG, "Configuring buttons: GPIO%d (main), GPIO%d (second), GPIO%d (both)", 
+             BUTTON_PIN, BUTTON_SECOND_PIN, BUTTON_BOTH_PIN);
 
-esp_err_t bsp_init_i2c(void)
-{
-    ESP_LOGI(TAG, "I2C initialized (simulated)");
-    return ESP_OK;
-}
+    gpio_config_t button_config = {
+        .pin_bit_mask = (1ULL << BUTTON_PIN) | (1ULL << BUTTON_SECOND_PIN) | (1ULL << BUTTON_BOTH_PIN),
+        .mode         = GPIO_MODE_INPUT,
+        .pull_up_en   = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
 
-esp_err_t bsp_init_spi(void)
-{
-    ESP_LOGI(TAG, "SPI initialized (simulated)");
+    esp_err_t ret = gpio_config(&button_config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure button GPIOs: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "Buttons configured successfully");
     return ESP_OK;
 }
 
 esp_err_t bsp_init_battery(void)
 {
-    ESP_LOGI(TAG, "Battery monitoring initialized (simulated)");
+    ESP_LOGI(TAG, "Initializing battery monitoring (simulated)");
+    
+    // Simulate ADC initialization
+    if (adc_handle == NULL) {
+        adc_oneshot_unit_init_cfg_t init_config = {
+            .unit_id = ADC_UNIT_1,
+        };
+        ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &adc_handle));
+
+        adc_oneshot_chan_cfg_t config = {
+            .bitwidth = ADC_BITWIDTH_12,
+            .atten    = ADC_ATTEN_DB_12,
+        };
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, ADC_CHANNEL_0, &config));
+    }
+
+    ESP_LOGI(TAG, "Battery monitoring initialized");
     return ESP_OK;
+}
+
+esp_err_t bsp_init_spi(void)
+{
+    ESP_LOGI(TAG, "SPI initialized (simulated - no LoRa hardware)");
+    return ESP_OK;
+}
+
+void bsp_set_led(bool state)
+{
+    gpio_set_level(STATUS_LED_PIN, state ? 1 : 0);
+}
+
+void bsp_toggle_led(void)
+{
+    static bool led_state = false;
+    led_state             = !led_state;
+    bsp_set_led(led_state);
 }
 
 bool bsp_read_button(bsp_button_t button)
@@ -98,57 +162,96 @@ bool bsp_read_button(bsp_button_t button)
     gpio_num_t pin;
     switch (button) {
         case BSP_BUTTON_PREV:
-            pin = BUTTON_PREV_PIN;
+            pin = BUTTON_SECOND_PIN;  // Second button for Wokwi
             break;
         case BSP_BUTTON_NEXT:
-            pin = BUTTON_NEXT_PIN;
+            pin = BUTTON_PIN;  // Main button
             break;
         case BSP_BUTTON_BOTH:
-            pin = BUTTON_BOTH_PIN;
+            pin = BUTTON_BOTH_PIN;  // Both button simulator
             break;
         default:
             return false;
     }
-    return gpio_get_level(pin) == 0; // Active low
-}
-
-void bsp_set_led(bool state)
-{
-    gpio_set_level(STATUS_LED_PIN, state);
+    return gpio_get_level(pin) == 0; // Active low (pulled up, pressed = low)
 }
 
 float bsp_read_battery(void)
 {
-    // Return voltage for Wokwi (3.7V = healthy battery)
+    // Simulate healthy battery voltage (3.7V)
     return 3.7f;
 }
 
-float bsp_read_battery_voltage(void)
+esp_err_t bsp_enter_sleep(void)
 {
-    // Simulate 3.7V battery
-    return 3.7f;
+    ESP_LOGI(TAG, "Entering deep sleep (simulated)");
+    
+    // Configure buttons as wake sources
+    esp_sleep_enable_ext1_wakeup((1ULL << BUTTON_PIN) | (1ULL << BUTTON_SECOND_PIN) | (1ULL << BUTTON_BOTH_PIN), 
+                                 ESP_EXT1_WAKEUP_ANY_LOW);
+    
+    // Enter deep sleep
+    esp_deep_sleep_start();
+    
+    return ESP_OK;
 }
 
-void bsp_lora_reset(void)
+esp_err_t bsp_sx1262_reset(void)
 {
-    ESP_LOGI(TAG, "LoRa reset (simulated)");
+    ESP_LOGI(TAG, "SX1262 reset (simulated - no LoRa hardware)");
+    return ESP_OK;
+}
+
+uint8_t bsp_sx1262_read_register(uint16_t reg)
+{
+    // Simulated register read
+    return 0x00;
 }
 
 esp_err_t bsp_validate_hardware(void)
 {
-    ESP_LOGI(TAG, "Validating Wokwi simulator hardware...");
-    ESP_LOGI(TAG, "✓ Buttons configured (GPIO46, GPIO45)");
-    ESP_LOGI(TAG, "✓ Status LED working (GPIO35)");
-    ESP_LOGI(TAG, "✅ Wokwi hardware validation complete");
+    ESP_LOGI(TAG, "Validating Wokwi simulator hardware");
+
+    // Test battery monitoring
+    float battery_voltage = bsp_read_battery();
+    if (battery_voltage > 0) {
+        ESP_LOGI(TAG, "✓ Battery monitoring working: %.2fV (simulated)", battery_voltage);
+    } else {
+        ESP_LOGE(TAG, "✗ Battery monitoring failed");
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "BSP initialization complete");
     return ESP_OK;
 }
 
 esp_err_t bsp_u8g2_init(void *u8g2_ptr)
 {
-    ESP_LOGI(TAG, "u8g2 initialized (simulated for Wokwi)");
-    // For Wokwi simulation, we don't initialize the actual hardware
-    // The u8g2 structure will be set up by the simulation environment
-    // Just return success to avoid the crash
+    u8g2_t *u8g2_local = (u8g2_t *)u8g2_ptr;
+
+    ESP_LOGI(TAG, "Initializing u8g2 with SSD1306 for Wokwi");
+
+    // Configure u8g2 HAL
+    u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
+    u8g2_esp32_hal.bus.i2c.sda = OLED_SDA_PIN;
+    u8g2_esp32_hal.bus.i2c.scl = OLED_SCL_PIN;
+    u8g2_esp32_hal.reset = OLED_RST_PIN;
+    u8g2_esp32_hal_init(u8g2_esp32_hal);
+
+    // Wait for I2C bus to stabilize (important for Wokwi)
+    vTaskDelay(pdMS_TO_TICKS(100));
+
+    // Initialize u8g2 with SSD1306 128x64 display using HAL callbacks
+    u8g2_Setup_ssd1306_i2c_128x64_noname_f(u8g2_local, U8G2_R0, 
+                                           u8g2_esp32_i2c_byte_cb, 
+                                           u8g2_esp32_gpio_and_delay_cb);
+
+    // Initialize display
+    u8g2_InitDisplay(u8g2_local);
+    u8g2_SetPowerSave(u8g2_local, 0);
+    u8g2_ClearDisplay(u8g2_local);
+
+    ESP_LOGI(TAG, "u8g2 initialized successfully for SSD1306");
     return ESP_OK;
 }
 

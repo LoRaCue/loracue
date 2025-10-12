@@ -4,6 +4,7 @@
 #include "brightness_screen.h"
 #include "config_mode_screen.h"
 #include "config_wifi_server.h"
+#include "device_config.h"
 #include "device_mode_screen.h"
 #include "device_registry_screen.h"
 #include "esp_log.h"
@@ -11,6 +12,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "info_screens.h"
+#include "lora_protocol.h"
 #include "lora_settings_screen.h"
 #include "lora_submenu_screen.h"
 #include "lora_frequency_screen.h"
@@ -19,7 +21,7 @@
 #include "lora_cr_screen.h"
 #include "lora_txpower_screen.h"
 #include "lora_band_screen.h"
-#include "lora_slot_screen.h"
+#include "slot_screen.h"
 #include "main_screen.h"
 #include "menu_screen.h"
 #include "pairing_screen.h"
@@ -160,8 +162,8 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status)
             lora_band_screen_draw();
             break;
 
-        case OLED_SCREEN_LORA_SLOT:
-            lora_slot_screen_draw();
+        case OLED_SCREEN_SLOT:
+            slot_screen_draw();
             break;
 
         case OLED_SCREEN_DEVICE_PAIRING:
@@ -270,6 +272,20 @@ void ui_screen_controller_handle_button(button_event_type_t event)
             break;
 
         case OLED_SCREEN_MAIN:
+            if (event == BUTTON_EVENT_SHORT) {
+                device_config_t config;
+                device_config_get(&config);
+                lora_protocol_send_keyboard(config.slot_id, 0, 0x4E); // Page Down
+            } else if (event == BUTTON_EVENT_DOUBLE) {
+                device_config_t config;
+                device_config_get(&config);
+                lora_protocol_send_keyboard(config.slot_id, 0, 0x4B); // Page Up
+            } else if (event == BUTTON_EVENT_LONG) {
+                menu_screen_reset();
+                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+            }
+            break;
+
         case OLED_SCREEN_PC_MODE:
             if (event == BUTTON_EVENT_LONG) {
                 menu_screen_reset();
@@ -292,8 +308,8 @@ void ui_screen_controller_handle_button(button_event_type_t event)
                         ui_screen_controller_set(OLED_SCREEN_DEVICE_MODE, NULL);
                         break;
                     case MENU_SLOT:
-                        lora_slot_screen_init();
-                        ui_screen_controller_set(OLED_SCREEN_LORA_SLOT, NULL);
+                        slot_screen_init();
+                        ui_screen_controller_set(OLED_SCREEN_SLOT, NULL);
                         break;
                     case MENU_LORA_SETTINGS:
                         ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
@@ -456,15 +472,25 @@ void ui_screen_controller_handle_button(button_event_type_t event)
             }
             break;
 
-        case OLED_SCREEN_LORA_SLOT:
-            if (event == BUTTON_EVENT_SHORT) {
-                lora_slot_screen_navigate(MENU_DOWN);
-                lora_slot_screen_draw();
-            } else if (event == BUTTON_EVENT_DOUBLE) {
-                // Double press = back to main menu (slot is accessed from main menu, not submenu)
-                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
-            } else if (event == BUTTON_EVENT_LONG) {
-                lora_slot_screen_select();
+        case OLED_SCREEN_SLOT:
+            if (slot_screen_is_edit_mode()) {
+                if (event == BUTTON_EVENT_SHORT) {
+                    slot_screen_navigate(MENU_DOWN);
+                    slot_screen_draw();
+                } else if (event == BUTTON_EVENT_DOUBLE) {
+                    slot_screen_navigate(MENU_UP);
+                    slot_screen_draw();
+                } else if (event == BUTTON_EVENT_LONG) {
+                    slot_screen_select();
+                }
+            } else {
+                if (event == BUTTON_EVENT_DOUBLE) {
+                    // Double press = back to main menu (slot is accessed from main menu, not submenu)
+                    ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+                } else if (event == BUTTON_EVENT_LONG) {
+                    slot_screen_select();
+                    slot_screen_draw();
+                }
             }
             break;
 
