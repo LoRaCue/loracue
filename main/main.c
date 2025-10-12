@@ -27,6 +27,7 @@
 #include "oled_ui.h"
 #include "power_mgmt.h"
 #include "usb_hid.h"
+#include "uart_commands.h"
 #include "version.h"
 #include "bluetooth_config.h"
 #include <stdio.h>
@@ -613,6 +614,18 @@ void app_main(void)
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "Bluetooth initialization failed: %s (continuing without BLE)", esp_err_to_name(ret));
         // Non-fatal - continue without Bluetooth
+    }
+
+    // Initialize UART command interface
+    ESP_LOGI(TAG, "Initializing UART command interface...");
+    ret = uart_commands_init();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "UART commands initialization failed: %s", esp_err_to_name(ret));
+    } else {
+        ret = uart_commands_start();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "UART commands start failed: %s", esp_err_to_name(ret));
+        }
     }
 
     // Validate hardware
