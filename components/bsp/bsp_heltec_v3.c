@@ -28,6 +28,7 @@ u8g2_t u8g2;
 #define STATUS_LED_PIN GPIO_NUM_35
 #define BATTERY_ADC_PIN GPIO_NUM_1
 #define BATTERY_CTRL_PIN GPIO_NUM_37
+#define VEXT_CTRL_PIN GPIO_NUM_36  // Controls power to OLED and LoRa
 
 // LoRa SX1262 Pins
 #define LORA_CS_PIN GPIO_NUM_8
@@ -363,6 +364,19 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     u8g2_t *u8g2_local = (u8g2_t *)u8g2_ptr;
 
     ESP_LOGI(TAG, "Initializing u8g2 with SH1106 for Heltec V3");
+
+    // Enable Vext power (powers OLED and LoRa module)
+    ESP_LOGI(TAG, "Enabling Vext power for OLED");
+    gpio_config_t vext_conf = {
+        .pin_bit_mask = (1ULL << VEXT_CTRL_PIN),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&vext_conf);
+    gpio_set_level(VEXT_CTRL_PIN, 0);  // LOW = power ON (active low)
+    vTaskDelay(pdMS_TO_TICKS(50));     // Wait for power to stabilize
 
     // Configure OLED reset pin
     gpio_config_t rst_conf = {
