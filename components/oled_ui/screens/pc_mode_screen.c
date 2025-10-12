@@ -11,6 +11,7 @@
 #include "ui_icons.h"
 #include "ui_status_bar.h"
 #include "ui_pairing_overlay.h"
+#include "icons/ui_status_icons.h"
 #include <inttypes.h>
 #include <string.h>
 
@@ -72,18 +73,16 @@ void pc_mode_screen_draw(const oled_status_t *status)
     // Device name on left
     u8g2_DrawStr(&u8g2, TEXT_MARGIN_LEFT - 1, DISPLAY_HEIGHT - 1, ui_status.device_name);
 
-    // Menu hint on right
+    // Menu hint on right - using long press icon
     const char *menu_text   = "3s ";
     const char *menu_suffix = " Menu";
     int text_width          = u8g2_GetStrWidth(&u8g2, menu_text);
     int suffix_width        = u8g2_GetStrWidth(&u8g2, menu_suffix);
-    int total_width         = text_width + both_buttons_width + suffix_width;
 
-    int start_x = DISPLAY_WIDTH - total_width - TEXT_MARGIN_RIGHT;
-    u8g2_DrawStr(&u8g2, start_x, DISPLAY_HEIGHT - 1, menu_text);
-    u8g2_DrawXBM(&u8g2, start_x + text_width, DISPLAY_HEIGHT - both_buttons_height - 1, both_buttons_width,
-                 both_buttons_height, both_buttons_bits);
-    u8g2_DrawStr(&u8g2, start_x + text_width + both_buttons_width, DISPLAY_HEIGHT - 1, menu_suffix);
+    int start_x = DISPLAY_WIDTH - TEXT_MARGIN_RIGHT - suffix_width - 7;
+    u8g2_DrawStr(&u8g2, start_x - text_width, DISPLAY_HEIGHT - 1, menu_text);
+    ui_button_long_draw_at(start_x, DISPLAY_HEIGHT - 8);
+    u8g2_DrawStr(&u8g2, start_x + 7, DISPLAY_HEIGHT - 1, menu_suffix);
 
     // Draw Bluetooth pairing overlay if active
     uint32_t passkey;
