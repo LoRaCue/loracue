@@ -371,6 +371,9 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     u8g2_esp32_hal.reset = OLED_RST_PIN;
     u8g2_esp32_hal_init(u8g2_esp32_hal);
 
+    // Wait for I2C bus to stabilize
+    vTaskDelay(pdMS_TO_TICKS(100));
+
     // Initialize u8g2 with SH1106 128x64 display using HAL callbacks
     u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2_local, U8G2_R0, 
                                           u8g2_esp32_i2c_byte_cb, 
