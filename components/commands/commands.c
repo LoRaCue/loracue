@@ -1,5 +1,6 @@
 #include "commands.h"
 #include "cJSON.h"
+#include "bluetooth_config.h"
 #include "device_config.h"
 #include "device_registry.h"
 #include "esp_app_format.h"
@@ -119,8 +120,10 @@ static void handle_set_device_config(cJSON *config_json)
     }
 
     cJSON *bluetooth = cJSON_GetObjectItem(config_json, "bluetooth");
-    if (bluetooth && cJSON_IsBool(bluetooth))
+    if (bluetooth && cJSON_IsBool(bluetooth)) {
         config.bluetooth_enabled = cJSON_IsTrue(bluetooth);
+        bluetooth_config_set_enabled(config.bluetooth_enabled);
+    }
 
     cJSON *slot_id = cJSON_GetObjectItem(config_json, "slot_id");
     if (slot_id && cJSON_IsNumber(slot_id)) {

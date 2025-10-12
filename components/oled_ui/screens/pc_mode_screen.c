@@ -68,21 +68,7 @@ void pc_mode_screen_draw(const oled_status_t *status)
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
 
     // Bottom bar
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-
-    // Device name on left
-    u8g2_DrawStr(&u8g2, TEXT_MARGIN_LEFT - 1, DISPLAY_HEIGHT - 1, ui_status.device_name);
-
-    // Menu hint on right - using long press icon
-    const char *menu_text   = "3s ";
-    const char *menu_suffix = " Menu";
-    int text_width          = u8g2_GetStrWidth(&u8g2, menu_text);
-    int suffix_width        = u8g2_GetStrWidth(&u8g2, menu_suffix);
-
-    int start_x = DISPLAY_WIDTH - TEXT_MARGIN_RIGHT - suffix_width - 7;
-    u8g2_DrawStr(&u8g2, start_x - text_width, DISPLAY_HEIGHT - 1, menu_text);
-    ui_button_long_draw_at(start_x, DISPLAY_HEIGHT - 8);
-    u8g2_DrawStr(&u8g2, start_x + 7, DISPLAY_HEIGHT - 1, menu_suffix);
+    ui_bottom_bar_draw(&ui_status);
 
     // Draw Bluetooth pairing overlay if active
     uint32_t passkey;
