@@ -71,6 +71,11 @@ build: check-idf
 	@echo "🔨 Building LoRaCue firmware..."
 	$(IDF_SETUP) idf.py build
 
+# Build with debug logging on UART0
+build-debug: check-idf
+	@echo "🐛 Building LoRaCue firmware (DEBUG mode - logging on UART0)..."
+	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.debug" idf.py build
+
 # Clean build artifacts
 clean:
 	@echo "🧹 Cleaning build artifacts..."
@@ -120,6 +125,24 @@ monitor:
 menuconfig: check-idf
 	@echo "⚙️  Opening configuration menu..."
 	$(IDF_SETUP) idf.py menuconfig
+
+# Switch to debug mode (UART0 for logging)
+debug-mode:
+	@echo "🐛 Switching to DEBUG mode (UART0 for logging)..."
+	@sed -i '' 's/CONFIG_UART0_MODE_COMMANDS=y/CONFIG_UART0_MODE_DEBUG=y/' sdkconfig.defaults
+	@sed -i '' 's/CONFIG_LOG_DEFAULT_LEVEL_NONE=y/CONFIG_LOG_DEFAULT_LEVEL_INFO=y/' sdkconfig.defaults
+	@sed -i '' 's/CONFIG_UART_COMMANDS_ENABLED=y/# CONFIG_UART_COMMANDS_ENABLED is not set/' sdkconfig.defaults
+	@rm -f sdkconfig
+	@echo "✅ Debug mode enabled. Run 'make build' to apply changes."
+
+# Switch to command mode (UART0 for commands)
+command-mode:
+	@echo "📡 Switching to COMMAND mode (UART0 for commands)..."
+	@sed -i '' 's/CONFIG_UART0_MODE_DEBUG=y/CONFIG_UART0_MODE_COMMANDS=y/' sdkconfig.defaults
+	@sed -i '' 's/CONFIG_LOG_DEFAULT_LEVEL_INFO=y/CONFIG_LOG_DEFAULT_LEVEL_NONE=y/' sdkconfig.defaults
+	@sed -i '' 's/# CONFIG_UART_COMMANDS_ENABLED is not set/CONFIG_UART_COMMANDS_ENABLED=y/' sdkconfig.defaults
+	@rm -f sdkconfig
+	@echo "✅ Command mode enabled. Run 'make build' to apply changes."
 
 # Show size information
 size: check-idf
@@ -325,7 +348,8 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📋 Hardware targets:"
-	@echo "  build         - Build the project"
+	@echo "  build         - Build (UART0=commands, logging disabled)"
+	@echo "  build-debug   - Build (UART0=logging, commands disabled)"
 	@echo "  clean         - Clean build artifacts"
 	@echo "  flash         - Flash firmware to device"
 	@echo "  monitor       - Monitor serial output"
@@ -335,6 +359,10 @@ help:
 	@echo "  erase         - Erase entire flash"
 	@echo "  rebuild       - Clean and rebuild"
 	@echo "  dev           - Build, flash, and monitor"
+	@echo ""
+	@echo "🔧 UART0 Mode:"
+	@echo "  debug-mode    - Switch to debug logging on UART0"
+	@echo "  command-mode  - Switch to command interface on UART0"
 	@echo ""
 	@echo "🎨 Code quality:"
 	@echo "  format        - Format all C/C++ code"
