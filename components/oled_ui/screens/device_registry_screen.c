@@ -79,15 +79,8 @@ void device_registry_screen_draw(void)
                 u8g2_DrawStr(&u8g2, 4, y, devices[i].device_name);
             }
 
-            // Status indicator (online if seen recently)
-            uint32_t current_time = esp_timer_get_time() / 1000000;              // Convert to seconds
-            bool is_online        = (current_time - devices[i].last_seen) < 300; // 5 minutes
-
-            if (is_online) {
-                u8g2_DrawCircle(&u8g2, 118, y - 3, 2, U8G2_DRAW_ALL);
-            } else {
-                u8g2_DrawCircle(&u8g2, 118, y - 3, 2, U8G2_DRAW_UPPER_LEFT | U8G2_DRAW_UPPER_RIGHT);
-            }
+            // Status indicator (always show as available since no RTC)
+            u8g2_DrawCircle(&u8g2, 118, y - 3, 2, U8G2_DRAW_ALL);
         }
 
         // Scroll indicators
