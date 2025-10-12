@@ -1,0 +1,6 @@
+# Simulator-specific configuration
+# Logging enabled on UART0 for debug output
+
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_NUM=0

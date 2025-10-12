@@ -35,7 +35,7 @@ void system_info_screen_draw(void)
 
     // Firmware version
     u8g2_DrawStr(&u8g2, 2, 20, "Firmware: ");
-    u8g2_DrawStr(&u8g2, 55, 20, LORACUE_VERSION_STRING);
+    u8g2_DrawStr(&u8g2, 55, 20, LORACUE_VERSION_FULL);
 
     // Hardware (dynamic based on build)
 #ifdef SIMULATOR_BUILD

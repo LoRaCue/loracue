@@ -252,7 +252,7 @@ endif
 # Wokwi Simulator targets
 sim: check-idf
 	@echo "🎮 Building for Wokwi simulator..."
-	$(IDF_SETUP) SIMULATOR_BUILD=1 idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
+	$(IDF_SETUP) SIMULATOR_BUILD=1 SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.simulator" idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
 
 sim-run: check-wokwi sim
 	@echo "🚀 Starting Wokwi simulation..."
