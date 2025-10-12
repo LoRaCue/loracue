@@ -2591,7 +2591,7 @@ CONFIG_WIFI_PROV_STA_ALL_CHANNEL_SCAN=y
 #
 # UART Commands Configuration
 #
-CONFIG_UART_COMMANDS_ENABLED=y
+# CONFIG_UART_COMMANDS_ENABLED is not set
 # end of UART Commands Configuration
 
 #

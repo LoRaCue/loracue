@@ -1,11 +1,19 @@
 # Simulator-specific configuration
 # Logging enabled on UART0 for debug output
 
+# Disable UART commands for simulator (conflicts with logging)
+CONFIG_UART_COMMANDS_ENABLED=n
+
 # Override log level from sdkconfig.defaults
 CONFIG_LOG_DEFAULT_LEVEL_NONE=n
 CONFIG_LOG_DEFAULT_LEVEL_INFO=y
 CONFIG_LOG_DEFAULT_LEVEL=3
 
+# Bootloader logging
+CONFIG_BOOTLOADER_LOG_LEVEL_INFO=y
+CONFIG_BOOTLOADER_LOG_LEVEL=3
+
 # Ensure UART0 is used for console
 CONFIG_ESP_CONSOLE_UART_DEFAULT=y
 CONFIG_ESP_CONSOLE_UART_NUM=0
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
