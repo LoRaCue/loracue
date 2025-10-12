@@ -79,14 +79,14 @@ esp_err_t lora_driver_init(void)
     // Initialize RA01S library
     LoRaInit();
 
-    int16_t ret = LoRaBegin(current_config.frequency, // Frequency in Hz
-                            current_config.tx_power,  // TX power in dBm
-                            3.3,                      // TCXO voltage
-                            false                     // Use DC-DC regulator (not LDO)
+    int16_t lora_ret = LoRaBegin(current_config.frequency, // Frequency in Hz
+                                  current_config.tx_power,  // TX power in dBm
+                                  3.3,                      // TCXO voltage
+                                  false                     // Use DC-DC regulator (not LDO)
     );
 
-    if (ret != ERR_NONE) {
-        ESP_LOGE(TAG, "LoRa initialization failed: %d", ret);
+    if (lora_ret != ERR_NONE) {
+        ESP_LOGE(TAG, "LoRa initialization failed: %d", lora_ret);
         return ESP_FAIL;
     }
 
