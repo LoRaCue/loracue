@@ -16,6 +16,7 @@
 #include "ota_error_screen.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
+#include "mbedtls/base64.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "u8g2.h"
@@ -532,26 +533,23 @@ static void handle_fw_update_data(const char *data_str)
         return;
     }
 
-    const char *hex_data = space_pos + 1;
-    size_t hex_len       = strlen(hex_data);
-    if (hex_len % 2 != 0) {
-        g_send_response("ERROR Invalid hex data length");
-        return;
-    }
-
-    size_t data_len      = hex_len / 2;
-    uint8_t *binary_data = malloc(data_len);
+    const char *base64_data = space_pos + 1;
+    size_t base64_len = strlen(base64_data);
+    
+    size_t max_decoded_len = (base64_len * 3) / 4 + 3;
+    uint8_t *binary_data = malloc(max_decoded_len);
     if (!binary_data) {
         g_send_response("ERROR Memory allocation failed");
         return;
     }
 
-    for (size_t i = 0; i < data_len; i++) {
-        if (sscanf(hex_data + i * 2, "%02hhx", &binary_data[i]) != 1) {
-            free(binary_data);
-            g_send_response("ERROR Invalid hex data");
-            return;
-        }
+    size_t data_len;
+    int ret = mbedtls_base64_decode(binary_data, max_decoded_len, &data_len,
+                                     (const unsigned char *)base64_data, base64_len);
+    if (ret != 0) {
+        free(binary_data);
+        g_send_response("ERROR Invalid base64 data");
+        return;
     }
 
     // Store first 4KB for manifest extraction
@@ -562,9 +560,9 @@ static void handle_fw_update_data(const char *data_str)
         memcpy(ota_header_buffer + ota_received_bytes, binary_data, copy_len);
     }
 
-    esp_err_t ret = esp_ota_write(ota_handle, binary_data, data_len);
+    esp_err_t ota_ret = esp_ota_write(ota_handle, binary_data, data_len);
     
-    if (ret != ESP_OK) {
+    if (ota_ret != ESP_OK) {
         free(binary_data);
         g_send_response("ERROR Failed to write OTA data");
         return;
