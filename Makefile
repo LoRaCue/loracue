@@ -76,6 +76,11 @@ clean:
 	@echo "🧹 Cleaning build artifacts..."
 	$(IDF_SETUP) idf.py clean
 
+# Full clean (removes CMake cache - needed when switching between sim/hardware builds)
+fullclean:
+	@echo "🧹 Full clean (removing CMake cache)..."
+	$(IDF_SETUP) idf.py fullclean
+
 # Flash firmware to device
 flash: check-idf
 	@echo "🔍 Checking firmware type..."
@@ -86,7 +91,7 @@ flash: check-idf
 		echo "This binary uses bsp_wokwi.c (SSD1306) instead of bsp_heltec_v3.c (SH1106)."; \
 		echo ""; \
 		echo "To flash to real hardware:"; \
-		echo "  1. Clean: make clean"; \
+		echo "  1. Full clean: make fullclean"; \
 		echo "  2. Build: make build"; \
 		echo "  3. Flash: make flash"; \
 		echo ""; \
