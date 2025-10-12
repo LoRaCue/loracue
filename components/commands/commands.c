@@ -649,7 +649,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         return;
     }
 
-    if (strcmp(command_line, "GET_DEVICE_CONFIG") == 0) {
+    if (strcmp(command_line, "GET_GENERAL") == 0) {
         handle_get_device_config();
         return;
     }
@@ -685,8 +685,8 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         return;
     }
 
-    if (strncmp(command_line, "SET_DEVICE_CONFIG ", 18) == 0) {
-        cJSON *json = cJSON_Parse(command_line + 18);
+    if (strncmp(command_line, "SET_GENERAL ", 12) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 12);
         if (json) {
             handle_set_device_config(json);
             cJSON_Delete(json);
