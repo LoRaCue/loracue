@@ -79,7 +79,7 @@ clean:
 # Flash firmware to device
 flash: check-idf
 	@echo "🔍 Checking firmware type..."
-	@if [ -f build/wokwi_sim.bin ]; then \
+	@if [ -f build/wokwi_sim.bin ] && [ ! -f build/heltec_v3.bin ]; then \
 		echo "❌ ERROR: Cannot flash simulator build to real hardware!"; \
 		echo ""; \
 		echo "You built with 'make sim' which creates a Wokwi simulator binary."; \
@@ -92,14 +92,14 @@ flash: check-idf
 		echo ""; \
 		exit 1; \
 	fi
-	@if [ ! -f build/LoRaCue.bin ]; then \
-		echo "❌ ERROR: Firmware not found!"; \
+	@if [ ! -f build/heltec_v3.bin ]; then \
+		echo "❌ ERROR: Hardware firmware not found!"; \
 		echo ""; \
 		echo "Please build first: make build"; \
 		echo ""; \
 		exit 1; \
 	fi
-	@echo "✅ Hardware firmware detected"
+	@echo "✅ Hardware firmware detected (heltec_v3.bin)"
 	@echo "📡 Flashing firmware to device..."
 	$(IDF_SETUP) idf.py flash
 
