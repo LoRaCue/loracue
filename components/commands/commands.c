@@ -95,6 +95,22 @@ static void handle_set_device_config(cJSON *config_json)
         config.device_name[sizeof(config.device_name) - 1] = '\0';
     }
 
+    cJSON *mode = cJSON_GetObjectItem(config_json, "mode");
+    if (mode && cJSON_IsString(mode)) {
+        device_mode_t new_mode;
+        if (strcmp(mode->valuestring, "PRESENTER") == 0) {
+            new_mode = DEVICE_MODE_PRESENTER;
+        } else if (strcmp(mode->valuestring, "PC") == 0) {
+            new_mode = DEVICE_MODE_PC;
+        } else {
+            g_send_response("ERROR Invalid mode (must be PRESENTER or PC)");
+            return;
+        }
+        config.device_mode = new_mode;
+        extern device_mode_t current_device_mode;
+        current_device_mode = new_mode;
+    }
+
     cJSON *brightness = cJSON_GetObjectItem(config_json, "brightness");
     if (brightness && cJSON_IsNumber(brightness)) {
         config.display_brightness = brightness->valueint;
@@ -659,7 +675,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         return;
     }
 
-    if (strcmp(command_line, "GET_LORA_CONFIG") == 0) {
+    if (strcmp(command_line, "GET_LORA") == 0) {
         handle_get_lora_config();
         return;
     }
@@ -729,8 +745,8 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         return;
     }
 
-    if (strncmp(command_line, "SET_LORA_CONFIG ", 16) == 0) {
-        cJSON *json = cJSON_Parse(command_line + 16);
+    if (strncmp(command_line, "SET_LORA ", 9) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 9);
         if (json) {
             handle_set_lora_config(json);
             cJSON_Delete(json);
