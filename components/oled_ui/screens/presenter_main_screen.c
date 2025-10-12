@@ -23,13 +23,13 @@ void presenter_main_screen_draw(const ui_status_t *status)
 
     // Button hints with one-button UI icons
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    ui_button_double_draw_at(BUTTON_MARGIN, 35);
+    ui_button_double_draw_at(BUTTON_MARGIN, 36);
     u8g2_DrawStr(&u8g2, BUTTON_MARGIN + 15, 43, "PREV");
 
     int next_text_width = u8g2_GetStrWidth(&u8g2, "NEXT");
     int next_x = DISPLAY_WIDTH - BUTTON_MARGIN - 7 - next_text_width - 2;
     u8g2_DrawStr(&u8g2, next_x, 43, "NEXT");
-    ui_button_short_draw_at(next_x + next_text_width + 2, 35);
+    ui_button_short_draw_at(next_x + next_text_width + 2, 36);
 
     // Bottom separator
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
