@@ -364,6 +364,23 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
 
     ESP_LOGI(TAG, "Initializing u8g2 with SH1106 for Heltec V3");
 
+    // Configure OLED reset pin
+    gpio_config_t rst_conf = {
+        .pin_bit_mask = (1ULL << OLED_RST_PIN),
+        .mode = GPIO_MODE_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE
+    };
+    gpio_config(&rst_conf);
+
+    // Hardware reset sequence for SH1106
+    ESP_LOGI(TAG, "Performing hardware reset on OLED");
+    gpio_set_level(OLED_RST_PIN, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    gpio_set_level(OLED_RST_PIN, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
+
     // Configure u8g2 HAL
     u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
     u8g2_esp32_hal.bus.i2c.sda = OLED_SDA_PIN;
