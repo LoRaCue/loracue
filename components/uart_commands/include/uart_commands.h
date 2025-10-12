@@ -3,7 +3,7 @@
  * @brief UART command interface for LoRaCue
  *
  * Provides command interface over hardware UART0 (USB-to-Serial)
- * Baudrate: 115200, 8N1
+ * Baudrate: 460800, 8N1
  */
 
 #pragma once
@@ -17,7 +17,7 @@ extern "C" {
 /**
  * @brief Initialize UART command interface
  * 
- * Configures UART0 (TX=GPIO43, RX=GPIO44) at 115200 baud
+ * Configures UART0 (TX=GPIO43, RX=GPIO44) at 460800 baud
  * and starts command processing task
  * 
  * @return ESP_OK on success
