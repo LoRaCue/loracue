@@ -72,7 +72,6 @@ esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const
     paired_device_t device = {
         .device_id     = device_id,
         .last_sequence = 0,
-        .is_active     = true,
     };
 
     strncpy(device.device_name, device_name, DEVICE_NAME_MAX_LEN - 1);
@@ -124,10 +123,6 @@ esp_err_t device_registry_get(uint16_t device_id, paired_device_t *device)
     } else if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to get device: %s", esp_err_to_name(ret));
         return ret;
-    }
-
-    if (!device->is_active) {
-        return ESP_ERR_NOT_FOUND;
     }
 
     return ESP_OK;

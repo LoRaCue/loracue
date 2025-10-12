@@ -449,7 +449,6 @@ static esp_err_t devices_list_handler(httpd_req_t *req)
                      device.mac_address[1], device.mac_address[2], device.mac_address[3], device.mac_address[4],
                      device.mac_address[5]);
             cJSON_AddStringToObject(device_obj, "mac", mac_str);
-            cJSON_AddBoolToObject(device_obj, "active", device.is_active);
 
             cJSON_AddItemToArray(devices_array, device_obj);
         }
