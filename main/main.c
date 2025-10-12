@@ -358,7 +358,7 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
 
     // Update active presenters list
     status->active_presenter_count = 0;
-    for (int i = 0; i < MAX_ACTIVE_PRESENTERS && i < 4; i++) {
+    for (int i = 0; i < MAX_ACTIVE_PRESENTERS; i++) {
         if (active_presenters[i].device_id != 0) {
             status->active_presenters[status->active_presenter_count].device_id = active_presenters[i].device_id;
             status->active_presenters[status->active_presenter_count].rssi      = active_presenters[i].last_rssi;
