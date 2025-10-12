@@ -75,10 +75,8 @@ static void button_manager_task(void *pvParameters)
             button.press_start_time = current_time;
             button.long_press_sent = false;
             last_activity_time = current_time;
-            led_manager_button_feedback(true);  // Turn off LED
+            led_manager_button_feedback(true);
             
-            // Wake display if in power save mode
-            extern u8g2_t u8g2;
             u8g2_SetPowerSave(&u8g2, 0);
             
             ESP_LOGD(TAG, "Button pressed");
