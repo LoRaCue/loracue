@@ -78,7 +78,7 @@ static bool pairing_in_progress = false;
 static uint32_t pairing_passkey = 0;
 
 // Command buffer
-static char rx_buffer[512];
+static char rx_buffer[16384];
 static size_t rx_len = 0;
 
 // Service handles

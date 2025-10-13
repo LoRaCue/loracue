@@ -76,7 +76,7 @@ static void new_dev_callback(usb_device_handle_t usb_dev)
 {
     ESP_LOGI(TAG, "USB device detected");
     
-    const cdc_acm_host_general_config_t dev_config = {
+    const cdc_acm_host_device_config_t dev_config = {
         .connection_timeout_ms = 5000,
         .out_buffer_size = 512,
         .event_cb = NULL,

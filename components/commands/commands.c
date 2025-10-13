@@ -4,6 +4,7 @@
 #include "general_config.h"
 #include "device_registry.h"
 #include "esp_app_format.h"
+#include "esp_crc.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_ota_ops.h"
@@ -29,6 +30,8 @@ static esp_ota_handle_t ota_handle          = 0;
 static const esp_partition_t *ota_partition = NULL;
 static size_t ota_received_bytes            = 0;
 static size_t ota_total_size                = 0;
+static size_t ota_chunk_size                = 4096;
+static size_t ota_expected_chunks           = 0;
 static bool ota_force_mode                  = false;
 static uint8_t ota_header_buffer[4096]      = {0};  // Buffer for manifest extraction
 static bool ota_manifest_checked            = false;
@@ -470,14 +473,26 @@ static void handle_update_paired_device(cJSON *update_json)
 
 static void handle_fw_update_start(cJSON *update_json)
 {
-    cJSON *size     = cJSON_GetObjectItem(update_json, "size");
-    cJSON *checksum = cJSON_GetObjectItem(update_json, "checksum");
-    cJSON *version  = cJSON_GetObjectItem(update_json, "version");
-    cJSON *force    = cJSON_GetObjectItem(update_json, "force");
+    cJSON *size       = cJSON_GetObjectItem(update_json, "size");
+    cJSON *chunk_size = cJSON_GetObjectItem(update_json, "chunk_size");
+    cJSON *checksum   = cJSON_GetObjectItem(update_json, "checksum");
+    cJSON *version    = cJSON_GetObjectItem(update_json, "version");
+    cJSON *force      = cJSON_GetObjectItem(update_json, "force");
 
     if (!cJSON_IsNumber(size) || !cJSON_IsString(checksum) || !cJSON_IsString(version)) {
         g_send_response("ERROR Invalid firmware update parameters");
         return;
+    }
+
+    // Validate chunk_size
+    if (chunk_size && cJSON_IsNumber(chunk_size)) {
+        ota_chunk_size = chunk_size->valueint;
+        if (ota_chunk_size < 512 || ota_chunk_size > 8192) {
+            g_send_response("ERROR chunk_size must be between 512 and 8192 bytes");
+            return;
+        }
+    } else {
+        ota_chunk_size = 4096; // Default
     }
 
     // Check force mode
@@ -491,8 +506,9 @@ static void handle_fw_update_start(cJSON *update_json)
         ota_handle = 0;
     }
 
-    ota_total_size     = size->valueint;
-    ota_received_bytes = 0;
+    ota_total_size       = size->valueint;
+    ota_received_bytes   = 0;
+    ota_expected_chunks  = (ota_total_size + ota_chunk_size - 1) / ota_chunk_size;
     ota_manifest_checked = false;
     memset(ota_header_buffer, 0, sizeof(ota_header_buffer));
 
@@ -508,12 +524,13 @@ static void handle_fw_update_start(cJSON *update_json)
         return;
     }
 
-    ESP_LOGI(TAG, "OTA update started: %d bytes, version %s, force=%d", 
-             ota_total_size, version->valuestring, ota_force_mode);
+    ESP_LOGI(TAG, "OTA update started: %d bytes, chunk_size=%d, chunks=%d, version=%s, force=%d", 
+             ota_total_size, ota_chunk_size, ota_expected_chunks, version->valuestring, ota_force_mode);
     
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "status", "ok");
     cJSON_AddBoolToObject(response, "force_mode", ota_force_mode);
+    cJSON_AddNumberToObject(response, "expected_chunks", ota_expected_chunks);
     char *response_str = cJSON_PrintUnformatted(response);
     g_send_response(response_str);
     free(response_str);
@@ -527,13 +544,12 @@ static void handle_fw_update_data(const char *data_str)
         return;
     }
 
+    const char *base64_data = data_str;
     char *space_pos = strchr(data_str, ' ');
-    if (!space_pos) {
-        g_send_response("ERROR Invalid data format");
-        return;
+    if (space_pos) {
+        base64_data = space_pos + 1;
     }
 
-    const char *base64_data = space_pos + 1;
     size_t base64_len = strlen(base64_data);
     
     size_t max_decoded_len = (base64_len * 3) / 4 + 3;
@@ -549,6 +565,15 @@ static void handle_fw_update_data(const char *data_str)
     if (ret != 0) {
         free(binary_data);
         g_send_response("ERROR Invalid base64 data");
+        return;
+    }
+
+    // Validate chunk size (except last chunk)
+    size_t remaining = ota_total_size - ota_received_bytes;
+    size_t expected_size = (remaining >= ota_chunk_size) ? ota_chunk_size : remaining;
+    if (data_len > expected_size) {
+        free(binary_data);
+        g_send_response("ERROR Chunk size exceeds expected");
         return;
     }
 
@@ -569,6 +594,10 @@ static void handle_fw_update_data(const char *data_str)
     }
 
     ota_received_bytes += data_len;
+
+    ESP_LOGD(TAG, "OTA chunk: %d bytes, total: %d/%d (%.1f%%)", 
+             data_len, ota_received_bytes, ota_total_size, 
+             (float)ota_received_bytes * 100.0f / ota_total_size);
 
     // Check compatibility after receiving first 4KB
     if (!ota_manifest_checked && ota_received_bytes >= sizeof(ota_header_buffer)) {
@@ -604,8 +633,15 @@ static void handle_fw_update_data(const char *data_str)
         }
     }
 
+    // Calculate CRC32 checksum of received chunk
+    uint32_t chunk_crc = esp_crc32_le(0, binary_data, data_len);
+
     free(binary_data);
-    g_send_response("OK Data written");
+    
+    char response[80];
+    snprintf(response, sizeof(response), "OK %d/%d 0x%08x", 
+             ota_received_bytes, ota_total_size, chunk_crc);
+    g_send_response(response);
 }
 
 static void handle_fw_update_verify(void)
@@ -615,14 +651,46 @@ static void handle_fw_update_verify(void)
         return;
     }
 
-    esp_err_t ret = esp_ota_end(ota_handle);
-    if (ret != ESP_OK) {
-        g_send_response("ERROR OTA verification failed");
+    // Check if we received all data
+    if (ota_received_bytes != ota_total_size) {
+        ESP_LOGE(TAG, "Size mismatch: received %d, expected %d", ota_received_bytes, ota_total_size);
+        char error_msg[128];
+        snprintf(error_msg, sizeof(error_msg), "ERROR Size mismatch: received %d, expected %d", 
+                 ota_received_bytes, ota_total_size);
+        g_send_response(error_msg);
+        esp_ota_abort(ota_handle);
         ota_handle = 0;
         return;
     }
 
+    esp_err_t ret = esp_ota_end(ota_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "esp_ota_end failed: %s (0x%x)", esp_err_to_name(ret), ret);
+        char error_msg[128];
+        snprintf(error_msg, sizeof(error_msg), "ERROR OTA verification failed: %s", esp_err_to_name(ret));
+        g_send_response(error_msg);
+        ota_handle = 0;
+        return;
+    }
+
+    ESP_LOGI(TAG, "Firmware verified successfully (%d bytes)", ota_received_bytes);
     g_send_response("OK Firmware verified");
+}
+
+static void handle_fw_update_abort(void)
+{
+    if (ota_handle) {
+        esp_ota_abort(ota_handle);
+        ota_handle = 0;
+        ESP_LOGI(TAG, "OTA update aborted");
+    }
+    
+    ota_partition = NULL;
+    ota_received_bytes = 0;
+    ota_total_size = 0;
+    ota_manifest_checked = false;
+    
+    g_send_response("OK OTA aborted");
 }
 
 static void handle_fw_update_commit(void)
@@ -775,6 +843,11 @@ void commands_execute(const char *command_line, response_fn_t send_response)
 
     if (strcmp(command_line, "FW_UPDATE_VERIFY") == 0) {
         handle_fw_update_verify();
+        return;
+    }
+
+    if (strcmp(command_line, "FW_UPDATE_ABORT") == 0) {
+        handle_fw_update_abort();
         return;
     }
 

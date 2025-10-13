@@ -46,6 +46,26 @@ void oled_ui_unlock_draw(void)
     }
 }
 
+esp_err_t oled_ui_display_off(void)
+{
+    if (!oled_ui_try_lock_draw()) {
+        return ESP_ERR_TIMEOUT;
+    }
+    u8g2_SetPowerSave(&u8g2, 1);
+    oled_ui_unlock_draw();
+    return ESP_OK;
+}
+
+esp_err_t oled_ui_display_on(void)
+{
+    if (!oled_ui_try_lock_draw()) {
+        return ESP_ERR_TIMEOUT;
+    }
+    u8g2_SetPowerSave(&u8g2, 0);
+    oled_ui_unlock_draw();
+    return ESP_OK;
+}
+
 esp_err_t oled_ui_init(void)
 {
     ESP_LOGI(TAG, "Initializing OLED UI");

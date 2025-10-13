@@ -163,6 +163,18 @@ bool oled_ui_try_lock_draw(void);
  */
 void oled_ui_unlock_draw(void);
 
+/**
+ * @brief Turn off display (power save mode)
+ * @return ESP_OK on success
+ */
+esp_err_t oled_ui_display_off(void);
+
+/**
+ * @brief Turn on display (wake from power save)
+ * @return ESP_OK on success
+ */
+esp_err_t oled_ui_display_on(void);
+
 #ifdef __cplusplus
 }
 #endif

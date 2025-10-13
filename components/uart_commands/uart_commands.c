@@ -20,8 +20,8 @@ static const char *TAG = "UART_CMD";
 #define UART_TX_PIN 43
 #define UART_RX_PIN 44
 #define UART_BAUD_RATE 460800
-#define UART_BUF_SIZE 1024
-#define CMD_MAX_LENGTH 256
+#define UART_BUF_SIZE 16384
+#define CMD_MAX_LENGTH 16384
 
 static TaskHandle_t uart_task_handle = NULL;
 static bool uart_running = false;
