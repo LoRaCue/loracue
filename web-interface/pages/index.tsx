@@ -5,8 +5,6 @@ import { Save, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 interface DeviceSettings {
   name: string
   mode: string
-  sleepTimeout: number
-  autoSleep: boolean
   brightness: number
   slot_id: number
 }
@@ -15,8 +13,6 @@ export default function DevicePage() {
   const [settings, setSettings] = useState<DeviceSettings>({
     name: '',
     mode: 'presenter',
-    sleepTimeout: 300000,
-    autoSleep: true,
     brightness: 128,
     slot_id: 1
   })
@@ -24,7 +20,7 @@ export default function DevicePage() {
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
   useEffect(() => {
-    fetch('/api/device/settings')
+    fetch('/api/general')
       .then(res => res.json())
       .then(data => setSettings(data))
       .catch(() => {})
@@ -35,7 +31,7 @@ export default function DevicePage() {
     setStatus('idle')
     
     try {
-      const response = await fetch('/api/device/settings', {
+      const response = await fetch('/api/general', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
@@ -126,29 +122,6 @@ export default function DevicePage() {
               </p>
             </div>
 
-            <div>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={settings.autoSleep}
-                  onChange={(e) => setSettings({ ...settings, autoSleep: e.target.checked })}
-                  className="rounded"
-                />
-                <span className="text-sm font-medium">Enable Auto Sleep</span>
-              </label>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Sleep Timeout (seconds)</label>
-              <input
-                type="number"
-                value={settings.sleepTimeout / 1000}
-                onChange={(e) => setSettings({ ...settings, sleepTimeout: parseInt(e.target.value) * 1000 })}
-                className="input"
-                min="10"
-                max="3600"
-              />
-            </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-2">
