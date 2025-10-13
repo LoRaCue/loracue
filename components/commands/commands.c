@@ -639,7 +639,7 @@ static void handle_fw_update_data(const char *data_str)
     free(binary_data);
     
     char response[80];
-    snprintf(response, sizeof(response), "OK %d/%d 0x%08x", 
+    snprintf(response, sizeof(response), "OK %zu/%zu 0x%08x", 
              ota_received_bytes, ota_total_size, chunk_crc);
     g_send_response(response);
 }
@@ -653,9 +653,9 @@ static void handle_fw_update_verify(void)
 
     // Check if we received all data
     if (ota_received_bytes != ota_total_size) {
-        ESP_LOGE(TAG, "Size mismatch: received %d, expected %d", ota_received_bytes, ota_total_size);
+        ESP_LOGE(TAG, "Size mismatch: received %zu, expected %zu", ota_received_bytes, ota_total_size);
         char error_msg[128];
-        snprintf(error_msg, sizeof(error_msg), "ERROR Size mismatch: received %d, expected %d", 
+        snprintf(error_msg, sizeof(error_msg), "ERROR Size mismatch: received %zu, expected %zu", 
                  ota_received_bytes, ota_total_size);
         g_send_response(error_msg);
         esp_ota_abort(ota_handle);
