@@ -305,7 +305,7 @@ uint8_t LoRaReceive(uint8_t *pData, int16_t len)
     return rxLen;
 }
 
-bool LoRaSend(uint8_t *pData, int16_t len, uint8_t mode)
+bool LoRaSend(const uint8_t *pData, int16_t len, uint8_t mode)
 {
     bool rv = false;
 

@@ -43,7 +43,7 @@ static void usb_host_lib_task(void *arg)
     vTaskDelete(NULL);
 }
 
-static void cdc_rx_callback(uint8_t *data, size_t data_len, void *user_arg)
+static void cdc_rx_callback(const uint8_t *data, size_t data_len, void *user_arg)
 {
     if (!pairing_active) return;
 
@@ -80,7 +80,7 @@ static void new_dev_callback(usb_device_handle_t usb_dev)
         .connection_timeout_ms = 5000,
         .out_buffer_size = 512,
         .event_cb = NULL,
-        .data_cb = cdc_rx_callback,
+        .data_cb = (cdc_acm_data_callback_t)cdc_rx_callback,
         .user_arg = NULL,
     };
 
