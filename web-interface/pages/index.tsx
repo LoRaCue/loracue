@@ -7,6 +7,7 @@ interface DeviceSettings {
   mode: string
   brightness: number
   slot_id: number
+  bluetooth: boolean
 }
 
 export default function DevicePage() {
@@ -14,7 +15,8 @@ export default function DevicePage() {
     name: '',
     mode: 'presenter',
     brightness: 128,
-    slot_id: 1
+    slot_id: 1,
+    bluetooth: true
   })
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -54,7 +56,7 @@ export default function DevicePage() {
     <Layout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Device Settings</h1>
+          <h1 className="text-3xl font-bold mb-2">General Settings</h1>
           <p className="text-gray-600 dark:text-gray-400">
             Configure device name, mode, power management, and display
           </p>
@@ -102,24 +104,44 @@ export default function DevicePage() {
                 max="255"
                 value={settings.brightness}
                 onChange={(e) => setSettings({ ...settings, brightness: parseInt(e.target.value) })}
-                className="w-full"
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Slot ID (Multi-PC Routing)</label>
-              <select
-                value={settings.slot_id}
-                onChange={(e) => setSettings({ ...settings, slot_id: parseInt(e.target.value) })}
-                className="input"
-              >
-                {Array.from({ length: 16 }, (_, i) => i + 1).map(slot => (
-                  <option key={slot} value={slot}>Slot {slot}</option>
-                ))}
-              </select>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                Select which PC this presenter controls (1-16)
-              </p>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium mb-2">Slot ID (Multi-PC Routing)</label>
+                <select
+                  value={settings.slot_id}
+                  onChange={(e) => setSettings({ ...settings, slot_id: parseInt(e.target.value) })}
+                  className="input"
+                >
+                  {Array.from({ length: 16 }, (_, i) => i + 1).map(slot => (
+                    <option key={slot} value={slot}>Slot {slot}</option>
+                  ))}
+                </select>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Select which PC is controlled or events are received for
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Bluetooth Configuration</label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.bluetooth}
+                      onChange={(e) => setSettings({...settings, bluetooth: e.target.checked})}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Enable Bluetooth for wireless configuration
+                </p>
+              </div>
             </div>
 
 
