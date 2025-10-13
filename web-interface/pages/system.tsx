@@ -1,29 +1,38 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
+import { useToast } from '../components/Toast'
 import { RefreshCw, AlertTriangle, Loader2 } from 'lucide-react'
 
 interface SystemInfo {
   version: string
+  board_id: string
   commit: string
   branch: string
-  buildDate: string
-  uptime: number
-  freeHeap: number
+  build_date: string
+  chip_model: string
+  chip_revision: number
+  cpu_cores: number
+  flash_size_mb: number
+  mac: string
+  uptime_sec: number
+  free_heap_kb: number
   partition: string
 }
 
 export default function SystemPage() {
+  const toast = useToast()
   const [info, setInfo] = useState<SystemInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [resetting, setResetting] = useState(false)
 
   const loadInfo = async () => {
     try {
-      const res = await fetch('/api/system/info')
+      const res = await fetch('/api/device/info')
+      if (!res.ok) return
       const data = await res.json()
       setInfo(data)
     } catch (error) {
-      console.error('Failed to load system info:', error)
+      // Silently fail
     } finally {
       setLoading(false)
     }
@@ -42,9 +51,9 @@ export default function SystemPage() {
     setResetting(true)
     try {
       await fetch('/api/system/factory-reset', { method: 'POST' })
-      alert('Device is resetting. Please wait 10 seconds and reconnect.')
+      toast.success('Device is resetting. Please wait 10 seconds and reconnect.')
     } catch (error) {
-      alert('Reset initiated. Device will reboot.')
+      toast.success('Reset initiated. Device will reboot.')
     }
   }
 
@@ -53,10 +62,6 @@ export default function SystemPage() {
     const hours = Math.floor((seconds % 86400) / 3600)
     const mins = Math.floor((seconds % 3600) / 60)
     return `${days}d ${hours}h ${mins}m`
-  }
-
-  const formatBytes = (bytes: number) => {
-    return `${(bytes / 1024).toFixed(1)} KB`
   }
 
   return (
@@ -79,24 +84,54 @@ export default function SystemPage() {
               <h2 className="text-lg font-semibold mb-4">Firmware</h2>
               <dl className="space-y-3">
                 <div>
-                  <dt className="text-sm text-gray-500">Version</dt>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Board ID</dt>
+                  <dd className="font-mono">{info.board_id}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Version</dt>
                   <dd className="font-mono">{info.version}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-gray-500">Commit</dt>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Git Commit</dt>
                   <dd className="font-mono text-sm">{info.commit}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-gray-500">Branch</dt>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Branch</dt>
                   <dd className="font-mono">{info.branch}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-gray-500">Build Date</dt>
-                  <dd className="text-sm">{info.buildDate}</dd>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Build Date</dt>
+                  <dd className="text-sm">{info.build_date}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-gray-500">Partition</dt>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Partition</dt>
                   <dd className="font-mono">{info.partition}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="card p-6">
+              <h2 className="text-lg font-semibold mb-4">Hardware</h2>
+              <dl className="space-y-3">
+                <div>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Chip Model</dt>
+                  <dd className="font-mono">{info.chip_model}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Chip Revision</dt>
+                  <dd>{info.chip_revision}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">CPU Cores</dt>
+                  <dd>{info.cpu_cores}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Flash Size</dt>
+                  <dd>{info.flash_size_mb} MB</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">MAC Address</dt>
+                  <dd className="font-mono text-sm">{info.mac}</dd>
                 </div>
               </dl>
             </div>
@@ -105,21 +140,14 @@ export default function SystemPage() {
               <h2 className="text-lg font-semibold mb-4">Runtime</h2>
               <dl className="space-y-3">
                 <div>
-                  <dt className="text-sm text-gray-500">Uptime</dt>
-                  <dd>{formatUptime(info.uptime)}</dd>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Uptime</dt>
+                  <dd>{formatUptime(info.uptime_sec)}</dd>
                 </div>
                 <div>
-                  <dt className="text-sm text-gray-500">Free Heap</dt>
-                  <dd>{formatBytes(info.freeHeap)}</dd>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Free Heap</dt>
+                  <dd>{info.free_heap_kb} KB</dd>
                 </div>
               </dl>
-              <button
-                onClick={loadInfo}
-                className="mt-4 btn-secondary flex items-center space-x-2"
-              >
-                <RefreshCw size={16} />
-                <span>Refresh</span>
-              </button>
             </div>
           </div>
         )}

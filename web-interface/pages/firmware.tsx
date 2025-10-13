@@ -1,23 +1,21 @@
 import { useState, useRef } from 'react'
 import Layout from '../components/Layout'
-import { Upload, Loader2, CheckCircle, AlertCircle, FileText, Zap } from 'lucide-react'
+import { useToast } from '../components/Toast'
+import { Upload, Loader2, FileText, Zap } from 'lucide-react'
 
 export default function FirmwarePage() {
+  const toast = useToast()
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const [message, setMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile && selectedFile.name.endsWith('.bin')) {
       setFile(selectedFile)
-      setStatus('idle')
     } else {
-      setStatus('error')
-      setMessage('Please select a valid .bin firmware file')
+      toast.error('Please select a valid .bin firmware file')
     }
   }
 
@@ -26,7 +24,6 @@ export default function FirmwarePage() {
 
     setUploading(true)
     setProgress(0)
-    setStatus('idle')
 
     try {
       // Phase 1: Start OTA
@@ -74,14 +71,12 @@ export default function FirmwarePage() {
       if (!commitRes.ok) throw new Error('Failed to commit firmware')
 
       setProgress(100)
-      setStatus('success')
-      setMessage('Firmware uploaded! Device rebooting...')
+      toast.success('Firmware uploaded! Device rebooting...')
       setFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
       
     } catch (error) {
-      setStatus('error')
-      setMessage(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.error(`Upload failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setUploading(false)
     }
@@ -155,21 +150,6 @@ export default function FirmwarePage() {
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-              </div>
-            )}
-
-            {status !== 'idle' && (
-              <div className={`flex items-center space-x-2 p-4 rounded-lg ${
-                status === 'success' 
-                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
-                  : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
-              }`}>
-                {status === 'success' ? (
-                  <CheckCircle size={20} />
-                ) : (
-                  <AlertCircle size={20} />
-                )}
-                <span>{message}</span>
               </div>
             )}
 
