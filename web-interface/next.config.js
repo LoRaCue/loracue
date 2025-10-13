@@ -7,7 +7,11 @@ const nextConfig = {
   },
   assetPrefix: '',
   basePath: '',
-  distDir: 'out'
+  distDir: 'out',
+  devIndicators: {
+    buildActivity: false,
+    appIsrStatus: false
+  }
 }
 
 module.exports = nextConfig
