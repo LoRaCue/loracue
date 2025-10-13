@@ -488,12 +488,12 @@ static void handle_fw_update_start(cJSON *update_json)
     // Validate chunk_size
     if (chunk_size && cJSON_IsNumber(chunk_size)) {
         ota_chunk_size = chunk_size->valueint;
-        if (ota_chunk_size < 512 || ota_chunk_size > 8192) {
-            g_send_response("ERROR chunk_size must be between 512 and 8192 bytes");
+        if (ota_chunk_size < 512 || ota_chunk_size > 4096) {
+            g_send_response("ERROR chunk_size must be between 512 and 4096 bytes");
             return;
         }
     } else {
-        ota_chunk_size = 4096; // Default
+        ota_chunk_size = 2048; // Default - smaller for stability
     }
 
     // Check force mode
@@ -519,14 +519,24 @@ static void handle_fw_update_start(cJSON *update_json)
         return;
     }
 
-    esp_err_t ret = esp_ota_begin(ota_partition, ota_total_size, &ota_handle);
-    if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to begin OTA update");
+    // Validate firmware size fits in partition
+    if (ota_total_size > ota_partition->size) {
+        ESP_LOGE(TAG, "Firmware too large: %d bytes > partition %zu bytes", 
+                 ota_total_size, ota_partition->size);
+        g_send_response("ERROR Firmware exceeds partition size");
         return;
     }
 
-    ESP_LOGI(TAG, "OTA update started: %d bytes, chunk_size=%d, chunks=%d, version=%s, force=%d", 
-             ota_total_size, ota_chunk_size, ota_expected_chunks, version->valuestring, ota_force_mode);
+    esp_err_t ret = esp_ota_begin(ota_partition, ota_total_size, &ota_handle);
+    if (ret != ESP_OK) {
+        char error_msg[64];
+        snprintf(error_msg, sizeof(error_msg), "ERROR OTA begin failed: 0x%x", ret);
+        g_send_response(error_msg);
+        return;
+    }
+
+    ESP_LOGI(TAG, "OTA update started: %d bytes, chunk_size=%d, chunks=%d, version=%s, force=%d, partition=%zu", 
+             ota_total_size, ota_chunk_size, ota_expected_chunks, version->valuestring, ota_force_mode, ota_partition->size);
     
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "status", "ok");
@@ -578,6 +588,15 @@ static void handle_fw_update_data(const char *data_str)
         return;
     }
 
+    // Validate partition boundary
+    if (ota_received_bytes + data_len > ota_partition->size) {
+        free(binary_data);
+        ESP_LOGE(TAG, "OTA write would exceed partition: %zu + %zu > %zu", 
+                 ota_received_bytes, data_len, ota_partition->size);
+        g_send_response("ERROR Write exceeds partition size");
+        return;
+    }
+
     // Store first 4KB for manifest extraction
     if (!ota_manifest_checked && ota_received_bytes < sizeof(ota_header_buffer)) {
         size_t copy_len = (ota_received_bytes + data_len <= sizeof(ota_header_buffer)) 
@@ -586,11 +605,18 @@ static void handle_fw_update_data(const char *data_str)
         memcpy(ota_header_buffer + ota_received_bytes, binary_data, copy_len);
     }
 
+    // Write - esp_ota_write already handles cache internally
     esp_err_t ota_ret = esp_ota_write(ota_handle, binary_data, data_len);
+    
+    // Critical: Yield to allow scheduler and cache to settle
+    taskYIELD();
+    vTaskDelay(pdMS_TO_TICKS(20));
     
     if (ota_ret != ESP_OK) {
         free(binary_data);
-        g_send_response("ERROR Failed to write OTA data");
+        char error_msg[64];
+        snprintf(error_msg, sizeof(error_msg), "ERROR OTA write failed: 0x%x", ota_ret);
+        g_send_response(error_msg);
         return;
     }
 
