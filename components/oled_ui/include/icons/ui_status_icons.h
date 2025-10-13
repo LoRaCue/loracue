@@ -30,3 +30,24 @@ void ui_battery_draw(uint8_t battery_level);
  * @param strength Signal strength level
  */
 void ui_rf_draw(signal_strength_t strength);
+
+/**
+ * @brief Draw short press button icon at specified position
+ * @param x X coordinate
+ * @param y Y coordinate
+ */
+void ui_button_short_draw_at(int x, int y);
+
+/**
+ * @brief Draw double press button icon at specified position
+ * @param x X coordinate
+ * @param y Y coordinate
+ */
+void ui_button_double_draw_at(int x, int y);
+
+/**
+ * @brief Draw long press button icon at specified position
+ * @param x X coordinate
+ * @param y Y coordinate
+ */
+void ui_button_long_draw_at(int x, int y);

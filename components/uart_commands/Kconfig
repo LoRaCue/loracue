@@ -1,0 +1,14 @@
+menu "UART Commands Configuration"
+
+    config UART_COMMANDS_ENABLED
+        bool "Enable UART command interface"
+        default n
+        help
+            Enable command interface over hardware UART0.
+            When enabled, ESP-IDF logging to UART0 will be disabled
+            to prevent interference with command responses.
+            
+            Baudrate: 460800, 8N1
+            Pins: TX=GPIO43, RX=GPIO44
+
+endmenu

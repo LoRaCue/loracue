@@ -96,7 +96,7 @@
     [ "esp:3V3.2", "oled:VCC", "red", [ ] ],
     [ "esp:GND.1", "oled:GND", "black", [  ] ],
     
-    [ "esp:45", "btn_next:2.l", "yellow", [ ] ],
+    [ "esp:0", "btn_next:2.l", "yellow", [ ] ],
     [ "esp:GND.2", "btn_next:1.l", "black", [  ] ],
     
     [ "esp:46", "btn_prev:1.r", "yellow", [  ] ],

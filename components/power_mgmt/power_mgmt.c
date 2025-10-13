@@ -8,10 +8,12 @@
 
 #include "power_mgmt.h"
 #include "bsp.h"
+#include "oled_ui.h"
 #include "driver/gpio.h"
 #include "driver/i2c.h"
 #include "driver/rtc_io.h"
 #include "driver/spi_master.h"
+#include "driver/uart.h"
 #include "esp_log.h"
 #include "esp_pm.h"
 #include "esp_sleep.h"
@@ -28,19 +30,21 @@ static power_config_t current_config = {0};
 static power_stats_t power_stats     = {0};
 static uint64_t last_activity_time   = 0;
 static uint64_t session_start_time   = 0;
+static bool display_sleeping         = false;
 
 // Default configuration
 static const power_config_t default_config = {
-    .light_sleep_timeout_ms  = 30000,  // 30 seconds
-    .deep_sleep_timeout_ms   = 300000, // 5 minutes
-    .enable_auto_light_sleep = true,
-    .enable_auto_deep_sleep  = true,
-    .cpu_freq_mhz            = 80, // 80MHz for power efficiency
+    .display_sleep_timeout_ms = 10000,  // 10 seconds
+    .light_sleep_timeout_ms   = 30000,  // 30 seconds
+    .deep_sleep_timeout_ms    = 300000, // 5 minutes
+    .enable_auto_display_sleep = true,
+    .enable_auto_light_sleep   = true,
+    .enable_auto_deep_sleep    = true,
+    .cpu_freq_mhz              = 80, // 80MHz for power efficiency
 };
 
-// GPIO pins for wake (buttons)
-#define WAKE_GPIO_PREV 45 // PREV button
-#define WAKE_GPIO_NEXT 46 // NEXT button
+// GPIO pins for wake (button)
+#define WAKE_GPIO_BUTTON 0 // User button on Heltec V3
 
 esp_err_t power_mgmt_init(const power_config_t *config)
 {
@@ -71,12 +75,12 @@ esp_err_t power_mgmt_init(const power_config_t *config)
         ESP_LOGI(TAG, "Power management configured successfully");
     }
 
-    // Configure GPIO wake sources (buttons)
-    esp_sleep_enable_ext1_wakeup((1ULL << WAKE_GPIO_PREV) | (1ULL << WAKE_GPIO_NEXT), ESP_EXT1_WAKEUP_ANY_HIGH);
+    // Configure GPIO wake sources (button)
+    esp_sleep_enable_ext0_wakeup(WAKE_GPIO_BUTTON, 0); // Wake on LOW (button pressed)
 
-    // Configure GPIO pins for wake
+    // Configure GPIO pin for wake
     gpio_config_t wake_gpio_config = {
-        .pin_bit_mask = (1ULL << WAKE_GPIO_PREV) | (1ULL << WAKE_GPIO_NEXT),
+        .pin_bit_mask = (1ULL << WAKE_GPIO_BUTTON),
         .mode         = GPIO_MODE_INPUT,
         .pull_up_en   = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -108,9 +112,29 @@ esp_err_t power_mgmt_init(const power_config_t *config)
     }
 
     power_mgmt_initialized = true;
-    ESP_LOGI(TAG, "Power management initialized (CPU: %dMHz, Light sleep: %s, Deep sleep: %s)",
-             current_config.cpu_freq_mhz, current_config.enable_auto_light_sleep ? "ON" : "OFF",
+    ESP_LOGI(TAG, "Power management initialized (CPU: %dMHz, Display: %s, Light: %s, Deep: %s)",
+             current_config.cpu_freq_mhz, 
+             current_config.enable_auto_display_sleep ? "ON" : "OFF",
+             current_config.enable_auto_light_sleep ? "ON" : "OFF",
              current_config.enable_auto_deep_sleep ? "ON" : "OFF");
+
+    return ESP_OK;
+}
+
+esp_err_t power_mgmt_display_sleep(void)
+{
+    if (!power_mgmt_initialized) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (!display_sleeping) {
+        ESP_LOGD(TAG, "Entering display sleep");
+        oled_ui_display_off();
+        display_sleeping = true;
+        
+        uint64_t current_time = esp_timer_get_time();
+        power_stats.display_sleep_time_ms += (current_time - last_activity_time) / 1000;
+    }
 
     return ESP_OK;
 }
@@ -123,25 +147,28 @@ esp_err_t power_mgmt_light_sleep(uint32_t timeout_ms)
 
     ESP_LOGI(TAG, "Entering light sleep for %dms", timeout_ms);
 
-    // Prepare for sleep
-    power_mgmt_prepare_sleep();
+    if (!display_sleeping) {
+        oled_ui_display_off();
+    }
 
     uint64_t sleep_start = esp_timer_get_time();
 
     if (timeout_ms > 0) {
-        esp_sleep_enable_timer_wakeup(timeout_ms * 1000ULL); // Convert to microseconds
+        esp_sleep_enable_timer_wakeup(timeout_ms * 1000ULL);
     }
+    
+    esp_sleep_enable_uart_wakeup(UART_NUM_0);
 
-    // Enter light sleep
     esp_err_t ret = esp_light_sleep_start();
 
-    uint64_t sleep_end      = esp_timer_get_time();
-    uint32_t sleep_duration = (sleep_end - sleep_start) / 1000; // Convert to milliseconds
+    uint64_t sleep_end = esp_timer_get_time();
+    uint32_t sleep_duration = (sleep_end - sleep_start) / 1000;
 
     power_stats.light_sleep_time_ms += sleep_duration;
+    power_mgmt_update_activity();
 
-    // Restore after wake
-    power_mgmt_restore_wake();
+    oled_ui_display_on();
+    display_sleeping = false;
 
     ESP_LOGI(TAG, "Woke from light sleep after %dms", sleep_duration);
 
@@ -180,6 +207,12 @@ esp_err_t power_mgmt_update_activity(void)
     }
 
     last_activity_time = esp_timer_get_time();
+    
+    if (display_sleeping) {
+        oled_ui_display_on();
+        display_sleeping = false;
+    }
+    
     return ESP_OK;
 }
 
@@ -196,6 +229,8 @@ power_mode_t power_mgmt_get_recommended_mode(void)
         return POWER_MODE_DEEP_SLEEP;
     } else if (current_config.enable_auto_light_sleep && inactive_time_ms >= current_config.light_sleep_timeout_ms) {
         return POWER_MODE_LIGHT_SLEEP;
+    } else if (current_config.enable_auto_display_sleep && inactive_time_ms >= current_config.display_sleep_timeout_ms) {
+        return POWER_MODE_DISPLAY_SLEEP;
     }
 
     return POWER_MODE_ACTIVE;
@@ -215,10 +250,13 @@ esp_err_t power_mgmt_get_stats(power_stats_t *stats)
     stats->active_time_ms += current_session_ms;
 
     // Estimate battery life (rough calculation)
-    // Assumptions: 1000mAh battery, 10mA active, 1mA light sleep, 0.01mA deep sleep
+    // Assumptions: 1000mAh battery, 10mA active, 8mA display sleep, 1mA light sleep, 0.01mA deep sleep
     float avg_current_ma =
-        (stats->active_time_ms * 10.0f + stats->light_sleep_time_ms * 1.0f + stats->deep_sleep_time_ms * 0.01f) /
-        (stats->active_time_ms + stats->light_sleep_time_ms + stats->deep_sleep_time_ms + 1);
+        (stats->active_time_ms * 10.0f + 
+         stats->display_sleep_time_ms * 8.0f + 
+         stats->light_sleep_time_ms * 1.0f + 
+         stats->deep_sleep_time_ms * 0.01f) /
+        (stats->active_time_ms + stats->display_sleep_time_ms + stats->light_sleep_time_ms + stats->deep_sleep_time_ms + 1);
 
     stats->estimated_battery_hours = 1000.0f / avg_current_ma; // mAh / mA = hours
 
@@ -260,6 +298,8 @@ esp_err_t power_mgmt_prepare_sleep(void)
 {
     ESP_LOGD(TAG, "Preparing system for sleep");
 
+    oled_ui_display_off();
+
     // Delete I2C driver to free resources
     i2c_driver_delete(I2C_NUM_0);
 
@@ -281,6 +321,7 @@ esp_err_t power_mgmt_restore_wake(void)
         return ret;
     }
 
+    oled_ui_display_on();
     power_mgmt_update_activity();
 
     ESP_LOGD(TAG, "Peripherals restored after wake");

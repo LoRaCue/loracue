@@ -6,7 +6,7 @@
 #include <string.h>
 
 static const char *TAG = "USB_CDC";
-static char rx_buffer[512];
+static char rx_buffer[16384];
 static size_t rx_len = 0;
 
 static void send_response(const char *response)

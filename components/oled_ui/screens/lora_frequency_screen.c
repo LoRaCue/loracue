@@ -4,6 +4,7 @@
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_icons.h"
+#include "ui_helpers.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -14,7 +15,7 @@ static uint32_t min_freq_khz = 863000;
 static uint32_t max_freq_khz = 870000;
 static bool edit_mode = false;
 
-#define FREQ_STEP_KHZ 200
+#define FREQ_STEP_KHZ 100
 
 void lora_frequency_screen_init(void) {
     lora_config_t config;
@@ -53,27 +54,12 @@ void lora_frequency_screen_draw(void) {
     int text_y = (SEPARATOR_Y_TOP + SEPARATOR_Y_BOTTOM) / 2 + 6;
     u8g2_DrawStr(&u8g2, text_x, text_y, freq_str);
     
-    // Footer
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    
+    // Footer with one-button UI icons
     if (edit_mode) {
-        u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-        u8g2_DrawXBM(&u8g2, 8, 56, track_next_width, track_next_height, track_next_bits);
-        u8g2_DrawStr(&u8g2, 14, 64, "Up/Down");
-        
-        int save_text_width = u8g2_GetStrWidth(&u8g2, "Save");
-        int save_x = DISPLAY_WIDTH - both_buttons_width - save_text_width - 2;
-        u8g2_DrawXBM(&u8g2, save_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-        u8g2_DrawStr(&u8g2, save_x + both_buttons_width + 2, 64, "Save");
+        ui_draw_footer(FOOTER_CONTEXT_EDIT, NULL);
     } else {
-        u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-        u8g2_DrawStr(&u8g2, 8, 64, "Back");
-        
-        int change_text_width = u8g2_GetStrWidth(&u8g2, "Change");
-        int change_x = DISPLAY_WIDTH - both_buttons_width - change_text_width - 2;
-        u8g2_DrawXBM(&u8g2, change_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-        u8g2_DrawStr(&u8g2, change_x + both_buttons_width + 2, 64, "Change");
+        const char *labels[] = {NULL, "Back", "Edit"};
+        ui_draw_footer(FOOTER_CONTEXT_CUSTOM, labels);
     }
     
     u8g2_SendBuffer(&u8g2);

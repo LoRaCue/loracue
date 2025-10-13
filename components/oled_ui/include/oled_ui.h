@@ -36,7 +36,7 @@ typedef enum {
     OLED_SCREEN_LORA_CR,         ///< LoRa coding rate
     OLED_SCREEN_LORA_TXPOWER,    ///< LoRa TX power
     OLED_SCREEN_LORA_BAND,       ///< LoRa frequency band
-    OLED_SCREEN_LORA_SLOT,       ///< LoRa slot selection
+    OLED_SCREEN_SLOT,       ///< LoRa slot selection
     OLED_SCREEN_DEVICE_PAIRING,  ///< Device pairing
     OLED_SCREEN_DEVICE_REGISTRY, ///< Device registry
     OLED_SCREEN_BRIGHTNESS,      ///< Display brightness
@@ -106,14 +106,6 @@ typedef struct {
 esp_err_t oled_ui_init(void);
 
 /**
- * @brief Handle button press events
- *
- * @param button Button that was pressed
- * @param long_press True if long press detected
- */
-void oled_ui_handle_button(oled_button_t button, bool long_press);
-
-/**
  * @brief Update device status and refresh display
  *
  * @param status Device status structure
@@ -170,6 +162,18 @@ bool oled_ui_try_lock_draw(void);
  * @brief Release draw lock
  */
 void oled_ui_unlock_draw(void);
+
+/**
+ * @brief Turn off display (power save mode)
+ * @return ESP_OK on success
+ */
+esp_err_t oled_ui_display_off(void);
+
+/**
+ * @brief Turn on display (wake from power save)
+ * @return ESP_OK on success
+ */
+esp_err_t oled_ui_display_on(void);
 
 #ifdef __cplusplus
 }

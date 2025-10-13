@@ -2,6 +2,7 @@
 
 #include "oled_ui.h"
 #include "ui_config.h"
+#include "button_manager.h"
 
 /**
  * @brief Initialize screen controller
@@ -29,7 +30,6 @@ void ui_screen_controller_update(const ui_status_t *status);
 
 /**
  * @brief Handle button input for current screen
- * @param button Button pressed
- * @param long_press Whether it was a long press
+ * @param event Button event (short/double/long)
  */
-void ui_screen_controller_handle_button(oled_button_t button, bool long_press);
+void ui_screen_controller_handle_button(button_event_type_t event);

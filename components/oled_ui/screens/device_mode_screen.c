@@ -1,5 +1,5 @@
 #include "device_mode_screen.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
@@ -7,6 +7,7 @@
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_icons.h"
+#include "ui_helpers.h"
 
 extern u8g2_t u8g2;
 
@@ -26,8 +27,8 @@ void device_mode_screen_draw(void)
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
 
     // Get current mode from persistent config
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     // Viewport height: 54 - 10 = 44px, each item gets 44/2 = 22px
     const int viewport_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
@@ -38,7 +39,7 @@ void device_mode_screen_draw(void)
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
 
     for (int i = 0; i < mode_item_count; i++) {
-        int item_y_start = SEPARATOR_Y_TOP + (i * item_height);
+        int item_y_start = SEPARATOR_Y_TOP + 2 + (i * item_height);
         int bar_y_center = item_y_start + (item_height / 2);
 
         // Calculate lightbar position
@@ -77,24 +78,8 @@ void device_mode_screen_draw(void)
         }
     }
 
-    // Footer with navigation (like menu screen)
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-
-    // Left: Back arrow
-    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-    u8g2_DrawStr(&u8g2, 8, 64, "Back");
-
-    // Middle: Next arrow
-    u8g2_DrawXBM(&u8g2, 40, 56, track_next_width, track_next_height, track_next_bits);
-    u8g2_DrawStr(&u8g2, 46, 64, "Next");
-
-    // Right: Select with both buttons icon
-    const char *select_text = "Select";
-    int select_text_width   = u8g2_GetStrWidth(&u8g2, select_text);
-    int select_x            = DISPLAY_WIDTH - both_buttons_width - select_text_width - 2;
-    u8g2_DrawXBM(&u8g2, select_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-    u8g2_DrawStr(&u8g2, select_x + both_buttons_width + 2, 64, select_text);
+    // Footer with one-button UI icons
+    ui_draw_footer(FOOTER_CONTEXT_MENU, NULL);
 
     u8g2_SendBuffer(&u8g2);
 }
@@ -114,8 +99,8 @@ void device_mode_screen_navigate(menu_direction_t direction)
 void device_mode_screen_select(void)
 {
     // Get current config
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     // Update mode based on selection
     device_mode_t new_mode;
@@ -141,8 +126,8 @@ void device_mode_screen_select(void)
 
 device_mode_t device_mode_get_current(void)
 {
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     return config.device_mode;
 }
 

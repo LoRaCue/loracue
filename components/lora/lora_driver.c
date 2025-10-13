@@ -14,6 +14,8 @@
 #include "esp_log.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include <string.h>
 
 #ifndef SIMULATOR_BUILD
@@ -22,9 +24,12 @@
 
 static const char *TAG = "LORA_DRIVER";
 
+// SPI mutex for thread-safe LoRa access
+static SemaphoreHandle_t lora_spi_mutex = NULL;
+
 // LoRa configuration
 static lora_config_t current_config = {
-    .frequency        = 868000000, // 868MHz default
+    .frequency        = 868100000, // 868.1 MHz default
     .spreading_factor = 7,         // SF7 for low latency
     .bandwidth        = 500,       // 500kHz for high throughput
     .coding_rate      = 5,         // 4/5 coding rate
@@ -56,6 +61,13 @@ static esp_err_t lora_sim_receive_packet(uint8_t *data, size_t max_length, size_
 
 esp_err_t lora_driver_init(void)
 {
+    // Create SPI mutex for thread-safe access
+    lora_spi_mutex = xSemaphoreCreateMutex();
+    if (lora_spi_mutex == NULL) {
+        ESP_LOGE(TAG, "Failed to create LoRa SPI mutex");
+        return ESP_ERR_NO_MEM;
+    }
+
     // Initialize band profiles from JSON
     esp_err_t ret = lora_bands_init();
     if (ret != ESP_OK) {
@@ -79,14 +91,14 @@ esp_err_t lora_driver_init(void)
     // Initialize RA01S library
     LoRaInit();
 
-    int16_t ret = LoRaBegin(current_config.frequency, // Frequency in Hz
-                            current_config.tx_power,  // TX power in dBm
-                            3.3,                      // TCXO voltage
-                            false                     // Use DC-DC regulator (not LDO)
+    int16_t lora_ret = LoRaBegin(current_config.frequency, // Frequency in Hz
+                                  current_config.tx_power,  // TX power in dBm
+                                  3.3,                      // TCXO voltage
+                                  false                     // Use DC-DC regulator (not LDO)
     );
 
-    if (ret != ERR_NONE) {
-        ESP_LOGE(TAG, "LoRa initialization failed: %d", ret);
+    if (lora_ret != ERR_NONE) {
+        ESP_LOGE(TAG, "LoRa initialization failed: %d", lora_ret);
         return ESP_FAIL;
     }
 
@@ -117,10 +129,20 @@ esp_err_t lora_send_packet(const uint8_t *data, size_t length)
 #ifdef SIMULATOR_BUILD
     return lora_sim_send_packet(data, length);
 #else
+    // Acquire SPI mutex
+    if (xSemaphoreTake(lora_spi_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        ESP_LOGE(TAG, "Failed to acquire SPI mutex for TX");
+        return ESP_ERR_TIMEOUT;
+    }
+
     // Hardware LoRa transmission using RA01S
     ESP_LOGI(TAG, "📻 LoRa TX: %d bytes", length);
 
     bool ret = LoRaSend((uint8_t *)data, length, SX126x_TXMODE_SYNC);
+    
+    // Release SPI mutex
+    xSemaphoreGive(lora_spi_mutex);
+    
     if (!ret) {
         ESP_LOGE(TAG, "LoRa transmission failed");
         return ESP_FAIL;
@@ -140,10 +162,20 @@ esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received
 #ifdef SIMULATOR_BUILD
     return lora_sim_receive_packet(data, max_length, received_length, timeout_ms);
 #else
+    // Acquire SPI mutex
+    if (xSemaphoreTake(lora_spi_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        ESP_LOGE(TAG, "Failed to acquire SPI mutex for RX");
+        return ESP_ERR_TIMEOUT;
+    }
+
     // Hardware LoRa reception using RA01S
     *received_length = 0;
 
     uint8_t bytes_received = LoRaReceive(data, max_length);
+    
+    // Release SPI mutex
+    xSemaphoreGive(lora_spi_mutex);
+    
     if (bytes_received > 0) {
         *received_length = bytes_received;
         ESP_LOGI(TAG, "📻 LoRa RX: %d bytes", bytes_received);

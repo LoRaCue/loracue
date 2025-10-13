@@ -2,6 +2,7 @@
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_icons.h"
+#include "ui_helpers.h"
 
 extern u8g2_t u8g2;
 
@@ -69,18 +70,8 @@ void menu_screen_draw(void)
         u8g2_SetDrawColor(&u8g2, 1); // Reset color
     }
 
-    // Navigation hints with icons (compact bottom bar)
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawXBM(&u8g2, 2, 56, updown_nav_width, updown_nav_height, updown_nav_bits);
-    u8g2_DrawStr(&u8g2, 17, 64, "Move");
-
-    // Move Select to rightmost position
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr); // Explicitly set font again
-    const char *select_text = "Select/3s=Exit";
-    int select_text_width   = u8g2_GetStrWidth(&u8g2, select_text);
-    int select_x            = DISPLAY_WIDTH - both_buttons_width - select_text_width - 2;
-    u8g2_DrawXBM(&u8g2, select_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-    u8g2_DrawStr(&u8g2, select_x + both_buttons_width + 2, 64, select_text);
+    // Footer with one-button UI icons
+    ui_draw_footer(FOOTER_CONTEXT_MENU, NULL);
 
     u8g2_SendBuffer(&u8g2);
 }

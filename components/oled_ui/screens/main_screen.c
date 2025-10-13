@@ -1,5 +1,5 @@
 #include "main_screen.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "pc_mode_screen.h"
 #include "presenter_main_screen.h"
 

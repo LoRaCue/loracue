@@ -1,9 +1,12 @@
 #include "commands.h"
 #include "cJSON.h"
-#include "device_config.h"
+#include "bluetooth_config.h"
+#include "general_config.h"
 #include "device_registry.h"
 #include "esp_app_format.h"
+#include "esp_crc.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_system.h"
@@ -12,6 +15,9 @@
 #include "lora_driver.h"
 #include "ota_compatibility.h"
 #include "ota_error_screen.h"
+#include "power_mgmt.h"
+#include "power_mgmt_config.h"
+#include "mbedtls/base64.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "u8g2.h"
@@ -24,6 +30,8 @@ static esp_ota_handle_t ota_handle          = 0;
 static const esp_partition_t *ota_partition = NULL;
 static size_t ota_received_bytes            = 0;
 static size_t ota_total_size                = 0;
+static size_t ota_chunk_size                = 4096;
+static size_t ota_expected_chunks           = 0;
 static bool ota_force_mode                  = false;
 static uint8_t ota_header_buffer[4096]      = {0};  // Buffer for manifest extraction
 static bool ota_manifest_checked            = false;
@@ -41,8 +49,16 @@ static void handle_get_version(void)
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "version", firmware_manifest_get_version());
     cJSON_AddStringToObject(response, "board_id", firmware_manifest_get_board_id());
+    
+    // Add MAC address
+    uint8_t mac[6];
+    esp_efuse_mac_get_default(mac);
+    char mac_str[18];
+    snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    cJSON_AddStringToObject(response, "mac", mac_str);
 
-    char *json_string = cJSON_Print(response);
+    char *json_string = cJSON_PrintUnformatted(response);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
@@ -50,8 +66,8 @@ static void handle_get_version(void)
 
 static void handle_get_device_config(void)
 {
-    device_config_t config;
-    if (device_config_get(&config) != ESP_OK) {
+    general_config_t config;
+    if (general_config_get(&config) != ESP_OK) {
         g_send_response("ERROR Failed to get device config");
         return;
     }
@@ -59,13 +75,11 @@ static void handle_get_device_config(void)
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "name", config.device_name);
     cJSON_AddStringToObject(response, "mode", device_mode_to_string(config.device_mode));
-    cJSON_AddNumberToObject(response, "sleepTimeout", config.sleep_timeout_ms);
-    cJSON_AddBoolToObject(response, "autoSleep", config.auto_sleep_enabled);
     cJSON_AddNumberToObject(response, "brightness", config.display_brightness);
     cJSON_AddBoolToObject(response, "bluetooth", config.bluetooth_enabled);
     cJSON_AddNumberToObject(response, "slot_id", config.slot_id);
 
-    char *json_string = cJSON_Print(response);
+    char *json_string = cJSON_PrintUnformatted(response);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
@@ -73,8 +87,8 @@ static void handle_get_device_config(void)
 
 static void handle_set_device_config(cJSON *config_json)
 {
-    device_config_t config;
-    esp_err_t ret = device_config_get(&config);
+    general_config_t config;
+    esp_err_t ret = general_config_get(&config);
     if (ret != ESP_OK) {
         g_send_response("ERROR Failed to get current device config");
         return;
@@ -86,25 +100,34 @@ static void handle_set_device_config(cJSON *config_json)
         config.device_name[sizeof(config.device_name) - 1] = '\0';
     }
 
-    cJSON *sleepTimeout = cJSON_GetObjectItem(config_json, "sleepTimeout");
-    if (sleepTimeout && cJSON_IsNumber(sleepTimeout))
-        config.sleep_timeout_ms = sleepTimeout->valueint;
-
-    cJSON *autoSleep = cJSON_GetObjectItem(config_json, "autoSleep");
-    if (autoSleep && cJSON_IsBool(autoSleep))
-        config.auto_sleep_enabled = cJSON_IsTrue(autoSleep);
+    cJSON *mode = cJSON_GetObjectItem(config_json, "mode");
+    if (mode && cJSON_IsString(mode)) {
+        device_mode_t new_mode;
+        if (strcmp(mode->valuestring, "PRESENTER") == 0) {
+            new_mode = DEVICE_MODE_PRESENTER;
+        } else if (strcmp(mode->valuestring, "PC") == 0) {
+            new_mode = DEVICE_MODE_PC;
+        } else {
+            g_send_response("ERROR Invalid mode (must be PRESENTER or PC)");
+            return;
+        }
+        config.device_mode = new_mode;
+        extern device_mode_t current_device_mode;
+        current_device_mode = new_mode;
+    }
 
     cJSON *brightness = cJSON_GetObjectItem(config_json, "brightness");
     if (brightness && cJSON_IsNumber(brightness)) {
         config.display_brightness = brightness->valueint;
-        // Apply immediately
         extern u8g2_t u8g2;
         u8g2_SetContrast(&u8g2, config.display_brightness);
     }
 
     cJSON *bluetooth = cJSON_GetObjectItem(config_json, "bluetooth");
-    if (bluetooth && cJSON_IsBool(bluetooth))
+    if (bluetooth && cJSON_IsBool(bluetooth)) {
         config.bluetooth_enabled = cJSON_IsTrue(bluetooth);
+        bluetooth_config_set_enabled(config.bluetooth_enabled);
+    }
 
     cJSON *slot_id = cJSON_GetObjectItem(config_json, "slot_id");
     if (slot_id && cJSON_IsNumber(slot_id)) {
@@ -116,13 +139,65 @@ static void handle_set_device_config(cJSON *config_json)
         config.slot_id = slot;
     }
 
-    ret = device_config_set(&config);
+    ret = general_config_set(&config);
     if (ret != ESP_OK) {
         g_send_response("ERROR Failed to save device config");
         return;
     }
 
     g_send_response("OK Device config updated");
+}
+
+static void handle_get_power_management(void)
+{
+    power_mgmt_config_t config;
+    if (power_mgmt_config_get(&config) != ESP_OK) {
+        g_send_response("ERROR Failed to get power config");
+        return;
+    }
+
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddBoolToObject(response, "display_sleep_enabled", config.display_sleep_enabled);
+    cJSON_AddNumberToObject(response, "display_sleep_timeout_ms", config.display_sleep_timeout_ms);
+    cJSON_AddBoolToObject(response, "light_sleep_enabled", config.light_sleep_enabled);
+    cJSON_AddNumberToObject(response, "light_sleep_timeout_ms", config.light_sleep_timeout_ms);
+    cJSON_AddBoolToObject(response, "deep_sleep_enabled", config.deep_sleep_enabled);
+    cJSON_AddNumberToObject(response, "deep_sleep_timeout_ms", config.deep_sleep_timeout_ms);
+
+    char *json_string = cJSON_PrintUnformatted(response);
+    g_send_response(json_string);
+    free(json_string);
+    cJSON_Delete(response);
+}
+
+static void handle_set_power_management(cJSON *config_json)
+{
+    power_mgmt_config_t config;
+    if (power_mgmt_config_get(&config) != ESP_OK) {
+        g_send_response("ERROR Failed to get current power config");
+        return;
+    }
+
+    cJSON *item;
+    if ((item = cJSON_GetObjectItem(config_json, "display_sleep_enabled")) && cJSON_IsBool(item))
+        config.display_sleep_enabled = cJSON_IsTrue(item);
+    if ((item = cJSON_GetObjectItem(config_json, "display_sleep_timeout_ms")) && cJSON_IsNumber(item))
+        config.display_sleep_timeout_ms = item->valueint;
+    if ((item = cJSON_GetObjectItem(config_json, "light_sleep_enabled")) && cJSON_IsBool(item))
+        config.light_sleep_enabled = cJSON_IsTrue(item);
+    if ((item = cJSON_GetObjectItem(config_json, "light_sleep_timeout_ms")) && cJSON_IsNumber(item))
+        config.light_sleep_timeout_ms = item->valueint;
+    if ((item = cJSON_GetObjectItem(config_json, "deep_sleep_enabled")) && cJSON_IsBool(item))
+        config.deep_sleep_enabled = cJSON_IsTrue(item);
+    if ((item = cJSON_GetObjectItem(config_json, "deep_sleep_timeout_ms")) && cJSON_IsNumber(item))
+        config.deep_sleep_timeout_ms = item->valueint;
+
+    if (power_mgmt_config_set(&config) != ESP_OK) {
+        g_send_response("ERROR Failed to save power config");
+        return;
+    }
+
+    g_send_response("OK Power config updated - restart required");
 }
 
 static void handle_get_lora_config(void)
@@ -143,7 +218,7 @@ static void handle_get_lora_config(void)
     cJSON_AddNumberToObject(response, "coding_rate", config.coding_rate);
     cJSON_AddNumberToObject(response, "tx_power", config.tx_power);
 
-    char *json_string = cJSON_Print(response);
+    char *json_string = cJSON_PrintUnformatted(response);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
@@ -230,7 +305,7 @@ static void handle_get_paired_devices(void)
         }
     }
 
-    char *json_string = cJSON_Print(devices_array);
+    char *json_string = cJSON_PrintUnformatted(devices_array);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(devices_array);
@@ -258,7 +333,7 @@ static void handle_get_lora_bands(void)
         }
     }
 
-    char *json_string = cJSON_Print(bands_array);
+    char *json_string = cJSON_PrintUnformatted(bands_array);
     g_send_response(json_string);
     free(json_string);
     cJSON_Delete(bands_array);
@@ -398,14 +473,26 @@ static void handle_update_paired_device(cJSON *update_json)
 
 static void handle_fw_update_start(cJSON *update_json)
 {
-    cJSON *size     = cJSON_GetObjectItem(update_json, "size");
-    cJSON *checksum = cJSON_GetObjectItem(update_json, "checksum");
-    cJSON *version  = cJSON_GetObjectItem(update_json, "version");
-    cJSON *force    = cJSON_GetObjectItem(update_json, "force");
+    cJSON *size       = cJSON_GetObjectItem(update_json, "size");
+    cJSON *chunk_size = cJSON_GetObjectItem(update_json, "chunk_size");
+    cJSON *checksum   = cJSON_GetObjectItem(update_json, "checksum");
+    cJSON *version    = cJSON_GetObjectItem(update_json, "version");
+    cJSON *force      = cJSON_GetObjectItem(update_json, "force");
 
     if (!cJSON_IsNumber(size) || !cJSON_IsString(checksum) || !cJSON_IsString(version)) {
         g_send_response("ERROR Invalid firmware update parameters");
         return;
+    }
+
+    // Validate chunk_size
+    if (chunk_size && cJSON_IsNumber(chunk_size)) {
+        ota_chunk_size = chunk_size->valueint;
+        if (ota_chunk_size < 512 || ota_chunk_size > 8192) {
+            g_send_response("ERROR chunk_size must be between 512 and 8192 bytes");
+            return;
+        }
+    } else {
+        ota_chunk_size = 4096; // Default
     }
 
     // Check force mode
@@ -419,8 +506,9 @@ static void handle_fw_update_start(cJSON *update_json)
         ota_handle = 0;
     }
 
-    ota_total_size     = size->valueint;
-    ota_received_bytes = 0;
+    ota_total_size       = size->valueint;
+    ota_received_bytes   = 0;
+    ota_expected_chunks  = (ota_total_size + ota_chunk_size - 1) / ota_chunk_size;
     ota_manifest_checked = false;
     memset(ota_header_buffer, 0, sizeof(ota_header_buffer));
 
@@ -436,12 +524,13 @@ static void handle_fw_update_start(cJSON *update_json)
         return;
     }
 
-    ESP_LOGI(TAG, "OTA update started: %d bytes, version %s, force=%d", 
-             ota_total_size, version->valuestring, ota_force_mode);
+    ESP_LOGI(TAG, "OTA update started: %d bytes, chunk_size=%d, chunks=%d, version=%s, force=%d", 
+             ota_total_size, ota_chunk_size, ota_expected_chunks, version->valuestring, ota_force_mode);
     
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "status", "ok");
     cJSON_AddBoolToObject(response, "force_mode", ota_force_mode);
+    cJSON_AddNumberToObject(response, "expected_chunks", ota_expected_chunks);
     char *response_str = cJSON_PrintUnformatted(response);
     g_send_response(response_str);
     free(response_str);
@@ -455,32 +544,37 @@ static void handle_fw_update_data(const char *data_str)
         return;
     }
 
+    const char *base64_data = data_str;
     char *space_pos = strchr(data_str, ' ');
-    if (!space_pos) {
-        g_send_response("ERROR Invalid data format");
-        return;
+    if (space_pos) {
+        base64_data = space_pos + 1;
     }
 
-    const char *hex_data = space_pos + 1;
-    size_t hex_len       = strlen(hex_data);
-    if (hex_len % 2 != 0) {
-        g_send_response("ERROR Invalid hex data length");
-        return;
-    }
-
-    size_t data_len      = hex_len / 2;
-    uint8_t *binary_data = malloc(data_len);
+    size_t base64_len = strlen(base64_data);
+    
+    size_t max_decoded_len = (base64_len * 3) / 4 + 3;
+    uint8_t *binary_data = malloc(max_decoded_len);
     if (!binary_data) {
         g_send_response("ERROR Memory allocation failed");
         return;
     }
 
-    for (size_t i = 0; i < data_len; i++) {
-        if (sscanf(hex_data + i * 2, "%02hhx", &binary_data[i]) != 1) {
-            free(binary_data);
-            g_send_response("ERROR Invalid hex data");
-            return;
-        }
+    size_t data_len;
+    int ret = mbedtls_base64_decode(binary_data, max_decoded_len, &data_len,
+                                     (const unsigned char *)base64_data, base64_len);
+    if (ret != 0) {
+        free(binary_data);
+        g_send_response("ERROR Invalid base64 data");
+        return;
+    }
+
+    // Validate chunk size (except last chunk)
+    size_t remaining = ota_total_size - ota_received_bytes;
+    size_t expected_size = (remaining >= ota_chunk_size) ? ota_chunk_size : remaining;
+    if (data_len > expected_size) {
+        free(binary_data);
+        g_send_response("ERROR Chunk size exceeds expected");
+        return;
     }
 
     // Store first 4KB for manifest extraction
@@ -491,15 +585,19 @@ static void handle_fw_update_data(const char *data_str)
         memcpy(ota_header_buffer + ota_received_bytes, binary_data, copy_len);
     }
 
-    esp_err_t ret = esp_ota_write(ota_handle, binary_data, data_len);
+    esp_err_t ota_ret = esp_ota_write(ota_handle, binary_data, data_len);
     
-    if (ret != ESP_OK) {
+    if (ota_ret != ESP_OK) {
         free(binary_data);
         g_send_response("ERROR Failed to write OTA data");
         return;
     }
 
     ota_received_bytes += data_len;
+
+    ESP_LOGD(TAG, "OTA chunk: %d bytes, total: %d/%d (%.1f%%)", 
+             data_len, ota_received_bytes, ota_total_size, 
+             (float)ota_received_bytes * 100.0f / ota_total_size);
 
     // Check compatibility after receiving first 4KB
     if (!ota_manifest_checked && ota_received_bytes >= sizeof(ota_header_buffer)) {
@@ -535,8 +633,15 @@ static void handle_fw_update_data(const char *data_str)
         }
     }
 
+    // Calculate CRC32 checksum of received chunk
+    uint32_t chunk_crc = esp_crc32_le(0, binary_data, data_len);
+
     free(binary_data);
-    g_send_response("OK Data written");
+    
+    char response[80];
+    snprintf(response, sizeof(response), "OK %zu/%zu 0x%08x", 
+             ota_received_bytes, ota_total_size, chunk_crc);
+    g_send_response(response);
 }
 
 static void handle_fw_update_verify(void)
@@ -546,14 +651,46 @@ static void handle_fw_update_verify(void)
         return;
     }
 
-    esp_err_t ret = esp_ota_end(ota_handle);
-    if (ret != ESP_OK) {
-        g_send_response("ERROR OTA verification failed");
+    // Check if we received all data
+    if (ota_received_bytes != ota_total_size) {
+        ESP_LOGE(TAG, "Size mismatch: received %zu, expected %zu", ota_received_bytes, ota_total_size);
+        char error_msg[128];
+        snprintf(error_msg, sizeof(error_msg), "ERROR Size mismatch: received %zu, expected %zu", 
+                 ota_received_bytes, ota_total_size);
+        g_send_response(error_msg);
+        esp_ota_abort(ota_handle);
         ota_handle = 0;
         return;
     }
 
+    esp_err_t ret = esp_ota_end(ota_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "esp_ota_end failed: %s (0x%x)", esp_err_to_name(ret), ret);
+        char error_msg[128];
+        snprintf(error_msg, sizeof(error_msg), "ERROR OTA verification failed: %s", esp_err_to_name(ret));
+        g_send_response(error_msg);
+        ota_handle = 0;
+        return;
+    }
+
+    ESP_LOGI(TAG, "Firmware verified successfully (%d bytes)", ota_received_bytes);
     g_send_response("OK Firmware verified");
+}
+
+static void handle_fw_update_abort(void)
+{
+    if (ota_handle) {
+        esp_ota_abort(ota_handle);
+        ota_handle = 0;
+        ESP_LOGI(TAG, "OTA update aborted");
+    }
+    
+    ota_partition = NULL;
+    ota_received_bytes = 0;
+    ota_total_size = 0;
+    ota_manifest_checked = false;
+    
+    g_send_response("OK OTA aborted");
 }
 
 static void handle_fw_update_commit(void)
@@ -583,23 +720,31 @@ static void handle_fw_update_commit(void)
 void commands_execute(const char *command_line, response_fn_t send_response)
 {
     g_send_response = send_response;
+    
+    // Reset sleep timer on any command activity
+    power_mgmt_update_activity();
 
     if (strcmp(command_line, "PING") == 0) {
         handle_ping();
         return;
     }
 
-    if (strcmp(command_line, "GET_VERSION") == 0) {
+    if (strcmp(command_line, "GET_DEVICE_INFO") == 0) {
         handle_get_version();
         return;
     }
 
-    if (strcmp(command_line, "GET_DEVICE_CONFIG") == 0) {
+    if (strcmp(command_line, "GET_GENERAL") == 0) {
         handle_get_device_config();
         return;
     }
 
-    if (strcmp(command_line, "GET_LORA_CONFIG") == 0) {
+    if (strcmp(command_line, "GET_POWER_MANAGEMENT") == 0) {
+        handle_get_power_management();
+        return;
+    }
+
+    if (strcmp(command_line, "GET_LORA") == 0) {
         handle_get_lora_config();
         return;
     }
@@ -614,8 +759,19 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         return;
     }
 
-    if (strncmp(command_line, "SET_DEVICE_CONFIG ", 18) == 0) {
-        cJSON *json = cJSON_Parse(command_line + 18);
+    if (strncmp(command_line, "SET_POWER_MANAGEMENT ", 21) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 21);
+        if (json) {
+            handle_set_power_management(json);
+            cJSON_Delete(json);
+        } else {
+            g_send_response("ERROR Invalid JSON");
+        }
+        return;
+    }
+
+    if (strncmp(command_line, "SET_GENERAL ", 12) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 12);
         if (json) {
             handle_set_device_config(json);
             cJSON_Delete(json);
@@ -658,8 +814,8 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         return;
     }
 
-    if (strncmp(command_line, "SET_LORA_CONFIG ", 16) == 0) {
-        cJSON *json = cJSON_Parse(command_line + 16);
+    if (strncmp(command_line, "SET_LORA ", 9) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 9);
         if (json) {
             handle_set_lora_config(json);
             cJSON_Delete(json);
@@ -687,6 +843,11 @@ void commands_execute(const char *command_line, response_fn_t send_response)
 
     if (strcmp(command_line, "FW_UPDATE_VERIFY") == 0) {
         handle_fw_update_verify();
+        return;
+    }
+
+    if (strcmp(command_line, "FW_UPDATE_ABORT") == 0) {
+        handle_fw_update_abort();
         return;
     }
 

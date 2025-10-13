@@ -8,6 +8,7 @@
 #include "ui_config.h"
 #include "ui_data_provider.h"
 #include "ui_icons.h"
+#include "ui_helpers.h"
 #include "version.h"
 
 extern u8g2_t u8g2;
@@ -21,10 +22,7 @@ static void draw_info_header(const char *title)
 
 static void draw_info_footer(void)
 {
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH); // Use config constant
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);                   // Same as main screen
-    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-    u8g2_DrawStr(&u8g2, 8, 64, "Back");
+    ui_draw_footer(FOOTER_CONTEXT_INFO, NULL);
 }
 
 void system_info_screen_draw(void)
@@ -37,7 +35,7 @@ void system_info_screen_draw(void)
 
     // Firmware version
     u8g2_DrawStr(&u8g2, 2, 20, "Firmware: ");
-    u8g2_DrawStr(&u8g2, 55, 20, LORACUE_VERSION_STRING);
+    u8g2_DrawStr(&u8g2, 55, 20, LORACUE_VERSION_FULL);
 
     // Hardware (dynamic based on build)
 #ifdef SIMULATOR_BUILD

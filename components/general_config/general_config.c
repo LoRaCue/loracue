@@ -6,7 +6,7 @@
  * PURPOSE: Store and retrieve device settings from NVS
  */
 
-#include "device_config.h"
+#include "general_config.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_system.h"
@@ -19,28 +19,26 @@
 static const char *TAG = "DEVICE_CONFIG";
 
 // Default device configuration
-static const device_config_t default_config = {
+static const general_config_t default_config = {
     .device_name        = "LoRaCue-Device",
     .device_mode        = DEVICE_MODE_PRESENTER,
-    .sleep_timeout_ms   = 300000, // 5 minutes
-    .auto_sleep_enabled = true,
-    .display_brightness = 128, // 50% brightness
-    .bluetooth_enabled  = true, // Enabled by default
-    .slot_id            = 1,    // Default slot
+    .display_brightness = 128,
+    .bluetooth_enabled  = true,
+    .slot_id            = 1,
 };
 
 // Cached configuration
-static device_config_t cached_config;
+static general_config_t cached_config;
 static bool cache_valid = false;
 
-esp_err_t device_config_init(void)
+esp_err_t general_config_init(void)
 {
     ESP_LOGI(TAG, "Initializing device configuration system");
     cache_valid = false;
     return ESP_OK;
 }
 
-esp_err_t device_config_get(device_config_t *config)
+esp_err_t general_config_get(general_config_t *config)
 {
     if (!config) {
         return ESP_ERR_INVALID_ARG;
@@ -48,7 +46,7 @@ esp_err_t device_config_get(device_config_t *config)
 
     // Return cached config if valid
     if (cache_valid) {
-        memcpy(config, &cached_config, sizeof(device_config_t));
+        memcpy(config, &cached_config, sizeof(general_config_t));
         return ESP_OK;
     }
 
@@ -56,14 +54,14 @@ esp_err_t device_config_get(device_config_t *config)
     nvs_handle_t nvs_handle;
     esp_err_t ret = nvs_open("general", NVS_READONLY, &nvs_handle);
     if (ret == ESP_OK) {
-        size_t required_size = sizeof(device_config_t);
+        size_t required_size = sizeof(general_config_t);
         ret                  = nvs_get_blob(nvs_handle, "config", config, &required_size);
         nvs_close(nvs_handle);
 
         if (ret == ESP_OK) {
             ESP_LOGI(TAG, "Device config loaded from NVS - mode: %s", device_mode_to_string(config->device_mode));
             // Cache the loaded config
-            memcpy(&cached_config, config, sizeof(device_config_t));
+            memcpy(&cached_config, config, sizeof(general_config_t));
             cache_valid = true;
             return ESP_OK;
         } else {
@@ -85,7 +83,7 @@ esp_err_t device_config_get(device_config_t *config)
              device_mode_to_string(config->device_mode));
 
     // Cache the default config
-    memcpy(&cached_config, config, sizeof(device_config_t));
+    memcpy(&cached_config, config, sizeof(general_config_t));
     cache_valid = true;
 
     return ESP_OK;
@@ -103,7 +101,7 @@ const char *device_mode_to_string(device_mode_t mode)
     }
 }
 
-esp_err_t device_config_set(const device_config_t *config)
+esp_err_t general_config_set(const general_config_t *config)
 {
     if (!config) {
         return ESP_ERR_INVALID_ARG;
@@ -117,7 +115,7 @@ esp_err_t device_config_set(const device_config_t *config)
         return ret;
     }
 
-    ret = nvs_set_blob(nvs_handle, "config", config, sizeof(device_config_t));
+    ret = nvs_set_blob(nvs_handle, "config", config, sizeof(general_config_t));
     if (ret == ESP_OK) {
         ret = nvs_commit(nvs_handle);
     }
@@ -127,7 +125,7 @@ esp_err_t device_config_set(const device_config_t *config)
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "Device configuration saved to NVS");
         // Update cache with new config
-        memcpy(&cached_config, config, sizeof(device_config_t));
+        memcpy(&cached_config, config, sizeof(general_config_t));
         cache_valid = true;
     } else {
         ESP_LOGE(TAG, "Failed to save device config: %s", esp_err_to_name(ret));
@@ -138,7 +136,7 @@ esp_err_t device_config_set(const device_config_t *config)
     return ret;
 }
 
-esp_err_t device_config_factory_reset(void)
+esp_err_t general_config_factory_reset(void)
 {
     ESP_LOGW(TAG, "Factory reset initiated - erasing all NVS data");
 

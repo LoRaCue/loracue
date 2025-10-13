@@ -5,7 +5,7 @@
 
 #include "usb_pairing.h"
 #include "cJSON.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -193,8 +193,8 @@ static void pairing_task(void *arg)
         return;
     }
 
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     uint8_t mac[6], aes_key[32];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);

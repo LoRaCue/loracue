@@ -31,8 +31,6 @@ typedef struct {
     uint8_t mac_address[DEVICE_MAC_ADDR_LEN]; ///< Hardware MAC address
     uint8_t aes_key[DEVICE_AES_KEY_LEN];      ///< Per-device AES key
     uint16_t last_sequence;                   ///< Last received sequence number
-    uint32_t last_seen;                       ///< Timestamp of last communication
-    bool is_active;                           ///< Device entry is valid
 } paired_device_t;
 
 /**

@@ -26,6 +26,7 @@ static const char *TAG = "LED_MANAGER";
 static led_pattern_t current_pattern = LED_PATTERN_OFF;
 static TaskHandle_t fade_task_handle = NULL;
 static uint32_t fade_period_ms       = 2000;
+static bool button_feedback_active   = false;
 
 // Forward declaration
 static void fade_task(void *pvParameters);
@@ -146,8 +147,8 @@ static void fade_task(void *pvParameters)
         // Generate sine wave (0 to 1)
         float sine_val = (sinf(angle) + 1.0f) / 2.0f;
 
-        // Convert to duty cycle
-        uint32_t duty = (uint32_t)(sine_val * LEDC_MAX_DUTY);
+        // Convert to duty cycle (override to 0 if button feedback active)
+        uint32_t duty = button_feedback_active ? 0 : (uint32_t)(sine_val * LEDC_MAX_DUTY);
 
         // Set PWM duty
         ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, duty);
@@ -160,4 +161,20 @@ static void fade_task(void *pvParameters)
     ESP_LOGD(TAG, "Fade task ended");
     fade_task_handle = NULL;
     vTaskDelete(NULL);
+}
+
+esp_err_t led_manager_button_feedback(bool active)
+{
+    button_feedback_active = active;
+    
+    // For non-fade patterns, immediately turn LED off/on
+    if (active && current_pattern != LED_PATTERN_FADE) {
+        ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
+        ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+    } else if (!active && current_pattern == LED_PATTERN_SOLID) {
+        ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_MAX_DUTY);
+        ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
+    }
+    
+    return ESP_OK;
 }

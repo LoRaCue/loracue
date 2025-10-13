@@ -16,6 +16,6 @@ void boot_screen_draw(void)
 
     // Version centered
     u8g2_SetFont(&u8g2, u8g2_font_profont10_tr);
-    u8g2_DrawStr(&u8g2, (128 - u8g2_GetStrWidth(&u8g2, LORACUE_VERSION_STRING)) / 2, 63, LORACUE_VERSION_STRING);
+    u8g2_DrawStr(&u8g2, (128 - u8g2_GetStrWidth(&u8g2, LORACUE_VERSION_FULL)) / 2, 63, LORACUE_VERSION_FULL);
     u8g2_SendBuffer(&u8g2);
 }

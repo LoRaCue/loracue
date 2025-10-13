@@ -1,6 +1,6 @@
 #include "config_wifi_server.h"
 #include "cJSON.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "device_registry.h"
 #include "esp_app_format.h"
 #include "esp_crc.h"
@@ -104,8 +104,8 @@ static esp_err_t static_handler(httpd_req_t *req)
 
 static esp_err_t device_settings_get_handler(httpd_req_t *req)
 {
-    device_config_t config;
-    if (device_config_get(&config) != ESP_OK) {
+    general_config_t config;
+    if (general_config_get(&config) != ESP_OK) {
         httpd_resp_send_500(req);
         return ESP_FAIL;
     }
@@ -113,8 +113,6 @@ static esp_err_t device_settings_get_handler(httpd_req_t *req)
     cJSON *json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "name", config.device_name);
     cJSON_AddStringToObject(json, "mode", device_mode_to_string(config.device_mode));
-    cJSON_AddNumberToObject(json, "sleepTimeout", config.sleep_timeout_ms);
-    cJSON_AddBoolToObject(json, "autoSleep", config.auto_sleep_enabled);
     cJSON_AddNumberToObject(json, "brightness", config.display_brightness);
     cJSON_AddBoolToObject(json, "bluetooth", config.bluetooth_enabled);
 
@@ -143,8 +141,8 @@ static esp_err_t device_settings_post_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     cJSON *name = cJSON_GetObjectItem(json, "name");
     if (name && cJSON_IsString(name)) {
@@ -160,16 +158,6 @@ static esp_err_t device_settings_post_handler(httpd_req_t *req)
         }
     }
 
-    cJSON *sleepTimeout = cJSON_GetObjectItem(json, "sleepTimeout");
-    if (sleepTimeout && cJSON_IsNumber(sleepTimeout)) {
-        config.sleep_timeout_ms = sleepTimeout->valueint;
-    }
-
-    cJSON *autoSleep = cJSON_GetObjectItem(json, "autoSleep");
-    if (autoSleep && cJSON_IsBool(autoSleep)) {
-        config.auto_sleep_enabled = cJSON_IsTrue(autoSleep);
-    }
-
     cJSON *brightness = cJSON_GetObjectItem(json, "brightness");
     if (brightness && cJSON_IsNumber(brightness)) {
         config.display_brightness = brightness->valueint;
@@ -180,7 +168,7 @@ static esp_err_t device_settings_post_handler(httpd_req_t *req)
         config.bluetooth_enabled = cJSON_IsTrue(bluetooth);
     }
 
-    esp_err_t err = device_config_set(&config);
+    esp_err_t err = general_config_set(&config);
     cJSON_Delete(json);
 
     if (err != ESP_OK) {
@@ -461,7 +449,6 @@ static esp_err_t devices_list_handler(httpd_req_t *req)
                      device.mac_address[1], device.mac_address[2], device.mac_address[3], device.mac_address[4],
                      device.mac_address[5]);
             cJSON_AddStringToObject(device_obj, "mac", mac_str);
-            cJSON_AddBoolToObject(device_obj, "active", device.is_active);
 
             cJSON_AddItemToArray(devices_array, device_obj);
         }
@@ -589,7 +576,7 @@ static esp_err_t factory_reset_handler(httpd_req_t *req)
     httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Factory reset initiated\"}", 52);
 
     vTaskDelay(pdMS_TO_TICKS(1000));
-    device_config_factory_reset();
+    general_config_factory_reset();
     return ESP_OK;
 }
 

@@ -71,13 +71,45 @@ build: check-idf
 	@echo "🔨 Building LoRaCue firmware..."
 	$(IDF_SETUP) idf.py build
 
+# Build with debug logging on UART0
+build-debug: check-idf
+	@echo "🐛 Building LoRaCue firmware (DEBUG mode - logging on UART0)..."
+	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.debug" idf.py build
+
 # Clean build artifacts
 clean:
 	@echo "🧹 Cleaning build artifacts..."
 	$(IDF_SETUP) idf.py clean
 
+# Full clean (removes CMake cache - needed when switching between sim/hardware builds)
+fullclean:
+	@echo "🧹 Full clean (removing CMake cache)..."
+	$(IDF_SETUP) idf.py fullclean
+
 # Flash firmware to device
 flash: check-idf
+	@echo "🔍 Checking firmware type..."
+	@if [ -f build/wokwi_sim.bin ] && [ ! -f build/heltec_v3.bin ]; then \
+		echo "❌ ERROR: Cannot flash simulator build to real hardware!"; \
+		echo ""; \
+		echo "You built with 'make sim' which creates a Wokwi simulator binary."; \
+		echo "This binary uses bsp_wokwi.c (SSD1306) instead of bsp_heltec_v3.c (SH1106)."; \
+		echo ""; \
+		echo "To flash to real hardware:"; \
+		echo "  1. Full clean: make fullclean"; \
+		echo "  2. Build: make build"; \
+		echo "  3. Flash: make flash"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@if [ ! -f build/heltec_v3.bin ]; then \
+		echo "❌ ERROR: Hardware firmware not found!"; \
+		echo ""; \
+		echo "Please build first: make build"; \
+		echo ""; \
+		exit 1; \
+	fi
+	@echo "✅ Hardware firmware detected (heltec_v3.bin)"
 	@echo "📡 Flashing firmware to device..."
 	$(IDF_SETUP) idf.py flash
 
@@ -225,7 +257,7 @@ endif
 # Wokwi Simulator targets
 sim: check-idf
 	@echo "🎮 Building for Wokwi simulator..."
-	$(IDF_SETUP) SIMULATOR_BUILD=1 idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
+	$(IDF_SETUP) SIMULATOR_BUILD=1 SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.simulator" idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
 
 sim-run: check-wokwi sim
 	@echo "🚀 Starting Wokwi simulation..."
@@ -298,7 +330,8 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📋 Hardware targets:"
-	@echo "  build         - Build the project"
+	@echo "  build         - Build (UART0=commands, logging disabled)"
+	@echo "  build-debug   - Build (UART0=logging, commands disabled)"
 	@echo "  clean         - Clean build artifacts"
 	@echo "  flash         - Flash firmware to device"
 	@echo "  monitor       - Monitor serial output"

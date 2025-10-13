@@ -1,6 +1,6 @@
 #pragma once
 
-#include "device_config.h"
+#include "general_config.h"
 #include "menu_screen.h"
 
 void device_mode_screen_draw(void);

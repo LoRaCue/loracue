@@ -46,6 +46,26 @@ void oled_ui_unlock_draw(void)
     }
 }
 
+esp_err_t oled_ui_display_off(void)
+{
+    if (!oled_ui_try_lock_draw()) {
+        return ESP_ERR_TIMEOUT;
+    }
+    u8g2_SetPowerSave(&u8g2, 1);
+    oled_ui_unlock_draw();
+    return ESP_OK;
+}
+
+esp_err_t oled_ui_display_on(void)
+{
+    if (!oled_ui_try_lock_draw()) {
+        return ESP_ERR_TIMEOUT;
+    }
+    u8g2_SetPowerSave(&u8g2, 0);
+    oled_ui_unlock_draw();
+    return ESP_OK;
+}
+
 esp_err_t oled_ui_init(void)
 {
     ESP_LOGI(TAG, "Initializing OLED UI");
@@ -109,11 +129,6 @@ esp_err_t oled_ui_show_message(const char *title, const char *message, uint32_t 
     ESP_LOGI(TAG, "Message: %s - %s", title, message);
     // TODO: Implement message overlay screen
     return ESP_OK;
-}
-
-void oled_ui_handle_button(oled_button_t button, bool long_press)
-{
-    ui_screen_controller_handle_button(button, long_press);
 }
 
 esp_err_t oled_ui_update_status(const oled_status_t *status)

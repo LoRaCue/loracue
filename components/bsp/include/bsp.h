@@ -94,41 +94,6 @@ float bsp_read_battery(void);
 esp_err_t bsp_enter_sleep(void);
 
 /**
- * @brief Initialize I2C bus for OLED communication
- *
- * Configures I2C0 for SH1106 OLED display with proper timing.
- *
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t bsp_init_i2c(void);
-
-/**
- * @brief Initialize SH1106 OLED display
- *
- * Sends initialization sequence to configure SH1106 display.
- *
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t bsp_oled_init(void);
-
-/**
- * @brief Clear OLED display
- *
- * Clears all pixels on the SH1106 display.
- *
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t bsp_oled_clear(void);
-
-/**
- * @brief Write command to OLED
- *
- * @param cmd Command byte to send
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t bsp_oled_write_command(uint8_t cmd);
-
-/**
  * @brief Initialize SPI bus for LoRa communication
  *
  * Configures SPI2_HOST for SX1262 LoRa transceiver with proper timing and control pins.

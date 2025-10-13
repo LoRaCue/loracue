@@ -1,7 +1,7 @@
 #include "ui_data_provider.h"
 #include "bsp.h"
 #include "bluetooth_config.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
@@ -20,8 +20,8 @@ esp_err_t ui_data_provider_init(void)
     ESP_LOGI(TAG, "Initializing UI data provider");
 
     // Load device name from config
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     strncpy(cached_status.device_name, config.device_name, sizeof(cached_status.device_name) - 1);
 
     // Initialize with safe defaults
@@ -73,8 +73,8 @@ esp_err_t ui_data_provider_update(void)
     }
 
     // Update Bluetooth status
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     cached_status.bluetooth_enabled = config.bluetooth_enabled;
     cached_status.bluetooth_connected = bluetooth_config_is_connected();
 

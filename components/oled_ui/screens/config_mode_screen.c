@@ -1,6 +1,6 @@
 #include "config_mode_screen.h"
 #include "config_wifi_server.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "esp_crc.h"
 #include "esp_log.h"
 #include "esp_mac.h"

@@ -9,7 +9,7 @@
 
 #include "bsp.h"
 #include "button_manager.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -26,7 +26,9 @@
 #include "nvs_flash.h"
 #include "oled_ui.h"
 #include "power_mgmt.h"
+#include "power_mgmt_config.h"
 #include "usb_hid.h"
+#include "uart_commands.h"
 #include "version.h"
 #include "bluetooth_config.h"
 #include <stdio.h>
@@ -357,7 +359,7 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
 
     // Update active presenters list
     status->active_presenter_count = 0;
-    for (int i = 0; i < MAX_ACTIVE_PRESENTERS && i < 4; i++) {
+    for (int i = 0; i < MAX_ACTIVE_PRESENTERS; i++) {
         if (active_presenters[i].device_id != 0) {
             status->active_presenters[status->active_presenter_count].device_id = active_presenters[i].device_id;
             status->active_presenters[status->active_presenter_count].rssi      = active_presenters[i].last_rssi;
@@ -385,7 +387,7 @@ static void button_handler(button_event_type_t event, void *arg)
 {
     oled_screen_t screen = oled_ui_get_screen();
 
-    // Allow both button press for menu on both MAIN and PC_MODE screens
+    // Allow long press for menu on both MAIN and PC_MODE screens
     if (screen != OLED_SCREEN_MAIN && screen != OLED_SCREEN_PC_MODE) {
         return;
     }
@@ -401,24 +403,21 @@ static void button_handler(button_event_type_t event, void *arg)
     uint8_t keycode   = 0;
     
     switch (event) {
-        case BUTTON_EVENT_PREV_SHORT:
-            keycode = HID_KEY_PAGE_UP; // Previous slide
-            break;
-        case BUTTON_EVENT_NEXT_SHORT:
+        case BUTTON_EVENT_SHORT:
             keycode = HID_KEY_PAGE_DOWN; // Next slide
             break;
-        case BUTTON_EVENT_PREV_LONG:
-            keycode = HID_KEY_B; // Black screen
+        case BUTTON_EVENT_DOUBLE:
+            keycode = HID_KEY_PAGE_UP; // Previous slide
             break;
-        case BUTTON_EVENT_NEXT_LONG:
-            keycode = HID_KEY_F5; // Start presentation
-            break;
+        case BUTTON_EVENT_LONG:
+            // Long press opens menu, don't send HID
+            return;
         default:
             return;
     }
 
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
     
     ESP_LOGI(TAG, "Presenter mode: sending keyboard HID (slot=%d, mod=0x%02X, key=0x%02X)", config.slot_id,
              modifiers, keycode);
@@ -473,18 +472,21 @@ void app_main(void)
 
     // Initialize device configuration
     ESP_LOGI(TAG, "Initializing device configuration system...");
-    ret = device_config_init();
+    ret = general_config_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Device config initialization failed: %s", esp_err_to_name(ret));
         return;
     }
 
     // Get device config for power management settings
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     // Initialize power management with settings from NVS
     ESP_LOGI(TAG, "Initializing power management...");
+    power_mgmt_config_t pwr_cfg;
+    power_mgmt_config_get(&pwr_cfg);
+    
     power_config_t power_config = {
 #ifdef SIMULATOR_BUILD
         .light_sleep_timeout_ms  = 0,
@@ -492,14 +494,15 @@ void app_main(void)
         .enable_auto_light_sleep = false,
         .enable_auto_deep_sleep  = false,
 #else
-        .light_sleep_timeout_ms  = 0, // TODO: Re-enable after I2C restoration
-        .deep_sleep_timeout_ms   = config.auto_sleep_enabled ? config.sleep_timeout_ms : 0,
-        .enable_auto_light_sleep = false, // FIXME: Disabled due to I2C corruption
-        .enable_auto_deep_sleep  = config.auto_sleep_enabled,
+        .light_sleep_timeout_ms  = pwr_cfg.light_sleep_timeout_ms,
+        .deep_sleep_timeout_ms   = pwr_cfg.deep_sleep_timeout_ms,
+        .enable_auto_light_sleep = pwr_cfg.light_sleep_enabled,
+        .enable_auto_deep_sleep  = pwr_cfg.deep_sleep_enabled,
 #endif
         .cpu_freq_mhz = 80,
     };
-    ESP_LOGI(TAG, "Power config: deep_sleep=%lums, auto_sleep=%s", power_config.deep_sleep_timeout_ms,
+    ESP_LOGI(TAG, "Power config: light_sleep=%s, deep_sleep=%s",
+             power_config.enable_auto_light_sleep ? "enabled" : "disabled",
              power_config.enable_auto_deep_sleep ? "enabled" : "disabled");
     ret = power_mgmt_init(&power_config);
     if (ret != ESP_OK) {
@@ -537,7 +540,7 @@ void app_main(void)
     }
 
     // Apply brightness from config (reuse config from power mgmt)
-    device_config_get(&config);
+    general_config_get(&config);
     extern u8g2_t u8g2;
     u8g2_SetContrast(&u8g2, config.display_brightness);
     ESP_LOGI(TAG, "OLED brightness set to %d", config.display_brightness);
@@ -578,7 +581,7 @@ void app_main(void)
     }
 
     // Get device mode from NVS (reuse config from brightness setting)
-    device_config_get(&config);
+    general_config_get(&config);
     current_device_mode = config.device_mode;
 
     // Generate device ID from MAC address (static identity)
@@ -617,6 +620,20 @@ void app_main(void)
         ESP_LOGW(TAG, "Bluetooth initialization failed: %s (continuing without BLE)", esp_err_to_name(ret));
         // Non-fatal - continue without Bluetooth
     }
+
+#ifdef CONFIG_UART_COMMANDS_ENABLED
+    // Initialize UART command interface
+    ESP_LOGI(TAG, "Initializing UART command interface...");
+    ret = uart_commands_init();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "UART commands initialization failed: %s", esp_err_to_name(ret));
+    } else {
+        ret = uart_commands_start();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "UART commands start failed: %s", esp_err_to_name(ret));
+        }
+    }
+#endif
 
     // Validate hardware
     ESP_LOGI(TAG, "Running hardware validation...");
@@ -673,8 +690,8 @@ void app_main(void)
     g_oled_status.device_id      = 0x1234;
 
     // Load device name from config
-    device_config_t dev_config;
-    device_config_get(&dev_config);
+    general_config_t dev_config;
+    general_config_get(&dev_config);
     strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
 
     strcpy(g_oled_status.last_command, "");
@@ -734,23 +751,23 @@ void app_main(void)
             ESP_LOGI(TAG, "Device mode changed to: %s", device_mode_to_string(current_device_mode));
 
             // Save to NVS
-            device_config_t cfg;
-            device_config_get(&cfg);
+            general_config_t cfg;
+            general_config_get(&cfg);
             cfg.device_mode = current_device_mode;
-            device_config_set(&cfg);
+            general_config_set(&cfg);
 
             // Force screen redraw with new mode
             oled_ui_update_status(&g_oled_status);
         }
 
         // Check if device mode changed and persist to NVS (fallback for missed events)
-        device_config_get(&config);
+        general_config_get(&config);
         if (config.device_mode != current_device_mode) {
             ESP_LOGI(TAG, "Device mode changed to: %s (fallback)", device_mode_to_string(current_device_mode));
 
             // Save to NVS
             config.device_mode = current_device_mode;
-            device_config_set(&config);
+            general_config_set(&config);
         }
     }
 }

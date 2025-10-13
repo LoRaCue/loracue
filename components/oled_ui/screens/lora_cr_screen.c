@@ -3,6 +3,7 @@
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_icons.h"
+#include "ui_helpers.h"
 
 extern u8g2_t u8g2;
 
@@ -30,10 +31,10 @@ void lora_cr_screen_draw(void) {
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
     for (int i = 0; i < cr_count; i++) {
-        int item_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) + 3;
+        int item_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) + 3;
         
         if (i == selected_item) {
-            int bar_y = SEPARATOR_Y_TOP + (i * item_height) + 1;
+            int bar_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + 1;
             int bar_height = item_height - 2;
             if (i == cr_count - 1) bar_height -= 1;
             
@@ -42,7 +43,7 @@ void lora_cr_screen_draw(void) {
         }
         
         if (cr_values[i] == config.coding_rate) {
-            int icon_y = SEPARATOR_Y_TOP + (i * item_height) + (item_height / 2) - (checkmark_height / 2);
+            int icon_y = SEPARATOR_Y_TOP + 2 + (i * item_height) + (item_height / 2) - (checkmark_height / 2);
             u8g2_DrawXBM(&u8g2, 4, icon_y, checkmark_width, checkmark_height, checkmark_bits);
             u8g2_DrawStr(&u8g2, 16, item_y, cr_labels[i]);
         } else {
@@ -54,20 +55,8 @@ void lora_cr_screen_draw(void) {
         }
     }
     
-    // Footer
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
-    
-    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-    u8g2_DrawStr(&u8g2, 8, 64, "Back");
-    
-    u8g2_DrawXBM(&u8g2, 40, 56, track_next_width, track_next_height, track_next_bits);
-    u8g2_DrawStr(&u8g2, 46, 64, "Next");
-    
-    const char *select_text = "Select";
-    int select_text_width = u8g2_GetStrWidth(&u8g2, select_text);
-    int select_x = DISPLAY_WIDTH - both_buttons_width - select_text_width - 2;
-    u8g2_DrawXBM(&u8g2, select_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-    u8g2_DrawStr(&u8g2, select_x + both_buttons_width + 2, 64, select_text);
+    // Footer with one-button UI icons
+    ui_draw_footer(FOOTER_CONTEXT_MENU, NULL);
     
     u8g2_SendBuffer(&u8g2);
 }

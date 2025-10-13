@@ -1,5 +1,5 @@
 #include "pairing_screen.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "u8g2.h"

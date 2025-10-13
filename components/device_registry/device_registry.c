@@ -72,8 +72,6 @@ esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const
     paired_device_t device = {
         .device_id     = device_id,
         .last_sequence = 0,
-        .last_seen     = esp_timer_get_time() / 1000, // Convert to milliseconds
-        .is_active     = true,
     };
 
     strncpy(device.device_name, device_name, DEVICE_NAME_MAX_LEN - 1);
@@ -127,10 +125,6 @@ esp_err_t device_registry_get(uint16_t device_id, paired_device_t *device)
         return ret;
     }
 
-    if (!device->is_active) {
-        return ESP_ERR_NOT_FOUND;
-    }
-
     return ESP_OK;
 }
 
@@ -143,7 +137,6 @@ esp_err_t device_registry_update_last_seen(uint16_t device_id, uint16_t sequence
     }
 
     device.last_sequence = sequence_num;
-    device.last_seen     = esp_timer_get_time() / 1000;
 
     char key_name[16];
     generate_device_key(device_id, key_name, sizeof(key_name));

@@ -16,15 +16,12 @@ extern "C" {
 #endif
 
 /**
- * @brief Button event types for external callbacks
+ * @brief Button event types for one-button UI
  */
 typedef enum {
-    BUTTON_EVENT_PREV_SHORT = 0,
-    BUTTON_EVENT_PREV_LONG,
-    BUTTON_EVENT_NEXT_SHORT,
-    BUTTON_EVENT_NEXT_LONG,
-    BUTTON_EVENT_BOTH_SHORT,
-    BUTTON_EVENT_BOTH_LONG
+    BUTTON_EVENT_SHORT = 0,  // <500ms
+    BUTTON_EVENT_DOUBLE,     // 2 clicks <500ms apart
+    BUTTON_EVENT_LONG        // >2s
 } button_event_type_t;
 
 /**

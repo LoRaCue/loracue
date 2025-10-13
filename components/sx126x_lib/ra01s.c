@@ -100,6 +100,12 @@ void LoRaInit(void)
     esp_err_t ret;
     ret = spi_bus_initialize(HOST_ID, &spi_bus_config, SPI_DMA_CH_AUTO);
     ESP_LOGI(TAG, "spi_bus_initialize=%d", ret);
+    
+    // SPI bus may already be initialized by BSP
+    if (ret == ESP_ERR_INVALID_STATE) {
+        ESP_LOGI(TAG, "SPI bus already initialized, reusing existing bus");
+        ret = ESP_OK;
+    }
     assert(ret == ESP_OK);
 
     spi_device_interface_config_t devcfg = {.clock_speed_hz = 9000000,

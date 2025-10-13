@@ -1,5 +1,5 @@
 #include "ui_pc_history_task.h"
-#include "device_config.h"
+#include "general_config.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
