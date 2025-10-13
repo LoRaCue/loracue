@@ -377,7 +377,7 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     };
     gpio_config(&vext_conf);
     gpio_set_level(VEXT_CTRL_PIN, 0);  // LOW = power ON (active low)
-    vTaskDelay(pdMS_TO_TICKS(50));     // Wait for power to stabilize
+    vTaskDelay(pdMS_TO_TICKS(200));    // Wait for power to stabilize
 
     // Configure OLED reset pin
     gpio_config_t rst_conf = {
@@ -389,12 +389,12 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     };
     gpio_config(&rst_conf);
 
-    // Hardware reset sequence for SH1106
+    // Hardware reset sequence for SSD1306
     ESP_LOGI(TAG, "Performing hardware reset on OLED");
     gpio_set_level(OLED_RST_PIN, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(50));
     gpio_set_level(OLED_RST_PIN, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(50));
 
     // Configure u8g2 HAL
     u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
@@ -404,9 +404,9 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     u8g2_esp32_hal_init(u8g2_esp32_hal);
 
     // Wait for I2C bus to stabilize
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(200));
 
-    // Initialize u8g2 with SSD1306 128x64 display (Heltec V3 may use SSD1306 not SH1106)
+    // Initialize u8g2 with SSD1306 128x64 display
     u8g2_Setup_ssd1306_i2c_128x64_noname_f(u8g2_local, U8G2_R0, 
                                            u8g2_esp32_i2c_byte_cb, 
                                            u8g2_esp32_gpio_and_delay_cb);
