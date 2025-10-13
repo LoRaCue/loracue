@@ -1,5 +1,6 @@
-import { Moon, Sun, Wifi, Settings, Upload, Users, Info, Battery } from 'lucide-react'
+import { Moon, Sun, Wifi, Settings, Upload, Users, Info, Battery, Heart } from 'lucide-react'
 import { useTheme } from './ThemeProvider'
+import { useDevice } from './DeviceContext'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import Logo from './Logo'
@@ -7,9 +8,10 @@ import Logo from './Logo'
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme()
   const router = useRouter()
+  const { deviceName, firmwareVersion, loading } = useDevice()
 
   const navigation = [
-    { name: 'Device', href: '/', icon: Settings },
+    { name: 'General', href: '/', icon: Settings },
     { name: 'Power', href: '/power', icon: Battery },
     { name: 'LoRa', href: '/lora', icon: Wifi },
     { name: 'Devices', href: '/devices', icon: Users },
@@ -23,7 +25,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <Logo className="w-24 h-24 text-primary-600 dark:text-white" />
+              <a href="https://github.com/LoRaCue" target="_blank" rel="noopener noreferrer">
+                <Logo className="w-24 h-24 text-primary-600 dark:text-white hover:opacity-80 transition-opacity" />
+              </a>
               <div className="flex space-x-1">
                 {navigation.map((item) => {
                   const Icon = item.icon
@@ -58,6 +62,16 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <main className="max-w-4xl mx-auto px-6 py-8">
         {children}
       </main>
+
+      <footer className="max-w-4xl mx-auto px-6 py-6 text-center text-sm text-gray-600 dark:text-gray-400">
+        <a href="https://github.com/LoRaCue" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 dark:hover:text-primary-400">LoRaCue</a>
+        {' '}is made with <Heart size={14} className="inline text-red-500" fill="currentColor" /> in{' '}
+        <a href="https://hannover.de" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 dark:hover:text-primary-400">Hannover</a>
+        {' • '}Device: {loading ? <span className="inline-block w-20 h-3 bg-gray-300 dark:bg-gray-700 rounded animate-pulse" /> : deviceName}
+        {' • '}Firmware: {loading ? <span className="inline-block w-12 h-3 bg-gray-300 dark:bg-gray-700 rounded animate-pulse" /> : firmwareVersion}
+        {' • '}Licensed under{' '}
+        <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer" className="hover:text-primary-600 dark:hover:text-primary-400">GPL-3</a>
+      </footer>
     </div>
   )
 }
