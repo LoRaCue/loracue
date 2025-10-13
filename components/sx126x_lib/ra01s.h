@@ -380,7 +380,7 @@ int16_t LoRaBegin(uint32_t frequencyInHz, int8_t txPowerInDbm, float tcxoVoltage
 void LoRaConfig(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codingRate, uint16_t preambleLength,
                 uint8_t payloadLen, bool crcOn, bool invertIrq);
 uint8_t LoRaReceive(uint8_t *pData, int16_t len);
-bool LoRaSend(uint8_t *pData, int16_t len, uint8_t mode);
+bool LoRaSend(const uint8_t *pData, int16_t len, uint8_t mode);
 void LoRaDebugPrint(bool enable);
 
 // Private function
@@ -428,11 +428,11 @@ void Wakeup(void);
 void WaitForIdleBegin(unsigned long timeout, char *text);
 bool WaitForIdle(unsigned long timeout, char *text, bool stop);
 uint8_t ReadBuffer(uint8_t *rxData, int16_t rxDataLen);
-void WriteBuffer(uint8_t *txData, int16_t txDataLen);
+void WriteBuffer(const uint8_t *txData, int16_t txDataLen);
 void WriteRegister(uint16_t reg, uint8_t *data, uint8_t numBytes);
 void ReadRegister(uint16_t reg, uint8_t *data, uint8_t numBytes);
 void WriteCommand(uint8_t cmd, uint8_t *data, uint8_t numBytes);
-uint8_t WriteCommand2(uint8_t cmd, uint8_t *data, uint8_t numBytes);
+uint8_t WriteCommand2(uint8_t cmd, const uint8_t *data, uint8_t numBytes);
 void ReadCommand(uint8_t cmd, uint8_t *data, uint8_t numBytes);
 void SPItransfer(uint8_t cmd, bool write, uint8_t *dataOut, uint8_t *dataIn, uint8_t numBytes, bool waitForBusy);
 void LoRaError(int error);

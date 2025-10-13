@@ -1,4 +1,5 @@
 #include "config_wifi_server.h"
+#include "commands.h"
 #include "cJSON.h"
 #include "general_config.h"
 #include "device_registry.h"
@@ -15,6 +16,7 @@
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "lora_driver.h"
+#include "power_mgmt_config.h"
 #include "version.h"
 #include <string.h>
 #include <sys/stat.h>
@@ -30,6 +32,63 @@ static esp_ota_handle_t ota_handle          = 0;
 static const esp_partition_t *ota_partition = NULL;
 static size_t ota_received_bytes            = 0;
 static size_t ota_total_size                = 0;
+
+// Commands API bridge
+static httpd_req_t *g_current_req = NULL;
+
+static void http_response_callback(const char *response)
+{
+    if (!g_current_req || !response) return;
+    httpd_resp_sendstr(g_current_req, response);
+}
+
+static esp_err_t commands_api_handle_get(httpd_req_t *req, const char *command)
+{
+    httpd_resp_set_type(req, "application/json");
+    g_current_req = req;
+    commands_execute(command, http_response_callback);
+    g_current_req = NULL;
+    return ESP_OK;
+}
+
+static esp_err_t commands_api_handle_post(httpd_req_t *req, const char *command_fmt)
+{
+    char content[16384];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+
+    char command[16512];
+    snprintf(command, sizeof(command), command_fmt, content);
+
+    httpd_resp_set_type(req, "application/json");
+    g_current_req = req;
+    commands_execute(command, http_response_callback);
+    g_current_req = NULL;
+    return ESP_OK;
+}
+
+static esp_err_t commands_api_handle_delete(httpd_req_t *req, const char *command_fmt)
+{
+    const char *uri = req->uri;
+    const char *param = strrchr(uri, '/');
+    if (!param || !*(param + 1)) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing parameter");
+        return ESP_FAIL;
+    }
+
+    char command[256];
+    snprintf(command, sizeof(command), command_fmt, param + 1);
+
+    httpd_resp_set_type(req, "application/json");
+    g_current_req = req;
+    commands_execute(command, http_response_callback);
+    g_current_req = NULL;
+    return ESP_OK;
+}
 
 // Generate WiFi credentials from MAC address
 static void generate_wifi_credentials(char *ssid, size_t ssid_len, char *password, size_t pass_len)
@@ -102,6 +161,58 @@ static esp_err_t static_handler(httpd_req_t *req)
     return serve_static_file(req, filepath);
 }
 
+// New API handlers using commands_api
+static esp_err_t api_general_get_handler(httpd_req_t *req)
+{
+    return commands_api_handle_get(req, "GET_GENERAL");
+}
+
+static esp_err_t api_general_post_handler(httpd_req_t *req)
+{
+    return commands_api_handle_post(req, "SET_GENERAL %s");
+}
+
+static esp_err_t api_power_get_handler(httpd_req_t *req)
+{
+    return commands_api_handle_get(req, "GET_POWER_MANAGEMENT");
+}
+
+static esp_err_t api_power_post_handler(httpd_req_t *req)
+{
+    return commands_api_handle_post(req, "SET_POWER_MANAGEMENT %s");
+}
+
+static esp_err_t api_lora_get_handler(httpd_req_t *req)
+{
+    return commands_api_handle_get(req, "GET_LORA");
+}
+
+static esp_err_t api_lora_post_handler(httpd_req_t *req)
+{
+    return commands_api_handle_post(req, "SET_LORA %s");
+}
+
+static esp_err_t api_devices_get_handler(httpd_req_t *req)
+{
+    return commands_api_handle_get(req, "GET_PAIRED_DEVICES");
+}
+
+static esp_err_t api_devices_post_handler(httpd_req_t *req)
+{
+    return commands_api_handle_post(req, "PAIR_DEVICE %s");
+}
+
+static esp_err_t api_devices_delete_handler(httpd_req_t *req)
+{
+    return commands_api_handle_delete(req, "UNPAIR_DEVICE %s");
+}
+
+static esp_err_t api_device_info_handler(httpd_req_t *req)
+{
+    return commands_api_handle_get(req, "GET_DEVICE_INFO");
+}
+
+// Legacy handlers (keep for backward compatibility during transition)
 static esp_err_t device_settings_get_handler(httpd_req_t *req)
 {
     general_config_t config;
@@ -623,7 +734,7 @@ esp_err_t config_wifi_server_start(void)
     // Start HTTP server
     httpd_config_t config   = HTTPD_DEFAULT_CONFIG();
     config.server_port      = 80;
-    config.max_uri_handlers = 16;
+    config.max_uri_handlers = 32;
 
     if (httpd_start(&server, &config) == ESP_OK) {
         // Static file handlers
@@ -633,7 +744,38 @@ esp_err_t config_wifi_server_start(void)
         httpd_uri_t static_uri = {.uri = "/*", .method = HTTP_GET, .handler = static_handler};
         httpd_register_uri_handler(server, &static_uri);
 
-        // API handlers
+        // New unified API endpoints (using commands_api)
+        httpd_uri_t api_general_get = {.uri = "/api/general", .method = HTTP_GET, .handler = api_general_get_handler};
+        httpd_register_uri_handler(server, &api_general_get);
+
+        httpd_uri_t api_general_post = {.uri = "/api/general", .method = HTTP_POST, .handler = api_general_post_handler};
+        httpd_register_uri_handler(server, &api_general_post);
+
+        httpd_uri_t api_power_get = {.uri = "/api/power-management", .method = HTTP_GET, .handler = api_power_get_handler};
+        httpd_register_uri_handler(server, &api_power_get);
+
+        httpd_uri_t api_power_post = {.uri = "/api/power-management", .method = HTTP_POST, .handler = api_power_post_handler};
+        httpd_register_uri_handler(server, &api_power_post);
+
+        httpd_uri_t api_lora_get = {.uri = "/api/lora", .method = HTTP_GET, .handler = api_lora_get_handler};
+        httpd_register_uri_handler(server, &api_lora_get);
+
+        httpd_uri_t api_lora_post = {.uri = "/api/lora", .method = HTTP_POST, .handler = api_lora_post_handler};
+        httpd_register_uri_handler(server, &api_lora_post);
+
+        httpd_uri_t api_devices_get = {.uri = "/api/devices", .method = HTTP_GET, .handler = api_devices_get_handler};
+        httpd_register_uri_handler(server, &api_devices_get);
+
+        httpd_uri_t api_devices_post = {.uri = "/api/devices", .method = HTTP_POST, .handler = api_devices_post_handler};
+        httpd_register_uri_handler(server, &api_devices_post);
+
+        httpd_uri_t api_devices_delete = {.uri = "/api/devices/*", .method = HTTP_DELETE, .handler = api_devices_delete_handler};
+        httpd_register_uri_handler(server, &api_devices_delete);
+
+        httpd_uri_t api_device_info = {.uri = "/api/device/info", .method = HTTP_GET, .handler = api_device_info_handler};
+        httpd_register_uri_handler(server, &api_device_info);
+
+        // Legacy API handlers (backward compatibility)
         httpd_uri_t device_get_uri = {
             .uri = "/api/device/settings", .method = HTTP_GET, .handler = device_settings_get_handler};
         httpd_register_uri_handler(server, &device_get_uri);

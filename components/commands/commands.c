@@ -18,6 +18,7 @@
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "mbedtls/base64.h"
+#include <inttypes.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "u8g2.h"
@@ -639,7 +640,7 @@ static void handle_fw_update_data(const char *data_str)
     free(binary_data);
     
     char response[80];
-    snprintf(response, sizeof(response), "OK %zu/%zu 0x%08x", 
+    snprintf(response, sizeof(response), "OK %zu/%zu 0x%08" PRIx32, 
              ota_received_bytes, ota_total_size, chunk_crc);
     g_send_response(response);
 }
