@@ -59,7 +59,7 @@ static void cdc_rx_callback(uint8_t *data, size_t data_len, void *user_arg)
         char *name_start = strstr(response, "with ");
         if (name_start) {
             name_start += 5;
-            char *id_start = strstr(name_start, " (ID: ");
+            const char *id_start = strstr(name_start, " (ID: ");
             if (id_start) {
                 size_t name_len = id_start - name_start;
                 if (name_len < sizeof(paired_device_name)) {

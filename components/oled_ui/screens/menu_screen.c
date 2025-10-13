@@ -84,9 +84,8 @@ void menu_screen_navigate(menu_direction_t direction)
             // Handle wrap-around from top to bottom
             if (selected_item == menu_item_count - 1) {
                 // Wrapped to last item - scroll to show it
-                scroll_offset = menu_item_count - MAX_VISIBLE_ITEMS;
-                if (scroll_offset < 0)
-                    scroll_offset = 0;
+                scroll_offset = (menu_item_count > MAX_VISIBLE_ITEMS) ? 
+                                (menu_item_count - MAX_VISIBLE_ITEMS) : 0;
             } else if (selected_item < scroll_offset) {
                 // Normal scroll up
                 scroll_offset = selected_item;

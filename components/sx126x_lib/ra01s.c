@@ -307,7 +307,6 @@ uint8_t LoRaReceive(uint8_t *pData, int16_t len)
 
 bool LoRaSend(uint8_t *pData, int16_t len, uint8_t mode)
 {
-    uint16_t irqStatus;
     bool rv = false;
 
     if (txActive == false) {
@@ -324,7 +323,7 @@ bool LoRaSend(uint8_t *pData, int16_t len, uint8_t mode)
         SetTx(500);
 
         if (mode & SX126x_TXMODE_SYNC) {
-            irqStatus = GetIrqStatus();
+            uint16_t irqStatus = GetIrqStatus();
             while ((!(irqStatus & SX126X_IRQ_TX_DONE)) && (!(irqStatus & SX126X_IRQ_TIMEOUT))) {
                 delay(1);
                 irqStatus = GetIrqStatus();
@@ -359,13 +358,12 @@ bool LoRaSend(uint8_t *pData, int16_t len, uint8_t mode)
 
 bool ReceiveMode(void)
 {
-    uint16_t irq;
     bool rv = false;
 
     if (txActive == false) {
         rv = true;
     } else {
-        irq = GetIrqStatus();
+        uint16_t irq = GetIrqStatus();
         if (irq & (SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT)) {
             SetRx(0xFFFFFF);
             txActive = false;
@@ -813,7 +811,7 @@ uint8_t ReadBuffer(uint8_t *rxData, int16_t rxDataLen)
     return payloadLength;
 }
 
-void WriteBuffer(uint8_t *txData, int16_t txDataLen)
+void WriteBuffer(const uint8_t *txData, int16_t txDataLen)
 {
     // ensure BUSY is low (state meachine ready)
     WaitForIdle(BUSY_WAIT, "start WriteBuffer", true);
@@ -903,7 +901,7 @@ void WriteCommand(uint8_t cmd, uint8_t *data, uint8_t numBytes)
     }
 }
 
-uint8_t WriteCommand2(uint8_t cmd, uint8_t *data, uint8_t numBytes)
+uint8_t WriteCommand2(uint8_t cmd, const uint8_t *data, uint8_t numBytes)
 {
     // ensure BUSY is low (state meachine ready)
     WaitForIdle(BUSY_WAIT, "start WriteCommand2", true);
