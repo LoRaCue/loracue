@@ -1,7 +1,7 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 # Automatically finds and sets up ESP-IDF environment
 
-.PHONY: build clean flash monitor menuconfig size erase help check-idf setup-env sim-build sim-web sim sim-debug sim-screenshot check-wokwi web-build web-dev format format-check lint
+.PHONY: build clean flash monitor menuconfig size erase help check-idf setup-env sim-build sim-web sim sim-debug sim-screenshot check-wokwi web-build web-flash web-dev format format-check lint
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -74,6 +74,7 @@ build: check-idf
 # Build with debug logging on UART0
 build-debug: check-idf
 	@echo "🐛 Building LoRaCue firmware (DEBUG mode - logging on UART0)..."
+	@rm -f sdkconfig
 	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.debug" idf.py build
 
 # Clean build artifacts
@@ -218,6 +219,14 @@ web-build:
 	@cd web-interface && npm install && npm run build-spiffs
 	@echo "✅ Web interface built and ready for SPIFFS"
 
+web-flash: check-idf web-build
+	@echo "📦 Creating SPIFFS image..."
+	$(IDF_SETUP) python -m spiffsgen 0x1C0000 web-interface/out spiffs.bin
+	@echo "⚡ Flashing SPIFFS partition..."
+	$(IDF_SETUP) esptool.py --chip esp32s3 write_flash 0x640000 spiffs.bin
+	@rm -f spiffs.bin
+	@echo "✅ Web interface flashed to SPIFFS"
+
 # Development cycle: build, flash, monitor
 dev: web-build build flash monitor
 
@@ -257,7 +266,7 @@ endif
 # Wokwi Simulator targets
 sim: check-idf
 	@echo "🎮 Building for Wokwi simulator..."
-	$(IDF_SETUP) SIMULATOR_BUILD=1 SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.simulator" idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
+	$(IDF_SETUP) SIMULATOR_BUILD=1 SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.debug" idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
 
 sim-run: check-wokwi sim
 	@echo "🚀 Starting Wokwi simulation..."
