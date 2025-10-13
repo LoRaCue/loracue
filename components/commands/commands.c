@@ -4,12 +4,15 @@
 #include "general_config.h"
 #include "device_registry.h"
 #include "esp_app_format.h"
+#include "esp_chip_info.h"
 #include "esp_crc.h"
+#include "esp_flash.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "firmware_manifest.h"
 #include "lora_bands.h"
 #include "lora_driver.h"
@@ -17,6 +20,7 @@
 #include "ota_error_screen.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
+#include "version.h"
 #include "mbedtls/base64.h"
 #include <inttypes.h>
 #include "freertos/FreeRTOS.h"
@@ -45,19 +49,45 @@ static void handle_ping(void)
     g_send_response("PONG");
 }
 
-static void handle_get_version(void)
+static void handle_get_device_info(void)
 {
     cJSON *response = cJSON_CreateObject();
-    cJSON_AddStringToObject(response, "version", firmware_manifest_get_version());
-    cJSON_AddStringToObject(response, "board_id", firmware_manifest_get_board_id());
     
-    // Add MAC address
+    // Firmware info
+    cJSON_AddStringToObject(response, "board_id", firmware_manifest_get_board_id());
+    cJSON_AddStringToObject(response, "version", firmware_manifest_get_version());
+    cJSON_AddStringToObject(response, "commit", LORACUE_BUILD_COMMIT_SHORT);
+    cJSON_AddStringToObject(response, "branch", LORACUE_BUILD_BRANCH);
+    cJSON_AddStringToObject(response, "build_date", LORACUE_BUILD_DATE);
+    
+    // Hardware info
+    esp_chip_info_t chip_info;
+    esp_chip_info(&chip_info);
+    cJSON_AddStringToObject(response, "chip_model", CONFIG_IDF_TARGET);
+    cJSON_AddNumberToObject(response, "chip_revision", chip_info.revision);
+    cJSON_AddNumberToObject(response, "cpu_cores", chip_info.cores);
+    
+    uint32_t flash_size = 0;
+    esp_flash_get_size(NULL, &flash_size);
+    cJSON_AddNumberToObject(response, "flash_size_mb", flash_size / (1024 * 1024));
+    
+    // MAC address
     uint8_t mac[6];
     esp_efuse_mac_get_default(mac);
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
              mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     cJSON_AddStringToObject(response, "mac", mac_str);
+    
+    // Runtime info
+    cJSON_AddNumberToObject(response, "uptime_sec", esp_timer_get_time() / 1000000);
+    cJSON_AddNumberToObject(response, "free_heap_kb", esp_get_free_heap_size() / 1024);
+    
+    // Partition info
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    if (running) {
+        cJSON_AddStringToObject(response, "partition", running->label);
+    }
 
     char *json_string = cJSON_PrintUnformatted(response);
     g_send_response(json_string);
@@ -287,19 +317,21 @@ static void handle_set_lora_config(cJSON *config_json)
 static void handle_get_paired_devices(void)
 {
     cJSON *devices_array = cJSON_CreateArray();
-
-    for (int i = 0; i < 10; i++) {
-        paired_device_t device;
-        uint16_t device_id = i + 1;
-
-        if (device_registry_get(device_id, &device) == ESP_OK) {
+    
+    // Use device_registry_list to get all paired devices
+    paired_device_t devices[MAX_PAIRED_DEVICES];
+    size_t count = 0;
+    
+    if (device_registry_list(devices, MAX_PAIRED_DEVICES, &count) == ESP_OK) {
+        for (size_t i = 0; i < count; i++) {
             cJSON *device_obj = cJSON_CreateObject();
-            cJSON_AddStringToObject(device_obj, "name", device.device_name);
+            cJSON_AddNumberToObject(device_obj, "id", devices[i].device_id);
+            cJSON_AddStringToObject(device_obj, "name", devices[i].device_name);
 
             char mac_str[18];
-            snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x", device.mac_address[0],
-                     device.mac_address[1], device.mac_address[2], device.mac_address[3], device.mac_address[4],
-                     device.mac_address[5]);
+            snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
+                     devices[i].mac_address[0], devices[i].mac_address[1], devices[i].mac_address[2],
+                     devices[i].mac_address[3], devices[i].mac_address[4], devices[i].mac_address[5]);
             cJSON_AddStringToObject(device_obj, "mac", mac_str);
 
             cJSON_AddItemToArray(devices_array, device_obj);
@@ -382,32 +414,6 @@ static void handle_pair_device(cJSON *pair_json)
 
     ESP_LOGI(TAG, "Device paired: 0x%04X (%s)", device_id, name->valuestring);
     g_send_response("OK Device paired successfully");
-}
-
-static void handle_unpair_device(cJSON *unpair_json)
-{
-    cJSON *id = cJSON_GetObjectItem(unpair_json, "id");
-    
-    if (!cJSON_IsNumber(id)) {
-        g_send_response("ERROR Missing device ID");
-        return;
-    }
-    
-    uint16_t device_id = id->valueint;
-    
-    if (device_id < 1 || device_id > MAX_PAIRED_DEVICES) {
-        g_send_response("ERROR Invalid device ID");
-        return;
-    }
-    
-    esp_err_t ret = device_registry_remove(device_id);
-    if (ret != ESP_OK) {
-        g_send_response("ERROR Device not found");
-        return;
-    }
-    
-    ESP_LOGI(TAG, "Device unpaired: 0x%04X", device_id);
-    g_send_response("OK Device unpaired successfully");
 }
 
 static void handle_update_paired_device(cJSON *update_json)
@@ -757,7 +763,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
     }
 
     if (strcmp(command_line, "GET_DEVICE_INFO") == 0) {
-        handle_get_version();
+        handle_get_device_info();
         return;
     }
 
@@ -820,13 +826,22 @@ void commands_execute(const char *command_line, response_fn_t send_response)
     }
 
     if (strncmp(command_line, "UNPAIR_DEVICE ", 14) == 0) {
-        cJSON *json = cJSON_Parse(command_line + 14);
-        if (json) {
-            handle_unpair_device(json);
-            cJSON_Delete(json);
-        } else {
-            g_send_response("ERROR Invalid JSON");
+        const char *id_str = command_line + 14;
+        uint16_t device_id = atoi(id_str);
+        
+        if (device_id < 1 || device_id > MAX_PAIRED_DEVICES) {
+            g_send_response("ERROR Invalid device ID");
+            return;
         }
+        
+        esp_err_t ret = device_registry_remove(device_id);
+        if (ret != ESP_OK) {
+            g_send_response("ERROR Device not found");
+            return;
+        }
+        
+        ESP_LOGI(TAG, "Device unpaired: 0x%04X", device_id);
+        g_send_response("OK Device unpaired successfully");
         return;
     }
 
