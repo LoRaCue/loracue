@@ -216,16 +216,17 @@ web-dev:
 
 web-build:
 	@echo "🏗️  Building web interface for production..."
-	@cd web-interface && npm install && npm run build-spiffs
-	@echo "✅ Web interface built and ready for SPIFFS"
+	@cd web-interface && npm install && npm run build
+	@echo "✅ Web interface built"
 
 web-flash: check-idf web-build
-	@echo "📦 Creating SPIFFS image..."
-	$(IDF_SETUP) python -m spiffsgen 0x1C0000 web-interface/out spiffs.bin
-	@echo "⚡ Flashing SPIFFS partition..."
-	$(IDF_SETUP) esptool.py --chip esp32s3 write_flash 0x640000 spiffs.bin
-	@rm -f spiffs.bin
-	@echo "✅ Web interface flashed to SPIFFS"
+	@echo "📦 Creating LittleFS image..."
+	@command -v mklittlefs >/dev/null 2>&1 || { echo "❌ mklittlefs not found. Install with: brew install mklittlefs"; exit 1; }
+	mklittlefs -c web-interface/out -s 0x1C0000 littlefs.bin
+	@echo "⚡ Flashing LittleFS partition..."
+	$(IDF_SETUP) esptool.py --chip esp32s3 write_flash 0x640000 littlefs.bin
+	@rm -f littlefs.bin
+	@echo "✅ Web interface flashed to LittleFS"
 
 # Development cycle: build, flash, monitor
 dev: web-build build flash monitor
