@@ -217,15 +217,15 @@ web-dev:
 web-build:
 	@echo "🏗️  Building web interface for production..."
 	@cd web-interface && npm install && npm run build
-	@echo "✅ Web interface built"
-
-web-flash: check-idf web-build
 	@echo "📦 Creating LittleFS image..."
 	@command -v mklittlefs >/dev/null 2>&1 || { echo "❌ mklittlefs not found. Install with: brew install mklittlefs"; exit 1; }
-	mklittlefs -c web-interface/out -s 0x1C0000 littlefs.bin
+	@mkdir -p build
+	mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
+	@echo "✅ Web interface built: build/webui-littlefs.bin"
+
+web-flash: check-idf web-build
 	@echo "⚡ Flashing LittleFS partition..."
-	$(IDF_SETUP) esptool.py --chip esp32s3 write_flash 0x640000 littlefs.bin
-	@rm -f littlefs.bin
+	$(IDF_SETUP) esptool.py --chip esp32s3 write_flash 0x640000 build/webui-littlefs.bin
 	@echo "✅ Web interface flashed to LittleFS"
 
 # Development cycle: build, flash, monitor
