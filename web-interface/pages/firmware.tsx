@@ -26,51 +26,37 @@ export default function FirmwarePage() {
     setProgress(0)
 
     try {
-      // Phase 1: Start OTA
-      setProgress(5)
-      const startRes = await fetch('/api/firmware/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ size: file.size })
+      // Streaming upload with native progress tracking
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+
+        xhr.upload.addEventListener('progress', (e) => {
+          if (e.lengthComputable) {
+            const percentComplete = Math.round((e.loaded / e.total) * 100)
+            setProgress(percentComplete)
+          }
+        })
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status === 200) {
+            resolve()
+          } else {
+            reject(new Error(`Upload failed: ${xhr.statusText}`))
+          }
+        })
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Network error during upload'))
+        })
+
+        xhr.addEventListener('abort', () => {
+          reject(new Error('Upload aborted'))
+        })
+
+        xhr.open('POST', '/api/firmware/upload')
+        xhr.send(file)
       })
-      if (!startRes.ok) throw new Error('Failed to start OTA')
 
-      // Phase 2: Upload data in chunks
-      const CHUNK_SIZE = 4096
-      const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
-      
-      for (let i = 0; i < totalChunks; i++) {
-        const start = i * CHUNK_SIZE
-        const end = Math.min(start + CHUNK_SIZE, file.size)
-        const chunk = file.slice(start, end)
-        
-        const reader = new FileReader()
-        const base64 = await new Promise<string>((resolve) => {
-          reader.onload = () => resolve((reader.result as string).split(',')[1])
-          reader.readAsDataURL(chunk)
-        })
-        
-        const dataRes = await fetch('/api/firmware/data', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: base64 })
-        })
-        
-        if (!dataRes.ok) throw new Error(`Chunk ${i} upload failed`)
-        setProgress(5 + Math.round((i / totalChunks) * 80))
-      }
-
-      // Phase 3: Verify
-      setProgress(90)
-      const verifyRes = await fetch('/api/firmware/verify', { method: 'POST' })
-      if (!verifyRes.ok) throw new Error('Firmware verification failed')
-
-      // Phase 4: Commit
-      setProgress(95)
-      const commitRes = await fetch('/api/firmware/commit', { method: 'POST' })
-      if (!commitRes.ok) throw new Error('Failed to commit firmware')
-
-      setProgress(100)
       toast.success('Firmware uploaded! Device rebooting...')
       setFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''

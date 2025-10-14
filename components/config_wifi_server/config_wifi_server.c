@@ -18,6 +18,7 @@
 #include "lora_driver.h"
 #include "power_mgmt_config.h"
 #include "version.h"
+#include "ota_engine.h"
 #include <string.h>
 #include <sys/stat.h>
 
@@ -103,11 +104,13 @@ static void generate_wifi_credentials(char *ssid, size_t ssid_len, char *passwor
     password[8] = '\0';
 }
 
-// Serve static files from SPIFFS
+// Serve static files from LittleFS
 static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
 {
+    ESP_LOGI(TAG, "Attempting to serve: %s", filepath);
     FILE *file = fopen(filepath, "r");
     if (!file) {
+        ESP_LOGW(TAG, "File not found: %s", filepath);
         httpd_resp_send_404(req);
         return ESP_FAIL;
     }
@@ -138,7 +141,7 @@ static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
 // HTTP handlers
 static esp_err_t root_handler(httpd_req_t *req)
 {
-    return serve_static_file(req, "/spiffs/index.html");
+    return serve_static_file(req, "/storage/index.html");
 }
 
 static esp_err_t static_handler(httpd_req_t *req)
@@ -150,7 +153,7 @@ static esp_err_t static_handler(httpd_req_t *req)
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
-    snprintf(filepath, sizeof(filepath), "/spiffs%s", req->uri);
+    snprintf(filepath, sizeof(filepath), "/storage%s", req->uri);
 #pragma GCC diagnostic pop
     return serve_static_file(req, filepath);
 }
@@ -201,30 +204,78 @@ static esp_err_t api_devices_delete_handler(httpd_req_t *req)
     return commands_api_handle_delete(req, "UNPAIR_DEVICE %s");
 }
 
-// Firmware update API handlers (using commands system)
-static esp_err_t api_firmware_start_handler(httpd_req_t *req)
+// Streaming firmware upload handler (OTA engine)
+static esp_err_t api_firmware_upload_handler(httpd_req_t *req)
 {
-    return commands_api_handle_post(req, "FW_UPDATE_START %s");
+    size_t content_length = req->content_len;
+    
+    if (content_length == 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No content");
+        return ESP_FAIL;
+    }
+    
+    esp_err_t ret = ota_engine_start(content_length);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "OTA start failed: %s", esp_err_to_name(ret));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA start failed");
+        return ESP_FAIL;
+    }
+    
+    uint8_t buffer[4096];
+    size_t received = 0;
+    
+    while (received < content_length) {
+        int len = httpd_req_recv(req, (char *)buffer, sizeof(buffer));
+        if (len <= 0) {
+            if (len == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
+            }
+            ESP_LOGE(TAG, "Receive failed");
+            ota_engine_abort();
+            return ESP_FAIL;
+        }
+        
+        ret = ota_engine_write(buffer, len);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "OTA write failed: %s", esp_err_to_name(ret));
+            ota_engine_abort();
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Write failed");
+            return ESP_FAIL;
+        }
+        
+        received += len;
+    }
+    
+    ret = ota_engine_finish();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "OTA finish failed: %s", esp_err_to_name(ret));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Validation failed");
+        return ESP_FAIL;
+    }
+    
+    httpd_resp_sendstr(req, "{\"status\":\"success\"}");
+    
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    esp_restart();
+    
+    return ESP_OK;
 }
 
-static esp_err_t api_firmware_data_handler(httpd_req_t *req)
+// OTA progress endpoint
+static esp_err_t api_firmware_progress_handler(httpd_req_t *req)
 {
-    return commands_api_handle_post(req, "FW_UPDATE_DATA %s");
-}
-
-static esp_err_t api_firmware_verify_handler(httpd_req_t *req)
-{
-    return commands_api_handle_post(req, "FW_UPDATE_VERIFY");
-}
-
-static esp_err_t api_firmware_abort_handler(httpd_req_t *req)
-{
-    return commands_api_handle_post(req, "FW_UPDATE_ABORT");
-}
-
-static esp_err_t api_firmware_commit_handler(httpd_req_t *req)
-{
-    return commands_api_handle_post(req, "FW_UPDATE_COMMIT");
+    httpd_resp_set_type(req, "application/json");
+    
+    size_t progress = ota_engine_get_progress();
+    ota_state_t state = ota_engine_get_state();
+    
+    char response[128];
+    snprintf(response, sizeof(response), 
+             "{\"progress\":%zu,\"state\":%d}", 
+             progress, state);
+    
+    httpd_resp_sendstr(req, response);
+    return ESP_OK;
 }
 
 static esp_err_t api_device_info_handler(httpd_req_t *req)
@@ -252,12 +303,21 @@ esp_err_t config_wifi_server_start(void)
 
     // Initialize LittleFS
     esp_vfs_littlefs_conf_t littlefs_conf = {
-        .base_path = "/spiffs",
+        .base_path = "/storage",
         .partition_label = "storage",
         .format_if_mount_failed = true,
         .dont_mount = false
     };
-    esp_vfs_littlefs_register(&littlefs_conf);
+    esp_err_t ret = esp_vfs_littlefs_register(&littlefs_conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to mount LittleFS: %s", esp_err_to_name(ret));
+    } else {
+        size_t total = 0, used = 0;
+        ret = esp_littlefs_info("storage", &total, &used);
+        if (ret == ESP_OK) {
+            ESP_LOGI(TAG, "LittleFS: %zu KB total, %zu KB used", total / 1024, used / 1024);
+        }
+    }
 
     // Initialize WiFi
     ESP_ERROR_CHECK(esp_netif_init());
@@ -292,14 +352,7 @@ esp_err_t config_wifi_server_start(void)
     config.max_uri_handlers = 32;
 
     if (httpd_start(&server, &config) == ESP_OK) {
-        // Static file handlers
-        httpd_uri_t root_uri = {.uri = "/", .method = HTTP_GET, .handler = root_handler};
-        httpd_register_uri_handler(server, &root_uri);
-
-        httpd_uri_t static_uri = {.uri = "/*", .method = HTTP_GET, .handler = static_handler};
-        httpd_register_uri_handler(server, &static_uri);
-
-        // New unified API endpoints (using commands_api)
+        // API endpoints first (specific routes)
         httpd_uri_t api_general_get = {.uri = "/api/general", .method = HTTP_GET, .handler = api_general_get_handler};
         httpd_register_uri_handler(server, &api_general_get);
 
@@ -330,30 +383,26 @@ esp_err_t config_wifi_server_start(void)
         httpd_uri_t api_device_info = {.uri = "/api/device/info", .method = HTTP_GET, .handler = api_device_info_handler};
         httpd_register_uri_handler(server, &api_device_info);
 
-        // Firmware update API endpoints
-        httpd_uri_t fw_start_uri = {
-            .uri = "/api/firmware/start", .method = HTTP_POST, .handler = api_firmware_start_handler};
-        httpd_register_uri_handler(server, &fw_start_uri);
+        // Streaming firmware upload (OTA engine)
+        httpd_uri_t fw_upload_uri = {
+            .uri = "/api/firmware/upload", .method = HTTP_POST, .handler = api_firmware_upload_handler};
+        httpd_register_uri_handler(server, &fw_upload_uri);
 
-        httpd_uri_t fw_data_uri = {.uri = "/api/firmware/data", .method = HTTP_POST, .handler = api_firmware_data_handler};
-        httpd_register_uri_handler(server, &fw_data_uri);
-
-        httpd_uri_t fw_verify_uri = {
-            .uri = "/api/firmware/verify", .method = HTTP_POST, .handler = api_firmware_verify_handler};
-        httpd_register_uri_handler(server, &fw_verify_uri);
-
-        httpd_uri_t fw_abort_uri = {
-            .uri = "/api/firmware/abort", .method = HTTP_POST, .handler = api_firmware_abort_handler};
-        httpd_register_uri_handler(server, &fw_abort_uri);
-
-        httpd_uri_t fw_commit_uri = {
-            .uri = "/api/firmware/commit", .method = HTTP_POST, .handler = api_firmware_commit_handler};
-        httpd_register_uri_handler(server, &fw_commit_uri);
+        httpd_uri_t fw_progress_uri = {
+            .uri = "/api/firmware/progress", .method = HTTP_GET, .handler = api_firmware_progress_handler};
+        httpd_register_uri_handler(server, &fw_progress_uri);
 
         // System API endpoints
         httpd_uri_t factory_reset_uri = {
             .uri = "/api/system/factory-reset", .method = HTTP_POST, .handler = factory_reset_handler};
         httpd_register_uri_handler(server, &factory_reset_uri);
+
+        // Static file handlers last (wildcard catches everything else)
+        httpd_uri_t root_uri = {.uri = "/", .method = HTTP_GET, .handler = root_handler};
+        httpd_register_uri_handler(server, &root_uri);
+
+        httpd_uri_t static_uri = {.uri = "/*", .method = HTTP_GET, .handler = static_handler};
+        httpd_register_uri_handler(server, &static_uri);
 
         server_running = true;
         ESP_LOGI(TAG, "WiFi AP started: %s / %s", ssid, password);
