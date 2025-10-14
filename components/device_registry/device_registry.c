@@ -19,6 +19,54 @@ static const char *NVS_NAMESPACE = "devices";
 static bool registry_initialized = false;
 static nvs_handle_t registry_nvs_handle;
 
+// RAM cache for fast lookups
+static paired_device_t device_cache[MAX_PAIRED_DEVICES];
+static size_t cached_device_count = 0;
+static bool cache_loaded = false;
+
+static void generate_device_key(uint16_t device_id, char *key_name, size_t key_name_size)
+{
+    snprintf(key_name, key_name_size, "dev_%04X", device_id);
+}
+
+static void load_cache_from_nvs(void)
+{
+    if (cache_loaded) return;
+    
+    cached_device_count = 0;
+    
+    if (registry_nvs_handle == 0) {
+        cache_loaded = true;
+        return;
+    }
+    
+    nvs_iterator_t it = NULL;
+    esp_err_t res = nvs_entry_find(NVS_DEFAULT_PART_NAME, NVS_NAMESPACE, NVS_TYPE_BLOB, &it);
+    
+    while (res == ESP_OK && cached_device_count < MAX_PAIRED_DEVICES) {
+        nvs_entry_info_t info;
+        nvs_entry_info(it, &info);
+        
+        if (strncmp(info.key, "dev_", 4) == 0) {
+            uint16_t device_id;
+            if (sscanf(info.key + 4, "%04hx", &device_id) == 1) {
+                char key_name[16];
+                generate_device_key(device_id, key_name, sizeof(key_name));
+                size_t size = sizeof(paired_device_t);
+                if (nvs_get_blob(registry_nvs_handle, key_name, &device_cache[cached_device_count], &size) == ESP_OK) {
+                    cached_device_count++;
+                }
+            }
+        }
+        res = nvs_entry_next(&it);
+    }
+    
+    if (it) nvs_release_iterator(it);
+    
+    cache_loaded = true;
+    ESP_LOGI(TAG, "Loaded %d devices into cache", cached_device_count);
+}
+
 esp_err_t device_registry_init(void)
 {
     ESP_LOGI(TAG, "Initializing device registry");
@@ -39,10 +87,6 @@ esp_err_t device_registry_init(void)
     return ESP_OK;
 }
 
-static void generate_device_key(uint16_t device_id, char *key_name, size_t key_name_size)
-{
-    snprintf(key_name, key_name_size, "dev_%04X", device_id);
-}
 
 esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const uint8_t *mac_address,
                               const uint8_t *aes_key)
@@ -96,6 +140,12 @@ esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const
         return ret;
     }
 
+    // Update cache
+    if (cached_device_count < MAX_PAIRED_DEVICES) {
+        memcpy(&device_cache[cached_device_count], &device, sizeof(paired_device_t));
+        cached_device_count++;
+    }
+
     ESP_LOGI(TAG, "Device 0x%04X added successfully", device_id);
     return ESP_OK;
 }
@@ -107,25 +157,20 @@ esp_err_t device_registry_get(uint16_t device_id, paired_device_t *device)
         return ESP_ERR_INVALID_STATE;
     }
 
-    // If NVS handle not open, no devices exist yet
-    if (registry_nvs_handle == 0) {
-        return ESP_ERR_NOT_FOUND;
+    // Load cache on first access
+    if (!cache_loaded) {
+        load_cache_from_nvs();
     }
 
-    char key_name[16];
-    generate_device_key(device_id, key_name, sizeof(key_name));
-
-    size_t required_size = sizeof(paired_device_t);
-    esp_err_t ret        = nvs_get_blob(registry_nvs_handle, key_name, device, &required_size);
-
-    if (ret == ESP_ERR_NVS_NOT_FOUND) {
-        return ESP_ERR_NOT_FOUND;
-    } else if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get device: %s", esp_err_to_name(ret));
-        return ret;
+    // Fast lookup in RAM cache
+    for (size_t i = 0; i < cached_device_count; i++) {
+        if (device_cache[i].device_id == device_id) {
+            memcpy(device, &device_cache[i], sizeof(paired_device_t));
+            return ESP_OK;
+        }
     }
 
-    return ESP_OK;
+    return ESP_ERR_NOT_FOUND;
 }
 
 esp_err_t device_registry_update_last_seen(uint16_t device_id, uint16_t sequence_num)
@@ -179,6 +224,17 @@ esp_err_t device_registry_remove(uint16_t device_id)
         return ret;
     }
 
+    // Remove from cache
+    for (size_t i = 0; i < cached_device_count; i++) {
+        if (device_cache[i].device_id == device_id) {
+            // Shift remaining devices
+            memmove(&device_cache[i], &device_cache[i + 1], 
+                    (cached_device_count - i - 1) * sizeof(paired_device_t));
+            cached_device_count--;
+            break;
+        }
+    }
+
     ESP_LOGI(TAG, "Device 0x%04X removed successfully", device_id);
     return ESP_OK;
 }
@@ -190,17 +246,14 @@ esp_err_t device_registry_list(paired_device_t *devices, size_t max_devices, siz
         return ESP_ERR_INVALID_STATE;
     }
 
-    *count = 0;
-
-    // Simple approach: try to read devices with sequential IDs
-    // In a real implementation, we'd maintain a device list in NVS
-    for (uint16_t id = 0x1000; id < 0x2000 && *count < max_devices; id++) {
-        paired_device_t device;
-        if (device_registry_get(id, &device) == ESP_OK) {
-            memcpy(&devices[*count], &device, sizeof(paired_device_t));
-            (*count)++;
-        }
+    // Load cache on first access
+    if (!cache_loaded) {
+        load_cache_from_nvs();
     }
+
+    // Copy from cache
+    *count = (cached_device_count < max_devices) ? cached_device_count : max_devices;
+    memcpy(devices, device_cache, *count * sizeof(paired_device_t));
 
     ESP_LOGI(TAG, "Listed %d paired devices", *count);
     return ESP_OK;

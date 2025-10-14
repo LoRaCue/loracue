@@ -30,9 +30,6 @@ CONFIG_BT_BLE_42_FEATURES_SUPPORTED=y
 # UART Commands enabled on UART0
 CONFIG_UART_COMMANDS_ENABLED=y
 
-# Logging disabled (use build-debug for logging on UART0)
-CONFIG_LOG_DEFAULT_LEVEL_NONE=y
-
 # Console on UART1 (not used, keeps UART0 clean for commands)
 CONFIG_ESP_CONSOLE_UART_CUSTOM=y
 CONFIG_ESP_CONSOLE_UART_NUM=1

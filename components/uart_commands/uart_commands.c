@@ -37,8 +37,13 @@ static void send_response(const char *response)
 static void uart_command_task(void *pvParameters)
 {
     uint8_t data[UART_BUF_SIZE];
-    static char command_buffer[CMD_MAX_LENGTH];
-    static size_t cmd_pos = 0;
+    char *command_buffer = heap_caps_malloc(CMD_MAX_LENGTH, MALLOC_CAP_8BIT);
+    if (!command_buffer) {
+        ESP_LOGE(TAG, "Failed to allocate command buffer");
+        vTaskDelete(NULL);
+        return;
+    }
+    size_t cmd_pos = 0;
 
     ESP_LOGI(TAG, "UART command task started");
 
@@ -73,6 +78,7 @@ static void uart_command_task(void *pvParameters)
         }
     }
 
+    free(command_buffer);
     ESP_LOGI(TAG, "UART command task stopped");
     vTaskDelete(NULL);
 }
@@ -109,7 +115,7 @@ esp_err_t uart_commands_start(void)
 
     uart_running = true;
 
-    BaseType_t ret = xTaskCreate(uart_command_task, "uart_cmd", 4096, NULL, 5, &uart_task_handle);
+    BaseType_t ret = xTaskCreate(uart_command_task, "uart_cmd", 8192, NULL, 5, &uart_task_handle);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create UART command task");
         uart_running = false;

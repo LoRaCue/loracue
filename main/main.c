@@ -25,6 +25,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "oled_ui.h"
+#include "ota_engine.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "usb_hid.h"
@@ -431,6 +432,9 @@ void app_main(void)
     ESP_LOGI(TAG, "Build: %s (%s)", LORACUE_BUILD_COMMIT_SHORT, LORACUE_BUILD_BRANCH);
     ESP_LOGI(TAG, "Date: %s", LORACUE_BUILD_DATE);
 
+    // Reduce u8g2 HAL logging noise
+    esp_log_level_set("u8g2_hal", ESP_LOG_WARN);
+
     // Check wake cause
     esp_sleep_wakeup_cause_t wake_cause = esp_sleep_get_wakeup_cause();
     if (wake_cause != ESP_SLEEP_WAKEUP_UNDEFINED) {
@@ -464,6 +468,13 @@ void app_main(void)
         }
     }
     ESP_LOGI(TAG, "Running partition: %s (offset 0x%lx)", running_partition->label, running_partition->address);
+
+    // Initialize OTA engine
+    ESP_LOGI(TAG, "Initializing OTA engine...");
+    ret = ota_engine_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "OTA engine initialization failed: %s", esp_err_to_name(ret));
+    }
 
     // Reconfigure watchdog (90s timeout for init + 60s validation)
     esp_task_wdt_config_t wdt_config = {.timeout_ms = 90000, .idle_core_mask = 0, .trigger_panic = true};
@@ -633,6 +644,8 @@ void app_main(void)
             ESP_LOGW(TAG, "UART commands start failed: %s", esp_err_to_name(ret));
         }
     }
+#else
+    ESP_LOGI(TAG, "UART commands disabled - UART0 used for debug logging");
 #endif
 
     // Validate hardware
@@ -705,7 +718,7 @@ void app_main(void)
     system_events = xEventGroupCreate();
 
     // Start periodic tasks
-    xTaskCreate(battery_monitor_task, "battery_monitor", 2048, &g_oled_status, 5, NULL);
+    xTaskCreate(battery_monitor_task, "battery_monitor", 4096, &g_oled_status, 5, NULL);
     xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &g_oled_status, 5, NULL);
     xTaskCreate(pc_mode_update_task, "pc_mode_update", 4096, &g_oled_status, 5, NULL);
 

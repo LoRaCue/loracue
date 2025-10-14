@@ -37,6 +37,7 @@ bool bluetooth_config_get_passkey(const uint32_t *passkey)
 #else
 // Hardware implementation
 #include "commands.h"
+#include "ble_ota.h"
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_gap_ble_api.h"
@@ -241,18 +242,26 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 
     case ESP_GATTS_WRITE_EVT:
         if (param->write.handle == rx_char_handle) {
-            // Process received data
-            for (int i = 0; i < param->write.len; i++) {
-                char c = param->write.value[i];
-                
-                if (c == '\n' || c == '\r') {
-                    if (rx_len > 0) {
-                        rx_buffer[rx_len] = '\0';
-                        process_command(rx_buffer);
-                        rx_len = 0;
+            // Check for OTA commands
+            if (param->write.len >= 17 && strncmp((char*)param->write.value, "FIRMWARE_UPGRADE ", 17) == 0) {
+                ble_ota_handle_control(param->write.value, param->write.len);
+            } else if (param->write.len > 0 && param->write.value[0] == 0xFF) {
+                // Binary OTA data (starts with 0xFF marker)
+                ble_ota_handle_data(param->write.value + 1, param->write.len - 1);
+            } else {
+                // Process as text command
+                for (int i = 0; i < param->write.len; i++) {
+                    char c = param->write.value[i];
+                    
+                    if (c == '\n' || c == '\r') {
+                        if (rx_len > 0) {
+                            rx_buffer[rx_len] = '\0';
+                            process_command(rx_buffer);
+                            rx_len = 0;
+                        }
+                    } else if (rx_len < sizeof(rx_buffer) - 1) {
+                        rx_buffer[rx_len++] = c;
                     }
-                } else if (rx_len < sizeof(rx_buffer) - 1) {
-                    rx_buffer[rx_len++] = c;
                 }
             }
         }
@@ -323,6 +332,7 @@ esp_err_t bluetooth_config_init(void)
 
     esp_ble_gatt_set_local_mtu(500);
 
+    ble_ota_init();
     ble_enabled = true;
     ESP_LOGI(TAG, "Bluetooth initialized");
 
