@@ -18,6 +18,7 @@
 #include "lora_driver.h"
 #include "ota_compatibility.h"
 #include "ota_error_screen.h"
+#include "ota_engine.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "version.h"
@@ -27,19 +28,9 @@
 #include "freertos/task.h"
 #include "u8g2.h"
 #include <string.h>
+#include "xmodem.h"
 
 static const char *TAG = "COMMANDS";
-
-// OTA update state
-static esp_ota_handle_t ota_handle          = 0;
-static const esp_partition_t *ota_partition = NULL;
-static size_t ota_received_bytes            = 0;
-static size_t ota_total_size                = 0;
-static size_t ota_chunk_size                = 4096;
-static size_t ota_expected_chunks           = 0;
-static bool ota_force_mode                  = false;
-static uint8_t ota_header_buffer[4096]      = {0};  // Buffer for manifest extraction
-static bool ota_manifest_checked            = false;
 
 // Response callback (set by commands_execute)
 static response_fn_t g_send_response = NULL;
@@ -478,277 +469,6 @@ static void handle_update_paired_device(cJSON *update_json)
     g_send_response("OK Device updated successfully");
 }
 
-static void handle_fw_update_start(cJSON *update_json)
-{
-    cJSON *size       = cJSON_GetObjectItem(update_json, "size");
-    cJSON *chunk_size = cJSON_GetObjectItem(update_json, "chunk_size");
-    cJSON *checksum   = cJSON_GetObjectItem(update_json, "checksum");
-    cJSON *version    = cJSON_GetObjectItem(update_json, "version");
-    cJSON *force      = cJSON_GetObjectItem(update_json, "force");
-
-    if (!cJSON_IsNumber(size) || !cJSON_IsString(checksum) || !cJSON_IsString(version)) {
-        g_send_response("ERROR Invalid firmware update parameters");
-        return;
-    }
-
-    // Validate chunk_size
-    if (chunk_size && cJSON_IsNumber(chunk_size)) {
-        ota_chunk_size = chunk_size->valueint;
-        if (ota_chunk_size < 512 || ota_chunk_size > 4096) {
-            g_send_response("ERROR chunk_size must be between 512 and 4096 bytes");
-            return;
-        }
-    } else {
-        ota_chunk_size = 2048; // Default - smaller for stability
-    }
-
-    // Check force mode
-    ota_force_mode = (force && cJSON_IsTrue(force));
-    if (ota_force_mode) {
-        ESP_LOGW(TAG, "Force mode enabled - compatibility checks will be bypassed");
-    }
-
-    if (ota_handle) {
-        esp_ota_abort(ota_handle);
-        ota_handle = 0;
-    }
-
-    ota_total_size       = size->valueint;
-    ota_received_bytes   = 0;
-    ota_expected_chunks  = (ota_total_size + ota_chunk_size - 1) / ota_chunk_size;
-    ota_manifest_checked = false;
-    memset(ota_header_buffer, 0, sizeof(ota_header_buffer));
-
-    ota_partition = esp_ota_get_next_update_partition(NULL);
-    if (!ota_partition) {
-        g_send_response("ERROR No OTA partition available");
-        return;
-    }
-
-    // Validate firmware size fits in partition
-    if (ota_total_size > ota_partition->size) {
-        ESP_LOGE(TAG, "Firmware too large: %d bytes > partition %zu bytes", 
-                 ota_total_size, ota_partition->size);
-        g_send_response("ERROR Firmware exceeds partition size");
-        return;
-    }
-
-    esp_err_t ret = esp_ota_begin(ota_partition, ota_total_size, &ota_handle);
-    if (ret != ESP_OK) {
-        char error_msg[64];
-        snprintf(error_msg, sizeof(error_msg), "ERROR OTA begin failed: 0x%x", ret);
-        g_send_response(error_msg);
-        return;
-    }
-
-    ESP_LOGI(TAG, "OTA update started: %d bytes, chunk_size=%d, chunks=%d, version=%s, force=%d, partition=%zu", 
-             ota_total_size, ota_chunk_size, ota_expected_chunks, version->valuestring, ota_force_mode, ota_partition->size);
-    
-    cJSON *response = cJSON_CreateObject();
-    cJSON_AddStringToObject(response, "status", "ok");
-    cJSON_AddBoolToObject(response, "force_mode", ota_force_mode);
-    cJSON_AddNumberToObject(response, "expected_chunks", ota_expected_chunks);
-    char *response_str = cJSON_PrintUnformatted(response);
-    g_send_response(response_str);
-    free(response_str);
-    cJSON_Delete(response);
-}
-
-static void handle_fw_update_data(const char *data_str)
-{
-    if (!ota_handle) {
-        g_send_response("ERROR No active OTA session");
-        return;
-    }
-
-    const char *base64_data = data_str;
-    char *space_pos = strchr(data_str, ' ');
-    if (space_pos) {
-        base64_data = space_pos + 1;
-    }
-
-    size_t base64_len = strlen(base64_data);
-    
-    size_t max_decoded_len = (base64_len * 3) / 4 + 3;
-    uint8_t *binary_data = malloc(max_decoded_len);
-    if (!binary_data) {
-        g_send_response("ERROR Memory allocation failed");
-        return;
-    }
-
-    size_t data_len;
-    int ret = mbedtls_base64_decode(binary_data, max_decoded_len, &data_len,
-                                     (const unsigned char *)base64_data, base64_len);
-    if (ret != 0) {
-        free(binary_data);
-        g_send_response("ERROR Invalid base64 data");
-        return;
-    }
-
-    // Validate chunk size (except last chunk)
-    size_t remaining = ota_total_size - ota_received_bytes;
-    size_t expected_size = (remaining >= ota_chunk_size) ? ota_chunk_size : remaining;
-    if (data_len > expected_size) {
-        free(binary_data);
-        g_send_response("ERROR Chunk size exceeds expected");
-        return;
-    }
-
-    // Validate partition boundary
-    if (ota_received_bytes + data_len > ota_partition->size) {
-        free(binary_data);
-        ESP_LOGE(TAG, "OTA write would exceed partition: %zu + %zu > %zu", 
-                 ota_received_bytes, data_len, ota_partition->size);
-        g_send_response("ERROR Write exceeds partition size");
-        return;
-    }
-
-    // Store first 4KB for manifest extraction
-    if (!ota_manifest_checked && ota_received_bytes < sizeof(ota_header_buffer)) {
-        size_t copy_len = (ota_received_bytes + data_len <= sizeof(ota_header_buffer)) 
-            ? data_len 
-            : (sizeof(ota_header_buffer) - ota_received_bytes);
-        memcpy(ota_header_buffer + ota_received_bytes, binary_data, copy_len);
-    }
-
-    // Write - esp_ota_write already handles cache internally
-    esp_err_t ota_ret = esp_ota_write(ota_handle, binary_data, data_len);
-    
-    // Critical: Yield to allow scheduler and cache to settle
-    taskYIELD();
-    vTaskDelay(pdMS_TO_TICKS(20));
-    
-    if (ota_ret != ESP_OK) {
-        free(binary_data);
-        char error_msg[64];
-        snprintf(error_msg, sizeof(error_msg), "ERROR OTA write failed: 0x%x", ota_ret);
-        g_send_response(error_msg);
-        return;
-    }
-
-    ota_received_bytes += data_len;
-
-    ESP_LOGD(TAG, "OTA chunk: %d bytes, total: %d/%d (%.1f%%)", 
-             data_len, ota_received_bytes, ota_total_size, 
-             (float)ota_received_bytes * 100.0f / ota_total_size);
-
-    // Check compatibility after receiving first 4KB
-    if (!ota_manifest_checked && ota_received_bytes >= sizeof(ota_header_buffer)) {
-        ota_manifest_checked = true;
-        
-        if (!ota_force_mode) {
-            esp_app_desc_t new_app_info;
-            if (esp_ota_get_partition_description(ota_partition, &new_app_info) == ESP_OK) {
-                if (!firmware_manifest_is_compatible(&new_app_info)) {
-                    free(binary_data);
-                    esp_ota_abort(ota_handle);
-                    ota_handle = 0;
-                    
-                    // Show error on OLED
-                    ota_error_screen_draw(firmware_manifest_get_board_id(), new_app_info.project_name);
-                    
-                    cJSON *error = cJSON_CreateObject();
-                    cJSON_AddStringToObject(error, "status", "error");
-                    cJSON_AddStringToObject(error, "reason", "Board mismatch");
-                    cJSON_AddStringToObject(error, "current_board", firmware_manifest_get_board_id());
-                    cJSON_AddStringToObject(error, "new_board", new_app_info.project_name);
-                    char *error_str = cJSON_PrintUnformatted(error);
-                    g_send_response(error_str);
-                    free(error_str);
-                    cJSON_Delete(error);
-                    return;
-                }
-            } else {
-                ESP_LOGW(TAG, "Could not read app descriptor, proceeding anyway");
-            }
-        } else {
-            ESP_LOGW(TAG, "Force mode: skipping compatibility check");
-        }
-    }
-
-    // Calculate CRC32 checksum of received chunk
-    uint32_t chunk_crc = esp_crc32_le(0, binary_data, data_len);
-
-    free(binary_data);
-    
-    char response[80];
-    snprintf(response, sizeof(response), "OK %zu/%zu 0x%08" PRIx32, 
-             ota_received_bytes, ota_total_size, chunk_crc);
-    g_send_response(response);
-}
-
-static void handle_fw_update_verify(void)
-{
-    if (!ota_handle) {
-        g_send_response("ERROR No active OTA session");
-        return;
-    }
-
-    // Check if we received all data
-    if (ota_received_bytes != ota_total_size) {
-        ESP_LOGE(TAG, "Size mismatch: received %zu, expected %zu", ota_received_bytes, ota_total_size);
-        char error_msg[128];
-        snprintf(error_msg, sizeof(error_msg), "ERROR Size mismatch: received %zu, expected %zu", 
-                 ota_received_bytes, ota_total_size);
-        g_send_response(error_msg);
-        esp_ota_abort(ota_handle);
-        ota_handle = 0;
-        return;
-    }
-
-    esp_err_t ret = esp_ota_end(ota_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "esp_ota_end failed: %s (0x%x)", esp_err_to_name(ret), ret);
-        char error_msg[128];
-        snprintf(error_msg, sizeof(error_msg), "ERROR OTA verification failed: %s", esp_err_to_name(ret));
-        g_send_response(error_msg);
-        ota_handle = 0;
-        return;
-    }
-
-    ESP_LOGI(TAG, "Firmware verified successfully (%d bytes)", ota_received_bytes);
-    g_send_response("OK Firmware verified");
-}
-
-static void handle_fw_update_abort(void)
-{
-    if (ota_handle) {
-        esp_ota_abort(ota_handle);
-        ota_handle = 0;
-        ESP_LOGI(TAG, "OTA update aborted");
-    }
-    
-    ota_partition = NULL;
-    ota_received_bytes = 0;
-    ota_total_size = 0;
-    ota_manifest_checked = false;
-    
-    g_send_response("OK OTA aborted");
-}
-
-static void handle_fw_update_commit(void)
-{
-    if (!ota_partition) {
-        g_send_response("ERROR No OTA partition to commit");
-        return;
-    }
-
-    esp_err_t ret = esp_ota_set_boot_partition(ota_partition);
-    if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to set boot partition");
-        return;
-    }
-
-    g_send_response("OK Firmware committed - rebooting");
-
-    ota_handle         = 0;
-    ota_partition      = NULL;
-    ota_received_bytes = 0;
-    ota_total_size     = 0;
-
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    esp_restart();
-}
 
 void commands_execute(const char *command_line, response_fn_t send_response)
 {
@@ -867,34 +587,26 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         return;
     }
 
-    if (strncmp(command_line, "FW_UPDATE_START ", 16) == 0) {
-        cJSON *json = cJSON_Parse(command_line + 16);
-        if (json) {
-            handle_fw_update_start(json);
-            cJSON_Delete(json);
-        } else {
-            g_send_response("ERROR Invalid JSON");
+    if (strncmp(command_line, "FIRMWARE_UPGRADE ", 17) == 0) {
+        size_t size = atoi(command_line + 17);
+        if (size == 0 || size > 4*1024*1024) {
+            g_send_response("ERROR Invalid size");
+            return;
         }
-        return;
-    }
-
-    if (strncmp(command_line, "FW_UPDATE_DATA ", 15) == 0) {
-        handle_fw_update_data(command_line + 15);
-        return;
-    }
-
-    if (strcmp(command_line, "FW_UPDATE_VERIFY") == 0) {
-        handle_fw_update_verify();
-        return;
-    }
-
-    if (strcmp(command_line, "FW_UPDATE_ABORT") == 0) {
-        handle_fw_update_abort();
-        return;
-    }
-
-    if (strcmp(command_line, "FW_UPDATE_COMMIT") == 0) {
-        handle_fw_update_commit();
+        
+        // USB-UART/USB-CDC: Use XMODEM-1K
+        // BLE: Intercepted by ble_ota_handle_control() before reaching here
+        g_send_response("OK Ready for XMODEM");
+        vTaskDelay(pdMS_TO_TICKS(100));
+        
+        esp_err_t ret = xmodem_receive(size);
+        if (ret == ESP_OK) {
+            g_send_response("OK Firmware uploaded, rebooting...");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            esp_restart();
+        } else {
+            g_send_response("ERROR Upload failed");
+        }
         return;
     }
 
