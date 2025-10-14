@@ -4,9 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "export": "next export",
-    "build-spiffs": "npm run build && npm run export && node scripts/prepare-spiffs.js"
+    "build": "next build"
   },
   "dependencies": {
     "lucide-react": "^0.544.0",
