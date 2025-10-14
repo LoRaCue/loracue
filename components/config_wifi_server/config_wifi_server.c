@@ -12,7 +12,7 @@
 #include "esp_netif.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
-#include "esp_spiffs.h"
+#include "esp_littlefs.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "lora_driver.h"
@@ -250,10 +250,14 @@ esp_err_t config_wifi_server_start(void)
 
     ESP_LOGI(TAG, "Starting WiFi AP and web server");
 
-    // Initialize SPIFFS
-    esp_vfs_spiffs_conf_t spiffs_conf = {
-        .base_path = "/spiffs", .partition_label = NULL, .max_files = 20, .format_if_mount_failed = true};
-    esp_vfs_spiffs_register(&spiffs_conf);
+    // Initialize LittleFS
+    esp_vfs_littlefs_conf_t littlefs_conf = {
+        .base_path = "/spiffs",
+        .partition_label = "storage",
+        .format_if_mount_failed = true,
+        .dont_mount = false
+    };
+    esp_vfs_littlefs_register(&littlefs_conf);
 
     // Initialize WiFi
     ESP_ERROR_CHECK(esp_netif_init());
@@ -390,8 +394,8 @@ esp_err_t config_wifi_server_stop(void)
         ap_netif = NULL;
     }
 
-    // Unmount SPIFFS
-    esp_vfs_spiffs_unregister(NULL);
+    // Unmount LittleFS
+    esp_vfs_littlefs_unregister("storage");
 
 #ifndef SIMULATOR_BUILD
     // Only disable WiFi on real hardware for power saving
