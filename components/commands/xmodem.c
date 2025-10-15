@@ -47,10 +47,14 @@ esp_err_t xmodem_receive(size_t expected_size)
     size_t total_received = 0;
     int retries = 0;
     
+    // Subscribe to watchdog if not already subscribed
+    esp_task_wdt_add(NULL);
+    
     esp_err_t ret = ota_engine_start(expected_size);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "OTA start failed");
         uart_send_byte(XMODEM_CAN);
+        esp_task_wdt_delete(NULL);
         return ret;
     }
     
@@ -64,6 +68,7 @@ esp_err_t xmodem_receive(size_t expected_size)
             if (++retries > MAX_RETRIES) {
                 ota_engine_abort();
                 uart_send_byte(XMODEM_CAN);
+                esp_task_wdt_delete(NULL);
                 return ESP_ERR_TIMEOUT;
             }
             uart_send_byte(XMODEM_NAK);
@@ -78,6 +83,7 @@ esp_err_t xmodem_receive(size_t expected_size)
         if (header == XMODEM_CAN) {
             ESP_LOGE(TAG, "Transfer cancelled by sender");
             ota_engine_abort();
+            esp_task_wdt_delete(NULL);
             return ESP_FAIL;
         }
         
@@ -127,6 +133,7 @@ esp_err_t xmodem_receive(size_t expected_size)
             ESP_LOGE(TAG, "OTA write failed");
             ota_engine_abort();
             uart_send_byte(XMODEM_CAN);
+            esp_task_wdt_delete(NULL);
             return ret;
         }
         
@@ -137,7 +144,7 @@ esp_err_t xmodem_receive(size_t expected_size)
         
         // Feed watchdog and yield to prevent task watchdog timeout
         esp_task_wdt_reset();
-        vTaskDelay(1);
+        vTaskDelay(pdMS_TO_TICKS(10));
         
         if (total_received % 10240 == 0) {
             ESP_LOGI(TAG, "Progress: %zu/%zu bytes", total_received, expected_size);
@@ -147,9 +154,11 @@ esp_err_t xmodem_receive(size_t expected_size)
     ret = ota_engine_finish();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "OTA finish failed");
+        esp_task_wdt_delete(NULL);
         return ret;
     }
     
     ESP_LOGI(TAG, "XMODEM receive complete: %zu bytes", total_received);
+    esp_task_wdt_delete(NULL);
     return ESP_OK;
 }
