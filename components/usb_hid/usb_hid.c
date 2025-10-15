@@ -119,12 +119,14 @@ esp_err_t usb_hid_init(void)
 {
     ESP_LOGI(TAG, "Initializing USB composite device (HID + CDC)");
 
-    tinyusb_config_t tusb_cfg = {.port       = TINYUSB_PORT_FULL_SPEED_0,
-                                 .phy        = {.skip_setup = false, .self_powered = false},
-                                 .task       = {.size = 4096, .priority = 5, .xCoreID = 0},
-                                 .descriptor = {0},
-                                 .event_cb   = NULL,
-                                 .event_arg  = NULL};
+    tinyusb_config_t tusb_cfg = {
+        .port = TINYUSB_PORT_FULL_SPEED_0,
+        .phy = {.skip_setup = false, .self_powered = false},
+        .task = {.size = 4096, .priority = 5, .xCoreID = 0},
+        .descriptor = {0},  // Use callback functions instead
+        .event_cb = NULL,
+        .event_arg = NULL
+    };
 
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 
