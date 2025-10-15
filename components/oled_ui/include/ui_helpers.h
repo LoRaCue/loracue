@@ -15,10 +15,12 @@ extern "C" {
  * @brief Footer context types for one-button UI
  */
 typedef enum {
-    FOOTER_CONTEXT_MENU,      ///< Next, Prev, Select
-    FOOTER_CONTEXT_EDIT,      ///< +, -, Save
+    FOOTER_CONTEXT_MENU,      ///< Next, Back, Select
+    FOOTER_CONTEXT_VALUE,     ///< +, -, Save (for editing values)
     FOOTER_CONTEXT_INFO,      ///< Back only
     FOOTER_CONTEXT_CONFIRM,   ///< Cancel, Confirm
+    FOOTER_CONTEXT_DELETE,    ///< Back, Delete
+    FOOTER_CONTEXT_PAIR,      ///< Back, Pair
     FOOTER_CONTEXT_CUSTOM     ///< Custom labels
 } footer_context_t;
 
@@ -31,6 +33,13 @@ typedef enum {
  * @param str String to draw centered
  */
 void u8g2_DrawCenterStr(u8g2_t *u8g2, int display_width, int y, const char *str);
+
+/**
+ * @brief Draw standardized header with title and separator line
+ * 
+ * @param title Header title text
+ */
+void ui_draw_header(const char *title);
 
 /**
  * @brief Draw footer with one-button UI icons
