@@ -6,6 +6,7 @@
 #include "ui_config.h"
 #include "ui_helpers.h"
 #include "ui_icons.h"
+#include "ui_helpers.h"
 #include "usb_pairing.h"
 
 extern u8g2_t u8g2;
@@ -35,9 +36,7 @@ void pairing_screen_draw(void)
     u8g2_ClearBuffer(&u8g2);
 
     // Header
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawStr(&u8g2, 2, 8, "USB PAIRING");
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
+    ui_draw_header("USB PAIRING");
 
     // Check if we should hide success message
     if (show_success && (esp_timer_get_time() - success_start_time) > SUCCESS_DISPLAY_TIME_US) {
@@ -62,10 +61,7 @@ void pairing_screen_draw(void)
     }
 
     // Footer
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-    u8g2_DrawStr(&u8g2, 8, 64, "Back");
+    ui_draw_footer(FOOTER_CONTEXT_INFO, NULL);
 
     u8g2_SendBuffer(&u8g2);
 }

@@ -22,9 +22,7 @@ void device_mode_screen_draw(void)
     u8g2_ClearBuffer(&u8g2);
 
     // Header
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawStr(&u8g2, 2, 8, "DEVICE MODE");
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
+    ui_draw_header("DEVICE MODE");
 
     // Get current mode from persistent config
     general_config_t config;

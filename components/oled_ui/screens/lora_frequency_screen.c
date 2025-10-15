@@ -40,9 +40,7 @@ void lora_frequency_screen_draw(void) {
     u8g2_ClearBuffer(&u8g2);
     
     // Header
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawStr(&u8g2, 2, 8, "FREQUENCY");
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
+    ui_draw_header("FREQUENCY");
     
     // Large centered frequency display
     char freq_str[16];
@@ -56,7 +54,7 @@ void lora_frequency_screen_draw(void) {
     
     // Footer with one-button UI icons
     if (edit_mode) {
-        ui_draw_footer(FOOTER_CONTEXT_EDIT, NULL);
+        ui_draw_footer(FOOTER_CONTEXT_VALUE, NULL);
     } else {
         const char *labels[] = {NULL, "Back", "Edit"};
         ui_draw_footer(FOOTER_CONTEXT_CUSTOM, labels);

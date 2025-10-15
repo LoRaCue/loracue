@@ -3,6 +3,7 @@
 #include "esp_timer.h"
 #include "u8g2.h"
 #include "ui_config.h"
+#include "ui_helpers.h"
 #include "ui_icons.h"
 
 extern u8g2_t u8g2;
@@ -21,25 +22,7 @@ static void refresh_device_list(void)
 
 static void draw_registry_header(void)
 {
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawStr(&u8g2, 2, 8, "DEVICE REGISTRY");
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
-}
-
-static void draw_registry_footer(void)
-{
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-    u8g2_DrawStr(&u8g2, 8, 64, "Back");
-
-    if (device_count > 0) {
-        const char *action_text = "Remove";
-        int action_text_width   = u8g2_GetStrWidth(&u8g2, action_text);
-        int action_x            = DISPLAY_WIDTH - both_buttons_width - action_text_width - 2;
-        u8g2_DrawXBM(&u8g2, action_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-        u8g2_DrawStr(&u8g2, action_x + both_buttons_width + 2, 64, action_text);
-    }
+    ui_draw_header("DEVICE REGISTRY");
 }
 
 void device_registry_screen_draw(void)
@@ -108,7 +91,9 @@ void device_registry_screen_draw(void)
         }
     }
 
-    draw_registry_footer();
+    // Footer
+    ui_draw_footer(device_count > 0 ? FOOTER_CONTEXT_DELETE : FOOTER_CONTEXT_INFO, NULL);
+    
     u8g2_SendBuffer(&u8g2);
 }
 

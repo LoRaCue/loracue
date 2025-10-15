@@ -27,9 +27,7 @@ void slot_screen_draw(void) {
     general_config_get(&config);
     
     // Header
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawStr(&u8g2, 2, 8, "SLOT SELECTION");
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
+    ui_draw_header("SLOT SELECTION");
     
     // Display current slot value
     u8g2_SetFont(&u8g2, u8g2_font_helvB14_tr);
@@ -42,7 +40,7 @@ void slot_screen_draw(void) {
 
     // Footer with one-button UI icons
     if (edit_mode) {
-        ui_draw_footer(FOOTER_CONTEXT_EDIT, NULL);
+        ui_draw_footer(FOOTER_CONTEXT_VALUE, NULL);
     } else {
         const char *labels[] = {NULL, "Back", "Edit"};
         ui_draw_footer(FOOTER_CONTEXT_CUSTOM, labels);

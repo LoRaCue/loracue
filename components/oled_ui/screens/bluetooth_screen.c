@@ -4,6 +4,7 @@
 #include "oled_ui.h"
 #include "u8g2.h"
 #include "ui_config.h"
+#include "ui_helpers.h"
 #include "ui_icons.h"
 
 extern u8g2_t u8g2;
@@ -18,9 +19,7 @@ void bluetooth_screen_draw(void)
     u8g2_ClearBuffer(&u8g2);
 
     // Header
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawStr(&u8g2, 2, 8, "BLUETOOTH");
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
+    ui_draw_header("BLUETOOTH");
 
     // Get current config
     general_config_t config;
@@ -33,7 +32,7 @@ void bluetooth_screen_draw(void)
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
 
     for (int i = 0; i < bt_item_count; i++) {
-        int item_y_start = SEPARATOR_Y_TOP + (i * item_height);
+        int item_y_start = SEPARATOR_Y_TOP + 1 + (i * item_height);
         int bar_y_center = item_y_start + (item_height / 2);
         int bar_y        = bar_y_center - (bar_height / 2);
         int adjusted_bar_height = bar_height;
@@ -67,24 +66,8 @@ void bluetooth_screen_draw(void)
         }
     }
 
-    // Footer with navigation (like device mode screen)
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-
-    // Left: Back arrow
-    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-    u8g2_DrawStr(&u8g2, 8, 64, "Back");
-
-    // Middle: Next arrow
-    u8g2_DrawXBM(&u8g2, 40, 56, track_next_width, track_next_height, track_next_bits);
-    u8g2_DrawStr(&u8g2, 46, 64, "Next");
-
-    // Right: Select with both buttons icon
-    const char *select_text = "Select";
-    int select_text_width   = u8g2_GetStrWidth(&u8g2, select_text);
-    int select_x            = DISPLAY_WIDTH - both_buttons_width - select_text_width - 2;
-    u8g2_DrawXBM(&u8g2, select_x, 56, both_buttons_width, both_buttons_height, both_buttons_bits);
-    u8g2_DrawStr(&u8g2, select_x + both_buttons_width + 2, 64, select_text);
+    // Footer with navigation
+    ui_draw_footer(FOOTER_CONTEXT_MENU, NULL);
 
     u8g2_SendBuffer(&u8g2);
 }

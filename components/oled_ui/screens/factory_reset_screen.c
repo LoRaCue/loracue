@@ -4,7 +4,9 @@
 #include "nvs_flash.h"
 #include "u8g2.h"
 #include "ui_config.h"
+#include "ui_helpers.h"
 #include "ui_icons.h"
+#include "icons/ui_status_icons.h"
 #include "ui_screen_controller.h"
 
 static const char *TAG = "factory_reset_screen";
@@ -29,21 +31,19 @@ void factory_reset_screen_draw(void)
     int after_width  = u8g2_GetStrWidth(&u8g2, text_after);
     int line2_width  = u8g2_GetStrWidth(&u8g2, line2);
 
-    // Calculate total width: text + 3px + icon + 3px + text
-    int total_width = before_width + 3 + both_buttons_width + 3 + after_width;
+    // Calculate total width: text + 3px + icon (13px) + 3px + text
+    int total_width = before_width + 3 + 13 + 3 + after_width;
     int x_start     = (128 - total_width) / 2;
 
     u8g2_DrawStr(&u8g2, x_start, 32, text_before);
-    u8g2_DrawXBM(&u8g2, x_start + before_width + 3, 24, both_buttons_width, both_buttons_height, both_buttons_bits);
-    u8g2_DrawStr(&u8g2, x_start + before_width + 3 + both_buttons_width + 3, 32, text_after);
+    ui_button_long_draw_at(x_start + before_width + 3, 24);
+    u8g2_DrawStr(&u8g2, x_start + before_width + 3 + 13 + 3, 32, text_after);
 
     int x2 = (128 - line2_width) / 2;
     u8g2_DrawStr(&u8g2, x2, 44, line2);
 
-    // Bottom bar
-    u8g2_DrawHLine(&u8g2, 0, 52, 128);
-    u8g2_DrawXBM(&u8g2, 2, 56, arrow_prev_width, arrow_prev_height, arrow_prev_bits);
-    u8g2_DrawStr(&u8g2, 8, 64, "Back");
+    // Footer
+    ui_draw_footer(FOOTER_CONTEXT_CONFIRM, NULL);
 
     u8g2_SendBuffer(&u8g2);
 }

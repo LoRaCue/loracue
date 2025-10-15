@@ -6,6 +6,7 @@
 #include "esp_mac.h"
 #include "oled_ui.h"
 #include "ui_config.h"
+#include "ui_helpers.h"
 #include "ui_icons.h"
 #include "ui_status_icons.h"
 #include <stdio.h>
@@ -54,9 +55,7 @@ void config_mode_screen_draw(void)
     }
 
     // Header
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    u8g2_DrawStr(&u8g2, 2, 8, "CONFIGURATION MODE");
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_TOP, DISPLAY_WIDTH);
+    ui_draw_header("CONFIGURATION MODE");
 
     // WiFi credentials
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
@@ -72,11 +71,8 @@ void config_mode_screen_draw(void)
     u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
     u8g2_DrawStr(&u8g2, 2, 47, "http://192.168.4.1");
 
-    // Bottom bar
-    u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
-    u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-    ui_button_double_draw_at(2, 56);
-    u8g2_DrawStr(&u8g2, 14, DISPLAY_HEIGHT - 1, "Back");
+    // Footer
+    ui_draw_footer(FOOTER_CONTEXT_INFO, NULL);
 
     u8g2_SendBuffer(&u8g2);
 }
