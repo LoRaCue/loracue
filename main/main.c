@@ -449,25 +449,44 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // OTA rollback validation
+    // OTA boot diagnostics
     running_partition = esp_ota_get_running_partition();
-    esp_ota_img_states_t ota_state;
-
-    // Check boot counter for repeated failures
-    uint32_t boot_counter = ota_get_boot_counter();
-    if (boot_counter >= MAX_BOOT_ATTEMPTS) {
-        ESP_LOGE(TAG, "Max boot attempts reached (%lu), forcing rollback", boot_counter);
-        ota_log_rollback("max_boot_attempts");
-        esp_ota_mark_app_invalid_rollback_and_reboot();
-    }
-
-    if (esp_ota_get_state_partition(running_partition, &ota_state) == ESP_OK) {
-        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
-            ESP_LOGW(TAG, "New firmware pending validation");
-            ota_increment_boot_counter();
+    ESP_LOGI(TAG, "Running from partition: %s (0x%lx, %lu bytes)", 
+             running_partition->label, running_partition->address, running_partition->size);
+    
+    const esp_partition_t *boot_partition = esp_ota_get_boot_partition();
+    if (boot_partition) {
+        ESP_LOGI(TAG, "Boot partition: %s (0x%lx)", 
+                 boot_partition->label, boot_partition->address);
+        if (boot_partition != running_partition) {
+            ESP_LOGW(TAG, "WARNING: Boot partition != running partition (rollback occurred?)");
         }
     }
-    ESP_LOGI(TAG, "Running partition: %s (offset 0x%lx)", running_partition->label, running_partition->address);
+    
+    esp_ota_img_states_t ota_state;
+    uint32_t boot_counter = ota_get_boot_counter();
+    
+    if (esp_ota_get_state_partition(running_partition, &ota_state) == ESP_OK) {
+        const char *state_str = (ota_state == ESP_OTA_IMG_NEW) ? "NEW" :
+                                (ota_state == ESP_OTA_IMG_PENDING_VERIFY) ? "PENDING_VERIFY" :
+                                (ota_state == ESP_OTA_IMG_VALID) ? "VALID" :
+                                (ota_state == ESP_OTA_IMG_INVALID) ? "INVALID" :
+                                (ota_state == ESP_OTA_IMG_ABORTED) ? "ABORTED" : "UNKNOWN";
+        ESP_LOGI(TAG, "OTA state: %s, boot counter: %lu", state_str, boot_counter);
+        
+        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+            ESP_LOGW(TAG, "New firmware pending validation (will auto-validate in 60s)");
+            ota_increment_boot_counter();
+            
+            if (boot_counter >= MAX_BOOT_ATTEMPTS) {
+                ESP_LOGE(TAG, "Max boot attempts reached (%lu), forcing rollback NOW", boot_counter);
+                ota_log_rollback("max_boot_attempts");
+                esp_ota_mark_app_invalid_rollback_and_reboot();
+            }
+        }
+    } else {
+        ESP_LOGW(TAG, "Could not read OTA state for running partition");
+    }
 
     // Initialize OTA engine
     ESP_LOGI(TAG, "Initializing OTA engine...");
