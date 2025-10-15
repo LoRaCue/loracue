@@ -161,13 +161,13 @@ static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
     case ESP_GATTS_REG_EVT:
         ota_gatts_if = gatts_if;
         
-        // Create OTA service (16-bit UUID)
+        // Create OTA service (128-bit UUID)
         esp_gatt_srvc_id_t ota_service_id = {
             .is_primary = true,
             .id.inst_id = 0x00,
-            .id.uuid.len = ESP_UUID_LEN_16,
-            .id.uuid.uuid.uuid16 = OTA_SERVICE_UUID,
+            .id.uuid.len = ESP_UUID_LEN_128,
         };
+        memcpy(ota_service_id.id.uuid.uuid.uuid128, OTA_SERVICE_UUID, 16);
         esp_ble_gatts_create_service(gatts_if, &ota_service_id, GATTS_OTA_NUM_HANDLE);
         break;
 
@@ -177,9 +177,9 @@ static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
 
         // Add Control characteristic (Write + Indicate)
         esp_bt_uuid_t control_uuid = {
-            .len = ESP_UUID_LEN_16,
-            .uuid.uuid16 = OTA_CONTROL_CHAR_UUID,
+            .len = ESP_UUID_LEN_128,
         };
+        memcpy(control_uuid.uuid.uuid128, OTA_CONTROL_CHAR_UUID, 16);
         esp_ble_gatts_add_char(ota_service_handle, &control_uuid,
                                ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
                                ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_INDICATE,
@@ -187,33 +187,33 @@ static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
         break;
 
     case ESP_GATTS_ADD_CHAR_EVT:
-        if (param->add_char.char_uuid.uuid.uuid16 == OTA_CONTROL_CHAR_UUID) {
+        if (memcmp(param->add_char.char_uuid.uuid.uuid128, OTA_CONTROL_CHAR_UUID, 16) == 0) {
             ota_control_handle = param->add_char.attr_handle;
             
             // Add Data characteristic (Write without response)
             esp_bt_uuid_t data_uuid = {
-                .len = ESP_UUID_LEN_16,
-                .uuid.uuid16 = OTA_DATA_CHAR_UUID,
+                .len = ESP_UUID_LEN_128,
             };
+            memcpy(data_uuid.uuid.uuid128, OTA_DATA_CHAR_UUID, 16);
             esp_ble_gatts_add_char(ota_service_handle, &data_uuid,
                                    ESP_GATT_PERM_WRITE,
                                    ESP_GATT_CHAR_PROP_BIT_WRITE_NR,
                                    NULL, NULL);
-        } else if (param->add_char.char_uuid.uuid.uuid16 == OTA_DATA_CHAR_UUID) {
+        } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, OTA_DATA_CHAR_UUID, 16) == 0) {
             ota_data_handle = param->add_char.attr_handle;
             
             // Add Progress characteristic (Read + Notify)
             esp_bt_uuid_t progress_uuid = {
-                .len = ESP_UUID_LEN_16,
-                .uuid.uuid16 = OTA_PROGRESS_CHAR_UUID,
+                .len = ESP_UUID_LEN_128,
             };
+            memcpy(progress_uuid.uuid.uuid128, OTA_PROGRESS_CHAR_UUID, 16);
             esp_ble_gatts_add_char(ota_service_handle, &progress_uuid,
                                    ESP_GATT_PERM_READ,
                                    ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY,
                                    NULL, NULL);
-        } else if (param->add_char.char_uuid.uuid.uuid16 == OTA_PROGRESS_CHAR_UUID) {
+        } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, OTA_PROGRESS_CHAR_UUID, 16) == 0) {
             ota_progress_handle = param->add_char.attr_handle;
-            ESP_LOGI(TAG, "OTA service ready (UUID: 0x%04X)", OTA_SERVICE_UUID);
+            ESP_LOGI(TAG, "OTA service ready (UUID: 6E400010-B5A3-F393-E0A9-E50E24DCCA9E)");
         }
         break;
 
@@ -329,7 +329,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         if (param->write.handle == rx_char_handle) {
             // Check for OTA commands - reject and direct to OTA service
             if (param->write.len >= 17 && strncmp((char*)param->write.value, "FIRMWARE_UPGRADE ", 17) == 0) {
-                const char *error_msg = "ERROR Use dedicated OTA GATT service (UUID 0x1234) for firmware upgrades\n";
+                const char *error_msg = "ERROR Use dedicated OTA GATT service (UUID 6E400010-B5A3-F393-E0A9-E50E24DCCA9E) for firmware upgrades\n";
                 esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, tx_char_handle, 
                                            strlen(error_msg), (uint8_t*)error_msg, false);
             } else {
