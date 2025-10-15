@@ -66,25 +66,6 @@ static esp_err_t commands_api_handle_post(httpd_req_t *req, const char *command_
     return ESP_OK;
 }
 
-static esp_err_t commands_api_handle_delete(httpd_req_t *req, const char *command_fmt)
-{
-    const char *uri = req->uri;
-    const char *param = strrchr(uri, '/');
-    if (!param || !*(param + 1)) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing parameter");
-        return ESP_FAIL;
-    }
-
-    char command[256];
-    snprintf(command, sizeof(command), command_fmt, param + 1);
-
-    httpd_resp_set_type(req, "application/json");
-    g_current_req = req;
-    commands_execute(command, http_response_callback);
-    g_current_req = NULL;
-    return ESP_OK;
-}
-
 // Generate WiFi credentials from MAC address
 static void generate_wifi_credentials(char *ssid, size_t ssid_len, char *password, size_t pass_len)
 {
