@@ -155,8 +155,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         // Set device name
         general_config_t config;
         general_config_get(&config);
-        char ble_name[48];  // "LoRaCue " (8) + device_name (31) + "-v" (2) + version (6) + null (1)
-        snprintf(ble_name, sizeof(ble_name), "LoRaCue %s-v%s", config.device_name, LORACUE_VERSION_STRING);
+        char ble_name[48];  // "LoRaCue-" (8) + device_name (31) + "-v" (2) + version (6) + null (1)
+        snprintf(ble_name, sizeof(ble_name), "LoRaCue-%s-v%s", config.device_name, LORACUE_VERSION_STRING);
         esp_ble_gap_set_device_name(ble_name);
 
         // Configure advertising data
