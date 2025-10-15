@@ -93,10 +93,12 @@ void ble_ota_handle_disconnect(void)
         }
         
         ota_state = BLE_OTA_STATE_IDLE;
-        ota_conn_id = 0;
         expected_size = 0;
         current_progress = 0;
     }
+    
+    // Always reset connection ID on disconnect
+    ota_conn_id = 0;
 }
 
 void ble_ota_handle_control_write(const uint8_t *data, uint16_t len)

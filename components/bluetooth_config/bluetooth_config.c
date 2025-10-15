@@ -314,9 +314,10 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 
     case ESP_GATTS_DISCONNECT_EVT:
         ble_connected = false;
-        rx_len        = 0;
+        conn_id = 0;
+        rx_len = 0;
         ble_ota_handle_disconnect();
-        ESP_LOGI(TAG, "Client disconnected");
+        ESP_LOGI(TAG, "Client disconnected, restarting advertising");
         esp_ble_gap_start_advertising(&(esp_ble_adv_params_t){
             .adv_int_min       = 0x20,
             .adv_int_max       = 0x40,
