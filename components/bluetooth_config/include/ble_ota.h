@@ -42,3 +42,5 @@ void ble_ota_handle_control_write(const uint8_t *data, uint16_t len);
 void ble_ota_handle_data_write(const uint8_t *data, uint16_t len);
 void ble_ota_send_response(uint8_t response, const char *message);
 void ble_ota_update_progress(uint8_t percentage);
+void ble_ota_set_connection(uint16_t conn_id);
+void ble_ota_handle_disconnect(void);

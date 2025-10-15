@@ -191,3 +191,35 @@ asyncio.run(ota_update("AA:BB:CC:DD:EE:FF", "firmware.bin"))
 - Firmware signature validation (if enabled)
 - Rollback protection prevents bricking
 - AES-256 encryption over BLE connection
+
+## Enterprise Features
+
+### State Machine
+- **IDLE**: Ready to accept new OTA
+- **ACTIVE**: Upload in progress
+- **FINISHING**: Validating and setting boot partition
+- Prevents concurrent OTA sessions
+
+### Timeout Protection
+- 30-second timeout without data
+- Automatic abort on timeout
+- Timer resets on each data packet
+- Prevents hung OTA sessions
+
+### Connection Tracking
+- Tracks active BLE connection ID
+- Automatic abort on disconnect
+- Prevents orphaned OTA sessions
+- Clean state recovery
+
+### Error Handling
+- Detailed error messages (up to 127 chars)
+- Automatic cleanup on failures
+- State machine prevents invalid operations
+- Comprehensive logging for debugging
+
+### Robustness
+- Connection drop detection
+- Automatic resource cleanup
+- No memory leaks on abort
+- Safe concurrent command handling
