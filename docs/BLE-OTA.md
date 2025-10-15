@@ -49,15 +49,27 @@ Received via Progress characteristic notifications:
 
 Scan for BLE devices with name pattern: `LoRaCue-XXXXXX-vX.X.X`
 
-### 2. Discover Services
+### 2. Pair with Device (REQUIRED)
 
-Discover the OTA service (`6E400010-...`) and its characteristics.
+**OTA characteristics require encrypted connection.**
 
-### 3. Enable Notifications
+- Initiate BLE pairing
+- Device displays 6-digit passkey on OLED
+- Enter passkey on client device
+- Complete bonding process
+- Keys stored for future connections
+
+**Without pairing:** BLE stack returns "Insufficient Authentication" error when accessing OTA characteristics.
+
+### 3. Discover Services
+
+Discover the OTA service (`49589A79-7CC5-465D-BFF1-FE37C5065000`) and its characteristics.
+
+### 4. Enable Notifications
 
 Enable indications on Control characteristic and notifications on Progress characteristic.
 
-### 4. Send START Command
+### 5. Send START Command
 
 ```
 Byte 0: 0x01 (START)
@@ -71,14 +83,14 @@ Example for 1,598,432 bytes (0x186680):
 
 Wait for READY response (`0x10`).
 
-### 5. Stream Firmware Data
+### 6. Stream Firmware Data
 
 Write firmware binary to Data characteristic in chunks:
 - Recommended chunk size: 512 bytes
 - Use "Write without response" for maximum throughput
 - Monitor Progress notifications to track upload
 
-### 6. Send FINISH Command
+### 7. Send FINISH Command
 
 ```
 Byte 0: 0x03 (FINISH)
@@ -86,7 +98,7 @@ Byte 0: 0x03 (FINISH)
 
 Wait for COMPLETE response (`0x12`). Device will validate firmware and reboot.
 
-### 7. Reconnect
+### 8. Reconnect
 
 After reboot (~5 seconds), reconnect to verify new firmware version in device name.
 
