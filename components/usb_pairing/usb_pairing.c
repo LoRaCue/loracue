@@ -212,7 +212,7 @@ static void pairing_task(void *arg)
     for (int i = 0; i < 32; i++) {
         snprintf(key_str + i * 2, 3, "%02x", aes_key[i]);
     }
-    cJSON_AddStringToObject(json, "key", key_str);
+    cJSON_AddStringToObject(json, "aes_key", key_str);
 
     char *json_string = cJSON_Print(json);
     char command[512];

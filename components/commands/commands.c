@@ -321,7 +321,6 @@ static void handle_get_paired_devices(void)
     if (device_registry_list(devices, MAX_PAIRED_DEVICES, &count) == ESP_OK) {
         for (size_t i = 0; i < count; i++) {
             cJSON *device_obj = cJSON_CreateObject();
-            cJSON_AddNumberToObject(device_obj, "id", devices[i].device_id);
             cJSON_AddStringToObject(device_obj, "name", devices[i].device_name);
 
             char mac_str[18];
@@ -378,7 +377,7 @@ static void handle_pair_device(cJSON *pair_json)
 {
     cJSON *name       = cJSON_GetObjectItem(pair_json, "name");
     const cJSON *mac  = cJSON_GetObjectItem(pair_json, "mac");
-    const cJSON *key  = cJSON_GetObjectItem(pair_json, "key");
+    const cJSON *key  = cJSON_GetObjectItem(pair_json, "aes_key");
 
     if (!name || !mac || !key) {
         g_send_response("ERROR Missing pairing parameters");
@@ -420,37 +419,30 @@ static void handle_pair_device(cJSON *pair_json)
 
 static void handle_update_paired_device(cJSON *update_json)
 {
-    cJSON *id = cJSON_GetObjectItem(update_json, "id");
-    cJSON *name = cJSON_GetObjectItem(update_json, "name");
     const cJSON *mac = cJSON_GetObjectItem(update_json, "mac");
-    const cJSON *key = cJSON_GetObjectItem(update_json, "key");
+    cJSON *name = cJSON_GetObjectItem(update_json, "name");
+    const cJSON *key = cJSON_GetObjectItem(update_json, "aes_key");
     
-    if (!cJSON_IsNumber(id) || !cJSON_IsString(name) || 
-        !cJSON_IsString(mac) || !cJSON_IsString(key)) {
+    if (!cJSON_IsString(mac) || !cJSON_IsString(name) || !cJSON_IsString(key)) {
         g_send_response("ERROR Missing parameters");
         return;
     }
     
-    uint16_t device_id = id->valueint;
-    
-    if (device_id < 1 || device_id > MAX_PAIRED_DEVICES) {
-        g_send_response("ERROR Invalid device ID");
-        return;
-    }
-    
-    // Check if device exists
-    paired_device_t existing;
-    if (device_registry_get(device_id, &existing) != ESP_OK) {
-        g_send_response("ERROR Device not found");
-        return;
-    }
-    
-    // Validate MAC address
+    // Parse MAC address
     uint8_t mac_bytes[6];
     if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", 
                &mac_bytes[0], &mac_bytes[1], &mac_bytes[2], 
                &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
         g_send_response("ERROR Invalid MAC address");
+        return;
+    }
+    
+    uint16_t device_id = (mac_bytes[4] << 8) | mac_bytes[5];
+    
+    // Check if device exists
+    paired_device_t existing;
+    if (device_registry_get(device_id, &existing) != ESP_OK) {
+        g_send_response("ERROR Device not found");
         return;
     }
     
@@ -469,7 +461,7 @@ static void handle_update_paired_device(cJSON *update_json)
         }
     }
     
-    // Update device (overwrites existing)
+    // Update device (overwrites existing, MAC stays the same)
     esp_err_t ret = device_registry_add(device_id, name->valuestring, mac_bytes, aes_key);
     if (ret != ESP_OK) {
         g_send_response("ERROR Failed to update device");
@@ -557,15 +549,32 @@ void commands_execute(const char *command_line, response_fn_t send_response)
     }
 
     if (strncmp(command_line, "UNPAIR_DEVICE ", 14) == 0) {
-        const char *id_str = command_line + 14;
-        uint16_t device_id = atoi(id_str);
-        
-        if (device_id < 1 || device_id > MAX_PAIRED_DEVICES) {
-            g_send_response("ERROR Invalid device ID");
+        cJSON *json = cJSON_Parse(command_line + 14);
+        if (!json) {
+            g_send_response("ERROR Invalid JSON");
             return;
         }
         
+        const cJSON *mac = cJSON_GetObjectItem(json, "mac");
+        if (!cJSON_IsString(mac)) {
+            cJSON_Delete(json);
+            g_send_response("ERROR Missing mac parameter");
+            return;
+        }
+        
+        uint8_t mac_bytes[6];
+        if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+                   &mac_bytes[0], &mac_bytes[1], &mac_bytes[2],
+                   &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
+            cJSON_Delete(json);
+            g_send_response("ERROR Invalid MAC address");
+            return;
+        }
+        
+        uint16_t device_id = (mac_bytes[4] << 8) | mac_bytes[5];
         esp_err_t ret = device_registry_remove(device_id);
+        cJSON_Delete(json);
+        
         if (ret != ESP_OK) {
             g_send_response("ERROR Device not found");
             return;
