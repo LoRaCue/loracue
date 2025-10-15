@@ -18,9 +18,9 @@ static const char *TAG = "UART_CMD";
 
 // UART configuration - use UART1 in debug mode to avoid conflict with console
 #ifdef CONFIG_UART_COMMANDS_PORT_NUM
-#define UART_NUM CONFIG_UART_COMMANDS_PORT_NUM
+#define UART_NUM ((uart_port_t)CONFIG_UART_COMMANDS_PORT_NUM)
 #else
-#define UART_NUM 0
+#define UART_NUM UART_NUM_0
 #endif
 
 // Pin configuration depends on UART port
@@ -101,6 +101,7 @@ static void uart_command_task(void *pvParameters)
 esp_err_t uart_commands_init(void)
 {
     ESP_LOGI(TAG, "Initializing UART command interface");
+    ESP_LOGI(TAG, "CONFIG_UART_COMMANDS_PORT_NUM=%d, UART_NUM=%d", CONFIG_UART_COMMANDS_PORT_NUM, (int)UART_NUM);
 
     // Configure UART parameters
     uart_config_t uart_config = {
@@ -137,7 +138,6 @@ esp_err_t uart_commands_start(void)
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "UART command task started");
     return ESP_OK;
 }
 
