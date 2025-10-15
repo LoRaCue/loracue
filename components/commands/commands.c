@@ -17,8 +17,8 @@
 #include "lora_bands.h"
 #include "lora_driver.h"
 #include "ota_compatibility.h"
-#include "ota_error_screen.h"
 #include "ota_engine.h"
+#include "version.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "version.h"
@@ -37,7 +37,12 @@ static response_fn_t g_send_response = NULL;
 
 static void handle_ping(void)
 {
-    g_send_response("PONG");
+    general_config_t config;
+    general_config_get(&config);
+    
+    char response[128];
+    snprintf(response, sizeof(response), "PONG %s v%s", config.device_name, LORACUE_VERSION_FULL);
+    g_send_response(response);
 }
 
 static void handle_get_device_info(void)
@@ -86,7 +91,7 @@ static void handle_get_device_info(void)
     cJSON_Delete(response);
 }
 
-static void handle_get_device_config(void)
+static void handle_get_general(void)
 {
     general_config_t config;
     if (general_config_get(&config) != ESP_OK) {
@@ -107,7 +112,7 @@ static void handle_get_device_config(void)
     cJSON_Delete(response);
 }
 
-static void handle_set_device_config(cJSON *config_json)
+static void handle_set_general(cJSON *config_json)
 {
     general_config_t config;
     esp_err_t ret = general_config_get(&config);
@@ -325,6 +330,12 @@ static void handle_get_paired_devices(void)
                      devices[i].mac_address[3], devices[i].mac_address[4], devices[i].mac_address[5]);
             cJSON_AddStringToObject(device_obj, "mac", mac_str);
 
+            char aes_key_str[65];
+            for (int j = 0; j < 32; j++) {
+                snprintf(aes_key_str + (j * 2), 3, "%02x", devices[i].aes_key[j]);
+            }
+            cJSON_AddStringToObject(device_obj, "aes_key", aes_key_str);
+
             cJSON_AddItemToArray(devices_array, device_obj);
         }
     }
@@ -488,7 +499,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
     }
 
     if (strcmp(command_line, "GET_GENERAL") == 0) {
-        handle_get_device_config();
+        handle_get_general();
         return;
     }
 
@@ -526,7 +537,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
     if (strncmp(command_line, "SET_GENERAL ", 12) == 0) {
         cJSON *json = cJSON_Parse(command_line + 12);
         if (json) {
-            handle_set_device_config(json);
+            handle_set_general(json);
             cJSON_Delete(json);
         } else {
             g_send_response("ERROR Invalid JSON");
