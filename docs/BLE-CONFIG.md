@@ -38,23 +38,29 @@ Initiate BLE connection to the device.
 
 ### 3. Pair with Device (Optional but Recommended)
 
-**Pairing is OPTIONAL for command access** but provides:
+**Pairing is OPTIONAL for UART command access** but provides:
 - Encrypted communication
 - Persistent bonding (no re-pairing needed)
-- Required for OTA firmware updates
+- **Required for OTA firmware updates** (OTA characteristics enforce encryption)
 
 **Pairing Process:**
 1. Initiate BLE pairing from your client
 2. Device generates a 6-digit passkey
 3. Passkey is displayed on device OLED screen
 4. Enter passkey on client device
-5. Pairing completes and keys are stored
+5. Pairing completes and keys are stored in NVS
 
 **Security Configuration:**
 - Authentication: `ESP_LE_AUTH_REQ_SC_MITM_BOND` (Secure Connections with MITM protection)
 - IO Capability: `ESP_IO_CAP_OUT` (Display only - device shows passkey)
 - Key Size: 16 bytes (128-bit)
-- Bonding: Enabled (keys stored for future connections)
+- Bonding: Enabled (keys stored in NVS flash via `CONFIG_BT_BLE_SMP_BOND_NVS_FLASH=y`)
+
+**Important Notes:**
+- **Same pairing for both services**: UART and OTA use the same BLE pairing/bonding
+- **Persistent across reboots**: Bonding keys stored in NVS, no re-pairing needed
+- **UART characteristics**: No encryption required (`ESP_GATT_PERM_READ/WRITE`)
+- **OTA characteristics**: Encryption required (`ESP_GATT_PERM_*_ENCRYPTED`)
 
 ### 4. Discover Services
 
@@ -373,16 +379,32 @@ This is intentional - firmware upgrades use a dedicated OTA service with proper 
 
 ### Without Pairing (Open Access)
 
-- Commands are **not encrypted**
+- UART commands are **not encrypted** (characteristics use `ESP_GATT_PERM_READ/WRITE`)
 - Anyone in BLE range can connect and configure device
 - Suitable for development/testing only
+- **OTA service will reject access** (requires encrypted connection)
 
 ### With Pairing (Recommended)
 
-- Commands are **AES-128 encrypted** at BLE link layer
+- All BLE communication is **AES-128 encrypted** at link layer
 - Passkey authentication prevents unauthorized access
-- Bonding stores keys for future connections
+- Bonding stores keys in **NVS flash** (`CONFIG_BT_BLE_SMP_BOND_NVS_FLASH=y`)
+- Keys persist across reboots - no re-pairing needed
+- **Same pairing protects both UART and OTA services**
 - Suitable for production deployment
+
+### Pairing vs. Characteristic Permissions
+
+**UART Service (Nordic UART):**
+- TX characteristic: `ESP_GATT_PERM_READ` (no encryption required)
+- RX characteristic: `ESP_GATT_PERM_WRITE` (no encryption required)
+- **Works without pairing**, but communication is unencrypted
+
+**OTA Service:**
+- Control characteristic: `ESP_GATT_PERM_READ_ENCRYPTED | ESP_GATT_PERM_WRITE_ENCRYPTED`
+- Data characteristic: `ESP_GATT_PERM_WRITE_ENCRYPTED`
+- Progress characteristic: `ESP_GATT_PERM_READ_ENCRYPTED`
+- **Requires pairing** - BLE stack rejects access without encryption
 
 ### Best Practices
 
