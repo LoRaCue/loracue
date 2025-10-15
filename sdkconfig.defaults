@@ -39,3 +39,6 @@ CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
 
 # Power Management
 CONFIG_PM_ENABLE=y
+
+# Interrupt Watchdog - increase timeout for OTA flash operations
+CONFIG_ESP_INT_WDT_TIMEOUT_MS=1000
