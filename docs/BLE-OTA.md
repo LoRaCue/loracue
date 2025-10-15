@@ -8,12 +8,12 @@ LoRaCue provides a dedicated BLE GATT service for firmware updates, separate fro
 
 ## Service UUIDs
 
-**OTA Service:** `49589A79-7CC5-465D-BFF1-FE37C506502E`
+**OTA Service:** `49589A79-7CC5-465D-BFF1-FE37C5065000`
 
 **Characteristics:**
-- **Control:** `4A3C84E8-E2EB-493E-BFA2-6CCB5FAFE772` (Write + Indicate)
-- **Data:** `863C66B8-3E18-4B47-BAD9-E620C3C6CE5C` (Write without response)
-- **Progress:** `F5946C63-8D74-45C7-8F18-213152813AB8` (Read + Notify)
+- **Control:** `49589A79-7CC5-465D-BFF1-FE37C5065001` (Write + Indicate)
+- **Data:** `49589A79-7CC5-465D-BFF1-FE37C5065002` (Write without response)
+- **Progress:** `49589A79-7CC5-465D-BFF1-FE37C5065003` (Read + Notify)
 
 ## Protocol
 
@@ -117,10 +117,10 @@ LoRaCue uses ESP32's OTA rollback mechanism:
 import asyncio
 from bleak import BleakClient
 
-OTA_SERVICE = "49589A79-7CC5-465D-BFF1-FE37C506502E"
-OTA_CONTROL = "4A3C84E8-E2EB-493E-BFA2-6CCB5FAFE772"
-OTA_DATA = "863C66B8-3E18-4B47-BAD9-E620C3C6CE5C"
-OTA_PROGRESS = "F5946C63-8D74-45C7-8F18-213152813AB8"
+OTA_SERVICE = "49589A79-7CC5-465D-BFF1-FE37C5065000"
+OTA_CONTROL = "49589A79-7CC5-465D-BFF1-FE37C5065001"
+OTA_DATA = "49589A79-7CC5-465D-BFF1-FE37C5065002"
+OTA_PROGRESS = "49589A79-7CC5-465D-BFF1-FE37C5065003"
 
 async def ota_update(address, firmware_path):
     async with BleakClient(address) as client:

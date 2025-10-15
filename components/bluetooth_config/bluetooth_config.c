@@ -213,7 +213,7 @@ static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
                                    NULL, NULL);
         } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, OTA_PROGRESS_CHAR_UUID, 16) == 0) {
             ota_progress_handle = param->add_char.attr_handle;
-            ESP_LOGI(TAG, "OTA service ready (UUID: 49589A79-7CC5-465D-BFF1-FE37C506502E)");
+            ESP_LOGI(TAG, "OTA service ready (UUID: 49589A79-7CC5-465D-BFF1-FE37C5065000)");
         }
         break;
 
@@ -329,7 +329,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         if (param->write.handle == rx_char_handle) {
             // Check for OTA commands - reject and direct to OTA service
             if (param->write.len >= 17 && strncmp((char*)param->write.value, "FIRMWARE_UPGRADE ", 17) == 0) {
-                const char *error_msg = "ERROR Use dedicated OTA GATT service (UUID 49589A79-7CC5-465D-BFF1-FE37C506502E) for firmware upgrades\n";
+                const char *error_msg = "ERROR Use dedicated OTA GATT service (UUID 49589A79-7CC5-465D-BFF1-FE37C5065000) for firmware upgrades\n";
                 esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, tx_char_handle, 
                                            strlen(error_msg), (uint8_t*)error_msg, false);
             } else {
