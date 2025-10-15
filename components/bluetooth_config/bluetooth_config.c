@@ -181,7 +181,7 @@ static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
         };
         memcpy(control_uuid.uuid.uuid128, OTA_CONTROL_CHAR_UUID, 16);
         esp_ble_gatts_add_char(ota_service_handle, &control_uuid,
-                               ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+                               ESP_GATT_PERM_READ_ENCRYPTED | ESP_GATT_PERM_WRITE_ENCRYPTED,
                                ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_INDICATE,
                                NULL, NULL);
         break;
@@ -196,7 +196,7 @@ static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
             };
             memcpy(data_uuid.uuid.uuid128, OTA_DATA_CHAR_UUID, 16);
             esp_ble_gatts_add_char(ota_service_handle, &data_uuid,
-                                   ESP_GATT_PERM_WRITE,
+                                   ESP_GATT_PERM_WRITE_ENCRYPTED,
                                    ESP_GATT_CHAR_PROP_BIT_WRITE_NR,
                                    NULL, NULL);
         } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, OTA_DATA_CHAR_UUID, 16) == 0) {
@@ -208,7 +208,7 @@ static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
             };
             memcpy(progress_uuid.uuid.uuid128, OTA_PROGRESS_CHAR_UUID, 16);
             esp_ble_gatts_add_char(ota_service_handle, &progress_uuid,
-                                   ESP_GATT_PERM_READ,
+                                   ESP_GATT_PERM_READ_ENCRYPTED,
                                    ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY,
                                    NULL, NULL);
         } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, OTA_PROGRESS_CHAR_UUID, 16) == 0) {
