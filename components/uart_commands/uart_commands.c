@@ -115,7 +115,7 @@ esp_err_t uart_commands_start(void)
 
     uart_running = true;
 
-    BaseType_t ret = xTaskCreate(uart_command_task, "uart_cmd", 8192, NULL, 5, &uart_task_handle);
+    BaseType_t ret = xTaskCreate(uart_command_task, "uart_cmd", 16384, NULL, 5, &uart_task_handle);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create UART command task");
         uart_running = false;
