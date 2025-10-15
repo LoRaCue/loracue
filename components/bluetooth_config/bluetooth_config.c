@@ -67,7 +67,9 @@ static const uint8_t UART_RX_CHAR_UUID[16] = {
 };
 
 #define GATTS_APP_ID            0
+#define GATTS_OTA_APP_ID        1
 #define GATTS_NUM_HANDLE        8
+#define GATTS_OTA_NUM_HANDLE    10
 
 static bool ble_enabled         = false;
 static bool ble_connected       = false;
@@ -75,6 +77,13 @@ static uint16_t conn_id         = 0;
 static uint16_t gatts_if_global = 0;
 static uint16_t tx_char_handle  = 0;
 static uint16_t rx_char_handle  = 0;
+
+// OTA service handles (non-static for ble_ota.c access)
+uint16_t ota_service_handle = 0;
+uint16_t ota_control_handle = 0;
+uint16_t ota_data_handle = 0;
+uint16_t ota_progress_handle = 0;
+esp_gatt_if_t ota_gatts_if = 0;
 
 // Pairing state
 static bool pairing_in_progress = false;
@@ -138,6 +147,81 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
             ESP_LOGI(TAG, "Pairing successful");
         } else {
             ESP_LOGW(TAG, "Pairing failed");
+        }
+        break;
+
+    default:
+        break;
+    }
+}
+
+static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
+{
+    switch (event) {
+    case ESP_GATTS_REG_EVT:
+        ota_gatts_if = gatts_if;
+        
+        // Create OTA service (16-bit UUID)
+        esp_gatt_srvc_id_t ota_service_id = {
+            .is_primary = true,
+            .id.inst_id = 0x00,
+            .id.uuid.len = ESP_UUID_LEN_16,
+            .id.uuid.uuid.uuid16 = OTA_SERVICE_UUID,
+        };
+        esp_ble_gatts_create_service(gatts_if, &ota_service_id, GATTS_OTA_NUM_HANDLE);
+        break;
+
+    case ESP_GATTS_CREATE_EVT:
+        ota_service_handle = param->create.service_handle;
+        esp_ble_gatts_start_service(ota_service_handle);
+
+        // Add Control characteristic (Write + Indicate)
+        esp_bt_uuid_t control_uuid = {
+            .len = ESP_UUID_LEN_16,
+            .uuid.uuid16 = OTA_CONTROL_CHAR_UUID,
+        };
+        esp_ble_gatts_add_char(ota_service_handle, &control_uuid,
+                               ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+                               ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_INDICATE,
+                               NULL, NULL);
+        break;
+
+    case ESP_GATTS_ADD_CHAR_EVT:
+        if (param->add_char.char_uuid.uuid.uuid16 == OTA_CONTROL_CHAR_UUID) {
+            ota_control_handle = param->add_char.attr_handle;
+            
+            // Add Data characteristic (Write without response)
+            esp_bt_uuid_t data_uuid = {
+                .len = ESP_UUID_LEN_16,
+                .uuid.uuid16 = OTA_DATA_CHAR_UUID,
+            };
+            esp_ble_gatts_add_char(ota_service_handle, &data_uuid,
+                                   ESP_GATT_PERM_WRITE,
+                                   ESP_GATT_CHAR_PROP_BIT_WRITE_NR,
+                                   NULL, NULL);
+        } else if (param->add_char.char_uuid.uuid.uuid16 == OTA_DATA_CHAR_UUID) {
+            ota_data_handle = param->add_char.attr_handle;
+            
+            // Add Progress characteristic (Read + Notify)
+            esp_bt_uuid_t progress_uuid = {
+                .len = ESP_UUID_LEN_16,
+                .uuid.uuid16 = OTA_PROGRESS_CHAR_UUID,
+            };
+            esp_ble_gatts_add_char(ota_service_handle, &progress_uuid,
+                                   ESP_GATT_PERM_READ,
+                                   ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY,
+                                   NULL, NULL);
+        } else if (param->add_char.char_uuid.uuid.uuid16 == OTA_PROGRESS_CHAR_UUID) {
+            ota_progress_handle = param->add_char.attr_handle;
+            ESP_LOGI(TAG, "OTA service ready (UUID: 0x%04X)", OTA_SERVICE_UUID);
+        }
+        break;
+
+    case ESP_GATTS_WRITE_EVT:
+        if (param->write.handle == ota_control_handle) {
+            ble_ota_handle_control_write(param->write.value, param->write.len);
+        } else if (param->write.handle == ota_data_handle) {
+            ble_ota_handle_data_write(param->write.value, param->write.len);
         }
         break;
 
@@ -243,12 +327,11 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 
     case ESP_GATTS_WRITE_EVT:
         if (param->write.handle == rx_char_handle) {
-            // Check for OTA commands
+            // Check for OTA commands - reject and direct to OTA service
             if (param->write.len >= 17 && strncmp((char*)param->write.value, "FIRMWARE_UPGRADE ", 17) == 0) {
-                ble_ota_handle_control(param->write.value, param->write.len);
-            } else if (param->write.len > 0 && param->write.value[0] == 0xFF) {
-                // Binary OTA data (starts with 0xFF marker)
-                ble_ota_handle_data(param->write.value + 1, param->write.len - 1);
+                const char *error_msg = "ERROR Use dedicated OTA GATT service (UUID 0x1234) for firmware upgrades\n";
+                esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, tx_char_handle, 
+                                           strlen(error_msg), (uint8_t*)error_msg, false);
             } else {
                 // Process as text command
                 for (int i = 0; i < param->write.len; i++) {
@@ -330,10 +413,14 @@ esp_err_t bluetooth_config_init(void)
     esp_ble_gap_register_callback(gap_event_handler);
     esp_ble_gatts_register_callback(gatts_event_handler);
     esp_ble_gatts_app_register(GATTS_APP_ID);
+    
+    // Register OTA GATT app
+    esp_ble_gatts_register_callback(ota_gatts_event_handler);
+    esp_ble_gatts_app_register(GATTS_OTA_APP_ID);
 
     esp_ble_gatt_set_local_mtu(500);
 
-    ble_ota_init();
+    ble_ota_service_init(0);  // Will be set in OTA event handler
     ble_enabled = true;
     ESP_LOGI(TAG, "Bluetooth initialized");
 
