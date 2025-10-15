@@ -3,6 +3,9 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "esp_crc.h"
+#include "esp_task_wdt.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <string.h>
 
 static const char *TAG = "XMODEM";
@@ -131,6 +134,10 @@ esp_err_t xmodem_receive(size_t expected_size)
         packet_num++;
         retries = 0;
         uart_send_byte(XMODEM_ACK);
+        
+        // Feed watchdog and yield to prevent task watchdog timeout
+        esp_task_wdt_reset();
+        vTaskDelay(1);
         
         if (total_received % 10240 == 0) {
             ESP_LOGI(TAG, "Progress: %zu/%zu bytes", total_received, expected_size);
