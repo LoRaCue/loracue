@@ -213,12 +213,67 @@ static esp_err_t api_devices_get_handler(httpd_req_t *req)
 
 static esp_err_t api_devices_post_handler(httpd_req_t *req)
 {
-    return commands_api_handle_post(req, "PAIR_DEVICE %s");
+    char content[16384];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+
+    // Parse JSON to check if device exists (determine PAIR vs UPDATE)
+    cJSON *json = cJSON_Parse(content);
+    if (!json) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+        return ESP_FAIL;
+    }
+
+    const cJSON *mac = cJSON_GetObjectItem(json, "mac");
+    bool is_update = false;
+    
+    if (mac && cJSON_IsString(mac)) {
+        // Parse MAC to get device_id
+        uint8_t mac_bytes[6];
+        if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+                   &mac_bytes[0], &mac_bytes[1], &mac_bytes[2],
+                   &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) == 6) {
+            uint16_t device_id = (mac_bytes[4] << 8) | mac_bytes[5];
+            paired_device_t existing;
+            is_update = (device_registry_get(device_id, &existing) == ESP_OK);
+        }
+    }
+    
+    cJSON_Delete(json);
+
+    // Use appropriate command
+    char command[16512];
+    snprintf(command, sizeof(command), is_update ? "UPDATE_PAIRED_DEVICE %s" : "PAIR_DEVICE %s", content);
+
+    httpd_resp_set_type(req, "application/json");
+    g_current_req = req;
+    commands_execute(command, http_response_callback);
+    g_current_req = NULL;
+    return ESP_OK;
 }
 
 static esp_err_t api_devices_delete_handler(httpd_req_t *req)
 {
-    return commands_api_handle_delete(req, "UNPAIR_DEVICE %s");
+    char content[512];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing MAC address");
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+
+    char command[768];
+    snprintf(command, sizeof(command), "UNPAIR_DEVICE %s", content);
+
+    httpd_resp_set_type(req, "application/json");
+    g_current_req = req;
+    commands_execute(command, http_response_callback);
+    g_current_req = NULL;
+    return ESP_OK;
 }
 
 // Streaming firmware upload handler (OTA engine)
