@@ -140,8 +140,16 @@ esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const
         return ret;
     }
 
-    // Update cache
-    if (cached_device_count < MAX_PAIRED_DEVICES) {
+    // Update cache - replace if exists, add if new
+    bool found = false;
+    for (size_t i = 0; i < cached_device_count; i++) {
+        if (device_cache[i].device_id == device_id) {
+            memcpy(&device_cache[i], &device, sizeof(paired_device_t));
+            found = true;
+            break;
+        }
+    }
+    if (!found && cached_device_count < MAX_PAIRED_DEVICES) {
         memcpy(&device_cache[cached_device_count], &device, sizeof(paired_device_t));
         cached_device_count++;
     }
