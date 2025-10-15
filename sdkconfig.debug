@@ -1,7 +1,10 @@
-# Debug build configuration - logging on UART0
+# Debug build configuration - logging on UART0, commands on UART1
 
 # Enable UART commands (same as production)
 CONFIG_UART_COMMANDS_ENABLED=y
+
+# UART command parser on UART1 to avoid conflict with console logs
+CONFIG_UART_COMMANDS_PORT_NUM=1
 
 # Enable INFO level logging
 CONFIG_LOG_DEFAULT_LEVEL_NONE=n

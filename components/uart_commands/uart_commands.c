@@ -16,7 +16,13 @@
 
 static const char *TAG = "UART_CMD";
 
+// UART configuration - use UART1 in debug mode to avoid conflict with console
+#ifdef CONFIG_UART_COMMANDS_PORT_NUM
+#define UART_NUM CONFIG_UART_COMMANDS_PORT_NUM
+#else
 #define UART_NUM UART_NUM_0
+#endif
+
 #define UART_TX_PIN 43
 #define UART_RX_PIN 44
 #define UART_BAUD_RATE 460800
