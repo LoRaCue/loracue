@@ -185,22 +185,32 @@ void ble_ota_handle_control_write(const uint8_t *data, uint16_t len)
             
             ret = ota_engine_finish();
             if (ret == ESP_OK) {
-                // Set boot partition after successful upload
                 const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
-                if (update_partition) {
-                    ret = esp_ota_set_boot_partition(update_partition);
-                    if (ret == ESP_OK) {
-                        ble_ota_send_response(OTA_RESP_COMPLETE, "Rebooting...");
-                        ESP_LOGI(TAG, "OTA complete via BLE, rebooting...");
-                        vTaskDelay(pdMS_TO_TICKS(1000));
-                        esp_restart();
-                    } else {
-                        ble_ota_send_response(OTA_RESP_ERROR, "Failed to set boot partition");
-                        ESP_LOGE(TAG, "Set boot partition failed: %s", esp_err_to_name(ret));
-                    }
-                } else {
+                if (!update_partition) {
                     ble_ota_send_response(OTA_RESP_ERROR, "No update partition");
+                    ESP_LOGE(TAG, "No update partition found");
+                    ota_state = BLE_OTA_STATE_IDLE;
+                    ota_conn_id = 0;
+                    return;
                 }
+                
+                ESP_LOGI(TAG, "Setting boot partition: %s (0x%lx)", 
+                         update_partition->label, update_partition->address);
+                
+                ret = esp_ota_set_boot_partition(update_partition);
+                if (ret != ESP_OK) {
+                    ble_ota_send_response(OTA_RESP_ERROR, "Failed to set boot partition");
+                    ESP_LOGE(TAG, "Set boot partition failed: %s", esp_err_to_name(ret));
+                    ota_state = BLE_OTA_STATE_IDLE;
+                    ota_conn_id = 0;
+                    return;
+                }
+                
+                ESP_LOGW(TAG, "Boot partition set. Device will boot from %s after restart", 
+                         update_partition->label);
+                ble_ota_send_response(OTA_RESP_COMPLETE, "Rebooting...");
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                esp_restart();
             } else {
                 ble_ota_send_response(OTA_RESP_ERROR, "OTA validation failed");
                 ESP_LOGE(TAG, "OTA finish failed: %s", esp_err_to_name(ret));
