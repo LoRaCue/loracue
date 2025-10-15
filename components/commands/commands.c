@@ -13,10 +13,8 @@
 #include "esp_partition.h"
 #include "esp_system.h"
 #include "esp_timer.h"
-#include "firmware_manifest.h"
 #include "lora_bands.h"
 #include "lora_driver.h"
-#include "ota_compatibility.h"
 #include "ota_engine.h"
 #include "version.h"
 #include "power_mgmt.h"
@@ -50,8 +48,9 @@ static void handle_get_device_info(void)
     cJSON *response = cJSON_CreateObject();
     
     // Firmware info
-    cJSON_AddStringToObject(response, "board_id", firmware_manifest_get_board_id());
-    cJSON_AddStringToObject(response, "version", firmware_manifest_get_version());
+    const esp_app_desc_t *app_desc = esp_app_get_description();
+    cJSON_AddStringToObject(response, "board_id", app_desc->project_name);
+    cJSON_AddStringToObject(response, "version", LORACUE_VERSION_STRING);
     cJSON_AddStringToObject(response, "commit", LORACUE_BUILD_COMMIT_SHORT);
     cJSON_AddStringToObject(response, "branch", LORACUE_BUILD_BRANCH);
     cJSON_AddStringToObject(response, "build_date", LORACUE_BUILD_DATE);
