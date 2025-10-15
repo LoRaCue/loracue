@@ -20,11 +20,11 @@ static const char *TAG = "UART_CMD";
 #ifdef CONFIG_UART_COMMANDS_PORT_NUM
 #define UART_NUM CONFIG_UART_COMMANDS_PORT_NUM
 #else
-#define UART_NUM UART_NUM_0
+#define UART_NUM 0
 #endif
 
 // Pin configuration depends on UART port
-#if UART_NUM == UART_NUM_1
+#if CONFIG_UART_COMMANDS_PORT_NUM == 1
 // UART1 pins for debug mode (using available GPIOs that don't conflict)
 #define UART_TX_PIN 2   // Available GPIO
 #define UART_RX_PIN 3   // Available GPIO
