@@ -244,6 +244,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 {
     switch (event) {
     case ESP_GATTS_REG_EVT:
+        ESP_LOGI(TAG, "UART GATT app registered (app_id=%d, status=%d, gatts_if=%d)", 
+                 param->reg.app_id, param->reg.status, gatts_if);
         gatts_if_global = gatts_if;
         
         // Set device name
@@ -271,6 +273,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         };
         esp_ble_gap_config_adv_data(&adv_data);
 
+        ESP_LOGI(TAG, "Creating Nordic UART service (UUID: 6E400001-B5A3-F393-E0A9-E50E24DCCA9E)...");
         // Create UART service
         esp_gatt_srvc_id_t service_id = {
             .is_primary = true,
@@ -282,6 +285,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         break;
 
     case ESP_GATTS_CREATE_EVT:
+        ESP_LOGI(TAG, "UART service created (handle=%d, status=%d)", 
+                 param->create.service_handle, param->create.status);
         service_handle = param->create.service_handle;
         esp_ble_gatts_start_service(service_handle);
 
@@ -375,6 +380,8 @@ esp_err_t bluetooth_config_init(void)
     // Currently using BLE 4.2 legacy advertising (CONFIG_BT_BLE_42_ADV_EN)
     // See: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/bluetooth/esp_gap_ble.html
     
+    ESP_LOGI(TAG, "=== Bluetooth Initialization Starting ===");
+    
     // Check if Bluetooth should be enabled
     general_config_t config;
     general_config_get(&config);
@@ -384,8 +391,10 @@ esp_err_t bluetooth_config_init(void)
         return ESP_OK;
     }
 
+    ESP_LOGI(TAG, "Releasing Classic BT memory...");
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
 
+    ESP_LOGI(TAG, "Initializing BT controller...");
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     esp_err_t ret = esp_bt_controller_init(&bt_cfg);
     if (ret != ESP_OK) {
@@ -393,24 +402,28 @@ esp_err_t bluetooth_config_init(void)
         return ret;
     }
 
+    ESP_LOGI(TAG, "Enabling BLE mode...");
     ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Bluetooth controller enable failed: %s", esp_err_to_name(ret));
         return ret;
     }
 
+    ESP_LOGI(TAG, "Initializing Bluedroid stack...");
     ret = esp_bluedroid_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Bluedroid init failed: %s", esp_err_to_name(ret));
         return ret;
     }
 
+    ESP_LOGI(TAG, "Enabling Bluedroid stack...");
     ret = esp_bluedroid_enable();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Bluedroid enable failed: %s", esp_err_to_name(ret));
         return ret;
     }
 
+    ESP_LOGI(TAG, "Configuring BLE security (passkey display)...");
     // Set security with passkey display
     esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_MITM_BOND;
     esp_ble_io_cap_t iocap = ESP_IO_CAP_OUT;
@@ -423,19 +436,27 @@ esp_err_t bluetooth_config_init(void)
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
 
+    ESP_LOGI(TAG, "Registering GAP and GATTS callbacks...");
     esp_ble_gap_register_callback(gap_event_handler);
     esp_ble_gatts_register_callback(gatts_event_handler);
+    
+    ESP_LOGI(TAG, "Registering UART GATT app (ID=%d)...", GATTS_APP_ID);
     esp_ble_gatts_app_register(GATTS_APP_ID);
     
+    ESP_LOGI(TAG, "Registering OTA GATT app (ID=%d)...", GATTS_OTA_APP_ID);
     // Register OTA GATT app
     esp_ble_gatts_register_callback(ota_gatts_event_handler);
     esp_ble_gatts_app_register(GATTS_OTA_APP_ID);
 
+    ESP_LOGI(TAG, "Setting local MTU to 500 bytes...");
     esp_ble_gatt_set_local_mtu(500);
 
+    ESP_LOGI(TAG, "Initializing OTA service...");
     ble_ota_service_init(0);  // Will be set in OTA event handler
     ble_enabled = true;
-    ESP_LOGI(TAG, "Bluetooth initialized");
+    
+    ESP_LOGI(TAG, "=== Bluetooth Initialization Complete ===");
+    ESP_LOGI(TAG, "Waiting for GATT app registration callbacks...");
 
     return ESP_OK;
 }
