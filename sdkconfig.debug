@@ -1,7 +1,7 @@
 # Debug build configuration - logging on UART0
 
-# Disable UART commands
-CONFIG_UART_COMMANDS_ENABLED=n
+# Enable UART commands (same as production)
+CONFIG_UART_COMMANDS_ENABLED=y
 
 # Enable INFO level logging
 CONFIG_LOG_DEFAULT_LEVEL_NONE=n
@@ -10,7 +10,7 @@ CONFIG_LOG_DEFAULT_LEVEL=3
 # Enable verbose bootloader logging
 CONFIG_BOOTLOADER_LOG_LEVEL=3
 
-# Console on UART0 (default)
+# Console/logging on UART0 (default)
 CONFIG_ESP_CONSOLE_UART_DEFAULT=y
 CONFIG_ESP_CONSOLE_UART_NUM=0
 CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200

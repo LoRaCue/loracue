@@ -77,14 +77,16 @@ build-debug: check-idf
 	@rm -f sdkconfig
 	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.debug" idf.py build
 
-# Clean build artifacts
+# Clean build artifacts and sdkconfig
 clean:
-	@echo "🧹 Cleaning build artifacts..."
+	@echo "🧹 Cleaning build artifacts and sdkconfig..."
+	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py clean
 
 # Full clean (removes CMake cache - needed when switching between sim/hardware builds)
 fullclean:
-	@echo "🧹 Full clean (removing CMake cache)..."
+	@echo "🧹 Full clean (removing CMake cache and sdkconfig)..."
+	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py fullclean
 
 # Flash firmware to device
@@ -223,7 +225,11 @@ web-build:
 	mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
 	@echo "✅ Web interface built: build/webui-littlefs.bin"
 
-web-flash: check-idf web-build
+web-flash: check-idf
+	@if [ ! -f build/webui-littlefs.bin ]; then \
+		echo "📦 LittleFS image not found, building..."; \
+		$(MAKE) web-build; \
+	fi
 	@echo "⚡ Flashing LittleFS partition..."
 	$(IDF_SETUP) esptool.py --chip esp32s3 write_flash 0x640000 build/webui-littlefs.bin
 	@echo "✅ Web interface flashed to LittleFS"
@@ -340,8 +346,8 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📋 Hardware targets:"
-	@echo "  build         - Build (UART0=commands, logging disabled)"
-	@echo "  build-debug   - Build (UART0=logging, commands disabled)"
+	@echo "  build         - Build (UART0=commands, UART1=logging)"
+	@echo "  build-debug   - Build (UART0=logging+commands)"
 	@echo "  clean         - Clean build artifacts"
 	@echo "  flash         - Flash firmware to device"
 	@echo "  monitor       - Monitor serial output"
