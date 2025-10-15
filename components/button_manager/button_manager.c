@@ -24,8 +24,8 @@ extern u8g2_t u8g2;
 // Timing constants (in milliseconds)
 #define DEBOUNCE_TIME_MS 50
 #define SHORT_PRESS_MAX_MS 500
-#define DOUBLE_CLICK_WINDOW_MS 500
-#define LONG_PRESS_TIME_MS 2000
+#define DOUBLE_CLICK_WINDOW_MS 200
+#define LONG_PRESS_TIME_MS 1500
 #define INACTIVITY_TIMEOUT_MS 300000 // 5 minutes
 
 // Button manager state
