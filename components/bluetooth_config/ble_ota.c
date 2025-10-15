@@ -101,6 +101,8 @@ void ble_ota_handle_disconnect(void)
 
 void ble_ota_handle_control_write(const uint8_t *data, uint16_t len)
 {
+    esp_err_t ret;
+    
     if (len < 1) {
         ble_ota_send_response(OTA_RESP_ERROR, "Invalid command");
         return;
@@ -127,7 +129,7 @@ void ble_ota_handle_control_write(const uint8_t *data, uint16_t len)
                 return;
             }
             
-            esp_err_t ret = ota_engine_start(expected_size);
+            ret = ota_engine_start(expected_size);
             if (ret != ESP_OK) {
                 ble_ota_send_response(OTA_RESP_ERROR, "OTA start failed");
                 ESP_LOGE(TAG, "OTA start failed: %s", esp_err_to_name(ret));
@@ -169,7 +171,7 @@ void ble_ota_handle_control_write(const uint8_t *data, uint16_t len)
             }
             break;
             
-        case OTA_CMD_FINISH: {
+        case OTA_CMD_FINISH:
             if (ota_state != BLE_OTA_STATE_ACTIVE) {
                 ble_ota_send_response(OTA_RESP_ERROR, "No OTA in progress");
                 return;
@@ -181,7 +183,7 @@ void ble_ota_handle_control_write(const uint8_t *data, uint16_t len)
                 xTimerStop(ota_timeout_timer, 0);
             }
             
-            esp_err_t ret = ota_engine_finish();
+            ret = ota_engine_finish();
             if (ret == ESP_OK) {
                 // Set boot partition after successful upload
                 const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
@@ -209,7 +211,6 @@ void ble_ota_handle_control_write(const uint8_t *data, uint16_t len)
             expected_size = 0;
             current_progress = 0;
             break;
-        }
             
         default:
             ble_ota_send_response(OTA_RESP_ERROR, "Unknown command");
