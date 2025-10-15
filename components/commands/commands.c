@@ -621,9 +621,20 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         
         esp_err_t ret = xmodem_receive(size);
         if (ret == ESP_OK) {
-            g_send_response("OK Firmware uploaded, rebooting...");
-            vTaskDelay(pdMS_TO_TICKS(1000));
-            esp_restart();
+            // Set boot partition only after successful upload
+            const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+            if (update_partition) {
+                ret = esp_ota_set_boot_partition(update_partition);
+                if (ret == ESP_OK) {
+                    g_send_response("OK Firmware uploaded, rebooting...");
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    esp_restart();
+                } else {
+                    g_send_response("ERROR Failed to set boot partition");
+                }
+            } else {
+                g_send_response("ERROR No update partition found");
+            }
         } else {
             g_send_response("ERROR Upload failed");
         }

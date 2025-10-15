@@ -139,20 +139,8 @@ esp_err_t ota_engine_finish(void)
         return ret;
     }
     
-    // Set new partition as boot partition
-    // On next boot, bootloader will try this partition
-    // If it fails to boot, it will rollback to previous partition
-    ret = esp_ota_set_boot_partition(ota_partition);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set boot partition: %s", esp_err_to_name(ret));
-        ota_handle = 0;
-        ota_state = OTA_STATE_IDLE;
-        xSemaphoreGive(ota_mutex);
-        return ret;
-    }
-    
     ESP_LOGI(TAG, "OTA complete: %zu bytes written to %s", ota_received_bytes, ota_partition->label);
-    ESP_LOGI(TAG, "Reboot to activate. Firmware must call esp_ota_mark_app_valid_cancel_rollback() within 60s");
+    ESP_LOGI(TAG, "Image validated. Call esp_ota_set_boot_partition() and reboot to activate.");
     
     ota_handle = 0;
     ota_state = OTA_STATE_IDLE;
