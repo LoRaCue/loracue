@@ -109,6 +109,22 @@ static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
 {
     ESP_LOGI(TAG, "Attempting to serve: %s", filepath);
     FILE *file = fopen(filepath, "r");
+    
+    // If file not found and path doesn't end with .html/.js/.css, try index.html
+    if (!file) {
+        const char *ext = strrchr(filepath, '.');
+        if (!ext || (strcmp(ext, ".html") != 0 && strcmp(ext, ".js") != 0 && 
+                     strcmp(ext, ".css") != 0 && strcmp(ext, ".json") != 0)) {
+            char index_path[512];
+            snprintf(index_path, sizeof(index_path), "%s%sindex.html", 
+                     filepath, (filepath[strlen(filepath)-1] == '/') ? "" : "/");
+            file = fopen(index_path, "r");
+            if (file) {
+                ESP_LOGI(TAG, "Serving index: %s", index_path);
+            }
+        }
+    }
+    
     if (!file) {
         ESP_LOGW(TAG, "File not found: %s", filepath);
         httpd_resp_send_404(req);
@@ -139,14 +155,15 @@ static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
 }
 
 // HTTP handlers
-static esp_err_t root_handler(httpd_req_t *req)
-{
-    return serve_static_file(req, "/storage/index.html");
-}
-
 static esp_err_t static_handler(httpd_req_t *req)
 {
     char filepath[512];
+    
+    // If root is requested, serve index.html
+    if (strcmp(req->uri, "/") == 0) {
+        return serve_static_file(req, "/storage/index.html");
+    }
+    
     if (strlen(req->uri) > 500) {
         httpd_resp_send_404(req);
         return ESP_FAIL;
@@ -350,6 +367,8 @@ esp_err_t config_wifi_server_start(void)
     httpd_config_t config   = HTTPD_DEFAULT_CONFIG();
     config.server_port      = 80;
     config.max_uri_handlers = 32;
+    config.uri_match_fn     = httpd_uri_match_wildcard;  // Enable wildcard matching
+    config.stack_size       = 12288;  // Increase to 12KB for file serving + WiFi operations
 
     if (httpd_start(&server, &config) == ESP_OK) {
         // API endpoints first (specific routes)
@@ -365,10 +384,10 @@ esp_err_t config_wifi_server_start(void)
         httpd_uri_t api_power_post = {.uri = "/api/power-management", .method = HTTP_POST, .handler = api_power_post_handler};
         httpd_register_uri_handler(server, &api_power_post);
 
-        httpd_uri_t api_lora_get = {.uri = "/api/lora", .method = HTTP_GET, .handler = api_lora_get_handler};
+        httpd_uri_t api_lora_get = {.uri = "/api/lora*", .method = HTTP_GET, .handler = api_lora_get_handler};
         httpd_register_uri_handler(server, &api_lora_get);
 
-        httpd_uri_t api_lora_post = {.uri = "/api/lora", .method = HTTP_POST, .handler = api_lora_post_handler};
+        httpd_uri_t api_lora_post = {.uri = "/api/lora*", .method = HTTP_POST, .handler = api_lora_post_handler};
         httpd_register_uri_handler(server, &api_lora_post);
 
         httpd_uri_t api_devices_get = {.uri = "/api/devices", .method = HTTP_GET, .handler = api_devices_get_handler};
@@ -397,12 +416,9 @@ esp_err_t config_wifi_server_start(void)
             .uri = "/api/system/factory-reset", .method = HTTP_POST, .handler = factory_reset_handler};
         httpd_register_uri_handler(server, &factory_reset_uri);
 
-        // Static file handlers last (wildcard catches everything else)
-        httpd_uri_t root_uri = {.uri = "/", .method = HTTP_GET, .handler = root_handler};
-        httpd_register_uri_handler(server, &root_uri);
-
-        httpd_uri_t static_uri = {.uri = "/*", .method = HTTP_GET, .handler = static_handler};
-        httpd_register_uri_handler(server, &static_uri);
+        // Static file handler LAST - catch-all for everything else
+        httpd_uri_t static_files = {.uri = "/*", .method = HTTP_GET, .handler = static_handler};
+        httpd_register_uri_handler(server, &static_files);
 
         server_running = true;
         ESP_LOGI(TAG, "WiFi AP started: %s / %s", ssid, password);
