@@ -79,7 +79,13 @@ void tud_cdc_rx_cb(uint8_t itf)
     usb_cdc_process_commands();
 }
 
-// TinyUSB HID callbacks
+// TinyUSB HID Callbacks
+uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance)
+{
+    (void)instance;
+    return hid_keyboard_report_desc;
+}
+
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer,
                                uint16_t reqlen)
 {
@@ -94,14 +100,11 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer,
                            uint16_t bufsize)
 {
-}
-
-// HID Report Descriptor for keyboard
-static const uint8_t hid_report_descriptor[] = {TUD_HID_REPORT_DESC_KEYBOARD()};
-
-uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
-{
-    return hid_report_descriptor;
+    (void)instance;
+    (void)report_id;
+    (void)report_type;
+    (void)buffer;
+    (void)bufsize;
 }
 
 bool usb_hid_is_connected(void)
@@ -123,7 +126,12 @@ esp_err_t usb_hid_init(void)
         .port = TINYUSB_PORT_FULL_SPEED_0,
         .phy = {.skip_setup = false, .self_powered = false},
         .task = {.size = 4096, .priority = 5, .xCoreID = 0},
-        .descriptor = {0},  // Use callback functions instead
+        .descriptor = {
+            .device = usb_get_device_descriptor(),
+            .full_speed_config = usb_get_config_descriptor(),
+            .string = usb_get_string_descriptors(),
+            .string_count = 4
+        },
         .event_cb = NULL,
         .event_arg = NULL
     };
