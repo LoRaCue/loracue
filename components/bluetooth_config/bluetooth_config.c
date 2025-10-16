@@ -29,7 +29,7 @@ bool bluetooth_config_is_connected(void)
     return false;
 }
 
-bool bluetooth_config_get_passkey(const uint32_t *passkey)
+bool bluetooth_config_get_passkey(uint32_t *passkey)
 {
     (void)passkey;
     return false;
