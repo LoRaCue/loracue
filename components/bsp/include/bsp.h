@@ -161,6 +161,56 @@ typedef struct {
  */
 const bsp_usb_config_t* bsp_get_usb_config(void);
 
+// I2C Bus Management
+#include "driver/i2c_master.h"
+
+/**
+ * @brief Initialize shared I2C bus
+ *
+ * @param sda SDA GPIO pin
+ * @param scl SCL GPIO pin
+ * @param freq_hz I2C frequency in Hz
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_i2c_init(gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz);
+
+/**
+ * @brief Get I2C bus handle for adding devices
+ *
+ * @return I2C bus handle or NULL if not initialized
+ */
+i2c_master_bus_handle_t bsp_i2c_get_bus(void);
+
+/**
+ * @brief Add I2C device to bus
+ *
+ * @param addr 7-bit I2C address
+ * @param freq_hz Device-specific frequency
+ * @param dev_handle Output device handle
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_i2c_add_device(uint8_t addr, uint32_t freq_hz, i2c_master_dev_handle_t *dev_handle);
+
+// OLED u8g2 Callbacks
+#include "u8g2.h"
+
+/**
+ * @brief u8g2 I2C byte callback for OLED
+ */
+uint8_t bsp_u8g2_i2c_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
+
+/**
+ * @brief u8g2 GPIO and delay callback for OLED
+ */
+uint8_t bsp_u8g2_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
+
+/**
+ * @brief Set OLED reset pin
+ *
+ * @param pin Reset GPIO pin
+ */
+void bsp_oled_set_reset_pin(gpio_num_t pin);
+
 #ifdef __cplusplus
 }
 #endif

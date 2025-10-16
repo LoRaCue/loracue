@@ -15,8 +15,9 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "u8g2.h"
-#include "u8g2_esp32_hal.h"
 #include <string.h>
 
 static const char *TAG = "BSP_WOKWI";
@@ -82,6 +83,16 @@ esp_err_t bsp_init(void)
         ESP_LOGE(TAG, "Failed to initialize SPI: %s", esp_err_to_name(ret));
         return ret;
     }
+
+    // Initialize I2C bus for OLED
+    ret = bsp_i2c_init(OLED_SDA_PIN, OLED_SCL_PIN, 400000);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize I2C: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    // Set OLED reset pin
+    bsp_oled_set_reset_pin(OLED_RST_PIN);
 
     // Initialize u8g2 for OLED
     ret = bsp_u8g2_init(&u8g2);
@@ -226,20 +237,13 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
 
     ESP_LOGI(TAG, "Initializing u8g2 with SSD1306 for Wokwi");
 
-    // Configure u8g2 HAL
-    u8g2_esp32_hal_t u8g2_esp32_hal = U8G2_ESP32_HAL_DEFAULT;
-    u8g2_esp32_hal.bus.i2c.sda = OLED_SDA_PIN;
-    u8g2_esp32_hal.bus.i2c.scl = OLED_SCL_PIN;
-    u8g2_esp32_hal.reset = OLED_RST_PIN;
-    u8g2_esp32_hal_init(u8g2_esp32_hal);
-
     // Wait for I2C bus to stabilize (important for Wokwi)
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    // Initialize u8g2 with SSD1306 128x64 display using HAL callbacks
+    // Initialize u8g2 with SSD1306 128x64 display using BSP callbacks
     u8g2_Setup_ssd1306_i2c_128x64_noname_f(u8g2_local, U8G2_R0, 
-                                           u8g2_esp32_i2c_byte_cb, 
-                                           u8g2_esp32_gpio_and_delay_cb);
+                                           bsp_u8g2_i2c_byte_cb, 
+                                           bsp_u8g2_gpio_and_delay_cb);
 
     // Initialize display
     u8g2_InitDisplay(u8g2_local);
