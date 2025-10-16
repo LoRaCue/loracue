@@ -10,7 +10,6 @@
 #include "bsp.h"
 #include "oled_ui.h"
 #include "driver/gpio.h"
-#include "driver/i2c.h"
 #include "driver/rtc_io.h"
 #include "driver/spi_master.h"
 #include "driver/uart.h"
@@ -300,8 +299,7 @@ esp_err_t power_mgmt_prepare_sleep(void)
 
     oled_ui_display_off();
 
-    // Delete I2C driver to free resources
-    i2c_driver_delete(I2C_NUM_0);
+    // Note: I2C bus cleanup handled by new driver automatically
 
     // Free SPI bus
     spi_bus_free(SPI2_HOST);
