@@ -10,7 +10,11 @@
 
 static const char *TAG = "XMODEM";
 
+#ifdef CONFIG_UART_COMMANDS_PORT_NUM
+#define UART_NUM ((uart_port_t)CONFIG_UART_COMMANDS_PORT_NUM)
+#else
 #define UART_NUM UART_NUM_0
+#endif
 #define XMODEM_TIMEOUT_MS 10000
 #define MAX_RETRIES 10
 

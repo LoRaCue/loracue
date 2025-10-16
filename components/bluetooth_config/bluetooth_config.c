@@ -242,6 +242,13 @@ static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
 
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
+    // Route OTA service events to OTA handler
+    if (gatts_if == ota_gatts_if || (event == ESP_GATTS_REG_EVT && param->reg.app_id == GATTS_OTA_APP_ID)) {
+        ota_gatts_event_handler(event, gatts_if, param);
+        return;
+    }
+
+    // Handle UART service events
     switch (event) {
     case ESP_GATTS_REG_EVT:
         ESP_LOGI(TAG, "UART GATT app registered (app_id=%d, status=%d, gatts_if=%d)", 
@@ -445,8 +452,6 @@ esp_err_t bluetooth_config_init(void)
     esp_ble_gatts_app_register(GATTS_APP_ID);
     
     ESP_LOGI(TAG, "Registering OTA GATT app (ID=%d)...", GATTS_OTA_APP_ID);
-    // Register OTA GATT app
-    esp_ble_gatts_register_callback(ota_gatts_event_handler);
     esp_ble_gatts_app_register(GATTS_OTA_APP_ID);
 
     ESP_LOGI(TAG, "Setting local MTU to 500 bytes...");
