@@ -3,7 +3,7 @@
  * @brief OLED User Interface using u8g2 graphics library
  *
  * CONTEXT: LoRaCue enterprise presentation clicker OLED display
- * HARDWARE: SH1106 (Heltec V3) / SSD1306 (Wokwi) 128x64 OLED
+ * HARDWARE: SSD1306 128x64 OLED
  * PURPOSE: Rich graphics UI with icons, fonts, and animations
  */
 

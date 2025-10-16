@@ -1,4 +1,5 @@
 #include "bluetooth_config.h"
+#include "bsp.h"
 #include "general_config.h"
 #include "esp_log.h"
 #include "version.h"
@@ -120,10 +121,10 @@ static void send_response(const char *response)
     }
 
     size_t len = strlen(response);
-    esp_ble_gatts_send_indicate(gatts_if_global, conn_id, tx_char_handle, len, (uint8_t *)response, false);
+    esp_ble_gatts_send_notify(gatts_if_global, conn_id, tx_char_handle, len, (uint8_t *)response, false);
     
     // Send newline
-    esp_ble_gatts_send_indicate(gatts_if_global, conn_id, tx_char_handle, 1, (uint8_t *)"\n", false);
+    esp_ble_gatts_send_notify(gatts_if_global, conn_id, tx_char_handle, 1, (uint8_t *)"\n", false);
 }
 
 static void process_command(const char *command_line)
@@ -331,7 +332,10 @@ static void dis_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
             dis_firmware_handle = param->add_char.attr_handle;
             
             // Add Hardware Revision
-            const bsp_config_t *bsp_config = bsp_get_config();
+            const char *board_id = bsp_get_board_id();
+            const char *hw_name = strcmp(board_id, "heltec_v3") == 0 ? "Heltec LoRa V3" : 
+                                  strcmp(board_id, "wokwi") == 0 ? "Wokwi Simulator" : 
+                                  board_id;
             esp_bt_uuid_t hw_uuid = {
                 .len = ESP_UUID_LEN_16,
                 .uuid.uuid16 = DIS_HARDWARE_REVISION_UUID,
@@ -341,13 +345,43 @@ static void dis_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
                                    ESP_GATT_CHAR_PROP_BIT_READ,
                                    &(esp_attr_value_t){
                                        .attr_max_len = 32,
-                                       .attr_len = strlen(bsp_config->board_name),
-                                       .attr_value = (uint8_t*)bsp_config->board_name
+                                       .attr_len = strlen(hw_name),
+                                       .attr_value = (uint8_t*)hw_name
                                    }, NULL);
         } else if (param->add_char.char_uuid.uuid.uuid16 == DIS_HARDWARE_REVISION_UUID) {
             dis_hardware_handle = param->add_char.attr_handle;
             ESP_LOGI(TAG, "Device Information Service ready");
         }
+        break;
+    }
+
+    case ESP_GATTS_READ_EVT: {
+        esp_gatt_rsp_t rsp;
+        memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
+        rsp.attr_value.handle = param->read.handle;
+        
+        if (param->read.handle == dis_manufacturer_handle) {
+            const char *value = "LoRaCue";
+            rsp.attr_value.len = strlen(value);
+            memcpy(rsp.attr_value.value, value, rsp.attr_value.len);
+        } else if (param->read.handle == dis_model_handle) {
+            const bsp_usb_config_t *usb_config = bsp_get_usb_config();
+            rsp.attr_value.len = strlen(usb_config->usb_product);
+            memcpy(rsp.attr_value.value, usb_config->usb_product, rsp.attr_value.len);
+        } else if (param->read.handle == dis_firmware_handle) {
+            rsp.attr_value.len = strlen(LORACUE_VERSION_STRING);
+            memcpy(rsp.attr_value.value, LORACUE_VERSION_STRING, rsp.attr_value.len);
+        } else if (param->read.handle == dis_hardware_handle) {
+            const char *board_id = bsp_get_board_id();
+            const char *hw_name = strcmp(board_id, "heltec_v3") == 0 ? "Heltec LoRa V3" : 
+                                  strcmp(board_id, "wokwi") == 0 ? "Wokwi Simulator" : 
+                                  board_id;
+            rsp.attr_value.len = strlen(hw_name);
+            memcpy(rsp.attr_value.value, hw_name, rsp.attr_value.len);
+        }
+        
+        esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id,
+                                     ESP_GATT_OK, &rsp);
         break;
     }
 
@@ -381,7 +415,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         general_config_t config;
         general_config_get(&config);
         char ble_name[32];  // BLE name max 31 bytes + null
-        snprintf(ble_name, sizeof(ble_name), "LoRaCue %s", config.device_name);
+        // "LoRaCue " = 8 bytes, leaving 23 bytes for device name
+        snprintf(ble_name, sizeof(ble_name), "LoRaCue %.23s", config.device_name);
         esp_ble_gap_set_device_name(ble_name);
 
         // Configure advertising data

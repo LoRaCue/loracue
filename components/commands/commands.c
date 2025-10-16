@@ -1,4 +1,5 @@
 #include "commands.h"
+#include "bsp.h"
 #include "cJSON.h"
 #include "bluetooth_config.h"
 #include "general_config.h"
@@ -38,8 +39,10 @@ static void handle_ping(void)
     general_config_t config;
     general_config_get(&config);
     
+    const bsp_usb_config_t *usb_config = bsp_get_usb_config();
     char response[128];
-    snprintf(response, sizeof(response), "PONG %s v%s", config.device_name, LORACUE_VERSION_FULL);
+    snprintf(response, sizeof(response), "PONG %s v%s %s", 
+             config.device_name, LORACUE_VERSION_FULL, usb_config->usb_product);
     g_send_response(response);
 }
 

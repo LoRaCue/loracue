@@ -32,7 +32,7 @@ Enterprise-grade wireless presentation remote with long-range LoRa communication
 - **Heltec WiFi LoRa 32 V3** - Our primary development and prototyping platform
 - **MCU**: ESP32-S3 (Dual-core Xtensa LX7, 240MHz)
 - **LoRa**: SX1262 transceiver (868/915MHz)
-- **Display**: SH1106 OLED (128x64, I2C)
+- **Display**: SSD1306 OLED (128x64, I2C)
 - **Flash**: 8MB SPI Flash with OTA partitioning
 - **Power**: USB-C charging with battery monitoring
 
@@ -49,7 +49,7 @@ Enterprise-grade wireless presentation remote with long-range LoRa communication
 
 The project includes a complete Wokwi simulation environment with:
 - ESP32-S3 microcontroller simulation
-- SSD1306 OLED display (SH1106 compatible)
+- SSD1306 OLED display
 - Interactive buttons and LED feedback
 - Real-time serial monitoring
 - Perfect development workflow integration
@@ -62,15 +62,15 @@ Our innovative BSP abstraction layer enables seamless development across real ha
 
 ```
 components/bsp/
-├── bsp_heltec_v3.c      # Real hardware (SH1106 OLED)
-├── bsp_wokwi.c          # Wokwi simulation (SSD1306 OLED)  
+├── bsp_heltec_v3.c      # Real hardware
+├── bsp_wokwi.c          # Wokwi simulation
 ├── include/bsp.h        # Hardware-agnostic interface
 └── CMakeLists.txt       # Conditional compilation
 ```
 
 **Automatic BSP Selection**:
-- **Hardware Build**: Uses `bsp_heltec_v3.c` with SH1106 driver
-- **Simulator Build**: Uses `bsp_wokwi.c` with SSD1306 driver
+- **Hardware Build**: Uses `bsp_heltec_v3.c`
+- **Simulator Build**: Uses `bsp_wokwi.c`
 - **Same API**: Application code remains unchanged
 - **Perfect Compatibility**: Identical pinout and behavior
 

@@ -373,7 +373,7 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
 {
     u8g2_t *u8g2_local = (u8g2_t *)u8g2_ptr;
 
-    ESP_LOGI(TAG, "Initializing u8g2 with SH1106 for Heltec V3");
+    ESP_LOGI(TAG, "Initializing u8g2 with SSD1306 for Heltec V3");
 
     // Enable Vext power (powers OLED and LoRa module)
     ESP_LOGI(TAG, "Enabling Vext power for OLED");

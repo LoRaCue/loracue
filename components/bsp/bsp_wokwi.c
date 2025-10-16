@@ -5,7 +5,6 @@
  * CONTEXT: LoRaCue Wokwi simulation
  * HARDWARE: Wokwi simulator with SSD1306 OLED
  * DIFFERENCES FROM HELTEC V3:
- *   - SSD1306 OLED instead of SH1106
  *   - No LoRa hardware (simulated)
  *   - Three buttons: GPIO0 (main), GPIO46 (second), GPIO21 (both simulator)
  */

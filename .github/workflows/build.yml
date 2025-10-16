@@ -74,7 +74,7 @@ jobs:
           - name: "heltec_v3"
             display_name: "Heltec LoRa V3"
             target: "esp32s3"
-            description: "ESP32-S3 with SX1262 LoRa and SH1106 OLED"
+            description: "ESP32-S3 with SX1262 LoRa and SSD1306 OLED"
     
     steps:
     - name: Checkout repository

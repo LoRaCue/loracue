@@ -115,7 +115,7 @@ jobs:
           - name: "heltec_v3"
             display_name: "Heltec LoRa V3"
             target: "esp32s3"
-            description: "ESP32-S3 with SX1262 LoRa (868/915MHz) and SH1106 OLED"
+            description: "ESP32-S3 with SX1262 LoRa (868/915MHz) and SSD1306 OLED"
             flash_size: "8MB"
     
     name: Build ${{ matrix.board.display_name }}
@@ -548,7 +548,7 @@ jobs:
           
           | Board | Target | Flash Size | Description |
           |-------|--------|------------|-------------|
-          | **Heltec LoRa V3** | ESP32-S3 | 8MB | SX1262 LoRa (868/915MHz) + SH1106 OLED |
+          | **Heltec LoRa V3** | ESP32-S3 | 8MB | SX1262 LoRa (868/915MHz) + SSD1306 OLED |
           
           ## 📥 Quick Start
           
