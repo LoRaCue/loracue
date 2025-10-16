@@ -66,9 +66,18 @@ static const uint8_t UART_RX_CHAR_UUID[16] = {
     0x93, 0xF3, 0xA3, 0xB5, 0x02, 0x00, 0x40, 0x6E
 };
 
+// Device Information Service (DIS) - Standard 16-bit UUIDs
+#define DIS_SERVICE_UUID            0x180A
+#define DIS_MANUFACTURER_UUID       0x2A29
+#define DIS_MODEL_NUMBER_UUID       0x2A24
+#define DIS_FIRMWARE_REVISION_UUID  0x2A26
+#define DIS_HARDWARE_REVISION_UUID  0x2A27
+
 #define GATTS_APP_ID            0
-#define GATTS_OTA_APP_ID        1
+#define GATTS_DIS_APP_ID        1
+#define GATTS_OTA_APP_ID        2
 #define GATTS_NUM_HANDLE        8
+#define GATTS_DIS_NUM_HANDLE    12
 #define GATTS_OTA_NUM_HANDLE    10
 
 static bool ble_enabled         = false;
@@ -77,6 +86,14 @@ static uint16_t conn_id         = 0;
 static uint16_t gatts_if_global = 0;
 static uint16_t tx_char_handle  = 0;
 static uint16_t rx_char_handle  = 0;
+
+// DIS service handles
+static esp_gatt_if_t dis_gatts_if = 0;
+static uint16_t dis_service_handle = 0;
+static uint16_t dis_manufacturer_handle = 0;
+static uint16_t dis_model_handle = 0;
+static uint16_t dis_firmware_handle = 0;
+static uint16_t dis_hardware_handle = 0;
 
 // OTA service handles (non-static for ble_ota.c access)
 uint16_t ota_service_handle = 0;
@@ -240,8 +257,113 @@ static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
     }
 }
 
+static void dis_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
+{
+    switch (event) {
+    case ESP_GATTS_REG_EVT:
+        ESP_LOGI(TAG, "DIS GATT app registered (app_id=%d, gatts_if=%d)", param->reg.app_id, gatts_if);
+        dis_gatts_if = gatts_if;
+        
+        // Create DIS service
+        esp_gatt_srvc_id_t service_id = {
+            .is_primary = true,
+            .id.inst_id = 0,
+            .id.uuid.len = ESP_UUID_LEN_16,
+            .id.uuid.uuid.uuid16 = DIS_SERVICE_UUID,
+        };
+        esp_ble_gatts_create_service(gatts_if, &service_id, GATTS_DIS_NUM_HANDLE);
+        break;
+
+    case ESP_GATTS_CREATE_EVT:
+        dis_service_handle = param->create.service_handle;
+        esp_ble_gatts_start_service(dis_service_handle);
+        
+        // Add Manufacturer Name characteristic
+        esp_bt_uuid_t mfr_uuid = {
+            .len = ESP_UUID_LEN_16,
+            .uuid.uuid16 = DIS_MANUFACTURER_UUID,
+        };
+        esp_ble_gatts_add_char(dis_service_handle, &mfr_uuid,
+                               ESP_GATT_PERM_READ,
+                               ESP_GATT_CHAR_PROP_BIT_READ,
+                               &(esp_attr_value_t){
+                                   .attr_max_len = 32,
+                                   .attr_len = strlen("LoRaCue"),
+                                   .attr_value = (uint8_t*)"LoRaCue"
+                               }, NULL);
+        break;
+
+    case ESP_GATTS_ADD_CHAR_EVT: {
+        if (param->add_char.char_uuid.uuid.uuid16 == DIS_MANUFACTURER_UUID) {
+            dis_manufacturer_handle = param->add_char.attr_handle;
+            
+            // Add Model Number
+            const bsp_usb_config_t *usb_config = bsp_get_usb_config();
+            esp_bt_uuid_t model_uuid = {
+                .len = ESP_UUID_LEN_16,
+                .uuid.uuid16 = DIS_MODEL_NUMBER_UUID,
+            };
+            esp_ble_gatts_add_char(dis_service_handle, &model_uuid,
+                                   ESP_GATT_PERM_READ,
+                                   ESP_GATT_CHAR_PROP_BIT_READ,
+                                   &(esp_attr_value_t){
+                                       .attr_max_len = 32,
+                                       .attr_len = strlen(usb_config->usb_product),
+                                       .attr_value = (uint8_t*)usb_config->usb_product
+                                   }, NULL);
+        } else if (param->add_char.char_uuid.uuid.uuid16 == DIS_MODEL_NUMBER_UUID) {
+            dis_model_handle = param->add_char.attr_handle;
+            
+            // Add Firmware Revision
+            esp_bt_uuid_t fw_uuid = {
+                .len = ESP_UUID_LEN_16,
+                .uuid.uuid16 = DIS_FIRMWARE_REVISION_UUID,
+            };
+            esp_ble_gatts_add_char(dis_service_handle, &fw_uuid,
+                                   ESP_GATT_PERM_READ,
+                                   ESP_GATT_CHAR_PROP_BIT_READ,
+                                   &(esp_attr_value_t){
+                                       .attr_max_len = 64,
+                                       .attr_len = strlen(LORACUE_VERSION_STRING),
+                                       .attr_value = (uint8_t*)LORACUE_VERSION_STRING
+                                   }, NULL);
+        } else if (param->add_char.char_uuid.uuid.uuid16 == DIS_FIRMWARE_REVISION_UUID) {
+            dis_firmware_handle = param->add_char.attr_handle;
+            
+            // Add Hardware Revision
+            const bsp_config_t *bsp_config = bsp_get_config();
+            esp_bt_uuid_t hw_uuid = {
+                .len = ESP_UUID_LEN_16,
+                .uuid.uuid16 = DIS_HARDWARE_REVISION_UUID,
+            };
+            esp_ble_gatts_add_char(dis_service_handle, &hw_uuid,
+                                   ESP_GATT_PERM_READ,
+                                   ESP_GATT_CHAR_PROP_BIT_READ,
+                                   &(esp_attr_value_t){
+                                       .attr_max_len = 32,
+                                       .attr_len = strlen(bsp_config->board_name),
+                                       .attr_value = (uint8_t*)bsp_config->board_name
+                                   }, NULL);
+        } else if (param->add_char.char_uuid.uuid.uuid16 == DIS_HARDWARE_REVISION_UUID) {
+            dis_hardware_handle = param->add_char.attr_handle;
+            ESP_LOGI(TAG, "Device Information Service ready");
+        }
+        break;
+    }
+
+    default:
+        break;
+    }
+}
+
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
+    // Route DIS service events to DIS handler
+    if (gatts_if == dis_gatts_if || (event == ESP_GATTS_REG_EVT && param->reg.app_id == GATTS_DIS_APP_ID)) {
+        dis_gatts_event_handler(event, gatts_if, param);
+        return;
+    }
+
     // Route OTA service events to OTA handler
     if (gatts_if == ota_gatts_if || (event == ESP_GATTS_REG_EVT && param->reg.app_id == GATTS_OTA_APP_ID)) {
         ota_gatts_event_handler(event, gatts_if, param);
@@ -258,8 +380,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         // Set device name
         general_config_t config;
         general_config_get(&config);
-        char ble_name[128];  // "LoRaCue-" (8) + device_name (31) + "-v" (2) + version (up to 80) + null (1)
-        snprintf(ble_name, sizeof(ble_name), "LoRaCue-%s-v%s", config.device_name, LORACUE_VERSION_STRING);
+        char ble_name[32];  // BLE name max 31 bytes + null
+        snprintf(ble_name, sizeof(ble_name), "LoRaCue %s", config.device_name);
         esp_ble_gap_set_device_name(ble_name);
 
         // Configure advertising data
@@ -450,6 +572,9 @@ esp_err_t bluetooth_config_init(void)
     
     ESP_LOGI(TAG, "Registering UART GATT app (ID=%d)...", GATTS_APP_ID);
     esp_ble_gatts_app_register(GATTS_APP_ID);
+    
+    ESP_LOGI(TAG, "Registering DIS GATT app (ID=%d)...", GATTS_DIS_APP_ID);
+    esp_ble_gatts_app_register(GATTS_DIS_APP_ID);
     
     ESP_LOGI(TAG, "Registering OTA GATT app (ID=%d)...", GATTS_OTA_APP_ID);
     esp_ble_gatts_app_register(GATTS_OTA_APP_ID);
