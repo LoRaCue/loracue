@@ -138,14 +138,20 @@ esp_err_t ui_data_provider_force_update(bool usb_connected, bool lora_connected,
         return ESP_ERR_INVALID_STATE;
     }
 
+    bool changed = (cached_status.usb_connected != usb_connected ||
+                    cached_status.lora_connected != lora_connected ||
+                    cached_status.battery_level != battery_level);
+
     cached_status.usb_connected   = usb_connected;
     cached_status.lora_connected  = lora_connected;
     cached_status.battery_level   = battery_level;
     cached_status.signal_strength = lora_connected ? SIGNAL_STRONG : SIGNAL_NONE;
 
-    ESP_LOGI(TAG, "Status force updated: USB=%d, BT=%d/%d, LoRa=%d, Battery=%d%%", 
-             usb_connected, cached_status.bluetooth_enabled, cached_status.bluetooth_connected, 
-             lora_connected, battery_level);
+    if (changed) {
+        ESP_LOGI(TAG, "Status force updated: USB=%d, BT=%d/%d, LoRa=%d, Battery=%d%%", 
+                 usb_connected, cached_status.bluetooth_enabled, cached_status.bluetooth_connected, 
+                 lora_connected, battery_level);
+    }
 
     return ESP_OK;
 }

@@ -116,15 +116,21 @@ static uint16_t service_handle = 0;
 
 static void send_response(const char *response)
 {
+    ESP_LOGI(TAG, "send_response called: connected=%d, handle=%d, response='%s'", 
+             ble_connected, tx_char_handle, response);
+    
     if (!ble_connected || tx_char_handle == 0) {
+        ESP_LOGW(TAG, "Cannot send response - not connected or no handle");
         return;
     }
 
     size_t len = strlen(response);
-    esp_ble_gatts_send_notify(gatts_if_global, conn_id, tx_char_handle, len, (uint8_t *)response, false);
+    esp_err_t ret = esp_ble_gatts_send_indicate(gatts_if_global, conn_id, tx_char_handle, len, (uint8_t *)response, false);
+    ESP_LOGI(TAG, "send_indicate returned: %d", ret);
     
     // Send newline
-    esp_ble_gatts_send_notify(gatts_if_global, conn_id, tx_char_handle, 1, (uint8_t *)"\n", false);
+    ret = esp_ble_gatts_send_indicate(gatts_if_global, conn_id, tx_char_handle, 1, (uint8_t *)"\n", false);
+    ESP_LOGI(TAG, "send_indicate (newline) returned: %d", ret);
 }
 
 static void process_command(const char *command_line)
@@ -469,18 +475,32 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         if (memcmp(param->add_char.char_uuid.uuid.uuid128, UART_TX_CHAR_UUID, 16) == 0) {
             tx_char_handle = param->add_char.attr_handle;
             
-            // Add RX characteristic (write)
+            // Add CCCD descriptor for TX notifications
+            esp_bt_uuid_t cccd_uuid = {
+                .len = ESP_UUID_LEN_16,
+                .uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG,
+            };
+            esp_ble_gatts_add_char_descr(service_handle, &cccd_uuid,
+                                         ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+                                         NULL, NULL);
+        } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, UART_RX_CHAR_UUID, 16) == 0) {
+            rx_char_handle = param->add_char.attr_handle;
+            ESP_LOGI(TAG, "UART service ready");
+        }
+        break;
+
+    case ESP_GATTS_ADD_CHAR_DESCR_EVT:
+        // CCCD added, now add RX characteristic
+        if (param->add_char_descr.status == ESP_GATT_OK) {
+            // Add RX characteristic (write + write without response)
             esp_bt_uuid_t rx_uuid = {
                 .len = ESP_UUID_LEN_128,
             };
             memcpy(rx_uuid.uuid.uuid128, UART_RX_CHAR_UUID, 16);
             esp_ble_gatts_add_char(service_handle, &rx_uuid,
                                    ESP_GATT_PERM_WRITE,
-                                   ESP_GATT_CHAR_PROP_BIT_WRITE,
+                                   ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_WRITE_NR,
                                    NULL, NULL);
-        } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, UART_RX_CHAR_UUID, 16) == 0) {
-            rx_char_handle = param->add_char.attr_handle;
-            ESP_LOGI(TAG, "UART service ready");
         }
         break;
 
@@ -508,7 +528,10 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         break;
 
     case ESP_GATTS_WRITE_EVT:
+        ESP_LOGI(TAG, "WRITE_EVT: handle=%d, rx_char_handle=%d, len=%d", 
+                 param->write.handle, rx_char_handle, param->write.len);
         if (param->write.handle == rx_char_handle) {
+            ESP_LOGI(TAG, "RX data received: %.*s", param->write.len, param->write.value);
             // Check for OTA commands - reject and direct to OTA service
             if (param->write.len >= 17 && strncmp((char*)param->write.value, "FIRMWARE_UPGRADE ", 17) == 0) {
                 const char *error_msg = "ERROR Use dedicated OTA GATT service (UUID 49589A79-7CC5-465D-BFF1-FE37C5065000) for firmware upgrades\n";
@@ -522,6 +545,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                     if (c == '\n' || c == '\r') {
                         if (rx_len > 0) {
                             rx_buffer[rx_len] = '\0';
+                            ESP_LOGI(TAG, "Processing command: %s", rx_buffer);
                             process_command(rx_buffer);
                             rx_len = 0;
                         }

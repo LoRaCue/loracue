@@ -189,8 +189,8 @@ jobs:
         mkdir -p artifacts
         
         # Copy binaries
-        cp build/loracue.bin "artifacts/loracue-${BOARD}-v${VERSION}.bin"
-        cp build/loracue.elf "artifacts/loracue-${BOARD}-v${VERSION}.elf"
+        cp "build/${BOARD}.bin" "artifacts/loracue-${BOARD}-v${VERSION}.bin"
+        cp "build/${BOARD}.elf" "artifacts/loracue-${BOARD}-v${VERSION}.elf"
         cp build/bootloader/bootloader.bin "artifacts/bootloader-${BOARD}.bin"
         cp build/partition_table/partition-table.bin "artifacts/partition-table-${BOARD}.bin"
         
