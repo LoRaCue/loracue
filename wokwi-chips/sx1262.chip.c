@@ -63,6 +63,7 @@ static void chip_cs_change(void *user_data, pin_t pin, uint32_t value);
 
 void chip_init(void) {
   chip_data_t *chip = malloc(sizeof(chip_data_t));
+  if (!chip) return;
   memset(chip, 0, sizeof(chip_data_t));
 
   chip->cs = pin_init("CS", INPUT);
