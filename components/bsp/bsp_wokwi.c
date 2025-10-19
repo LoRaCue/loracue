@@ -3,14 +3,15 @@
  * @brief Board Support Package for Wokwi Simulator (ESP32-S3)
  *
  * CONTEXT: LoRaCue Wokwi simulation
- * HARDWARE: Wokwi simulator with SSD1306 OLED
+ * HARDWARE: Wokwi simulator with SSD1306 OLED and custom SX1262 chip
  * DIFFERENCES FROM HELTEC V3:
- *   - No LoRa hardware (simulated)
+ *   - Custom SX1262 Wokwi chip (simulated LoRa transceiver)
  *   - Three buttons: GPIO0 (main), GPIO46 (second), GPIO21 (both simulator)
  */
 
 #include "bsp.h"
 #include "driver/gpio.h"
+#include "driver/spi_master.h"
 #include "driver/uart.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
@@ -37,6 +38,15 @@ u8g2_t u8g2;
 #define UART1_TX_PIN GPIO_NUM_2
 #define UART1_RX_PIN GPIO_NUM_3
 
+// LoRa SX1262 Pins (same as Heltec V3)
+#define LORA_CS_PIN GPIO_NUM_8
+#define LORA_SCK_PIN GPIO_NUM_9
+#define LORA_MOSI_PIN GPIO_NUM_10
+#define LORA_MISO_PIN GPIO_NUM_11
+#define LORA_RST_PIN GPIO_NUM_12
+#define LORA_BUSY_PIN GPIO_NUM_13
+#define LORA_DIO1_PIN GPIO_NUM_14
+
 // OLED SSD1306 Pins (same as Heltec V3)
 #define OLED_SDA_PIN GPIO_NUM_17
 #define OLED_SCL_PIN GPIO_NUM_18
@@ -44,6 +54,7 @@ u8g2_t u8g2;
 
 // Static handles
 static adc_oneshot_unit_handle_t adc_handle = NULL;
+static spi_device_handle_t spi_handle       = NULL;
 
 esp_err_t bsp_init(void)
 {
@@ -85,7 +96,7 @@ esp_err_t bsp_init(void)
         return ret;
     }
 
-    // Initialize SPI (simulated, no actual LoRa)
+    // Initialize SPI for LoRa
     ret = bsp_init_spi();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI: %s", esp_err_to_name(ret));
@@ -160,7 +171,63 @@ esp_err_t bsp_init_battery(void)
 
 esp_err_t bsp_init_spi(void)
 {
-    ESP_LOGI(TAG, "SPI initialized (simulated - no LoRa hardware)");
+    ESP_LOGI(TAG, "Initializing SPI bus for SX1262 LoRa (Wokwi simulation)");
+
+    // Configure SPI bus (same as Heltec V3)
+    spi_bus_config_t buscfg = {
+        .mosi_io_num     = LORA_MOSI_PIN,
+        .miso_io_num     = LORA_MISO_PIN,
+        .sclk_io_num     = LORA_SCK_PIN,
+        .quadwp_io_num   = -1,
+        .quadhd_io_num   = -1,
+        .max_transfer_sz = 256,
+    };
+
+    esp_err_t ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    // Configure SPI device (SX1262)
+    spi_device_interface_config_t devcfg = {
+        .clock_speed_hz = 1000000, // 1MHz
+        .mode           = 0,       // SPI mode 0
+        .spics_io_num   = LORA_CS_PIN,
+        .queue_size     = 1,
+    };
+
+    ret = spi_bus_add_device(SPI2_HOST, &devcfg, &spi_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to add SPI device: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    // Configure control pins
+    gpio_config_t io_conf = {
+        .pin_bit_mask = (1ULL << LORA_RST_PIN),
+        .mode         = GPIO_MODE_OUTPUT,
+        .pull_up_en   = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type    = GPIO_INTR_DISABLE,
+    };
+
+    ret = gpio_config(&io_conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure RST pin: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    // Configure BUSY and DIO1 as inputs
+    io_conf.pin_bit_mask = (1ULL << LORA_BUSY_PIN) | (1ULL << LORA_DIO1_PIN);
+    io_conf.mode         = GPIO_MODE_INPUT;
+    ret                  = gpio_config(&io_conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to configure BUSY/DIO1 pins: %s", esp_err_to_name(ret));
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "SPI initialized for Wokwi custom SX1262 chip");
     return ESP_OK;
 }
 
@@ -217,14 +284,39 @@ esp_err_t bsp_enter_sleep(void)
 
 esp_err_t bsp_sx1262_reset(void)
 {
-    ESP_LOGI(TAG, "SX1262 reset (simulated - no LoRa hardware)");
+    ESP_LOGI(TAG, "Resetting SX1262 (Wokwi simulation)");
+    
+    gpio_set_level(LORA_RST_PIN, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    gpio_set_level(LORA_RST_PIN, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    
     return ESP_OK;
 }
 
 uint8_t bsp_sx1262_read_register(uint16_t reg)
 {
-    // Simulated register read
-    return 0x00;
+    if (!spi_handle) {
+        ESP_LOGW(TAG, "SPI not initialized");
+        return 0x00;
+    }
+
+    uint8_t tx_data[4] = {0x1D, (uint8_t)(reg >> 8), (uint8_t)(reg & 0xFF), 0x00};
+    uint8_t rx_data[4] = {0};
+
+    spi_transaction_t trans = {
+        .length    = 32,
+        .tx_buffer = tx_data,
+        .rx_buffer = rx_data,
+    };
+
+    esp_err_t ret = spi_device_transmit(spi_handle, &trans);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "SPI transaction failed: %s", esp_err_to_name(ret));
+        return 0x00;
+    }
+
+    return rx_data[3];
 }
 
 esp_err_t bsp_validate_hardware(void)
