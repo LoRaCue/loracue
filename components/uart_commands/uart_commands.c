@@ -17,6 +17,8 @@
 static const char *TAG = "UART_CMD";
 
 // UART configuration
+// UART0 = Command parser (USB/Serial)
+// UART1 = Console logging (except when console is on UART0)
 #ifdef CONFIG_UART_COMMANDS_PORT_NUM
 #define UART_NUM ((uart_port_t)CONFIG_UART_COMMANDS_PORT_NUM)
 #else
@@ -29,7 +31,7 @@ static const char *TAG = "UART_CMD";
 #define UART_TX_PIN 43
 #define UART_RX_PIN 44
 #else
-// UART1 - debug mode only
+// UART1
 #define UART_TX_PIN 2
 #define UART_RX_PIN 3
 #endif
@@ -102,6 +104,11 @@ esp_err_t uart_commands_init(void)
 {
     ESP_LOGI(TAG, "Initializing UART command interface");
     ESP_LOGI(TAG, "CONFIG_UART_COMMANDS_PORT_NUM=%d, UART_NUM=%d", CONFIG_UART_COMMANDS_PORT_NUM, (int)UART_NUM);
+
+    // Reclaim UART0 from ROM/bootloader if needed
+    if (UART_NUM == UART_NUM_0) {
+        uart_driver_delete(UART_NUM_0);
+    }
 
     // Configure UART parameters
     uart_config_t uart_config = {
