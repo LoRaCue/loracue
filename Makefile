@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build build-debug clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint sim sim-run sim-debug web-dev web-build web-flash help check-idf
+.PHONY: all build build-console-on-uart0 clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint sim sim-run sim-debug web-dev web-build web-flash help check-idf
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -57,10 +57,10 @@ build: check-idf
 	@echo "🔨 Building LoRaCue firmware..."
 	$(IDF_SETUP) idf.py build
 
-build-debug: check-idf
-	@echo "🐛 Building LoRaCue firmware (DEBUG mode - logging on UART0)..."
+build-console-on-uart0: check-idf
+	@echo "🐛 Building LoRaCue firmware (console on UART0, commands on UART1)..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.debug" idf.py build
+	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.console-on-uart0" idf.py build
 
 clean:
 	@echo "🧹 Cleaning build artifacts and sdkconfig..."
@@ -153,25 +153,47 @@ lint:
 	@echo "✅ Static analysis passed"
 
 # Wokwi simulator
-sim: check-idf
+sim: check-idf build/wokwi-chips/uart.chip.wasm
 ifndef WOKWI_CLI
 	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
 	@false
 endif
 	@echo "🎮 Building for Wokwi simulator..."
-	$(IDF_SETUP) SIMULATOR_BUILD=1 SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.debug" idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
+	$(IDF_SETUP) SIMULATOR_BUILD=1 idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
 
-sim-run: sim
+# Build custom UART bridge chip
+build/wokwi-chips/uart.chip.wasm: wokwi-chips/uart.chip.c wokwi-chips/wokwi-api.h wokwi-chips/uart.chip.json
+	@echo "🔧 Compiling custom UART bridge chip..."
+	@mkdir -p build/wokwi-chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi-chips/uart.o wokwi-chips/uart.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi-chips/uart.chip.wasm \
+		build/wokwi-chips/uart.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi-chips/uart.chip.json build/wokwi-chips/
+	@rm build/wokwi-chips/uart.o
+	@echo "✅ Custom chip compiled"
+
+sim-run: build/wokwi_sim.bin
 	@echo "🚀 Starting Wokwi simulation..."
+	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
+	@echo "💡 Serial log: wokwi.log"
 	@echo "💡 Press Ctrl+C to stop"
 	@echo ""
-	wokwi-cli --timeout 0 --serial-log-file -
+	wokwi-cli --timeout 0 --interactive --serial-log-file wokwi.log
 
-sim-debug: sim
+sim-debug: build/wokwi_sim.bin
 	@echo "🐛 Starting debug simulation with interactive serial..."
-	@echo "💡 Type commands to send to device. Press Ctrl+C to stop"
+	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
+	@echo "💡 Serial log: wokwi.log"
+	@echo "💡 Press Ctrl+C to stop"
 	@echo ""
-	wokwi-cli --timeout 0 --interactive --serial-log-file -
+	wokwi-cli --timeout 0 --interactive --serial-log-file wokwi.log
+
+build/wokwi_sim.bin:
+	@$(MAKE) sim
 
 # Web interface
 web-dev:
@@ -201,9 +223,9 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📦 Build:"
-	@echo "  make build         - Build firmware (production)"
-	@echo "  make build-debug   - Build with debug logging on UART0"
-	@echo "  make rebuild       - Clean and rebuild"
+	@echo "  make build                    - Build firmware (UART0=commands, UART1=console)"
+	@echo "  make build-console-on-uart0   - Build with console on UART0, commands on UART1"
+	@echo "  make rebuild                  - Clean and rebuild"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
 	@echo ""

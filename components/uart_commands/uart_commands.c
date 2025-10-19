@@ -16,25 +16,25 @@
 
 static const char *TAG = "UART_CMD";
 
-// UART configuration - use UART1 in debug mode to avoid conflict with console
+// UART configuration
 #ifdef CONFIG_UART_COMMANDS_PORT_NUM
 #define UART_NUM ((uart_port_t)CONFIG_UART_COMMANDS_PORT_NUM)
 #else
 #define UART_NUM UART_NUM_0
 #endif
 
-// Pin configuration depends on UART port
-#if CONFIG_UART_COMMANDS_PORT_NUM == 1
-// UART1 pins for debug mode (using available GPIOs that don't conflict)
-#define UART_TX_PIN 2   // Available GPIO
-#define UART_RX_PIN 3   // Available GPIO
-#else
-// UART0 pins for production mode (standard USB-UART bridge)
+// Pin configuration
+#if CONFIG_UART_COMMANDS_PORT_NUM == 0
+// UART0 - default for commands
 #define UART_TX_PIN 43
 #define UART_RX_PIN 44
+#else
+// UART1 - debug mode only
+#define UART_TX_PIN 2
+#define UART_RX_PIN 3
 #endif
 
-#define UART_BAUD_RATE 460800
+#define UART_BAUD_RATE 115200
 #define UART_BUF_SIZE 16384
 #define CMD_MAX_LENGTH 16384
 
