@@ -1,0 +1,6 @@
+{
+  "name": "SX1262 LoRa Module",
+  "author": "LoRaCue",
+  "pins": ["CS", "SCK", "MOSI", "MISO", "BUSY", "DIO1", "RESET"],
+  "svg": "sx1262.chip.svg"
+}
