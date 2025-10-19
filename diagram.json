@@ -85,11 +85,24 @@
       "attrs": {
         "value": "220"
       }
+    },
+    {
+      "type": "chip-uart",
+      "id": "uart1",
+      "top": 400,
+      "left": -13,
+      "rotate": 90,
+      "attrs": {
+        "baudrate": "115200"
+      }
     }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    
+    [ "esp:2", "uart1:RX", "green", [ "h0" ] ],
+    [ "esp:3", "uart1:TX", "yellow", [ "h0" ] ],
     
     [ "esp:17", "oled:SDA", "blue", [  ] ],
     [ "esp:18", "oled:SCL", "yellow", [  ] ],

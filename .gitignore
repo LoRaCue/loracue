@@ -20,5 +20,9 @@ Thumbs.db
 # Node.js (for commitlint/husky)
 node_modules/
 
-# Simulator artifacts (desktop simulator removed - use Wokwi instead)
-# Wokwi files are kept: wokwi.toml, diagram.json
+# Wokwi simulator log
+wokwi.log
+
+
+# Log files
+*.log

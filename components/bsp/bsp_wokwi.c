@@ -11,6 +11,7 @@
 
 #include "bsp.h"
 #include "driver/gpio.h"
+#include "driver/uart.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
@@ -32,6 +33,10 @@ u8g2_t u8g2;
 #define BATTERY_ADC_PIN GPIO_NUM_1
 #define BATTERY_CTRL_PIN GPIO_NUM_37
 
+// UART1 Console Pins (for Wokwi custom chip bridge)
+#define UART1_TX_PIN GPIO_NUM_2
+#define UART1_RX_PIN GPIO_NUM_3
+
 // OLED SSD1306 Pins (same as Heltec V3)
 #define OLED_SDA_PIN GPIO_NUM_17
 #define OLED_SCL_PIN GPIO_NUM_18
@@ -45,6 +50,10 @@ esp_err_t bsp_init(void)
     ESP_LOGI(TAG, "Initializing Wokwi Simulator BSP");
 
     esp_err_t ret = ESP_OK;
+
+    // Configure UART1 pins for console (connects to custom chip bridge)
+    ESP_LOGI(TAG, "Configuring UART1 console pins: TX=%d, RX=%d", UART1_TX_PIN, UART1_RX_PIN);
+    uart_set_pin(UART_NUM_1, UART1_TX_PIN, UART1_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     // Initialize GPIO for buttons
     ret = bsp_init_buttons();
