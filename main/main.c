@@ -88,11 +88,6 @@ static void add_command_to_history(uint16_t device_id, const char *cmd_name)
     }
 }
 
-// Demo AES-256 keys for different devices
-static const uint8_t demo_aes_key_1[32] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15,
-                                           0x88, 0x09, 0xcf, 0x4f, 0x3c, 0x60, 0x1e, 0xc3, 0x13, 0x77, 0x57,
-                                           0x89, 0xa5, 0xb7, 0xa7, 0xf5, 0x04, 0xbb, 0xf3, 0xd2, 0x28};
-
 #define OTA_BOOT_COUNTER_KEY "ota_boot_cnt"
 #define OTA_ROLLBACK_LOG_KEY "ota_rollback"
 #define MAX_BOOT_ATTEMPTS 3
@@ -617,7 +612,11 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Device mode: %s, Static ID: 0x%04X", device_mode_to_string(config.device_mode), device_id);
 
-    ret = lora_protocol_init(device_id, demo_aes_key_1);
+    // Get AES key from LoRa config
+    lora_config_t lora_cfg;
+    lora_get_config(&lora_cfg);
+
+    ret = lora_protocol_init(device_id, lora_cfg.aes_key);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "LoRa protocol initialization failed: %s", esp_err_to_name(ret));
         return;

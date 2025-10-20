@@ -12,6 +12,7 @@
 #include "lora_bands.h"
 #include "bsp.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
@@ -218,6 +219,9 @@ esp_err_t lora_load_config_from_nvs(void)
     esp_err_t ret = nvs_open("lora_config", NVS_READONLY, &nvs_handle);
     if (ret != ESP_OK) {
         ESP_LOGI(TAG, "No LoRa config in NVS, using defaults");
+        // Generate random AES key on first boot
+        esp_fill_random(current_config.aes_key, 32);
+        ESP_LOGI(TAG, "Generated random AES-256 key");
         return ESP_OK; // Use defaults
     }
 
@@ -228,8 +232,22 @@ esp_err_t lora_load_config_from_nvs(void)
     if (ret == ESP_OK) {
         ESP_LOGI(TAG, "Loaded LoRa config from NVS: %lu Hz, SF%d, %d kHz, %d dBm", current_config.frequency,
                  current_config.spreading_factor, current_config.bandwidth, current_config.tx_power);
+        // Check if AES key is all zeros (old config without key)
+        bool key_is_zero = true;
+        for (int i = 0; i < 32; i++) {
+            if (current_config.aes_key[i] != 0) {
+                key_is_zero = false;
+                break;
+            }
+        }
+        if (key_is_zero) {
+            ESP_LOGI(TAG, "AES key not set, generating random key");
+            esp_fill_random(current_config.aes_key, 32);
+        }
     } else {
         ESP_LOGI(TAG, "Failed to load LoRa config from NVS, using defaults");
+        esp_fill_random(current_config.aes_key, 32);
+        ESP_LOGI(TAG, "Generated random AES-256 key");
     }
 
     return ESP_OK;

@@ -258,6 +258,72 @@ static void handle_get_lora_config(void)
     cJSON_Delete(response);
 }
 
+static void handle_get_lora_key(void)
+{
+    lora_config_t config;
+    esp_err_t ret = lora_get_config(&config);
+
+    if (ret != ESP_OK) {
+        g_send_response("ERROR Failed to get LoRa config");
+        return;
+    }
+
+    // Convert AES key to hex string
+    char hex_key[65]; // 32 bytes * 2 + null terminator
+    for (int i = 0; i < 32; i++) {
+        sprintf(&hex_key[i * 2], "%02x", config.aes_key[i]);
+    }
+    hex_key[64] = '\0';
+
+    cJSON *response = cJSON_CreateObject();
+    cJSON_AddStringToObject(response, "aes_key", hex_key);
+
+    char *json_string = cJSON_PrintUnformatted(response);
+    g_send_response(json_string);
+    free(json_string);
+    cJSON_Delete(response);
+}
+
+static void handle_set_lora_key(cJSON *json)
+{
+    cJSON *aes_key_json = cJSON_GetObjectItem(json, "aes_key");
+    if (!aes_key_json || !cJSON_IsString(aes_key_json)) {
+        g_send_response("ERROR Missing or invalid aes_key parameter");
+        return;
+    }
+
+    const char *hex_key = aes_key_json->valuestring;
+    if (strlen(hex_key) != 64) {
+        g_send_response("ERROR aes_key must be 64 hex characters (32 bytes)");
+        return;
+    }
+
+    // Parse hex string to bytes
+    uint8_t key_bytes[32];
+    for (int i = 0; i < 32; i++) {
+        char byte_str[3] = {hex_key[i * 2], hex_key[i * 2 + 1], '\0'};
+        key_bytes[i] = (uint8_t)strtol(byte_str, NULL, 16);
+    }
+
+    // Get current config and update key
+    lora_config_t config;
+    esp_err_t ret = lora_get_config(&config);
+    if (ret != ESP_OK) {
+        g_send_response("ERROR Failed to get LoRa config");
+        return;
+    }
+
+    memcpy(config.aes_key, key_bytes, 32);
+
+    ret = lora_set_config(&config);
+    if (ret != ESP_OK) {
+        g_send_response("ERROR Failed to save LoRa config");
+        return;
+    }
+
+    g_send_response("OK AES key updated");
+}
+
 static void handle_set_lora_config(cJSON *config_json)
 {
     lora_config_t config;
@@ -509,6 +575,22 @@ void commands_execute(const char *command_line, response_fn_t send_response)
 
     if (strcmp(command_line, "GET_LORA") == 0) {
         handle_get_lora_config();
+        return;
+    }
+
+    if (strcmp(command_line, "GET_LORA_KEY") == 0) {
+        handle_get_lora_key();
+        return;
+    }
+
+    if (strncmp(command_line, "SET_LORA_KEY ", 13) == 0) {
+        cJSON *json = cJSON_Parse(command_line + 13);
+        if (json) {
+            handle_set_lora_key(json);
+            cJSON_Delete(json);
+        } else {
+            g_send_response("ERROR Invalid JSON");
+        }
         return;
     }
 
