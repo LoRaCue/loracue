@@ -98,7 +98,7 @@ esp_err_t lora_driver_init(void)
                                   false                     // Use DC-DC regulator (not LDO)
     );
 
-    if (lora_ret != ERR_NONE) {
+    if (lora_ret != ESP_OK) {
         ESP_LOGE(TAG, "LoRa initialization failed: %d", lora_ret);
         return ESP_FAIL;
     }
@@ -284,7 +284,7 @@ esp_err_t lora_set_config(const lora_config_t *config)
                                  false              // Use DC-DC regulator
     );
 
-    if (init_ret != ERR_NONE) {
+    if (init_ret != ESP_OK) {
         ESP_LOGE(TAG, "LoRa reconfiguration failed: %d", init_ret);
         return ESP_FAIL;
     }

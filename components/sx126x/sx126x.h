@@ -2,30 +2,7 @@
 #define _RA01S_H
 
 #include "driver/spi_master.h"
-
-// return values
-#define ERR_NONE 0
-#define ERR_PACKET_TOO_LONG 1
-#define ERR_UNKNOWN 2
-#define ERR_TX_TIMEOUT 3
-#define ERR_RX_TIMEOUT 4
-#define ERR_CRC_MISMATCH 5
-#define ERR_WRONG_MODEM 6
-#define ERR_INVALID_BANDWIDTH 7
-#define ERR_INVALID_SPREADING_FACTOR 8
-#define ERR_INVALID_CODING_RATE 9
-#define ERR_INVALID_FREQUENCY_DEVIATION 10
-#define ERR_INVALID_BIT_RATE 11
-#define ERR_INVALID_RX_BANDWIDTH 12
-#define ERR_INVALID_DATA_SHAPING 13
-#define ERR_INVALID_SYNC_WORD 14
-#define ERR_INVALID_OUTPUT_POWER 15
-#define ERR_INVALID_MODE 16
-#define ERR_INVALID_TRANCEIVER 17
-#define ERR_INVALID_SETRX_STATE 18
-#define ERR_INVALID_SETTX_STATE 19
-#define ERR_IDLE_TIMEOUT 20
-#define ERR_SPI_TRANSACTION 21
+#include "esp_err.h"
 
 // SX126X physical layer properties
 #define XTAL_FREQ (double)32000000
