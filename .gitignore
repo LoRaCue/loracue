@@ -23,6 +23,9 @@ node_modules/
 # Wokwi simulator log
 wokwi.log
 
+# Amazon Q CLI
+.amazonq/cli-todo-lists/
+.amazonq/.subagents/
 
 # Log files
 *.log
