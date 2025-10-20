@@ -24,7 +24,7 @@ static const char *TAG = "LORA_PROTOCOL";
 static bool protocol_initialized = false;
 static uint16_t local_device_id  = 0;
 static uint16_t sequence_counter = 0;
-static uint8_t aes_key[32]; // AES-256 requires 32 bytes
+static uint8_t local_device_key[32]; // Local device's AES-256 key
 
 // RSSI monitoring variables
 static int16_t last_rssi                     = 0;
@@ -41,11 +41,11 @@ esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
     ESP_LOGI(TAG, "Initializing LoRa protocol for device 0x%04X with AES-256", device_id);
 
     local_device_id = device_id;
-    memcpy(aes_key, key, 32);
+    memcpy(local_device_key, key, 32);
 
     // Initialize AES context
     mbedtls_aes_init(&aes_ctx);
-    int ret = mbedtls_aes_setkey_enc(&aes_ctx, aes_key, 256);
+    int ret = mbedtls_aes_setkey_enc(&aes_ctx, local_device_key, 256);
     if (ret != 0) {
         ESP_LOGE(TAG, "AES-256 key setup failed: %d", ret);
         return ESP_ERR_INVALID_ARG;
@@ -60,7 +60,7 @@ esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
     return ESP_OK;
 }
 
-static esp_err_t calculate_mac(const uint8_t *data, size_t data_len, uint8_t *mac_out)
+static esp_err_t calculate_mac(const uint8_t *data, size_t data_len, const uint8_t *key, uint8_t *mac_out)
 {
     // MAC using first 4 bytes of HMAC-SHA256 with AES-256 key
     mbedtls_md_context_t md_ctx;
@@ -72,7 +72,7 @@ static esp_err_t calculate_mac(const uint8_t *data, size_t data_len, uint8_t *ma
         return ESP_FAIL;
     }
 
-    if (mbedtls_md_hmac_starts(&md_ctx, aes_key, 32) != 0) {
+    if (mbedtls_md_hmac_starts(&md_ctx, key, 32) != 0) {
         mbedtls_md_free(&md_ctx);
         return ESP_FAIL;
     }
@@ -114,7 +114,7 @@ static esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_
     uint8_t mac_data[18];
     memcpy(mac_data, &packet.device_id, 2);
     memcpy(&mac_data[2], packet.encrypted_data, 16);
-    calculate_mac(mac_data, 18, packet.mac);
+    calculate_mac(mac_data, 18, local_device_key, packet.mac);
 
     sequence_counter++;
     connection_stats.packets_sent++;
@@ -250,16 +250,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
     memcpy(&mac_data[2], packet->encrypted_data, 16);
 
     uint8_t calculated_mac[LORA_MAC_SIZE];
-
-    // Temporarily use sender's key for MAC calculation
-    uint8_t original_key[32];
-    memcpy(original_key, aes_key, 32);
-    memcpy(aes_key, sender_device.aes_key, 32);
-
-    ret = calculate_mac(mac_data, 18, calculated_mac);
-
-    // Restore original key
-    memcpy(aes_key, original_key, 32);
+    ret = calculate_mac(mac_data, 18, sender_device.aes_key, calculated_mac);
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "MAC calculation failed");
