@@ -5,11 +5,11 @@
 
 ## Current Issues
 
-### Not Yet Implemented
+### Implemented But Not Working
 
-- **[HIGH]** BLE configuration connection - Detection and connect working, but configuration protocol not implemented
-- **[HIGH]** BLE firmware upgrade - OTA engine exists but BLE transport not implemented
-- **[HIGH]** USB-CDC firmware upgrade - FIRMWARE_UPGRADE command not implemented in command parser
+- **[HIGH]** BLE configuration connection - Implemented but not working (detection and connect functional)
+- **[HIGH]** BLE firmware upgrade - Implemented but not working (OTA engine and BLE transport exist)
+- **[HIGH]** USB-CDC firmware upgrade - Implemented but not working (XMODEM-1K and command handler exist)
 
 <!-- 
 Example format:

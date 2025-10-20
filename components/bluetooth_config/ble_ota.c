@@ -103,9 +103,8 @@ void ble_ota_handle_disconnect(void)
 
 void ble_ota_handle_control_write(const uint8_t *data, uint16_t len)
 {
-    // FIXME: BLE OTA not fully implemented
-    // OTA engine exists and control flow is here, but needs testing and integration
-    // with ota_engine.c for actual firmware write operations
+    // FIXME: BLE OTA implemented but not working
+    // Full implementation exists but has bugs preventing successful firmware updates
     
     esp_err_t ret;
     
