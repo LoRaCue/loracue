@@ -9,14 +9,14 @@
  */
 
 #include "lora_driver.h"
-#include "lora_bands.h"
 #include "bsp.h"
 #include "esp_log.h"
 #include "esp_random.h"
-#include "nvs.h"
-#include "nvs_flash.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "lora_bands.h"
+#include "nvs.h"
+#include "nvs_flash.h"
 #include <string.h>
 
 #ifndef SIMULATOR_BUILD
@@ -30,18 +30,20 @@ static const char *TAG = "LORA_DRIVER";
 #define RX_QUEUE_SIZE 8
 #define MAX_PACKET_SIZE 255
 
+// cppcheck-suppress unusedStructMember
 typedef struct {
     uint8_t data[MAX_PACKET_SIZE];
     size_t length;
 } lora_tx_packet_t;
 
+// cppcheck-suppress unusedStructMember
 typedef struct {
     uint8_t data[MAX_PACKET_SIZE];
     size_t length;
 } lora_rx_packet_t;
 
-static QueueHandle_t tx_queue = NULL;
-static QueueHandle_t rx_queue = NULL;
+static QueueHandle_t tx_queue      = NULL;
+static QueueHandle_t rx_queue      = NULL;
 static TaskHandle_t tx_task_handle = NULL;
 static TaskHandle_t rx_task_handle = NULL;
 
@@ -82,12 +84,12 @@ static esp_err_t lora_sim_receive_packet(uint8_t *data, size_t max_length, size_
 static void lora_tx_task(void *arg)
 {
     lora_tx_packet_t packet;
-    
+
     while (1) {
         // Wait for packet in queue
         if (xQueueReceive(tx_queue, &packet, portMAX_DELAY) == pdTRUE) {
             ESP_LOGI(TAG, "📻 LoRa TX: %d bytes", packet.length);
-            
+
             esp_err_t ret = sx126x_send(packet.data, packet.length, SX126x_TXMODE_SYNC);
             if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "TX failed: %s", esp_err_to_name(ret));
@@ -103,23 +105,23 @@ static void lora_rx_task(void *arg)
 {
     uint8_t rx_buffer[MAX_PACKET_SIZE];
     uint8_t bytes_received;
-    
+
     while (1) {
         esp_err_t ret = sx126x_receive(rx_buffer, MAX_PACKET_SIZE, &bytes_received);
-        
+
         if (ret == ESP_OK && bytes_received > 0) {
             ESP_LOGI(TAG, "📻 LoRa RX: %d bytes", bytes_received);
-            
+
             // Enqueue received packet
             lora_rx_packet_t rx_packet;
             memcpy(rx_packet.data, rx_buffer, bytes_received);
             rx_packet.length = bytes_received;
-            
+
             if (xQueueSend(rx_queue, &rx_packet, 0) != pdTRUE) {
                 ESP_LOGW(TAG, "RX queue full, dropping packet");
             }
         }
-        
+
         // Poll every 10ms
         vTaskDelay(pdMS_TO_TICKS(10));
     }
@@ -135,7 +137,7 @@ esp_err_t lora_driver_init(void)
         ESP_LOGE(TAG, "Failed to create TX queue");
         return ESP_ERR_NO_MEM;
     }
-    
+
     // Create RX queue
     rx_queue = xQueueCreate(RX_QUEUE_SIZE, sizeof(lora_rx_packet_t));
     if (rx_queue == NULL) {
@@ -202,30 +204,20 @@ esp_err_t lora_driver_init(void)
     SetSyncWord(0x1424);
 
     // Create TX task
-    BaseType_t task_ret = xTaskCreate(
-        lora_tx_task,
-        "lora_tx",
-        4096,
-        NULL,
-        5,  // Priority
-        &tx_task_handle
-    );
-    
+    BaseType_t task_ret = xTaskCreate(lora_tx_task, "lora_tx", 4096, NULL,
+                                      5, // Priority
+                                      &tx_task_handle);
+
     if (task_ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create TX task");
         return ESP_FAIL;
     }
 
     // Create RX task
-    task_ret = xTaskCreate(
-        lora_rx_task,
-        "lora_rx",
-        4096,
-        NULL,
-        5,  // Priority
-        &rx_task_handle
-    );
-    
+    task_ret = xTaskCreate(lora_rx_task, "lora_rx", 4096, NULL,
+                           5, // Priority
+                           &rx_task_handle);
+
     if (task_ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create RX task");
         vTaskDelete(tx_task_handle);
@@ -242,7 +234,7 @@ esp_err_t lora_send_packet(const uint8_t *data, size_t length)
     if (!data || length == 0) {
         return ESP_ERR_INVALID_ARG;
     }
-    
+
     if (length > MAX_PACKET_SIZE) {
         ESP_LOGE(TAG, "Packet too large: %d > %d", length, MAX_PACKET_SIZE);
         return ESP_ERR_INVALID_SIZE;
@@ -255,13 +247,12 @@ esp_err_t lora_send_packet(const uint8_t *data, size_t length)
     lora_tx_packet_t packet;
     memcpy(packet.data, data, length);
     packet.length = length;
-    
+
     if (xQueueSend(tx_queue, &packet, pdMS_TO_TICKS(100)) != pdTRUE) {
         ESP_LOGE(TAG, "TX queue full");
         return ESP_ERR_TIMEOUT;
     }
-    
-    return ESP_OK;
+
     return ESP_OK;
 #endif
 }
@@ -277,17 +268,17 @@ esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received
 #else
     // Dequeue packet from RX queue (populated by RX task)
     *received_length = 0;
-    
+
     lora_rx_packet_t rx_packet;
     if (xQueueReceive(rx_queue, &rx_packet, pdMS_TO_TICKS(timeout_ms)) == pdTRUE) {
         size_t copy_len = (rx_packet.length < max_length) ? rx_packet.length : max_length;
         memcpy(data, rx_packet.data, copy_len);
         *received_length = copy_len;
-        
+
         if (rx_packet.length > max_length) {
             ESP_LOGW(TAG, "RX packet truncated: %d > %d", rx_packet.length, max_length);
         }
-        
+
         return ESP_OK;
     }
 
