@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import Layout from '../components/Layout'
-import { Save, Loader2, CheckCircle, AlertCircle, Radio } from 'lucide-react'
+import { Save, Loader2, CheckCircle, AlertCircle, Radio, Key, Copy, RefreshCw } from 'lucide-react'
 
 interface LoRaSettings {
   frequency: number
@@ -9,6 +9,7 @@ interface LoRaSettings {
   codingRate: number
   txPower: number
   band_id: string
+  aes_key: string
 }
 
 interface Band {
@@ -27,7 +28,8 @@ export default function LoRaPage() {
     bandwidth: 500000,
     codingRate: 5,
     txPower: 14,
-    band_id: 'HW_868'
+    band_id: 'HW_868',
+    aes_key: ''
   })
   const [bands, setBands] = useState<Band[]>([])
   const [loading, setLoading] = useState(false)
@@ -391,6 +393,54 @@ export default function LoRaPage() {
                   </p>
                 </div>
               </div>
+            </div>
+
+            {/* AES Key Section */}
+            <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-2 mb-4">
+                <Key className="text-gray-600 dark:text-gray-400" size={20} />
+                <h3 className="text-lg font-semibold">AES-256 Encryption Key</h3>
+              </div>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={settings.aes_key}
+                  onChange={(e) => setSettings({ ...settings, aes_key: e.target.value })}
+                  placeholder="64 hex characters (32 bytes)"
+                  className="input flex-1 font-mono text-sm"
+                  maxLength={64}
+                  pattern="[0-9a-fA-F]{64}"
+                />
+                <button
+                  onClick={() => {
+                    const key = Array.from({ length: 32 }, () => 
+                      Math.floor(Math.random() * 256).toString(16).padStart(2, '0')
+                    ).join('')
+                    setSettings({ ...settings, aes_key: key })
+                  }}
+                  className="btn-secondary flex items-center space-x-2"
+                  title="Generate random key"
+                >
+                  <RefreshCw size={18} />
+                  <span>Generate</span>
+                </button>
+                <button
+                  onClick={() => {
+                    if (settings.aes_key) {
+                      navigator.clipboard.writeText(settings.aes_key)
+                    }
+                  }}
+                  className="btn-secondary flex items-center space-x-2"
+                  title="Copy to clipboard"
+                  disabled={!settings.aes_key}
+                >
+                  <Copy size={18} />
+                  <span>Copy</span>
+                </button>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                This key is used for encrypting all LoRa communications. Keep it secure and share only with paired devices.
+              </p>
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">

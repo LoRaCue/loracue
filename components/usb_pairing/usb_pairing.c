@@ -7,6 +7,7 @@
 #include "cJSON.h"
 #include "general_config.h"
 #include "device_registry.h"
+#include "lora_driver.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_random.h"
@@ -196,9 +197,11 @@ static void pairing_task(void *arg)
     general_config_t config;
     general_config_get(&config);
 
-    uint8_t mac[6], aes_key[32];
+    lora_config_t lora_cfg;
+    lora_get_config(&lora_cfg);
+
+    uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    esp_fill_random(aes_key, sizeof(aes_key));
 
     cJSON *json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "name", config.device_name);
@@ -210,7 +213,7 @@ static void pairing_task(void *arg)
 
     char key_str[65];
     for (int i = 0; i < 32; i++) {
-        snprintf(key_str + i * 2, 3, "%02x", aes_key[i]);
+        snprintf(key_str + i * 2, 3, "%02x", lora_cfg.aes_key[i]);
     }
     cJSON_AddStringToObject(json, "aes_key", key_str);
 
