@@ -1,10 +1,9 @@
 /**
  * @file lora_protocol.h
- * @brief LoRaCue LoRa Protocol - Migrating to V2
+ * @brief LoRaCue LoRa Protocol
  *
  * PACKET: DeviceID(2) + Encrypted[SeqNum(2) + Cmd(1) + Payload(7)] + MAC(4)
- * V1: Uses simple commands (CMD_NEXT_SLIDE, etc.) with unused payload
- * V2: Uses CMD_HID_REPORT with structured payload for extensible HID support
+ * Uses CMD_HID_REPORT with structured payload for extensible HID support
  */
 
 #pragma once
@@ -24,7 +23,7 @@ extern "C" {
 #define LORA_PAYLOAD_MAX_SIZE 7
 #define LORA_MAC_SIZE 4
 
-// V2 Protocol macros
+// Protocol macros
 #define LORA_PROTOCOL_VERSION 0x01
 #define LORA_DEFAULT_SLOT     1
 
@@ -47,7 +46,7 @@ typedef enum {
 } lora_command_t;
 
 /**
- * @brief HID device types (V2)
+ * @brief HID device types
  */
 typedef enum {
     HID_TYPE_NONE     = 0x0, ///< No HID device
@@ -65,7 +64,7 @@ typedef struct __attribute__((packed)) {
 } lora_keyboard_report_t;
 
 /**
- * @brief V2 Payload structure (7 bytes)
+ * @brief Payload structure (7 bytes)
  */
 typedef struct __attribute__((packed)) {
     uint8_t version_slot;  ///< [7:4]=protocol_ver, [3:0]=slot_id (1-16)
