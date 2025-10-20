@@ -22,9 +22,7 @@ extern "C" {
 typedef enum {
     BSP_BUTTON_PREV = 0, ///< Previous/Back button
     BSP_BUTTON_NEXT = 1, ///< Next/Forward button
-#ifdef SIMULATOR_BUILD
-    BSP_BUTTON_BOTH = 2, ///< Both buttons (Wokwi simulation only)
-#endif
+    BSP_BUTTON_BOTH = 2, ///< Both buttons (Wokwi simulation only, ignored on hardware)
 } bsp_button_t;
 
 /**

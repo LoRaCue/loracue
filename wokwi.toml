@@ -11,3 +11,7 @@ to = "target:80"
 [[chip]]
 name = "uart"
 binary = "build/wokwi-chips/uart.chip.wasm"
+
+[[chip]]
+name = "sx1262"
+binary = "build/wokwi-chips/sx1262.chip.wasm"

@@ -1,5 +1,5 @@
 # Conditional BSP compilation based on build target
-if(CMAKE_C_FLAGS MATCHES "SIMULATOR_BUILD" OR SIMULATOR_BUILD)
+if(DEFINED ENV{WOKWI_BUILD})
     set(BSP_SRCS "bsp_wokwi.c" "bsp_i2c.c" "bsp_oled.c")
     message(STATUS "Building with Wokwi BSP")
 else()

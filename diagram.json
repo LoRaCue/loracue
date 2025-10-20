@@ -36,8 +36,8 @@
     {
       "type": "wokwi-pushbutton",
       "id": "btn_prev",
-      "top": 200,
-      "left": -127,
+      "top": 100,
+      "left": -147,
       "rotate": 0,
       "attrs": {
         "color": "green",
@@ -95,6 +95,14 @@
       "attrs": {
         "baudrate": "115200"
       }
+    },
+    {
+      "type": "chip-sx1262",
+      "id": "lora",
+      "top": 200,
+      "left": -250,
+      "rotate": 90,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -112,8 +120,8 @@
     [ "esp:0", "btn_next:2.l", "yellow", [ ] ],
     [ "esp:GND.2", "btn_next:1.l", "black", [  ] ],
     
-    [ "esp:46", "btn_prev:1.r", "yellow", [  ] ],
-    [ "esp:GND.1", "btn_prev:2.r", "black", [  ] ],
+    [ "btn_prev:1.r", "esp:46", "yellow", [ "h25", "v-10" ] ],
+    [ "btn_prev:2.r", "esp:GND.1", "black", [ "h15", "v-10" ] ],
     
     [ "esp:GND.3", "btn_both:2.l", "black", [  ] ],
     [ "esp:21", "btn_both:1.r", "yellow", [ ] ],
@@ -124,7 +132,14 @@
     
     [ "esp:35", "r_power:1", "yellow", [  ] ],
     [ "r_power:2", "led_power:A", "yellow", [ "v22" ] ],
-    [ "esp:GND.4", "led_power:C", "black", [  ] ]
+    [ "esp:GND.4", "led_power:C", "black", [  ] ],
+    
+    [ "esp:8", "lora:CS", "purple", [  ] ],
+    [ "esp:9", "lora:SCK", "blue", [  ] ],
+    [ "esp:10", "lora:MOSI", "green", [  ] ],
+    [ "esp:11", "lora:MISO", "brown", [  ] ],
+    [ "esp:13", "lora:BUSY", "orange", [  ] ],
+    [ "esp:12", "lora:RESET", "red", [  ] ]
   ],
   "dependencies": {}
 }

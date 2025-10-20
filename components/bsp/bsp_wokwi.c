@@ -183,7 +183,11 @@ esp_err_t bsp_init_spi(void)
         .max_transfer_sz = 256,
     };
 
-    esp_err_t ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    // FIXME: SPI_DMA_DISABLED is a workaround for Wokwi
+    // When SPI_DMA_CH_AUTO is used, UART0 RX stops working (driver queue corruption)
+    // This appears to be a Wokwi simulation issue or ESP-IDF DMA channel conflict
+    // Real hardware (Heltec V3) uses SPI_DMA_CH_AUTO without issues
+    esp_err_t ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_DISABLED);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
         return ret;

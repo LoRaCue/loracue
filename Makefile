@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build build-console-on-uart0 clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint sim sim-run sim-debug web-dev web-build web-flash help check-idf
+.PHONY: all build build-console-on-uart0 clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -159,7 +159,11 @@ ifndef WOKWI_CLI
 	@false
 endif
 	@echo "🎮 Building for Wokwi simulator..."
-	$(IDF_SETUP) SIMULATOR_BUILD=1 idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
+	$(IDF_SETUP) WOKWI_BUILD=1 idf.py build
+
+# Build all custom Wokwi chips
+chips: build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
+	@echo "✅ All custom chips compiled"
 
 # Build custom UART bridge chip
 build/wokwi-chips/uart.chip.wasm: wokwi-chips/uart.chip.c wokwi-chips/wokwi-api.h wokwi-chips/uart.chip.json

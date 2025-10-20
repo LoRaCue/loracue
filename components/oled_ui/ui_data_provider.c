@@ -155,3 +155,17 @@ esp_err_t ui_data_provider_force_update(bool usb_connected, bool lora_connected,
 
     return ESP_OK;
 }
+
+esp_err_t ui_data_provider_reload_config(void)
+{
+    general_config_t config;
+    if (general_config_get(&config) != ESP_OK) {
+        return ESP_FAIL;
+    }
+    
+    strncpy(cached_status.device_name, config.device_name, sizeof(cached_status.device_name) - 1);
+    cached_status.device_name[sizeof(cached_status.device_name) - 1] = '\0';
+    
+    ESP_LOGI(TAG, "Config reloaded: device_name=%s", cached_status.device_name);
+    return ESP_OK;
+}

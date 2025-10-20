@@ -43,6 +43,7 @@ static void handle_ping(void)
     char response[128];
     snprintf(response, sizeof(response), "PONG %s v%s %s", 
              config.device_name, LORACUE_VERSION_FULL, usb_config->usb_product);
+    ESP_LOGI("COMMANDS", "Sending PING response: %s", response);
     g_send_response(response);
 }
 
@@ -173,6 +174,10 @@ static void handle_set_general(cJSON *config_json)
         g_send_response("ERROR Failed to save device config");
         return;
     }
+
+    // Reload UI data provider to update device name display
+    extern esp_err_t ui_data_provider_reload_config(void);
+    ui_data_provider_reload_config();
 
     g_send_response("OK Device config updated");
 }
@@ -487,7 +492,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         return;
     }
 
-    if (strcmp(command_line, "GET_DEVICE_INFO") == 0) {
+    if (strcmp(command_line, "GET_PAIRED_DEVICES") == 0) {
         handle_get_device_info();
         return;
     }
