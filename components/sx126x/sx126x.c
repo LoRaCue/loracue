@@ -25,6 +25,7 @@
 // Handle structure
 typedef struct {
     spi_device_handle_t spi;
+    SemaphoreHandle_t spi_mutex;
     gpio_num_t nss_pin;
     gpio_num_t reset_pin;
     gpio_num_t busy_pin;
@@ -48,6 +49,15 @@ esp_err_t sx126x_init(void)
     g_sx126x = calloc(1, sizeof(sx126x_handle_internal_t));
     if (!g_sx126x) {
         ESP_LOGE(TAG, "Failed to allocate handle");
+        return ESP_ERR_NO_MEM;
+    }
+
+    // Create SPI mutex for thread-safe access
+    g_sx126x->spi_mutex = xSemaphoreCreateMutex();
+    if (!g_sx126x->spi_mutex) {
+        ESP_LOGE(TAG, "Failed to create SPI mutex");
+        free(g_sx126x);
+        g_sx126x = NULL;
         return ESP_ERR_NO_MEM;
     }
 
@@ -104,9 +114,7 @@ esp_err_t sx126x_init(void)
     }
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "spi_bus_initialize failed: %s", esp_err_to_name(ret));
-        free(g_sx126x);
-        g_sx126x = NULL;
-        return ret;
+        goto error;
     }
 
     spi_device_interface_config_t devcfg = {
@@ -121,6 +129,7 @@ esp_err_t sx126x_init(void)
     ret = spi_bus_add_device(HOST_ID, &devcfg, &g_sx126x->spi);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "spi_bus_add_device failed: %s", esp_err_to_name(ret));
+        vSemaphoreDelete(g_sx126x->spi_mutex);
         free(g_sx126x);
         g_sx126x = NULL;
         return ret;
@@ -128,10 +137,50 @@ esp_err_t sx126x_init(void)
 
     ESP_LOGI(TAG, "SX126x initialized successfully");
     return ESP_OK;
+
+error:
+    if (g_sx126x) {
+        if (g_sx126x->spi_mutex) {
+            vSemaphoreDelete(g_sx126x->spi_mutex);
+        }
+        free(g_sx126x);
+        g_sx126x = NULL;
+    }
+    return ret;
+}
+
+esp_err_t sx126x_deinit(void)
+{
+    if (!g_sx126x) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (g_sx126x->spi) {
+        spi_bus_remove_device(g_sx126x->spi);
+    }
+
+    if (g_sx126x->spi_mutex) {
+        vSemaphoreDelete(g_sx126x->spi_mutex);
+    }
+
+    free(g_sx126x);
+    g_sx126x = NULL;
+    
+    ESP_LOGI(TAG, "SX126x deinitialized");
+    return ESP_OK;
 }
 
 void spi_write_byte(uint8_t *Dataout, size_t DataLength)
 {
+    if (!g_sx126x || !g_sx126x->spi_mutex) {
+        return;
+    }
+
+    if (xSemaphoreTake(g_sx126x->spi_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        ESP_LOGE(TAG, "Failed to acquire SPI mutex in spi_write_byte");
+        return;
+    }
+
     spi_transaction_t SPITransaction;
 
     if (DataLength > 0) {
@@ -142,11 +191,20 @@ void spi_write_byte(uint8_t *Dataout, size_t DataLength)
         spi_device_transmit(g_sx126x->spi, &SPITransaction);
     }
 
-    return;
+    xSemaphoreGive(g_sx126x->spi_mutex);
 }
 
 void spi_read_byte(uint8_t *Datain, uint8_t *Dataout, size_t DataLength)
 {
+    if (!g_sx126x || !g_sx126x->spi_mutex) {
+        return;
+    }
+
+    if (xSemaphoreTake(g_sx126x->spi_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        ESP_LOGE(TAG, "Failed to acquire SPI mutex in spi_read_byte");
+        return;
+    }
+
     spi_transaction_t SPITransaction;
 
     if (DataLength > 0) {
@@ -157,7 +215,7 @@ void spi_read_byte(uint8_t *Datain, uint8_t *Dataout, size_t DataLength)
         spi_device_transmit(g_sx126x->spi, &SPITransaction);
     }
 
-    return;
+    xSemaphoreGive(g_sx126x->spi_mutex);
 }
 
 uint8_t spi_transfer(uint8_t address)

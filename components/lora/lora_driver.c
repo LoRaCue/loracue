@@ -25,8 +25,25 @@
 
 static const char *TAG = "LORA_DRIVER";
 
-// SPI mutex for thread-safe LoRa access
-static SemaphoreHandle_t lora_spi_mutex = NULL;
+// TX queue for outgoing packets
+#define TX_QUEUE_SIZE 8
+#define RX_QUEUE_SIZE 8
+#define MAX_PACKET_SIZE 255
+
+typedef struct {
+    uint8_t data[MAX_PACKET_SIZE];
+    size_t length;
+} lora_tx_packet_t;
+
+typedef struct {
+    uint8_t data[MAX_PACKET_SIZE];
+    size_t length;
+} lora_rx_packet_t;
+
+static QueueHandle_t tx_queue = NULL;
+static QueueHandle_t rx_queue = NULL;
+static TaskHandle_t tx_task_handle = NULL;
+static TaskHandle_t rx_task_handle = NULL;
 
 // LoRa configuration
 static lora_config_t current_config = {
@@ -60,14 +77,73 @@ static esp_err_t lora_sim_receive_packet(uint8_t *data, size_t max_length, size_
 }
 #endif
 
+#ifndef SIMULATOR_BUILD
+// TX task - processes queue and transmits packets
+static void lora_tx_task(void *arg)
+{
+    lora_tx_packet_t packet;
+    
+    while (1) {
+        // Wait for packet in queue
+        if (xQueueReceive(tx_queue, &packet, portMAX_DELAY) == pdTRUE) {
+            ESP_LOGI(TAG, "📻 LoRa TX: %d bytes", packet.length);
+            
+            esp_err_t ret = sx126x_send(packet.data, packet.length, SX126x_TXMODE_SYNC);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "TX failed: %s", esp_err_to_name(ret));
+            } else {
+                ESP_LOGI(TAG, "TX done");
+            }
+        }
+    }
+}
+
+// RX task - continuously polls for incoming packets and enqueues them
+static void lora_rx_task(void *arg)
+{
+    uint8_t rx_buffer[MAX_PACKET_SIZE];
+    uint8_t bytes_received;
+    
+    while (1) {
+        esp_err_t ret = sx126x_receive(rx_buffer, MAX_PACKET_SIZE, &bytes_received);
+        
+        if (ret == ESP_OK && bytes_received > 0) {
+            ESP_LOGI(TAG, "📻 LoRa RX: %d bytes", bytes_received);
+            
+            // Enqueue received packet
+            lora_rx_packet_t rx_packet;
+            memcpy(rx_packet.data, rx_buffer, bytes_received);
+            rx_packet.length = bytes_received;
+            
+            if (xQueueSend(rx_queue, &rx_packet, 0) != pdTRUE) {
+                ESP_LOGW(TAG, "RX queue full, dropping packet");
+            }
+        }
+        
+        // Poll every 10ms
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+#endif
+
 esp_err_t lora_driver_init(void)
 {
-    // Create SPI mutex for thread-safe access
-    lora_spi_mutex = xSemaphoreCreateMutex();
-    if (lora_spi_mutex == NULL) {
-        ESP_LOGE(TAG, "Failed to create LoRa SPI mutex");
+#ifndef SIMULATOR_BUILD
+    // Create TX queue
+    tx_queue = xQueueCreate(TX_QUEUE_SIZE, sizeof(lora_tx_packet_t));
+    if (tx_queue == NULL) {
+        ESP_LOGE(TAG, "Failed to create TX queue");
         return ESP_ERR_NO_MEM;
     }
+    
+    // Create RX queue
+    rx_queue = xQueueCreate(RX_QUEUE_SIZE, sizeof(lora_rx_packet_t));
+    if (rx_queue == NULL) {
+        ESP_LOGE(TAG, "Failed to create RX queue");
+        vQueueDelete(tx_queue);
+        return ESP_ERR_NO_MEM;
+    }
+#endif
 
     // Initialize band profiles from JSON
     esp_err_t ret = lora_bands_init();
@@ -125,7 +201,38 @@ esp_err_t lora_driver_init(void)
     // Set private network sync word (0x1424)
     SetSyncWord(0x1424);
 
-    ESP_LOGI(TAG, "SX1262 initialized successfully");
+    // Create TX task
+    BaseType_t task_ret = xTaskCreate(
+        lora_tx_task,
+        "lora_tx",
+        4096,
+        NULL,
+        5,  // Priority
+        &tx_task_handle
+    );
+    
+    if (task_ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create TX task");
+        return ESP_FAIL;
+    }
+
+    // Create RX task
+    task_ret = xTaskCreate(
+        lora_rx_task,
+        "lora_rx",
+        4096,
+        NULL,
+        5,  // Priority
+        &rx_task_handle
+    );
+    
+    if (task_ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create RX task");
+        vTaskDelete(tx_task_handle);
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "SX1262 initialized successfully with TX/RX tasks");
     return ESP_OK;
 #endif
 }
@@ -135,30 +242,26 @@ esp_err_t lora_send_packet(const uint8_t *data, size_t length)
     if (!data || length == 0) {
         return ESP_ERR_INVALID_ARG;
     }
+    
+    if (length > MAX_PACKET_SIZE) {
+        ESP_LOGE(TAG, "Packet too large: %d > %d", length, MAX_PACKET_SIZE);
+        return ESP_ERR_INVALID_SIZE;
+    }
 
 #ifdef SIMULATOR_BUILD
     return lora_sim_send_packet(data, length);
 #else
-    // Acquire SPI mutex
-    if (xSemaphoreTake(lora_spi_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
-        ESP_LOGE(TAG, "Failed to acquire SPI mutex for TX");
+    // Enqueue packet for TX task
+    lora_tx_packet_t packet;
+    memcpy(packet.data, data, length);
+    packet.length = length;
+    
+    if (xQueueSend(tx_queue, &packet, pdMS_TO_TICKS(100)) != pdTRUE) {
+        ESP_LOGE(TAG, "TX queue full");
         return ESP_ERR_TIMEOUT;
     }
-
-    // Hardware LoRa transmission using SX126x
-    ESP_LOGI(TAG, "📻 LoRa TX: %d bytes", length);
-
-    esp_err_t ret = sx126x_send((uint8_t *)data, length, SX126x_TXMODE_SYNC);
     
-    // Release SPI mutex
-    xSemaphoreGive(lora_spi_mutex);
-    
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "LoRa transmission failed: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    ESP_LOGI(TAG, "LoRa packet sent successfully");
+    return ESP_OK;
     return ESP_OK;
 #endif
 }
@@ -172,24 +275,19 @@ esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received
 #ifdef SIMULATOR_BUILD
     return lora_sim_receive_packet(data, max_length, received_length, timeout_ms);
 #else
-    // Acquire SPI mutex
-    if (xSemaphoreTake(lora_spi_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
-        ESP_LOGE(TAG, "Failed to acquire SPI mutex for RX");
-        return ESP_ERR_TIMEOUT;
-    }
-
-    // Hardware LoRa reception using SX126x
+    // Dequeue packet from RX queue (populated by RX task)
     *received_length = 0;
-
-    uint8_t bytes_received = 0;
-    esp_err_t ret = sx126x_receive(data, max_length, &bytes_received);
     
-    // Release SPI mutex
-    xSemaphoreGive(lora_spi_mutex);
-    
-    if (ret == ESP_OK && bytes_received > 0) {
-        *received_length = bytes_received;
-        ESP_LOGI(TAG, "📻 LoRa RX: %d bytes", bytes_received);
+    lora_rx_packet_t rx_packet;
+    if (xQueueReceive(rx_queue, &rx_packet, pdMS_TO_TICKS(timeout_ms)) == pdTRUE) {
+        size_t copy_len = (rx_packet.length < max_length) ? rx_packet.length : max_length;
+        memcpy(data, rx_packet.data, copy_len);
+        *received_length = copy_len;
+        
+        if (rx_packet.length > max_length) {
+            ESP_LOGW(TAG, "RX packet truncated: %d > %d", rx_packet.length, max_length);
+        }
+        
         return ESP_OK;
     }
 
