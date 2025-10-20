@@ -78,6 +78,7 @@ static void button_manager_task(void *pvParameters)
             led_manager_button_feedback(true);
 
             u8g2_SetPowerSave(&u8g2, 0);
+            power_mgmt_update_activity();
 
             ESP_LOGD(TAG, "Button pressed");
         }

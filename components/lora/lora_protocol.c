@@ -13,9 +13,11 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "general_config.h"
 #include "lora_driver.h"
 #include "mbedtls/aes.h"
 #include "mbedtls/md.h"
+#include "power_mgmt.h"
 #include <string.h>
 
 static const char *TAG = "LORA_PROTOCOL";
@@ -486,6 +488,12 @@ static void protocol_rx_task(void *arg)
         esp_err_t ret = lora_protocol_receive_packet(&packet_data, 1000);
         
         if (ret == ESP_OK) {
+            // Update activity for display sleep (PC mode only)
+            general_config_t config;
+            if (general_config_get(&config) == ESP_OK && config.device_mode == DEVICE_MODE_PC) {
+                power_mgmt_update_activity();
+            }
+            
             // Invoke RX callback
             if (rx_callback) {
                 rx_callback(packet_data.device_id, packet_data.command, packet_data.payload,
