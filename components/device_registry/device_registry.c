@@ -114,8 +114,9 @@ esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const
 
     // Create device entry
     paired_device_t device = {
-        .device_id     = device_id,
-        .last_sequence = 0,
+        .device_id        = device_id,
+        .highest_sequence = 0,
+        .recent_bitmap    = 0,
     };
 
     strncpy(device.device_name, device_name, DEVICE_NAME_MAX_LEN - 1);
@@ -181,26 +182,17 @@ esp_err_t device_registry_get(uint16_t device_id, paired_device_t *device)
     return ESP_ERR_NOT_FOUND;
 }
 
-esp_err_t device_registry_update_last_seen(uint16_t device_id, uint16_t sequence_num)
+esp_err_t device_registry_update_sequence(uint16_t device_id, uint16_t highest_sequence, uint64_t recent_bitmap)
 {
-    paired_device_t device;
-    esp_err_t ret = device_registry_get(device_id, &device);
-    if (ret != ESP_OK) {
-        return ret;
+    // Update cache only (RAM-only, not persisted to NVS)
+    for (size_t i = 0; i < cached_device_count; i++) {
+        if (device_cache[i].device_id == device_id) {
+            device_cache[i].highest_sequence = highest_sequence;
+            device_cache[i].recent_bitmap = recent_bitmap;
+            return ESP_OK;
+        }
     }
-
-    device.last_sequence = sequence_num;
-
-    char key_name[16];
-    generate_device_key(device_id, key_name, sizeof(key_name));
-
-    ret = nvs_set_blob(registry_nvs_handle, key_name, &device, sizeof(device));
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to update device: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    return nvs_commit(registry_nvs_handle);
+    return ESP_ERR_NOT_FOUND;
 }
 
 esp_err_t device_registry_remove(uint16_t device_id)

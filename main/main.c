@@ -287,8 +287,7 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
         return;
     }
 
-    // Update device registry
-    device_registry_update_last_seen(device_id, 0);
+    // Sequence tracking is now handled in lora_protocol_receive_packet()
 
     // Track active presenter
     update_active_presenter(device_id, rssi);

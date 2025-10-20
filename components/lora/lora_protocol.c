@@ -285,15 +285,50 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
         memcpy(packet_data->payload, &plaintext[4], packet_data->payload_length);
     }
 
-    // Replay protection check using device registry
-    if (packet_data->sequence_num <= sender_device.last_sequence) {
-        ESP_LOGW(TAG, "Replay attack detected from 0x%04X: seq %d <= %d", packet_data->device_id,
-                 packet_data->sequence_num, sender_device.last_sequence);
+    // Sliding window deduplication with bitmap (enterprise-grade)
+    int32_t seq_diff = (int32_t)packet_data->sequence_num - (int32_t)sender_device.highest_sequence;
+
+    if (seq_diff > 0) {
+        // New packet, higher than anything seen
+        if (seq_diff < 64) {
+            // Shift bitmap and mark this packet
+            sender_device.recent_bitmap <<= seq_diff;
+            sender_device.recent_bitmap |= 1;
+        } else {
+            // Large gap (reboot or wrap-around), reset bitmap
+            ESP_LOGI(TAG, "Large sequence gap detected for 0x%04X, resetting window", packet_data->device_id);
+            sender_device.recent_bitmap = 1;
+        }
+        sender_device.highest_sequence = packet_data->sequence_num;
+        
+    } else if (seq_diff == 0) {
+        // Exact duplicate of highest sequence
+        ESP_LOGW(TAG, "Duplicate packet from 0x%04X: seq %d", packet_data->device_id, packet_data->sequence_num);
         return ESP_ERR_INVALID_STATE;
+        
+    } else if (seq_diff > -64) {
+        // Within recent window (out-of-order packet)
+        uint8_t bit_pos = -seq_diff;
+        if (sender_device.recent_bitmap & (1ULL << bit_pos)) {
+            ESP_LOGW(TAG, "Duplicate packet from 0x%04X: seq %d (already seen)", 
+                     packet_data->device_id, packet_data->sequence_num);
+            return ESP_ERR_INVALID_STATE;
+        }
+        // Mark as seen
+        sender_device.recent_bitmap |= (1ULL << bit_pos);
+        ESP_LOGD(TAG, "Out-of-order packet accepted from 0x%04X: seq %d", 
+                 packet_data->device_id, packet_data->sequence_num);
+        
+    } else {
+        // Too old (>64 packets behind), likely reboot or major packet loss
+        ESP_LOGI(TAG, "Very old packet from 0x%04X (seq %d vs %d), accepting as reboot", 
+                 packet_data->device_id, packet_data->sequence_num, sender_device.highest_sequence);
+        sender_device.highest_sequence = packet_data->sequence_num;
+        sender_device.recent_bitmap = 1;
     }
 
-    // Update device registry with new sequence number
-    device_registry_update_last_seen(packet_data->device_id, packet_data->sequence_num);
+    // Update device registry with new sequence tracking (RAM-only, not persisted)
+    device_registry_update_sequence(packet_data->device_id, sender_device.highest_sequence, sender_device.recent_bitmap);
 
     // Track received packets
     connection_stats.packets_received++;
