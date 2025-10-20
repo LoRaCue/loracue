@@ -20,7 +20,7 @@
 #include <string.h>
 
 #ifndef SIMULATOR_BUILD
-#include "ra01s.h" // Include RA01S library for hardware
+#include "sx126x.h" // Include SX126x library for hardware
 #endif
 
 static const char *TAG = "LORA_DRIVER";
@@ -89,7 +89,7 @@ esp_err_t lora_driver_init(void)
 #else
     ESP_LOGI(TAG, "📻 Hardware mode: Initializing SX1262 LoRa");
 
-    // Initialize RA01S library
+    // Initialize SX126x library
     LoRaInit();
 
     int16_t lora_ret = LoRaBegin(current_config.frequency, // Frequency in Hz
@@ -136,7 +136,7 @@ esp_err_t lora_send_packet(const uint8_t *data, size_t length)
         return ESP_ERR_TIMEOUT;
     }
 
-    // Hardware LoRa transmission using RA01S
+    // Hardware LoRa transmission using SX126x
     ESP_LOGI(TAG, "📻 LoRa TX: %d bytes", length);
 
     bool ret = LoRaSend((uint8_t *)data, length, SX126x_TXMODE_SYNC);
@@ -169,7 +169,7 @@ esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received
         return ESP_ERR_TIMEOUT;
     }
 
-    // Hardware LoRa reception using RA01S
+    // Hardware LoRa reception using SX126x
     *received_length = 0;
 
     uint8_t bytes_received = LoRaReceive(data, max_length);
@@ -317,7 +317,7 @@ esp_err_t lora_set_receive_mode(void)
     // UDP is always in receive mode
     return ESP_OK;
 #else
-    // Hardware receive mode using RA01S
+    // Hardware receive mode using SX126x
     ESP_LOGI(TAG, "📻 LoRa RX mode");
 
     // Set LoRa to continuous receive mode

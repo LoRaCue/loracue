@@ -11,9 +11,9 @@
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
 
-#include "ra01s.h"
+#include "sx126x.h"
 
-#define TAG "RA01S"
+#define TAG "SX126X"
 
 // SPI Stuff
 #if CONFIG_SPI2_HOST
@@ -193,6 +193,7 @@ int16_t LoRaBegin(uint32_t frequencyInHz, int8_t txPowerInDbm, float tcxoVoltage
               SX126X_CALIBRATE_RC64K_ON);
 
     ESP_LOGI(TAG, "useRegulatorLDO=%d", useRegulatorLDO);
+
     if (useRegulatorLDO) {
         SetRegulatorMode(SX126X_REGULATOR_LDO); // set regulator mode: LDO
     } else {
