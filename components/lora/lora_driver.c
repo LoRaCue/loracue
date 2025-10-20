@@ -90,28 +90,37 @@ esp_err_t lora_driver_init(void)
     ESP_LOGI(TAG, "📻 Hardware mode: Initializing SX1262 LoRa");
 
     // Initialize SX126x library
-    LoRaInit();
+    ret = sx126x_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "sx126x_init failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
-    int16_t lora_ret = LoRaBegin(current_config.frequency, // Frequency in Hz
-                                  current_config.tx_power,  // TX power in dBm
-                                  3.3,                      // TCXO voltage
-                                  false                     // Use DC-DC regulator (not LDO)
+    ret = sx126x_begin(current_config.frequency, // Frequency in Hz
+                       current_config.tx_power,  // TX power in dBm
+                       3.3,                      // TCXO voltage
+                       false                     // Use DC-DC regulator (not LDO)
     );
 
-    if (lora_ret != ESP_OK) {
-        ESP_LOGE(TAG, "LoRa initialization failed: %d", lora_ret);
-        return ESP_FAIL;
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "sx126x_begin failed: %s", esp_err_to_name(ret));
+        return ret;
     }
 
     // Configure LoRa parameters
-    LoRaConfig(current_config.spreading_factor, // Spreading factor
-               current_config.bandwidth / 125,  // Bandwidth index (125kHz = 0, 250kHz = 1, 500kHz = 2)
-               current_config.coding_rate,      // Coding rate
-               8,                               // Preamble length
-               0,                               // Variable payload length
-               true,                            // CRC enabled
-               false                            // Normal IQ
+    ret = sx126x_config(current_config.spreading_factor, // Spreading factor
+                        current_config.bandwidth / 125,  // Bandwidth index (125kHz = 0, 250kHz = 1, 500kHz = 2)
+                        current_config.coding_rate,      // Coding rate
+                        8,                               // Preamble length
+                        0,                               // Variable payload length
+                        true,                            // CRC enabled
+                        false                            // Normal IQ
     );
+
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "sx126x_config failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
     // Set private network sync word (0x1424)
     SetSyncWord(0x1424);
@@ -139,14 +148,14 @@ esp_err_t lora_send_packet(const uint8_t *data, size_t length)
     // Hardware LoRa transmission using SX126x
     ESP_LOGI(TAG, "📻 LoRa TX: %d bytes", length);
 
-    bool ret = LoRaSend((uint8_t *)data, length, SX126x_TXMODE_SYNC);
+    esp_err_t ret = sx126x_send((uint8_t *)data, length, SX126x_TXMODE_SYNC);
     
     // Release SPI mutex
     xSemaphoreGive(lora_spi_mutex);
     
-    if (!ret) {
-        ESP_LOGE(TAG, "LoRa transmission failed");
-        return ESP_FAIL;
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "LoRa transmission failed: %s", esp_err_to_name(ret));
+        return ret;
     }
 
     ESP_LOGI(TAG, "LoRa packet sent successfully");
@@ -172,12 +181,13 @@ esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received
     // Hardware LoRa reception using SX126x
     *received_length = 0;
 
-    uint8_t bytes_received = LoRaReceive(data, max_length);
+    uint8_t bytes_received = 0;
+    esp_err_t ret = sx126x_receive(data, max_length, &bytes_received);
     
     // Release SPI mutex
     xSemaphoreGive(lora_spi_mutex);
     
-    if (bytes_received > 0) {
+    if (ret == ESP_OK && bytes_received > 0) {
         *received_length = bytes_received;
         ESP_LOGI(TAG, "📻 LoRa RX: %d bytes", bytes_received);
         return ESP_OK;
@@ -278,26 +288,31 @@ esp_err_t lora_set_config(const lora_config_t *config)
     ESP_LOGI(TAG, "Reconfiguring LoRa hardware with new settings");
 
     // Re-initialize with new frequency and power
-    int16_t init_ret = LoRaBegin(config->frequency, // Frequency in Hz
-                                 config->tx_power,  // TX power in dBm
-                                 3.3,               // TCXO voltage
-                                 false              // Use DC-DC regulator
+    esp_err_t init_ret = sx126x_begin(config->frequency, // Frequency in Hz
+                                      config->tx_power,  // TX power in dBm
+                                      3.3,               // TCXO voltage
+                                      false              // Use DC-DC regulator
     );
 
     if (init_ret != ESP_OK) {
-        ESP_LOGE(TAG, "LoRa reconfiguration failed: %d", init_ret);
-        return ESP_FAIL;
+        ESP_LOGE(TAG, "sx126x_begin failed: %s", esp_err_to_name(init_ret));
+        return init_ret;
     }
 
     // Update LoRa parameters
-    LoRaConfig(config->spreading_factor, // Spreading factor
-               config->bandwidth / 125,  // Bandwidth index (125kHz = 0, 250kHz = 1, 500kHz = 2)
-               config->coding_rate,      // Coding rate
-               8,                        // Preamble length
-               0,                        // Variable payload length
-               true,                     // CRC enabled
-               false                     // Normal IQ
+    init_ret = sx126x_config(config->spreading_factor, // Spreading factor
+                             config->bandwidth / 125,  // Bandwidth index (125kHz = 0, 250kHz = 1, 500kHz = 2)
+                             config->coding_rate,      // Coding rate
+                             8,                        // Preamble length
+                             0,                        // Variable payload length
+                             true,                     // CRC enabled
+                             false                     // Normal IQ
     );
+
+    if (init_ret != ESP_OK) {
+        ESP_LOGE(TAG, "sx126x_config failed: %s", esp_err_to_name(init_ret));
+        return init_ret;
+    }
 
     // Set private network sync word (0x1424)
     SetSyncWord(0x1424);

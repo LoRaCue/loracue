@@ -22,20 +22,35 @@
 #define HOST_ID SPI3_HOST
 #endif
 
-static spi_device_handle_t SpiHandle;
+// Handle structure
+typedef struct {
+    spi_device_handle_t spi;
+    gpio_num_t nss_pin;
+    gpio_num_t reset_pin;
+    gpio_num_t busy_pin;
+    gpio_num_t txen_pin;
+    gpio_num_t rxen_pin;
+    uint8_t packet_params[6];
+    bool tx_active;
+    int tx_lost;
+} sx126x_handle_internal_t;
 
-// Global Stuff
-static uint8_t PacketParams[6];
-static bool txActive;
-static int txLost = 0;
-static int SX126x_SPI_SELECT;
-static int SX126x_RESET;
-static int SX126x_BUSY;
-static int SX126x_TXEN;
-static int SX126x_RXEN;
+// Global handle (single instance)
+static sx126x_handle_internal_t *g_sx126x = NULL;
 
-void LoRaInit(void)
+esp_err_t sx126x_init(void)
 {
+    if (g_sx126x != NULL) {
+        ESP_LOGW(TAG, "SX126x already initialized");
+        return ESP_OK;
+    }
+
+    g_sx126x = calloc(1, sizeof(sx126x_handle_internal_t));
+    if (!g_sx126x) {
+        ESP_LOGE(TAG, "Failed to allocate handle");
+        return ESP_ERR_NO_MEM;
+    }
+
     ESP_LOGI(TAG, "CONFIG_MISO_GPIO=%d", CONFIG_MISO_GPIO);
     ESP_LOGI(TAG, "CONFIG_MOSI_GPIO=%d", CONFIG_MOSI_GPIO);
     ESP_LOGI(TAG, "CONFIG_SCLK_GPIO=%d", CONFIG_SCLK_GPIO);
@@ -45,61 +60,74 @@ void LoRaInit(void)
     ESP_LOGI(TAG, "CONFIG_TXEN_GPIO=%d", CONFIG_TXEN_GPIO);
     ESP_LOGI(TAG, "CONFIG_RXEN_GPIO=%d", CONFIG_RXEN_GPIO);
 
-    SX126x_SPI_SELECT = CONFIG_NSS_GPIO;
-    SX126x_RESET      = CONFIG_RST_GPIO;
-    SX126x_BUSY       = CONFIG_BUSY_GPIO;
-    SX126x_TXEN       = CONFIG_TXEN_GPIO;
-    SX126x_RXEN       = CONFIG_RXEN_GPIO;
+    g_sx126x->nss_pin = CONFIG_NSS_GPIO;
+    g_sx126x->reset_pin = CONFIG_RST_GPIO;
+    g_sx126x->busy_pin = CONFIG_BUSY_GPIO;
+    g_sx126x->txen_pin = CONFIG_TXEN_GPIO;
+    g_sx126x->rxen_pin = CONFIG_RXEN_GPIO;
+    g_sx126x->tx_active = false;
+    g_sx126x->tx_lost = 0;
 
-    txActive = false;
+    gpio_reset_pin(g_sx126x->nss_pin);
+    gpio_set_direction(g_sx126x->nss_pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(g_sx126x->nss_pin, 1);
 
-    gpio_reset_pin(SX126x_SPI_SELECT);
-    gpio_set_direction(SX126x_SPI_SELECT, GPIO_MODE_OUTPUT);
-    gpio_set_level(SX126x_SPI_SELECT, 1);
+    gpio_reset_pin(g_sx126x->reset_pin);
+    gpio_set_direction(g_sx126x->reset_pin, GPIO_MODE_OUTPUT);
 
-    gpio_reset_pin(SX126x_RESET);
-    gpio_set_direction(SX126x_RESET, GPIO_MODE_OUTPUT);
+    gpio_reset_pin(g_sx126x->busy_pin);
+    gpio_set_direction(g_sx126x->busy_pin, GPIO_MODE_INPUT);
 
-    gpio_reset_pin(SX126x_BUSY);
-    gpio_set_direction(SX126x_BUSY, GPIO_MODE_INPUT);
-
-    if (SX126x_TXEN != -1) {
-        gpio_reset_pin(SX126x_TXEN);
-        gpio_set_direction(SX126x_TXEN, GPIO_MODE_OUTPUT);
+    if (g_sx126x->txen_pin != -1) {
+        gpio_reset_pin(g_sx126x->txen_pin);
+        gpio_set_direction(g_sx126x->txen_pin, GPIO_MODE_OUTPUT);
     }
 
-    if (SX126x_RXEN != -1) {
-        gpio_reset_pin(SX126x_RXEN);
-        gpio_set_direction(SX126x_RXEN, GPIO_MODE_OUTPUT);
+    if (g_sx126x->rxen_pin != -1) {
+        gpio_reset_pin(g_sx126x->rxen_pin);
+        gpio_set_direction(g_sx126x->rxen_pin, GPIO_MODE_OUTPUT);
     }
 
-    spi_bus_config_t spi_bus_config = {.sclk_io_num   = CONFIG_SCLK_GPIO,
-                                       .mosi_io_num   = CONFIG_MOSI_GPIO,
-                                       .miso_io_num   = CONFIG_MISO_GPIO,
-                                       .quadwp_io_num = -1,
-                                       .quadhd_io_num = -1};
+    spi_bus_config_t spi_bus_config = {
+        .sclk_io_num = CONFIG_SCLK_GPIO,
+        .mosi_io_num = CONFIG_MOSI_GPIO,
+        .miso_io_num = CONFIG_MISO_GPIO,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1
+    };
 
     esp_err_t ret;
     ret = spi_bus_initialize(HOST_ID, &spi_bus_config, SPI_DMA_CH_AUTO);
-    ESP_LOGI(TAG, "spi_bus_initialize=%d", ret);
-
-    // SPI bus may already be initialized by BSP
     if (ret == ESP_ERR_INVALID_STATE) {
         ESP_LOGI(TAG, "SPI bus already initialized, reusing existing bus");
         ret = ESP_OK;
     }
-    assert(ret == ESP_OK);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "spi_bus_initialize failed: %s", esp_err_to_name(ret));
+        free(g_sx126x);
+        g_sx126x = NULL;
+        return ret;
+    }
 
-    spi_device_interface_config_t devcfg = {.clock_speed_hz = 9000000,
-                                            .mode           = 0,
-                                            .spics_io_num   = CONFIG_NSS_GPIO,
-                                            .queue_size     = 7,
-                                            .flags          = 0,
-                                            .pre_cb         = NULL};
-    // spi_device_handle_t handle;
-    ret = spi_bus_add_device(HOST_ID, &devcfg, &SpiHandle);
-    ESP_LOGI(TAG, "spi_bus_add_device=%d", ret);
-    assert(ret == ESP_OK);
+    spi_device_interface_config_t devcfg = {
+        .clock_speed_hz = 9000000,
+        .mode = 0,
+        .spics_io_num = CONFIG_NSS_GPIO,
+        .queue_size = 7,
+        .flags = 0,
+        .pre_cb = NULL
+    };
+
+    ret = spi_bus_add_device(HOST_ID, &devcfg, &g_sx126x->spi);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "spi_bus_add_device failed: %s", esp_err_to_name(ret));
+        free(g_sx126x);
+        g_sx126x = NULL;
+        return ret;
+    }
+
+    ESP_LOGI(TAG, "SX126x initialized successfully");
+    return ESP_OK;
 }
 
 void spi_write_byte(uint8_t *Dataout, size_t DataLength)
@@ -111,7 +139,7 @@ void spi_write_byte(uint8_t *Dataout, size_t DataLength)
         SPITransaction.length    = DataLength * 8;
         SPITransaction.tx_buffer = Dataout;
         SPITransaction.rx_buffer = NULL;
-        spi_device_transmit(SpiHandle, &SPITransaction);
+        spi_device_transmit(g_sx126x->spi, &SPITransaction);
     }
 
     return;
@@ -126,7 +154,7 @@ void spi_read_byte(uint8_t *Datain, uint8_t *Dataout, size_t DataLength)
         SPITransaction.length    = DataLength * 8;
         SPITransaction.tx_buffer = Dataout;
         SPITransaction.rx_buffer = Datain;
-        spi_device_transmit(SpiHandle, &SPITransaction);
+        spi_device_transmit(g_sx126x->spi, &SPITransaction);
     }
 
     return;
@@ -142,7 +170,7 @@ uint8_t spi_transfer(uint8_t address)
     return datain[0];
 }
 
-int16_t LoRaBegin(uint32_t frequencyInHz, int8_t txPowerInDbm, float tcxoVoltage, bool useRegulatorLDO)
+esp_err_t sx126x_begin(uint32_t frequencyInHz, int8_t txPowerInDbm, float tcxoVoltage, bool useRegulatorLDO)
 {
     if (txPowerInDbm > 22)
         txPowerInDbm = 22;
@@ -223,7 +251,7 @@ void FixInvertedIQ(uint8_t iqConfig)
     WriteRegister(SX126X_REG_IQ_POLARITY_SETUP, &iqConfigCurrent, 1); // 0x0736
 }
 
-void LoRaConfig(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codingRate, uint16_t preambleLength,
+esp_err_t sx126x_config(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codingRate, uint16_t preambleLength,
                 uint8_t payloadLen, bool crcOn, bool invertIrq)
 {
     SetStopRxTimerOnPreambleDetect(false);
@@ -232,30 +260,30 @@ void LoRaConfig(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codingRate, 
     uint8_t ldro = 0;                       // LowDataRateOptimize OFF
     SetModulationParams(spreadingFactor, bandwidth, codingRate, ldro);
 
-    PacketParams[0] = (preambleLength >> 8) & 0xFF;
-    PacketParams[1] = preambleLength;
+    g_sx126x->packet_params[0] = (preambleLength >> 8) & 0xFF;
+    g_sx126x->packet_params[1] = preambleLength;
     if (payloadLen) {
-        PacketParams[2] = 0x01; // Fixed length packet (implicit header)
-        PacketParams[3] = payloadLen;
+        g_sx126x->packet_params[2] = 0x01; // Fixed length packet (implicit header)
+        g_sx126x->packet_params[3] = payloadLen;
     } else {
-        PacketParams[2] = 0x00; // Variable length packet (explicit header)
-        PacketParams[3] = 0xFF;
+        g_sx126x->packet_params[2] = 0x00; // Variable length packet (explicit header)
+        g_sx126x->packet_params[3] = 0xFF;
     }
 
     if (crcOn)
-        PacketParams[4] = SX126X_LORA_CRC_ON;
+        g_sx126x->packet_params[4] = SX126X_LORA_CRC_ON;
     else
-        PacketParams[4] = SX126X_LORA_CRC_OFF;
+        g_sx126x->packet_params[4] = SX126X_LORA_CRC_OFF;
 
     if (invertIrq)
-        PacketParams[5] = 0x01; // Inverted LoRa I and Q signals setup
+        g_sx126x->packet_params[5] = 0x01; // Inverted LoRa I and Q signals setup
     else
-        PacketParams[5] = 0x00; // Standard LoRa I and Q signals setup
+        g_sx126x->packet_params[5] = 0x00; // Standard LoRa I and Q signals setup
 
     // fixes IQ configuration for inverted IQ
-    FixInvertedIQ(PacketParams[5]);
+    FixInvertedIQ(g_sx126x->packet_params[5]);
 
-    WriteCommand(SX126X_CMD_SET_PACKET_PARAMS, PacketParams, 6); // 0x8C
+    WriteCommand(SX126X_CMD_SET_PACKET_PARAMS, g_sx126x->packet_params, 6); // 0x8C
 
     // Do not use DIO interruptst
     SetDioIrqParams(SX126X_IRQ_ALL,  // all interrupts enabled
@@ -266,82 +294,86 @@ void LoRaConfig(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codingRate, 
 
     // Receive state no receive timeoout
     SetRx(0xFFFFFF);
+    
+    return ESP_OK;
 }
 
-uint8_t LoRaReceive(uint8_t *pData, int16_t len)
+esp_err_t sx126x_receive(uint8_t *pData, int16_t len, uint8_t *received)
 {
-    uint8_t rxLen    = 0;
+    if (!pData || !received) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    *received = 0;
     uint16_t irqRegs = GetIrqStatus();
-    // uint8_t status = GetStatus();
 
     if (irqRegs & SX126X_IRQ_RX_DONE) {
-        // ClearIrqStatus(SX126X_IRQ_RX_DONE);
         ClearIrqStatus(SX126X_IRQ_ALL);
-        rxLen = ReadBuffer(pData, len);
+        *received = ReadBuffer(pData, len);
+        return ESP_OK;
     }
 
-    return rxLen;
+    return ESP_ERR_NOT_FOUND;
 }
 
-bool LoRaSend(const uint8_t *pData, int16_t len, uint8_t mode)
+esp_err_t sx126x_send(const uint8_t *pData, int16_t len, uint8_t mode)
 {
-    bool rv = false;
+    if (!pData || len <= 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
 
-    if (txActive == false) {
-        txActive = true;
-        if (PacketParams[2] == 0x00) { // Variable length packet (explicit header)
-            PacketParams[3] = len;
+    if (g_sx126x->tx_active) {
+        ESP_LOGW(TAG, "TX already active");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    g_sx126x->tx_active = true;
+    
+    if (g_sx126x->packet_params[2] == 0x00) { // Variable length packet (explicit header)
+        g_sx126x->packet_params[3] = len;
+    }
+    WriteCommand(SX126X_CMD_SET_PACKET_PARAMS, g_sx126x->packet_params, 6);
+
+    ClearIrqStatus(SX126X_IRQ_ALL);
+    WriteBuffer(pData, len);
+    SetTx(500);
+
+    if (mode & SX126x_TXMODE_SYNC) {
+        uint16_t irqStatus = GetIrqStatus();
+        while ((!(irqStatus & SX126X_IRQ_TX_DONE)) && (!(irqStatus & SX126X_IRQ_TIMEOUT))) {
+            vTaskDelay(pdMS_TO_TICKS(1));
+            irqStatus = GetIrqStatus();
         }
-        WriteCommand(SX126X_CMD_SET_PACKET_PARAMS, PacketParams, 6); // 0x8C
+        
+        g_sx126x->tx_active = false;
+        SetRx(0xFFFFFF);
 
-        // ClearIrqStatus(SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT);
-        ClearIrqStatus(SX126X_IRQ_ALL);
-
-        WriteBuffer(pData, len);
-        SetTx(500);
-
-        if (mode & SX126x_TXMODE_SYNC) {
-            uint16_t irqStatus = GetIrqStatus();
-            while ((!(irqStatus & SX126X_IRQ_TX_DONE)) && (!(irqStatus & SX126X_IRQ_TIMEOUT))) {
-                vTaskDelay(pdMS_TO_TICKS(1));
-                irqStatus = GetIrqStatus();
-            }
-            ESP_LOGI(TAG, "irqStatus=0x%x", irqStatus);
-            if (irqStatus & SX126X_IRQ_TX_DONE) {
-                ESP_LOGI(TAG, "SX126X_IRQ_TX_DONE");
-            }
-            if (irqStatus & SX126X_IRQ_TIMEOUT) {
-                ESP_LOGI(TAG, "SX126X_IRQ_TIMEOUT");
-            }
-            txActive = false;
-
-            SetRx(0xFFFFFF);
-
-            if (irqStatus & SX126X_IRQ_TX_DONE) {
-                rv = true;
-            }
-        } else {
-            rv = true;
+        if (irqStatus & SX126X_IRQ_TX_DONE) {
+            ESP_LOGI(TAG, "TX done");
+            return ESP_OK;
+        }
+        
+        if (irqStatus & SX126X_IRQ_TIMEOUT) {
+            ESP_LOGW(TAG, "TX timeout");
+            g_sx126x->tx_lost++;
+            return ESP_ERR_TIMEOUT;
         }
     }
-    ESP_LOGI(TAG, "Send rv=0x%x", rv);
 
-    if (rv == false)
-        txLost++;
-    return rv;
+    return ESP_OK;
 }
 
 bool ReceiveMode(void)
 {
     bool rv = false;
 
-    if (txActive == false) {
+    if (g_sx126x->tx_active == false) {
         rv = true;
     } else {
         uint16_t irq = GetIrqStatus();
         if (irq & (SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT)) {
             SetRx(0xFFFFFF);
-            txActive = false;
+            g_sx126x->tx_active = false;
             rv       = true;
         }
     }
@@ -365,9 +397,9 @@ void SetTxPower(int8_t txPowerInDbm)
 void Reset(void)
 {
     vTaskDelay(pdMS_TO_TICKS(10));
-    gpio_set_level(SX126x_RESET, 0);
+    gpio_set_level(g_sx126x->reset_pin, 0);
     vTaskDelay(pdMS_TO_TICKS(20));
-    gpio_set_level(SX126x_RESET, 1);
+    gpio_set_level(g_sx126x->reset_pin, 1);
     vTaskDelay(pdMS_TO_TICKS(10));
     // ensure BUSY is low (state meachine ready)
     WaitForIdle(BUSY_WAIT, "Reset", true);
@@ -638,11 +670,11 @@ void SetRx(uint32_t timeout)
 
 void SetRxEnable(void)
 {
-    ESP_LOGI(TAG, "SetRxEnable:SX126x_TXEN=%d SX126x_RXEN=%d", SX126x_TXEN, SX126x_RXEN);
+    ESP_LOGI(TAG, "SetRxEnable:g_sx126x->txen_pin=%d g_sx126x->rxen_pin=%d", g_sx126x->txen_pin, g_sx126x->rxen_pin);
 
-    if ((SX126x_TXEN != -1) && (SX126x_RXEN != -1)) {
-        gpio_set_level(SX126x_RXEN, HIGH);
-        gpio_set_level(SX126x_TXEN, LOW);
+    if ((g_sx126x->txen_pin != -1) && (g_sx126x->rxen_pin != -1)) {
+        gpio_set_level(g_sx126x->rxen_pin, HIGH);
+        gpio_set_level(g_sx126x->txen_pin, LOW);
     }
 }
 
@@ -677,17 +709,17 @@ void SetTx(uint32_t timeoutInMs)
 
 void SetTxEnable(void)
 {
-    ESP_LOGI(TAG, "SetTxEnable:SX126x_TXEN=%d SX126x_RXEN=%d", SX126x_TXEN, SX126x_RXEN);
+    ESP_LOGI(TAG, "SetTxEnable:g_sx126x->txen_pin=%d g_sx126x->rxen_pin=%d", g_sx126x->txen_pin, g_sx126x->rxen_pin);
 
-    if ((SX126x_TXEN != -1) && (SX126x_RXEN != -1)) {
-        gpio_set_level(SX126x_RXEN, LOW);
-        gpio_set_level(SX126x_TXEN, HIGH);
+    if ((g_sx126x->txen_pin != -1) && (g_sx126x->rxen_pin != -1)) {
+        gpio_set_level(g_sx126x->rxen_pin, LOW);
+        gpio_set_level(g_sx126x->txen_pin, HIGH);
     }
 }
 
 int GetPacketLost()
 {
-    return txLost;
+    return g_sx126x->tx_lost;
 }
 
 uint8_t GetRssiInst()
@@ -726,13 +758,13 @@ bool WaitForIdle(unsigned long timeout, char *text, bool stop)
     TickType_t start = xTaskGetTickCount();
     // delayMicroseconds(1);
     while (xTaskGetTickCount() - start < (timeout / portTICK_PERIOD_MS)) {
-        if (gpio_get_level(SX126x_BUSY) == 0)
+        if (gpio_get_level(g_sx126x->busy_pin) == 0)
             break;
         // delayMicroseconds(1);
         //  Give up CPU execution rights
         vTaskDelay(1);
     }
-    if (gpio_get_level(SX126x_BUSY)) {
+    if (gpio_get_level(g_sx126x->busy_pin)) {
         if (stop) {
             ESP_LOGE(TAG, "WaitForIdle Timeout text=%s timeout=%lu start=%" PRIu32, text, timeout, start);
             ESP_LOGE(TAG, "WaitForIdle timeout: %s (timeout=%lu ms)", text, timeout);
@@ -867,7 +899,7 @@ uint8_t WriteCommand2(uint8_t cmd, const uint8_t *data, uint8_t numBytes)
     // ensure BUSY is low (state meachine ready)
     WaitForIdle(BUSY_WAIT, "start WriteCommand2", true);
 
-    ESP_LOGI(TAG, "WriteCommand: CMD=0x%02x", cmd);
+    ESP_LOGD(TAG, "WriteCommand: CMD=0x%02x", cmd);
 
     // start transfer
     uint8_t buf[16];
@@ -902,7 +934,7 @@ void ReadCommand(uint8_t cmd, uint8_t *data, uint8_t numBytes)
     // ensure BUSY is low (state meachine ready)
     WaitForIdleBegin(BUSY_WAIT, "start ReadCommand");
 
-    ESP_LOGI(TAG, "ReadCommand: CMD=0x%02x", cmd);
+    ESP_LOGD(TAG, "ReadCommand: CMD=0x%02x", cmd);
 
     // start transfer
     uint8_t buf[16];
