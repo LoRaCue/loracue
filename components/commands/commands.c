@@ -697,6 +697,10 @@ void commands_execute(const char *command_line, response_fn_t send_response)
     }
 
     if (strncmp(command_line, "FIRMWARE_UPGRADE ", 17) == 0) {
+        // FIXME: USB-CDC firmware upgrade not fully tested
+        // XMODEM-1K implementation exists but needs integration testing
+        // with loracue-manager for reliable firmware updates over USB-CDC
+        
         size_t size = atoi(command_line + 17);
         if (size == 0 || size > 4*1024*1024) {
             g_send_response("ERROR Invalid size");

@@ -538,6 +538,9 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                 esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, tx_char_handle, 
                                            strlen(error_msg), (uint8_t*)error_msg, false);
             } else {
+                // FIXME: BLE configuration protocol not implemented
+                // Detection and connection works, but command processing needs implementation
+                // Should parse commands similar to uart_commands.c and call appropriate handlers
                 // Process as text command
                 for (int i = 0; i < param->write.len; i++) {
                     char c = param->write.value[i];

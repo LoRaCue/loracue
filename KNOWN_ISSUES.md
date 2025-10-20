@@ -5,7 +5,11 @@
 
 ## Current Issues
 
-*No known critical issues at this time.*
+### Not Yet Implemented
+
+- **[HIGH]** BLE configuration connection - Detection and connect working, but configuration protocol not implemented
+- **[HIGH]** BLE firmware upgrade - OTA engine exists but BLE transport not implemented
+- **[HIGH]** USB-CDC firmware upgrade - FIRMWARE_UPGRADE command not implemented in command parser
 
 <!-- 
 Example format:
