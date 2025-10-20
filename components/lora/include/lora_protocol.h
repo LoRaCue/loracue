@@ -42,7 +42,7 @@ extern "C" {
  */
 typedef enum {
     CMD_HID_REPORT = 0x01, ///< HID report with structured payload
-    CMD_ACK        = 0x80, ///< Acknowledgment
+    CMD_ACK        = 0xAC, ///< Acknowledgment (AC = ACk)
 } lora_command_t;
 
 /**
