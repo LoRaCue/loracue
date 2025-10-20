@@ -27,9 +27,9 @@ static const char *TAG = "BSP_WOKWI";
 u8g2_t u8g2;
 
 // Wokwi Pin Definitions (matching Heltec V3 where possible)
-#define BUTTON_PIN GPIO_NUM_0       // Main button (same as Heltec V3)
-#define BUTTON_SECOND_PIN GPIO_NUM_46  // Second button (Wokwi only)
-#define BUTTON_BOTH_PIN GPIO_NUM_21    // Both button simulator (Wokwi only)
+#define BUTTON_PIN GPIO_NUM_0         // Main button (same as Heltec V3)
+#define BUTTON_SECOND_PIN GPIO_NUM_46 // Second button (Wokwi only)
+#define BUTTON_BOTH_PIN GPIO_NUM_21   // Both button simulator (Wokwi only)
 #define STATUS_LED_PIN GPIO_NUM_35
 #define BATTERY_ADC_PIN GPIO_NUM_1
 #define BATTERY_CTRL_PIN GPIO_NUM_37
@@ -126,8 +126,8 @@ esp_err_t bsp_init(void)
 
 esp_err_t bsp_init_buttons(void)
 {
-    ESP_LOGI(TAG, "Configuring buttons: GPIO%d (main), GPIO%d (second), GPIO%d (both)", 
-             BUTTON_PIN, BUTTON_SECOND_PIN, BUTTON_BOTH_PIN);
+    ESP_LOGI(TAG, "Configuring buttons: GPIO%d (main), GPIO%d (second), GPIO%d (both)", BUTTON_PIN, BUTTON_SECOND_PIN,
+             BUTTON_BOTH_PIN);
 
     gpio_config_t button_config = {
         .pin_bit_mask = (1ULL << BUTTON_PIN) | (1ULL << BUTTON_SECOND_PIN) | (1ULL << BUTTON_BOTH_PIN),
@@ -150,7 +150,7 @@ esp_err_t bsp_init_buttons(void)
 esp_err_t bsp_init_battery(void)
 {
     ESP_LOGI(TAG, "Initializing battery monitoring (simulated)");
-    
+
     // Simulate ADC initialization
     if (adc_handle == NULL) {
         adc_oneshot_unit_init_cfg_t init_config = {
@@ -252,13 +252,13 @@ bool bsp_read_button(bsp_button_t button)
     gpio_num_t pin;
     switch (button) {
         case BSP_BUTTON_PREV:
-            pin = BUTTON_SECOND_PIN;  // Second button for Wokwi
+            pin = BUTTON_SECOND_PIN; // Second button for Wokwi
             break;
         case BSP_BUTTON_NEXT:
-            pin = BUTTON_PIN;  // Main button
+            pin = BUTTON_PIN; // Main button
             break;
         case BSP_BUTTON_BOTH:
-            pin = BUTTON_BOTH_PIN;  // Both button simulator
+            pin = BUTTON_BOTH_PIN; // Both button simulator
             break;
         default:
             return false;
@@ -275,26 +275,26 @@ float bsp_read_battery(void)
 esp_err_t bsp_enter_sleep(void)
 {
     ESP_LOGI(TAG, "Entering deep sleep (simulated)");
-    
+
     // Configure buttons as wake sources
-    esp_sleep_enable_ext1_wakeup((1ULL << BUTTON_PIN) | (1ULL << BUTTON_SECOND_PIN) | (1ULL << BUTTON_BOTH_PIN), 
+    esp_sleep_enable_ext1_wakeup((1ULL << BUTTON_PIN) | (1ULL << BUTTON_SECOND_PIN) | (1ULL << BUTTON_BOTH_PIN),
                                  ESP_EXT1_WAKEUP_ANY_LOW);
-    
+
     // Enter deep sleep
     esp_deep_sleep_start();
-    
+
     return ESP_OK;
 }
 
 esp_err_t bsp_sx1262_reset(void)
 {
     ESP_LOGI(TAG, "Resetting SX1262 (Wokwi simulation)");
-    
+
     gpio_set_level(LORA_RST_PIN, 0);
     vTaskDelay(pdMS_TO_TICKS(10));
     gpio_set_level(LORA_RST_PIN, 1);
     vTaskDelay(pdMS_TO_TICKS(10));
-    
+
     return ESP_OK;
 }
 
@@ -345,9 +345,7 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     vTaskDelay(pdMS_TO_TICKS(100));
 
     // Initialize u8g2 with SSD1306 128x64 display using BSP callbacks
-    u8g2_Setup_ssd1306_i2c_128x64_noname_f(u8g2_local, U8G2_R0, 
-                                           bsp_u8g2_i2c_byte_cb, 
-                                           bsp_u8g2_gpio_and_delay_cb);
+    u8g2_Setup_ssd1306_i2c_128x64_noname_f(u8g2_local, U8G2_R0, bsp_u8g2_i2c_byte_cb, bsp_u8g2_gpio_and_delay_cb);
 
     // Initialize display
     u8g2_InitDisplay(u8g2_local);
@@ -358,18 +356,14 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     return ESP_OK;
 }
 
-const char* bsp_get_board_id(void)
+const char *bsp_get_board_id(void)
 {
     return "wokwi_sim";
 }
 
-static const bsp_usb_config_t usb_config = {
-    .usb_pid = 0xFAB1,
-    .usb_product = "LC-sim"
-};
+static const bsp_usb_config_t usb_config = {.usb_pid = 0xFAB1, .usb_product = "LC-sim"};
 
-const bsp_usb_config_t* bsp_get_usb_config(void)
+const bsp_usb_config_t *bsp_get_usb_config(void)
 {
     return &usb_config;
 }
-

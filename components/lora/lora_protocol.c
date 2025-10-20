@@ -101,10 +101,10 @@ static esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_
     packet.device_id = local_device_id;
 
     uint8_t plaintext[16] = {0};
-    plaintext[0] = (sequence_counter >> 8) & 0xFF;
-    plaintext[1] = sequence_counter & 0xFF;
-    plaintext[2] = command;
-    plaintext[3] = payload_length;
+    plaintext[0]          = (sequence_counter >> 8) & 0xFF;
+    plaintext[1]          = sequence_counter & 0xFF;
+    plaintext[2]          = command;
+    plaintext[3]          = payload_length;
     if (payload && payload_length > 0) {
         memcpy(&plaintext[4], payload, payload_length);
     }
@@ -132,19 +132,19 @@ esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_
     ESP_LOGI(TAG, "Sending keyboard: slot=%d mod=0x%02X key=0x%02X", slot_id, modifiers, keycode);
 
     lora_payload_v2_t payload_v2;
-    payload_v2.version_slot                    = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
-    payload_v2.type_flags                      = LORA_MAKE_TF(HID_TYPE_KEYBOARD, 0);
-    payload_v2.hid_report.keyboard.modifiers   = modifiers;
-    payload_v2.hid_report.keyboard.keycode[0]  = keycode;
-    payload_v2.hid_report.keyboard.keycode[1]  = 0;
-    payload_v2.hid_report.keyboard.keycode[2]  = 0;
-    payload_v2.hid_report.keyboard.keycode[3]  = 0;
+    payload_v2.version_slot                   = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
+    payload_v2.type_flags                     = LORA_MAKE_TF(HID_TYPE_KEYBOARD, 0);
+    payload_v2.hid_report.keyboard.modifiers  = modifiers;
+    payload_v2.hid_report.keyboard.keycode[0] = keycode;
+    payload_v2.hid_report.keyboard.keycode[1] = 0;
+    payload_v2.hid_report.keyboard.keycode[2] = 0;
+    payload_v2.hid_report.keyboard.keycode[3] = 0;
 
     return lora_protocol_send_command(CMD_HID_REPORT, (const uint8_t *)&payload_v2, sizeof(lora_payload_v2_t));
 }
 
-esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifiers, uint8_t keycode,
-                                               uint32_t timeout_ms, uint8_t max_retries)
+esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifiers, uint8_t keycode, uint32_t timeout_ms,
+                                               uint8_t max_retries)
 {
     if (!protocol_initialized) {
         ESP_LOGE(TAG, "Protocol not initialized");
@@ -152,16 +152,16 @@ esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifier
     }
 
     lora_payload_v2_t payload_v2;
-    payload_v2.version_slot                    = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
-    payload_v2.type_flags                      = LORA_MAKE_TF(HID_TYPE_KEYBOARD, 0);
-    payload_v2.hid_report.keyboard.modifiers   = modifiers;
-    payload_v2.hid_report.keyboard.keycode[0]  = keycode;
-    payload_v2.hid_report.keyboard.keycode[1]  = 0;
-    payload_v2.hid_report.keyboard.keycode[2]  = 0;
-    payload_v2.hid_report.keyboard.keycode[3]  = 0;
+    payload_v2.version_slot                   = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
+    payload_v2.type_flags                     = LORA_MAKE_TF(HID_TYPE_KEYBOARD, 0);
+    payload_v2.hid_report.keyboard.modifiers  = modifiers;
+    payload_v2.hid_report.keyboard.keycode[0] = keycode;
+    payload_v2.hid_report.keyboard.keycode[1] = 0;
+    payload_v2.hid_report.keyboard.keycode[2] = 0;
+    payload_v2.hid_report.keyboard.keycode[3] = 0;
 
     return lora_protocol_send_reliable(CMD_HID_REPORT, (const uint8_t *)&payload_v2, sizeof(lora_payload_v2_t),
-                                      timeout_ms, max_retries);
+                                       timeout_ms, max_retries);
 }
 
 esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
@@ -300,35 +300,36 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
             sender_device.recent_bitmap = 1;
         }
         sender_device.highest_sequence = packet_data->sequence_num;
-        
+
     } else if (seq_diff == 0) {
         // Exact duplicate of highest sequence
         ESP_LOGW(TAG, "Duplicate packet from 0x%04X: seq %d", packet_data->device_id, packet_data->sequence_num);
         return ESP_ERR_INVALID_STATE;
-        
+
     } else if (seq_diff > -64) {
         // Within recent window (out-of-order packet)
         uint8_t bit_pos = -seq_diff;
         if (sender_device.recent_bitmap & (1ULL << bit_pos)) {
-            ESP_LOGW(TAG, "Duplicate packet from 0x%04X: seq %d (already seen)", 
-                     packet_data->device_id, packet_data->sequence_num);
+            ESP_LOGW(TAG, "Duplicate packet from 0x%04X: seq %d (already seen)", packet_data->device_id,
+                     packet_data->sequence_num);
             return ESP_ERR_INVALID_STATE;
         }
         // Mark as seen
         sender_device.recent_bitmap |= (1ULL << bit_pos);
-        ESP_LOGD(TAG, "Out-of-order packet accepted from 0x%04X: seq %d", 
-                 packet_data->device_id, packet_data->sequence_num);
-        
+        ESP_LOGD(TAG, "Out-of-order packet accepted from 0x%04X: seq %d", packet_data->device_id,
+                 packet_data->sequence_num);
+
     } else {
         // Too old (>64 packets behind), likely reboot or major packet loss
-        ESP_LOGI(TAG, "Very old packet from 0x%04X (seq %d vs %d), accepting as reboot", 
-                 packet_data->device_id, packet_data->sequence_num, sender_device.highest_sequence);
+        ESP_LOGI(TAG, "Very old packet from 0x%04X (seq %d vs %d), accepting as reboot", packet_data->device_id,
+                 packet_data->sequence_num, sender_device.highest_sequence);
         sender_device.highest_sequence = packet_data->sequence_num;
-        sender_device.recent_bitmap = 1;
+        sender_device.recent_bitmap    = 1;
     }
 
     // Update device registry with new sequence tracking (RAM-only, not persisted)
-    device_registry_update_sequence(packet_data->device_id, sender_device.highest_sequence, sender_device.recent_bitmap);
+    device_registry_update_sequence(packet_data->device_id, sender_device.highest_sequence,
+                                    sender_device.recent_bitmap);
 
     // Track received packets
     connection_stats.packets_received++;

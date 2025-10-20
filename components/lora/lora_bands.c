@@ -12,10 +12,10 @@ static const char *TAG = "LORA_BANDS";
 
 // Embedded JSON file
 extern const uint8_t lora_bands_json_start[] asm("_binary_lora_bands_json_start");
-extern const uint8_t lora_bands_json_end[]   asm("_binary_lora_bands_json_end");
+extern const uint8_t lora_bands_json_end[] asm("_binary_lora_bands_json_end");
 
 static lora_band_profile_t band_profiles[LORA_MAX_BANDS];
-static int band_count = 0;
+static int band_count         = 0;
 static bool bands_initialized = false;
 
 esp_err_t lora_bands_init(void)
@@ -39,23 +39,25 @@ esp_err_t lora_bands_init(void)
         return ESP_FAIL;
     }
 
-    band_count = 0;
+    band_count     = 0;
     cJSON *profile = NULL;
-    cJSON_ArrayForEach(profile, profiles) {
-        if (band_count >= LORA_MAX_BANDS) break;
+    cJSON_ArrayForEach(profile, profiles)
+    {
+        if (band_count >= LORA_MAX_BANDS)
+            break;
 
-        cJSON *id = cJSON_GetObjectItem(profile, "id");
-        cJSON *name = cJSON_GetObjectItem(profile, "name");
+        cJSON *id             = cJSON_GetObjectItem(profile, "id");
+        cJSON *name           = cJSON_GetObjectItem(profile, "name");
         cJSON *optimal_center = cJSON_GetObjectItem(profile, "optimal_center_khz");
-        cJSON *optimal_min = cJSON_GetObjectItem(profile, "optimal_freq_min_khz");
-        cJSON *optimal_max = cJSON_GetObjectItem(profile, "optimal_freq_max_khz");
+        cJSON *optimal_min    = cJSON_GetObjectItem(profile, "optimal_freq_min_khz");
+        cJSON *optimal_max    = cJSON_GetObjectItem(profile, "optimal_freq_max_khz");
 
-        if (cJSON_IsString(id) && cJSON_IsString(name) && 
-            cJSON_IsNumber(optimal_center) && cJSON_IsNumber(optimal_min) && cJSON_IsNumber(optimal_max)) {
-            
+        if (cJSON_IsString(id) && cJSON_IsString(name) && cJSON_IsNumber(optimal_center) &&
+            cJSON_IsNumber(optimal_min) && cJSON_IsNumber(optimal_max)) {
+
             strncpy(band_profiles[band_count].id, id->valuestring, sizeof(band_profiles[band_count].id) - 1);
             strncpy(band_profiles[band_count].name, name->valuestring, sizeof(band_profiles[band_count].name) - 1);
-            band_profiles[band_count].optimal_center_khz = optimal_center->valueint;
+            band_profiles[band_count].optimal_center_khz   = optimal_center->valueint;
             band_profiles[band_count].optimal_freq_min_khz = optimal_min->valueint;
             band_profiles[band_count].optimal_freq_max_khz = optimal_max->valueint;
 
@@ -63,7 +65,7 @@ esp_err_t lora_bands_init(void)
             cJSON *public_bands = cJSON_GetObjectItem(profile, "public_bands");
             if (cJSON_IsArray(public_bands) && cJSON_GetArraySize(public_bands) > 0) {
                 cJSON *first_band = cJSON_GetArrayItem(public_bands, 0);
-                cJSON *power_dbm = cJSON_GetObjectItem(first_band, "power_dbm");
+                cJSON *power_dbm  = cJSON_GetObjectItem(first_band, "power_dbm");
                 if (cJSON_IsNumber(power_dbm)) {
                     band_profiles[band_count].max_power_dbm = power_dbm->valueint;
                 } else {
@@ -73,12 +75,9 @@ esp_err_t lora_bands_init(void)
                 band_profiles[band_count].max_power_dbm = 20; // Default
             }
 
-            ESP_LOGI(TAG, "Loaded band: %s (%s) - %d-%d kHz, max %d dBm", 
-                     band_profiles[band_count].id,
-                     band_profiles[band_count].name,
-                     band_profiles[band_count].optimal_freq_min_khz,
-                     band_profiles[band_count].optimal_freq_max_khz,
-                     band_profiles[band_count].max_power_dbm);
+            ESP_LOGI(TAG, "Loaded band: %s (%s) - %d-%d kHz, max %d dBm", band_profiles[band_count].id,
+                     band_profiles[band_count].name, band_profiles[band_count].optimal_freq_min_khz,
+                     band_profiles[band_count].optimal_freq_max_khz, band_profiles[band_count].max_power_dbm);
 
             band_count++;
         }
@@ -96,7 +95,7 @@ int lora_bands_get_count(void)
     return band_count;
 }
 
-const lora_band_profile_t* lora_bands_get_profile(int index)
+const lora_band_profile_t *lora_bands_get_profile(int index)
 {
     if (index < 0 || index >= band_count) {
         return NULL;
@@ -104,7 +103,7 @@ const lora_band_profile_t* lora_bands_get_profile(int index)
     return &band_profiles[index];
 }
 
-const lora_band_profile_t* lora_bands_get_profile_by_id(const char *id)
+const lora_band_profile_t *lora_bands_get_profile_by_id(const char *id)
 {
     for (int i = 0; i < band_count; i++) {
         if (strcmp(band_profiles[i].id, id) == 0) {
@@ -117,13 +116,12 @@ const lora_band_profile_t* lora_bands_get_profile_by_id(const char *id)
 int lora_bands_get_index_by_frequency(uint32_t frequency_hz)
 {
     uint32_t freq_khz = frequency_hz / 1000;
-    
+
     for (int i = 0; i < band_count; i++) {
-        if (freq_khz >= band_profiles[i].optimal_freq_min_khz && 
-            freq_khz <= band_profiles[i].optimal_freq_max_khz) {
+        if (freq_khz >= band_profiles[i].optimal_freq_min_khz && freq_khz <= band_profiles[i].optimal_freq_max_khz) {
             return i;
         }
     }
-    
+
     return -1; // Not in any band
 }

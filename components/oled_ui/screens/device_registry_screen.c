@@ -93,7 +93,7 @@ void device_registry_screen_draw(void)
 
     // Footer
     ui_draw_footer(device_count > 0 ? FOOTER_CONTEXT_DELETE : FOOTER_CONTEXT_INFO, NULL);
-    
+
     u8g2_SendBuffer(&u8g2);
 }
 

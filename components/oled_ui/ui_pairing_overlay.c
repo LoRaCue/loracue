@@ -10,11 +10,11 @@ extern u8g2_t u8g2;
 void ui_pairing_overlay_draw(uint32_t passkey)
 {
     // Overlay dimensions - centered in viewport
-    const int box_width = 100;
-    const int box_height = 36;
-    const int box_x = (DISPLAY_WIDTH - box_width) / 2;
+    const int box_width       = 100;
+    const int box_height      = 36;
+    const int box_x           = (DISPLAY_WIDTH - box_width) / 2;
     const int viewport_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
-    const int box_y = SEPARATOR_Y_TOP + (viewport_height - box_height) / 2;
+    const int box_y           = SEPARATOR_Y_TOP + (viewport_height - box_height) / 2;
 
     // Draw white background box
     u8g2_SetDrawColor(&u8g2, 1);
@@ -31,13 +31,13 @@ void ui_pairing_overlay_draw(uint32_t passkey)
 
     // Draw text on right side (inverted - black on white)
     u8g2_SetDrawColor(&u8g2, 0);
-    
+
     // "Bluetooth Connection" - bold font
     u8g2_SetFont(&u8g2, u8g2_font_helvB08_tr);
     const char *title = "Bluetooth";
-    int text_x = box_x + bluetooth_pairing_width + 12;
+    int text_x        = box_x + bluetooth_pairing_width + 12;
     u8g2_DrawStr(&u8g2, text_x, box_y + 10, title);
-    
+
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     const char *subtitle = "Connection";
     u8g2_DrawStr(&u8g2, text_x, box_y + 19, subtitle);

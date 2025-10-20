@@ -1,12 +1,12 @@
 #include "factory_reset_screen.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "icons/ui_status_icons.h"
 #include "nvs_flash.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
 #include "ui_icons.h"
-#include "icons/ui_status_icons.h"
 #include "ui_screen_controller.h"
 
 static const char *TAG = "factory_reset_screen";

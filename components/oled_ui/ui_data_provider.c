@@ -1,11 +1,11 @@
 #include "ui_data_provider.h"
-#include "bsp.h"
 #include "bluetooth_config.h"
-#include "general_config.h"
+#include "bsp.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "general_config.h"
 #include "lora_driver.h"
 #include "lora_protocol.h"
 #include "power_mgmt.h"
@@ -75,7 +75,7 @@ esp_err_t ui_data_provider_update(void)
     // Update Bluetooth status
     general_config_t config;
     general_config_get(&config);
-    cached_status.bluetooth_enabled = config.bluetooth_enabled;
+    cached_status.bluetooth_enabled   = config.bluetooth_enabled;
     cached_status.bluetooth_connected = bluetooth_config_is_connected();
 
     // Update LoRa status from protocol layer
@@ -138,8 +138,7 @@ esp_err_t ui_data_provider_force_update(bool usb_connected, bool lora_connected,
         return ESP_ERR_INVALID_STATE;
     }
 
-    bool changed = (cached_status.usb_connected != usb_connected ||
-                    cached_status.lora_connected != lora_connected ||
+    bool changed = (cached_status.usb_connected != usb_connected || cached_status.lora_connected != lora_connected ||
                     cached_status.battery_level != battery_level);
 
     cached_status.usb_connected   = usb_connected;
@@ -148,9 +147,8 @@ esp_err_t ui_data_provider_force_update(bool usb_connected, bool lora_connected,
     cached_status.signal_strength = lora_connected ? SIGNAL_STRONG : SIGNAL_NONE;
 
     if (changed) {
-        ESP_LOGI(TAG, "Status force updated: USB=%d, BT=%d/%d, LoRa=%d, Battery=%d%%", 
-                 usb_connected, cached_status.bluetooth_enabled, cached_status.bluetooth_connected, 
-                 lora_connected, battery_level);
+        ESP_LOGI(TAG, "Status force updated: USB=%d, BT=%d/%d, LoRa=%d, Battery=%d%%", usb_connected,
+                 cached_status.bluetooth_enabled, cached_status.bluetooth_connected, lora_connected, battery_level);
     }
 
     return ESP_OK;
@@ -162,10 +160,10 @@ esp_err_t ui_data_provider_reload_config(void)
     if (general_config_get(&config) != ESP_OK) {
         return ESP_FAIL;
     }
-    
+
     strncpy(cached_status.device_name, config.device_name, sizeof(cached_status.device_name) - 1);
     cached_status.device_name[sizeof(cached_status.device_name) - 1] = '\0';
-    
+
     ESP_LOGI(TAG, "Config reloaded: device_name=%s", cached_status.device_name);
     return ESP_OK;
 }

@@ -1,12 +1,11 @@
 #include "pairing_screen.h"
-#include "general_config.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "general_config.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
 #include "ui_icons.h"
-#include "ui_helpers.h"
 #include "usb_pairing.h"
 
 extern u8g2_t u8g2;
@@ -52,9 +51,9 @@ void pairing_screen_draw(void)
     } else {
         // Instructions - centered horizontally and vertically
         u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-        
+
         int start_y = 23;
-        
+
         u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, start_y, "Connect USB-C");
         u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, start_y + 12, "cable to other");
         u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, start_y + 24, "LoRaCue device...");
@@ -82,7 +81,7 @@ void pairing_screen_reset(void)
     success_start_time = 0;
     pairing_active     = false;
     usb_pairing_stop();
-    
+
     // Auto-start pairing when entering screen
     ESP_LOGI(TAG, "Auto-starting USB pairing (host mode)");
     pairing_active = true;

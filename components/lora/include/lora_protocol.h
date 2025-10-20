@@ -25,17 +25,17 @@ extern "C" {
 
 // Protocol macros
 #define LORA_PROTOCOL_VERSION 0x01
-#define LORA_DEFAULT_SLOT     1
+#define LORA_DEFAULT_SLOT 1
 
 // Byte 0: version_slot
-#define LORA_VERSION(vs)      (((vs) >> 4) & 0x0F)
-#define LORA_SLOT(vs)         ((vs) & 0x0F)
-#define LORA_MAKE_VS(v, s)    ((((v) & 0x0F) << 4) | ((s) & 0x0F))
+#define LORA_VERSION(vs) (((vs) >> 4) & 0x0F)
+#define LORA_SLOT(vs) ((vs) & 0x0F)
+#define LORA_MAKE_VS(v, s) ((((v) & 0x0F) << 4) | ((s) & 0x0F))
 
 // Byte 1: type_flags
-#define LORA_HID_TYPE(tf)     (((tf) >> 4) & 0x0F)
-#define LORA_FLAGS(tf)        ((tf) & 0x0F)
-#define LORA_MAKE_TF(t, f)    ((((t) & 0x0F) << 4) | ((f) & 0x0F))
+#define LORA_HID_TYPE(tf) (((tf) >> 4) & 0x0F)
+#define LORA_FLAGS(tf) ((tf) & 0x0F)
+#define LORA_MAKE_TF(t, f) ((((t) & 0x0F) << 4) | ((f) & 0x0F))
 
 /**
  * @brief LoRa command types
@@ -67,8 +67,8 @@ typedef struct __attribute__((packed)) {
  * @brief Payload structure (7 bytes)
  */
 typedef struct __attribute__((packed)) {
-    uint8_t version_slot;  ///< [7:4]=protocol_ver, [3:0]=slot_id (1-16)
-    uint8_t type_flags;    ///< [7:4]=hid_type, [3:0]=flags/reserved
+    uint8_t version_slot; ///< [7:4]=protocol_ver, [3:0]=slot_id (1-16)
+    uint8_t type_flags;   ///< [7:4]=hid_type, [3:0]=flags/reserved
     union {
         uint8_t raw[5];
         lora_keyboard_report_t keyboard;
@@ -108,8 +108,8 @@ esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_
 /**
  * @brief Send keyboard with ACK
  */
-esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifiers, uint8_t keycode,
-                                               uint32_t timeout_ms, uint8_t max_retries);
+esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifiers, uint8_t keycode, uint32_t timeout_ms,
+                                               uint8_t max_retries);
 
 /**
  * @brief Receive and decrypt LoRa packet
@@ -120,7 +120,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
  * @brief Send command with ACK and retries
  */
 esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
-                                     uint32_t timeout_ms, uint8_t max_retries);
+                                      uint32_t timeout_ms, uint8_t max_retries);
 
 /**
  * @brief Send ACK packet

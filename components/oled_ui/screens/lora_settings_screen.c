@@ -4,8 +4,8 @@
 #include "lora_driver.h"
 #include "u8g2.h"
 #include "ui_config.h"
-#include "ui_icons.h"
 #include "ui_helpers.h"
+#include "ui_icons.h"
 
 extern u8g2_t u8g2;
 
@@ -157,7 +157,7 @@ void lora_settings_screen_draw(void)
 
     // Footer with one-button UI icons
     ui_draw_footer(FOOTER_CONTEXT_MENU, NULL);
-    
+
     u8g2_SendBuffer(&u8g2);
 }
 
@@ -184,14 +184,14 @@ void lora_settings_screen_select(void)
 
     // Apply preset but keep current frequency/band and set appropriate power
     lora_config_t new_config = presets[selected_preset];
-    new_config.frequency = current_config.frequency;
+    new_config.frequency     = current_config.frequency;
     strncpy(new_config.band_id, current_config.band_id, sizeof(new_config.band_id) - 1);
     new_config.tx_power = get_tx_power_for_band(current_config.band_id);
 
     esp_err_t ret = lora_set_config(&new_config);
     if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "Applied LoRa preset: %s (freq: %lu Hz, power: %d dBm)", 
-                 preset_names[selected_preset], new_config.frequency, new_config.tx_power);
+        ESP_LOGI(TAG, "Applied LoRa preset: %s (freq: %lu Hz, power: %d dBm)", preset_names[selected_preset],
+                 new_config.frequency, new_config.tx_power);
     } else {
         ESP_LOGE(TAG, "Failed to apply LoRa preset: %s", esp_err_to_name(ret));
     }

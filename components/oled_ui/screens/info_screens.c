@@ -7,8 +7,8 @@
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_data_provider.h"
-#include "ui_icons.h"
 #include "ui_helpers.h"
+#include "ui_icons.h"
 #include "version.h"
 
 extern u8g2_t u8g2;

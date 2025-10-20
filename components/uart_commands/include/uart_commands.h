@@ -16,24 +16,24 @@ extern "C" {
 
 /**
  * @brief Initialize UART command interface
- * 
+ *
  * Configures UART0 (TX=GPIO43, RX=GPIO44) at 460800 baud
  * and starts command processing task
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t uart_commands_init(void);
 
 /**
  * @brief Start UART command processing task
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t uart_commands_start(void);
 
 /**
  * @brief Stop UART command processing task
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t uart_commands_stop(void);

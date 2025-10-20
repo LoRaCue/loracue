@@ -22,7 +22,7 @@ static nvs_handle_t registry_nvs_handle;
 // RAM cache for fast lookups
 static paired_device_t device_cache[MAX_PAIRED_DEVICES];
 static size_t cached_device_count = 0;
-static bool cache_loaded = false;
+static bool cache_loaded          = false;
 
 static void generate_device_key(uint16_t device_id, char *key_name, size_t key_name_size)
 {
@@ -31,22 +31,23 @@ static void generate_device_key(uint16_t device_id, char *key_name, size_t key_n
 
 static void load_cache_from_nvs(void)
 {
-    if (cache_loaded) return;
-    
+    if (cache_loaded)
+        return;
+
     cached_device_count = 0;
-    
+
     if (registry_nvs_handle == 0) {
         cache_loaded = true;
         return;
     }
-    
+
     nvs_iterator_t it = NULL;
-    esp_err_t res = nvs_entry_find(NVS_DEFAULT_PART_NAME, NVS_NAMESPACE, NVS_TYPE_BLOB, &it);
-    
+    esp_err_t res     = nvs_entry_find(NVS_DEFAULT_PART_NAME, NVS_NAMESPACE, NVS_TYPE_BLOB, &it);
+
     while (res == ESP_OK && cached_device_count < MAX_PAIRED_DEVICES) {
         nvs_entry_info_t info;
         nvs_entry_info(it, &info);
-        
+
         if (strncmp(info.key, "dev_", 4) == 0) {
             uint16_t device_id;
             if (sscanf(info.key + 4, "%04hx", &device_id) == 1) {
@@ -60,9 +61,10 @@ static void load_cache_from_nvs(void)
         }
         res = nvs_entry_next(&it);
     }
-    
-    if (it) nvs_release_iterator(it);
-    
+
+    if (it)
+        nvs_release_iterator(it);
+
     cache_loaded = true;
     ESP_LOGI(TAG, "Loaded %d devices into cache", cached_device_count);
 }
@@ -86,7 +88,6 @@ esp_err_t device_registry_init(void)
 
     return ESP_OK;
 }
-
 
 esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const uint8_t *mac_address,
                               const uint8_t *aes_key)
@@ -188,7 +189,7 @@ esp_err_t device_registry_update_sequence(uint16_t device_id, uint16_t highest_s
     for (size_t i = 0; i < cached_device_count; i++) {
         if (device_cache[i].device_id == device_id) {
             device_cache[i].highest_sequence = highest_sequence;
-            device_cache[i].recent_bitmap = recent_bitmap;
+            device_cache[i].recent_bitmap    = recent_bitmap;
             return ESP_OK;
         }
     }
@@ -228,8 +229,7 @@ esp_err_t device_registry_remove(uint16_t device_id)
     for (size_t i = 0; i < cached_device_count; i++) {
         if (device_cache[i].device_id == device_id) {
             // Shift remaining devices
-            memmove(&device_cache[i], &device_cache[i + 1], 
-                    (cached_device_count - i - 1) * sizeof(paired_device_t));
+            memmove(&device_cache[i], &device_cache[i + 1], (cached_device_count - i - 1) * sizeof(paired_device_t));
             cached_device_count--;
             break;
         }

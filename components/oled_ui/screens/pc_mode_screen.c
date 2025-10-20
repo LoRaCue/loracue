@@ -4,14 +4,14 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "icons/ui_status_icons.h"
 #include "oled_ui.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
 #include "ui_icons.h"
-#include "ui_status_bar.h"
 #include "ui_pairing_overlay.h"
-#include "icons/ui_status_icons.h"
+#include "ui_status_bar.h"
 #include <inttypes.h>
 #include <string.h>
 

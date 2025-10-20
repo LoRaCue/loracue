@@ -20,7 +20,7 @@ extern "C" {
 #define DEVICE_NAME_MAX_LEN 32
 #define DEVICE_AES_KEY_LEN 32 // AES-256 requires 32 bytes
 #define DEVICE_MAC_ADDR_LEN 6
-#define MAX_PAIRED_DEVICES 32  // Optimal for 100KB NVS (~3.5KB storage)
+#define MAX_PAIRED_DEVICES 32 // Optimal for 100KB NVS (~3.5KB storage)
 
 /**
  * @brief Paired device information
@@ -31,8 +31,8 @@ typedef struct {
     uint8_t mac_address[DEVICE_MAC_ADDR_LEN]; ///< Hardware MAC address
     uint8_t aes_key[DEVICE_AES_KEY_LEN];      ///< Per-device AES key
     // Deduplication tracking (RAM-only, not persisted to NVS)
-    uint16_t highest_sequence;                ///< Highest sequence number seen
-    uint64_t recent_bitmap;                   ///< Bitmap of last 64 packets (for out-of-order handling)
+    uint16_t highest_sequence; ///< Highest sequence number seen
+    uint64_t recent_bitmap;    ///< Bitmap of last 64 packets (for out-of-order handling)
 } paired_device_t;
 
 /**

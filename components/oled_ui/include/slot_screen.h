@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdbool.h>
 #include "menu_screen.h"
+#include <stdbool.h>
 
 void slot_screen_init(void);
 void slot_screen_draw(void);

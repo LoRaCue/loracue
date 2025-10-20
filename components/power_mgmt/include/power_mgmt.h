@@ -45,13 +45,13 @@ typedef struct {
  * @brief Power statistics
  */
 typedef struct {
-    uint32_t active_time_ms;         ///< Total active time
-    uint32_t display_sleep_time_ms;  ///< Total display sleep time
-    uint32_t light_sleep_time_ms;    ///< Total light sleep time
-    uint32_t deep_sleep_time_ms;     ///< Total deep sleep time
-    uint32_t wake_count_button;      ///< Wake count from buttons
-    uint32_t wake_count_timer;       ///< Wake count from timer
-    float estimated_battery_hours;   ///< Estimated battery life remaining
+    uint32_t active_time_ms;        ///< Total active time
+    uint32_t display_sleep_time_ms; ///< Total display sleep time
+    uint32_t light_sleep_time_ms;   ///< Total light sleep time
+    uint32_t deep_sleep_time_ms;    ///< Total deep sleep time
+    uint32_t wake_count_button;     ///< Wake count from buttons
+    uint32_t wake_count_timer;      ///< Wake count from timer
+    float estimated_battery_hours;  ///< Estimated battery life remaining
 } power_stats_t;
 
 /**

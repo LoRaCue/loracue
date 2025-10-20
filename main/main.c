@@ -7,9 +7,9 @@
  * PURPOSE: Main application entry point and system initialization
  */
 
+#include "bluetooth_config.h"
 #include "bsp.h"
 #include "button_manager.h"
-#include "general_config.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -18,6 +18,7 @@
 #include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "general_config.h"
 #include "led_manager.h"
 #include "lora_comm.h"
 #include "lora_driver.h"
@@ -28,10 +29,9 @@
 #include "ota_engine.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
-#include "usb_hid.h"
 #include "uart_commands.h"
+#include "usb_hid.h"
 #include "version.h"
-#include "bluetooth_config.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -304,25 +304,35 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
     }
 
     usb_hid_keycode_t keycode = 0;
-    uint8_t slot_id = 0;
-    const char *cmd_name = "UNKNOWN";
+    uint8_t slot_id           = 0;
+    const char *cmd_name      = "UNKNOWN";
 
     // Parse HID report from payload
     if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_v2_t)) {
         const lora_payload_v2_t *payload_v2 = (const lora_payload_v2_t *)payload;
-        slot_id = LORA_SLOT(payload_v2->version_slot);
-        uint8_t hid_type = LORA_HID_TYPE(payload_v2->type_flags);
-        
+        slot_id                             = LORA_SLOT(payload_v2->version_slot);
+        uint8_t hid_type                    = LORA_HID_TYPE(payload_v2->type_flags);
+
         if (hid_type == HID_TYPE_KEYBOARD) {
             keycode = payload_v2->hid_report.keyboard.keycode[0];
-            
+
             // Map keycode to command name for logging
             switch (keycode) {
-                case HID_KEY_PAGE_DOWN: cmd_name = "NEXT"; break;
-                case HID_KEY_PAGE_UP:   cmd_name = "PREV"; break;
-                case HID_KEY_B:         cmd_name = "BLACK"; break;
-                case HID_KEY_F5:        cmd_name = "START"; break;
-                default:                cmd_name = "KEY"; break;
+                case HID_KEY_PAGE_DOWN:
+                    cmd_name = "NEXT";
+                    break;
+                case HID_KEY_PAGE_UP:
+                    cmd_name = "PREV";
+                    break;
+                case HID_KEY_B:
+                    cmd_name = "BLACK";
+                    break;
+                case HID_KEY_F5:
+                    cmd_name = "START";
+                    break;
+                default:
+                    cmd_name = "KEY";
+                    break;
             }
         }
     } else {
@@ -396,7 +406,7 @@ static void button_handler(button_event_type_t event, void *arg)
     // Map button events to keyboard HID codes (V2 protocol)
     uint8_t modifiers = 0;
     uint8_t keycode   = 0;
-    
+
     switch (event) {
         case BUTTON_EVENT_SHORT:
             keycode = HID_KEY_PAGE_DOWN; // Next slide
@@ -413,9 +423,9 @@ static void button_handler(button_event_type_t event, void *arg)
 
     general_config_t config;
     general_config_get(&config);
-    
-    ESP_LOGI(TAG, "Presenter mode: sending keyboard HID (slot=%d, mod=0x%02X, key=0x%02X)", config.slot_id,
-             modifiers, keycode);
+
+    ESP_LOGI(TAG, "Presenter mode: sending keyboard HID (slot=%d, mod=0x%02X, key=0x%02X)", config.slot_id, modifiers,
+             keycode);
     lora_protocol_send_keyboard_reliable(config.slot_id, modifiers, keycode, 1000, 3);
 }
 
@@ -445,33 +455,33 @@ void app_main(void)
 
     // OTA boot diagnostics
     running_partition = esp_ota_get_running_partition();
-    ESP_LOGI(TAG, "Running from partition: %s (0x%lx, %lu bytes)", 
-             running_partition->label, running_partition->address, running_partition->size);
-    
+    ESP_LOGI(TAG, "Running from partition: %s (0x%lx, %lu bytes)", running_partition->label, running_partition->address,
+             running_partition->size);
+
     const esp_partition_t *boot_partition = esp_ota_get_boot_partition();
     if (boot_partition) {
-        ESP_LOGI(TAG, "Boot partition: %s (0x%lx)", 
-                 boot_partition->label, boot_partition->address);
+        ESP_LOGI(TAG, "Boot partition: %s (0x%lx)", boot_partition->label, boot_partition->address);
         if (boot_partition != running_partition) {
             ESP_LOGW(TAG, "WARNING: Boot partition != running partition (rollback occurred?)");
         }
     }
-    
+
     esp_ota_img_states_t ota_state;
     uint32_t boot_counter = ota_get_boot_counter();
-    
+
     if (esp_ota_get_state_partition(running_partition, &ota_state) == ESP_OK) {
-        const char *state_str = (ota_state == ESP_OTA_IMG_NEW) ? "NEW" :
-                                (ota_state == ESP_OTA_IMG_PENDING_VERIFY) ? "PENDING_VERIFY" :
-                                (ota_state == ESP_OTA_IMG_VALID) ? "VALID" :
-                                (ota_state == ESP_OTA_IMG_INVALID) ? "INVALID" :
-                                (ota_state == ESP_OTA_IMG_ABORTED) ? "ABORTED" : "UNKNOWN";
+        const char *state_str = (ota_state == ESP_OTA_IMG_NEW)              ? "NEW"
+                                : (ota_state == ESP_OTA_IMG_PENDING_VERIFY) ? "PENDING_VERIFY"
+                                : (ota_state == ESP_OTA_IMG_VALID)          ? "VALID"
+                                : (ota_state == ESP_OTA_IMG_INVALID)        ? "INVALID"
+                                : (ota_state == ESP_OTA_IMG_ABORTED)        ? "ABORTED"
+                                                                            : "UNKNOWN";
         ESP_LOGI(TAG, "OTA state: %s, boot counter: %lu", state_str, boot_counter);
-        
+
         if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
             ESP_LOGW(TAG, "New firmware pending validation (will auto-validate in 60s)");
             ota_increment_boot_counter();
-            
+
             if (boot_counter >= MAX_BOOT_ATTEMPTS) {
                 ESP_LOGE(TAG, "Max boot attempts reached (%lu), forcing rollback NOW", boot_counter);
                 ota_log_rollback("max_boot_attempts");
@@ -510,7 +520,7 @@ void app_main(void)
     ESP_LOGI(TAG, "Initializing power management...");
     power_mgmt_config_t pwr_cfg;
     power_mgmt_config_get(&pwr_cfg);
-    
+
     power_config_t power_config = {
 #ifdef SIMULATOR_BUILD
         .light_sleep_timeout_ms  = 0,

@@ -41,25 +41,25 @@ static const char *TAG = "UART_CMD";
 #endif
 
 #define UART_BAUD_RATE 460800
-#define UART_RX_BUF_SIZE 8192  // Large RX buffer for high-speed bursts
-#define UART_TX_BUF_SIZE 8192  // Large TX buffer for JSON responses
-#define CMD_MAX_LENGTH 2048    // Max single command length
-#define RX_FLOW_CTRL_THRESH 100  // De-assert RTS when hardware FIFO reaches 100 bytes (max 127)
+#define UART_RX_BUF_SIZE 8192   // Large RX buffer for high-speed bursts
+#define UART_TX_BUF_SIZE 8192   // Large TX buffer for JSON responses
+#define CMD_MAX_LENGTH 2048     // Max single command length
+#define RX_FLOW_CTRL_THRESH 100 // De-assert RTS when hardware FIFO reaches 100 bytes (max 127)
 
-static TaskHandle_t uart_rx_task_handle = NULL;
+static TaskHandle_t uart_rx_task_handle       = NULL;
 static TaskHandle_t cmd_processor_task_handle = NULL;
-static QueueHandle_t cmd_queue = NULL;
-static bool uart_running = false;
-static SemaphoreHandle_t uart_tx_mutex = NULL;
+static QueueHandle_t cmd_queue                = NULL;
+static bool uart_running                      = false;
+static SemaphoreHandle_t uart_tx_mutex        = NULL;
 
 static void send_response(const char *response)
 {
     if (response && uart_tx_mutex) {
         xSemaphoreTake(uart_tx_mutex, portMAX_DELAY);
-        
+
         uart_write_bytes(UART_NUM, response, strlen(response));
         uart_write_bytes(UART_NUM, "\r\n", 2);
-        
+
         xSemaphoreGive(uart_tx_mutex);
     }
 }
@@ -67,7 +67,7 @@ static void send_response(const char *response)
 // High-priority RX task: only reads UART and queues commands
 static void uart_rx_task(void *pvParameters)
 {
-    uint8_t data[256];  // Small buffer for fast processing
+    uint8_t data[256]; // Small buffer for fast processing
     char *line_buffer = heap_caps_malloc(CMD_MAX_LENGTH, MALLOC_CAP_8BIT);
     if (!line_buffer) {
         ESP_LOGE(TAG, "Failed to allocate RX line buffer");
@@ -80,14 +80,14 @@ static void uart_rx_task(void *pvParameters)
 
     while (uart_running) {
         int len = uart_read_bytes(UART_NUM, data, sizeof(data), pdMS_TO_TICKS(20));
-        
+
         for (int i = 0; i < len; i++) {
             char c = (char)data[i];
-            
+
             if (c == '\n' || c == '\r') {
                 if (line_pos > 0) {
                     line_buffer[line_pos] = '\0';
-                    
+
                     // Allocate command string for queue
                     char *cmd = heap_caps_malloc(line_pos + 1, MALLOC_CAP_8BIT);
                     if (cmd) {
@@ -99,11 +99,10 @@ static void uart_rx_task(void *pvParameters)
                     }
                     line_pos = 0;
                 }
-            }
-            else if (c == '\b' || c == 127) {
-                if (line_pos > 0) line_pos--;
-            }
-            else if (line_pos < CMD_MAX_LENGTH - 1 && c >= 32 && c < 127) {
+            } else if (c == '\b' || c == 127) {
+                if (line_pos > 0)
+                    line_pos--;
+            } else if (line_pos < CMD_MAX_LENGTH - 1 && c >= 32 && c < 127) {
                 line_buffer[line_pos++] = c;
             }
         }
@@ -118,7 +117,7 @@ static void uart_rx_task(void *pvParameters)
 static void cmd_processor_task(void *pvParameters)
 {
     char *cmd = NULL;
-    
+
     ESP_LOGI(TAG, "Command processor task started");
 
     while (uart_running) {
@@ -154,17 +153,17 @@ esp_err_t uart_commands_init(void)
     // Note: Flow control disabled - Heltec V3 doesn't have RTS/CTS wired
     // Decoupled task architecture provides robustness without hardware flow control
     uart_config_t uart_config = {
-        .baud_rate = UART_BAUD_RATE,
-        .data_bits = UART_DATA_8_BITS,
-        .parity = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .baud_rate  = UART_BAUD_RATE,
+        .data_bits  = UART_DATA_8_BITS,
+        .parity     = UART_PARITY_DISABLE,
+        .stop_bits  = UART_STOP_BITS_1,
+        .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_DEFAULT,
     };
 
     ESP_ERROR_CHECK(uart_param_config(UART_NUM, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(UART_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-    
+
     // Install with large buffers and event queue
     QueueHandle_t uart_queue;
     esp_err_t ret = uart_driver_install(UART_NUM, UART_RX_BUF_SIZE, UART_TX_BUF_SIZE, 20, &uart_queue, 0);
@@ -172,12 +171,12 @@ esp_err_t uart_commands_init(void)
         ESP_LOGE(TAG, "Failed to install UART driver: %s", esp_err_to_name(ret));
         return ret;
     }
-    
-    ESP_LOGI(TAG, "UART%d driver installed: RX=%d, TX=%d, no flow control", 
-             UART_NUM, UART_RX_BUF_SIZE, UART_TX_BUF_SIZE);
+
+    ESP_LOGI(TAG, "UART%d driver installed: RX=%d, TX=%d, no flow control", UART_NUM, UART_RX_BUF_SIZE,
+             UART_TX_BUF_SIZE);
 
     ESP_LOGI(TAG, "UART%d configured: %d baud, TX=%d, RX=%d", UART_NUM, UART_BAUD_RATE, UART_TX_PIN, UART_RX_PIN);
-    
+
     return ESP_OK;
 }
 
@@ -189,7 +188,7 @@ esp_err_t uart_commands_start(void)
     }
 
     // Create command queue
-    cmd_queue = xQueueCreate(10, sizeof(char*));
+    cmd_queue = xQueueCreate(10, sizeof(char *));
     if (!cmd_queue) {
         ESP_LOGE(TAG, "Failed to create command queue");
         return ESP_FAIL;
@@ -241,7 +240,7 @@ esp_err_t uart_commands_stop(void)
         cmd_queue = NULL;
     }
 
-    uart_rx_task_handle = NULL;
+    uart_rx_task_handle       = NULL;
     cmd_processor_task_handle = NULL;
 
     ESP_LOGI(TAG, "UART command tasks stopped");

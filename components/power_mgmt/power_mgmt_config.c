@@ -7,12 +7,12 @@
 static const char *TAG = "PWR_CFG";
 
 static const power_mgmt_config_t default_config = {
-    .display_sleep_enabled = true,
+    .display_sleep_enabled    = true,
     .display_sleep_timeout_ms = 30000,
-    .light_sleep_enabled = true,
-    .light_sleep_timeout_ms = 180000,
-    .deep_sleep_enabled = true,
-    .deep_sleep_timeout_ms = 360000,
+    .light_sleep_enabled      = true,
+    .light_sleep_timeout_ms   = 180000,
+    .deep_sleep_enabled       = true,
+    .deep_sleep_timeout_ms    = 360000,
 };
 
 static power_mgmt_config_t cached_config;
@@ -40,7 +40,7 @@ esp_err_t power_mgmt_config_get(power_mgmt_config_t *config)
     esp_err_t ret = nvs_open("powermanagement", NVS_READONLY, &nvs_handle);
     if (ret == ESP_OK) {
         size_t required_size = sizeof(power_mgmt_config_t);
-        ret = nvs_get_blob(nvs_handle, "config", config, &required_size);
+        ret                  = nvs_get_blob(nvs_handle, "config", config, &required_size);
         nvs_close(nvs_handle);
 
         if (ret == ESP_OK) {

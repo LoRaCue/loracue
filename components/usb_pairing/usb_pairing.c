@@ -5,31 +5,31 @@
 
 #include "usb_pairing.h"
 #include "cJSON.h"
-#include "general_config.h"
 #include "device_registry.h"
-#include "lora_driver.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_random.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "general_config.h"
+#include "lora_driver.h"
 #include "tinyusb.h"
-#include "usb/usb_host.h"
 #include "usb/cdc_acm_host.h"
+#include "usb/usb_host.h"
 #include <string.h>
 
 static const char *TAG = "usb_pairing";
 
 static usb_pairing_callback_t result_callback = NULL;
-static bool pairing_active = false;
-static bool pairing_success = false;
-static uint16_t paired_device_id = 0;
-static char paired_device_name[32] = {0};
-static cdc_acm_dev_hdl_t cdc_device = NULL;
+static bool pairing_active                    = false;
+static bool pairing_success                   = false;
+static uint16_t paired_device_id              = 0;
+static char paired_device_name[32]            = {0};
+static cdc_acm_dev_hdl_t cdc_device           = NULL;
 static usb_host_client_handle_t client_handle = NULL;
-static TaskHandle_t usb_host_task_handle = NULL;
-static bool host_mode_active = false;
+static TaskHandle_t usb_host_task_handle      = NULL;
+static bool host_mode_active                  = false;
 
 #define PAIRING_TIMEOUT_MS 30000
 #define ESP32_VID 0x303A
@@ -46,7 +46,8 @@ static void usb_host_lib_task(void *arg)
 
 static void cdc_rx_callback(const uint8_t *data, size_t data_len, void *user_arg)
 {
-    if (!pairing_active) return;
+    if (!pairing_active)
+        return;
 
     char response[256];
     size_t copy_len = (data_len < sizeof(response) - 1) ? data_len : sizeof(response) - 1;
@@ -56,7 +57,7 @@ static void cdc_rx_callback(const uint8_t *data, size_t data_len, void *user_arg
     ESP_LOGI(TAG, "Received: %s", response);
 
     if (strncmp(response, "OK ", 3) == 0) {
-        pairing_success = true;
+        pairing_success  = true;
         char *name_start = strstr(response, "with ");
         if (name_start) {
             name_start += 5;
@@ -76,13 +77,13 @@ static void cdc_rx_callback(const uint8_t *data, size_t data_len, void *user_arg
 static void new_dev_callback(usb_device_handle_t usb_dev)
 {
     ESP_LOGI(TAG, "USB device detected");
-    
+
     const cdc_acm_host_device_config_t dev_config = {
         .connection_timeout_ms = 5000,
-        .out_buffer_size = 512,
-        .event_cb = NULL,
-        .data_cb = (cdc_acm_data_callback_t)cdc_rx_callback,
-        .user_arg = NULL,
+        .out_buffer_size       = 512,
+        .event_cb              = NULL,
+        .data_cb               = (cdc_acm_data_callback_t)cdc_rx_callback,
+        .user_arg              = NULL,
     };
 
     if (cdc_acm_host_open(ESP32_VID, ESP32_PID, 0, &dev_config, &cdc_device) == ESP_OK) {
@@ -97,11 +98,12 @@ static esp_err_t switch_to_host_mode(void)
 
     const usb_host_config_t host_config = {
         .skip_phy_setup = false,
-        .intr_flags = ESP_INTR_FLAG_LEVEL1,
+        .intr_flags     = ESP_INTR_FLAG_LEVEL1,
     };
 
     esp_err_t ret = usb_host_install(&host_config);
-    if (ret != ESP_OK) return ret;
+    if (ret != ESP_OK)
+        return ret;
 
     host_mode_active = true;
     if (xTaskCreate(usb_host_lib_task, "usb_host", 4096, NULL, 5, &usb_host_task_handle) != pdPASS) {
@@ -110,9 +112,9 @@ static esp_err_t switch_to_host_mode(void)
     }
 
     const usb_host_client_config_t client_config = {
-        .is_synchronous = false,
+        .is_synchronous    = false,
         .max_num_event_msg = 5,
-        .async = {.client_event_callback = NULL, .callback_arg = NULL},
+        .async             = {.client_event_callback = NULL, .callback_arg = NULL},
     };
 
     ret = usb_host_client_register(&client_config, &client_handle);
@@ -125,9 +127,9 @@ static esp_err_t switch_to_host_mode(void)
 
     const cdc_acm_host_driver_config_t driver_config = {
         .driver_task_stack_size = 4096,
-        .driver_task_priority = 10,
-        .xCoreID = 0,
-        .new_dev_cb = new_dev_callback,
+        .driver_task_priority   = 10,
+        .xCoreID                = 0,
+        .new_dev_cb             = new_dev_callback,
     };
 
     ret = cdc_acm_host_install(&driver_config);
@@ -167,14 +169,12 @@ static esp_err_t switch_to_device_mode(void)
     usb_host_uninstall();
     vTaskDelay(pdMS_TO_TICKS(200));
 
-    tinyusb_config_t tusb_cfg = {
-        .port = TINYUSB_PORT_FULL_SPEED_0,
-        .phy = {.skip_setup = false, .self_powered = false},
-        .task = {.size = 4096, .priority = 5, .xCoreID = 0},
-        .descriptor = {0},
-        .event_cb = NULL,
-        .event_arg = NULL
-    };
+    tinyusb_config_t tusb_cfg = {.port       = TINYUSB_PORT_FULL_SPEED_0,
+                                 .phy        = {.skip_setup = false, .self_powered = false},
+                                 .task       = {.size = 4096, .priority = 5, .xCoreID = 0},
+                                 .descriptor = {0},
+                                 .event_cb   = NULL,
+                                 .event_arg  = NULL};
 
     return tinyusb_driver_install(&tusb_cfg);
 }
@@ -188,7 +188,8 @@ static void pairing_task(void *arg)
 
     if (!cdc_device) {
         pairing_active = false;
-        if (result_callback) result_callback(false, 0, "No device");
+        if (result_callback)
+            result_callback(false, 0, "No device");
         switch_to_device_mode();
         vTaskDelete(NULL);
         return;
@@ -207,8 +208,7 @@ static void pairing_task(void *arg)
     cJSON_AddStringToObject(json, "name", config.device_name);
 
     char mac_str[18];
-    snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     cJSON_AddStringToObject(json, "mac", mac_str);
 
     char key_str[65];
@@ -227,7 +227,8 @@ static void pairing_task(void *arg)
 
     if (ret != ESP_OK) {
         pairing_active = false;
-        if (result_callback) result_callback(false, 0, "Send failed");
+        if (result_callback)
+            result_callback(false, 0, "Send failed");
         switch_to_device_mode();
         vTaskDelete(NULL);
         return;
@@ -253,11 +254,12 @@ static void pairing_task(void *arg)
 
 esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
 {
-    if (pairing_active) return ESP_ERR_INVALID_STATE;
+    if (pairing_active)
+        return ESP_ERR_INVALID_STATE;
 
-    result_callback = callback;
-    pairing_active = true;
-    pairing_success = false;
+    result_callback  = callback;
+    pairing_active   = true;
+    pairing_success  = false;
     paired_device_id = 0;
     memset(paired_device_name, 0, sizeof(paired_device_name));
 
@@ -278,7 +280,8 @@ esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
 
 esp_err_t usb_pairing_stop(void)
 {
-    if (!pairing_active) return ESP_OK;
+    if (!pairing_active)
+        return ESP_OK;
 
     pairing_active = false;
     if (host_mode_active) {

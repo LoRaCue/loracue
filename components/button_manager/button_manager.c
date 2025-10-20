@@ -71,23 +71,23 @@ static void button_manager_task(void *pvParameters)
 
         // Button press detection
         if (btn_pressed && !button.pressed) {
-            button.pressed = true;
+            button.pressed          = true;
             button.press_start_time = current_time;
-            button.long_press_sent = false;
-            last_activity_time = current_time;
+            button.long_press_sent  = false;
+            last_activity_time      = current_time;
             led_manager_button_feedback(true);
-            
+
             u8g2_SetPowerSave(&u8g2, 0);
-            
+
             ESP_LOGD(TAG, "Button pressed");
         }
         // Button release detection
         else if (!btn_pressed && button.pressed) {
-            button.pressed = false;
+            button.pressed          = false;
             uint32_t press_duration = current_time - button.press_start_time;
-            last_activity_time = current_time;
-            led_manager_button_feedback(false);  // Restore LED
-            
+            last_activity_time      = current_time;
+            led_manager_button_feedback(false); // Restore LED
+
             // Check if long press was already sent
             if (button.long_press_sent) {
                 ESP_LOGD(TAG, "Button released (long press already sent)");
@@ -109,22 +109,21 @@ static void button_manager_task(void *pvParameters)
                 if (event_callback)
                     event_callback(BUTTON_EVENT_LONG, callback_arg);
                 button.long_press_sent = true;
-                button.click_count = 0;
+                button.click_count     = 0;
             }
         }
 
         // Double-click detection (after release)
         if (!button.pressed && button.click_count > 0) {
             uint32_t time_since_release = current_time - button.last_release_time;
-            
+
             if (button.click_count == 2) {
                 ESP_LOGI(TAG, "Double press");
                 ui_screen_controller_handle_button(BUTTON_EVENT_DOUBLE);
                 if (event_callback)
                     event_callback(BUTTON_EVENT_DOUBLE, callback_arg);
                 button.click_count = 0;
-            }
-            else if (time_since_release >= DOUBLE_CLICK_WINDOW_MS) {
+            } else if (time_since_release >= DOUBLE_CLICK_WINDOW_MS) {
                 // Single click confirmed
                 ESP_LOGI(TAG, "Short press");
                 ui_screen_controller_handle_button(BUTTON_EVENT_SHORT);

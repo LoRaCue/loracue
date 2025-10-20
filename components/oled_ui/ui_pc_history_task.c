@@ -1,8 +1,8 @@
 #include "ui_pc_history_task.h"
-#include "general_config.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "general_config.h"
 #include "pc_mode_screen.h"
 #include "ui_screen_controller.h"
 

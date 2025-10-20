@@ -20,12 +20,12 @@ extern "C" {
  * @brief LoRa hardware band profile
  */
 typedef struct {
-    char id[LORA_BAND_ID_LEN];           ///< Band ID (e.g., "HW_433")
-    char name[LORA_BAND_NAME_LEN];       ///< Human-readable name
-    uint32_t optimal_center_khz;         ///< Optimal center frequency in kHz
-    uint32_t optimal_freq_min_khz;       ///< Optimal minimum frequency in kHz
-    uint32_t optimal_freq_max_khz;       ///< Optimal maximum frequency in kHz
-    int8_t max_power_dbm;                ///< Maximum regulatory TX power (from first public_bands entry)
+    char id[LORA_BAND_ID_LEN];     ///< Band ID (e.g., "HW_433")
+    char name[LORA_BAND_NAME_LEN]; ///< Human-readable name
+    uint32_t optimal_center_khz;   ///< Optimal center frequency in kHz
+    uint32_t optimal_freq_min_khz; ///< Optimal minimum frequency in kHz
+    uint32_t optimal_freq_max_khz; ///< Optimal maximum frequency in kHz
+    int8_t max_power_dbm;          ///< Maximum regulatory TX power (from first public_bands entry)
 } lora_band_profile_t;
 
 /**
@@ -45,14 +45,14 @@ int lora_bands_get_count(void);
  * @param index Band index (0 to count-1)
  * @return Pointer to band profile or NULL
  */
-const lora_band_profile_t* lora_bands_get_profile(int index);
+const lora_band_profile_t *lora_bands_get_profile(int index);
 
 /**
  * @brief Get band profile by ID
  * @param id Band ID string
  * @return Pointer to band profile or NULL
  */
-const lora_band_profile_t* lora_bands_get_profile_by_id(const char *id);
+const lora_band_profile_t *lora_bands_get_profile_by_id(const char *id);
 
 /**
  * @brief Get band index for a given frequency
