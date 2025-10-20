@@ -46,6 +46,18 @@ typedef enum {
 } lora_command_t;
 
 /**
+ * @brief LoRa RX callback
+ * @param device_id Sender device ID
+ * @param command Received command
+ * @param payload Payload data
+ * @param payload_length Payload length
+ * @param rssi Signal strength in dBm
+ * @param user_ctx User context
+ */
+typedef void (*lora_protocol_rx_callback_t)(uint16_t device_id, lora_command_t command, const uint8_t *payload,
+                                            uint8_t payload_length, int16_t rssi, void *user_ctx);
+
+/**
  * @brief HID device types
  */
 typedef enum {
@@ -150,6 +162,13 @@ typedef enum {
 } lora_connection_state_t;
 
 /**
+ * @brief LoRa connection state callback
+ * @param state New connection state
+ * @param user_ctx User context
+ */
+typedef void (*lora_protocol_state_callback_t)(lora_connection_state_t state, void *user_ctx);
+
+/**
  * @brief Get current connection quality
  *
  * @return Current connection state based on RSSI and activity
@@ -194,6 +213,26 @@ esp_err_t lora_protocol_get_stats(lora_connection_stats_t *stats);
  * @brief Reset connection statistics
  */
 void lora_protocol_reset_stats(void);
+
+/**
+ * @brief Register RX callback
+ * @param callback Callback function
+ * @param user_ctx User context
+ */
+void lora_protocol_register_rx_callback(lora_protocol_rx_callback_t callback, void *user_ctx);
+
+/**
+ * @brief Register state change callback
+ * @param callback Callback function
+ * @param user_ctx User context
+ */
+void lora_protocol_register_state_callback(lora_protocol_state_callback_t callback, void *user_ctx);
+
+/**
+ * @brief Start protocol RX task
+ * @return ESP_OK on success
+ */
+esp_err_t lora_protocol_start(void);
 
 #ifdef __cplusplus
 }

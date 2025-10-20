@@ -20,7 +20,6 @@
 #include "freertos/task.h"
 #include "general_config.h"
 #include "led_manager.h"
-#include "lora_comm.h"
 #include "lora_driver.h"
 #include "lora_protocol.h"
 #include "nvs.h"
@@ -633,11 +632,8 @@ void app_main(void)
 
     // Initialize LoRa communication
     ESP_LOGI(TAG, "Initializing LoRa communication...");
-    ret = lora_comm_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "LoRa communication initialization failed: %s", esp_err_to_name(ret));
-        return;
-    }
+    // lora_protocol_init is called by lora_driver_init
+    // No separate init needed here
 
     // Initialize USB HID
     ESP_LOGI(TAG, "Initializing USB HID interface...");
@@ -697,7 +693,7 @@ void app_main(void)
 
     // Start LoRa communication task
     ESP_LOGI(TAG, "Starting LoRa communication...");
-    ret = lora_comm_start();
+    ret = lora_protocol_start();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start LoRa communication: %s", esp_err_to_name(ret));
         return;
@@ -733,8 +729,8 @@ void app_main(void)
     strcpy(g_oled_status.last_command, "");
 
     // Register application callbacks
-    lora_comm_register_rx_callback(lora_rx_handler, &g_oled_status);
-    lora_comm_register_state_callback(lora_state_handler, &g_oled_status);
+    lora_protocol_register_rx_callback(lora_rx_handler, &g_oled_status);
+    lora_protocol_register_state_callback(lora_state_handler, &g_oled_status);
     button_manager_register_callback(button_handler, NULL);
 
     // Create event group for system events

@@ -36,6 +36,15 @@ static bool rssi_monitor_running             = false;
 static lora_connection_stats_t connection_stats = {0};
 static mbedtls_aes_context aes_ctx;
 
+// Callback state
+static lora_protocol_rx_callback_t rx_callback = NULL;
+static void *rx_callback_ctx = NULL;
+static lora_protocol_state_callback_t state_callback = NULL;
+static void *state_callback_ctx = NULL;
+static TaskHandle_t protocol_rx_task_handle = NULL;
+static bool protocol_rx_task_running = false;
+static lora_connection_state_t last_connection_state = LORA_CONNECTION_LOST;
+
 esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
 {
     ESP_LOGI(TAG, "Initializing LoRa protocol for device 0x%04X with AES-256", device_id);
@@ -454,4 +463,76 @@ void lora_protocol_reset_stats(void)
 {
     memset(&connection_stats, 0, sizeof(connection_stats));
     ESP_LOGI(TAG, "Connection statistics reset");
+}
+
+void lora_protocol_register_rx_callback(lora_protocol_rx_callback_t callback, void *user_ctx)
+{
+    rx_callback = callback;
+    rx_callback_ctx = user_ctx;
+}
+
+void lora_protocol_register_state_callback(lora_protocol_state_callback_t callback, void *user_ctx)
+{
+    state_callback = callback;
+    state_callback_ctx = user_ctx;
+}
+
+static void protocol_rx_task(void *arg)
+{
+    ESP_LOGI(TAG, "Protocol RX task started");
+    
+    while (protocol_rx_task_running) {
+        lora_packet_data_t packet_data;
+        esp_err_t ret = lora_protocol_receive_packet(&packet_data, 1000);
+        
+        if (ret == ESP_OK) {
+            // Invoke RX callback
+            if (rx_callback) {
+                rx_callback(packet_data.device_id, packet_data.command, packet_data.payload,
+                           packet_data.payload_length, last_rssi, rx_callback_ctx);
+            }
+            
+            // Check for state change
+            lora_connection_state_t state = lora_protocol_get_connection_state();
+            if (state != last_connection_state) {
+                last_connection_state = state;
+                if (state_callback) {
+                    state_callback(state, state_callback_ctx);
+                }
+            }
+        }
+        
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    
+    ESP_LOGI(TAG, "Protocol RX task stopped");
+    vTaskDelete(NULL);
+}
+
+esp_err_t lora_protocol_start(void)
+{
+    if (protocol_rx_task_running) {
+        ESP_LOGW(TAG, "Protocol RX task already running");
+        return ESP_OK;
+    }
+    
+    protocol_rx_task_running = true;
+    
+    BaseType_t ret = xTaskCreate(
+        protocol_rx_task,
+        "protocol_rx",
+        4096,
+        NULL,
+        5,
+        &protocol_rx_task_handle
+    );
+    
+    if (ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create protocol RX task");
+        protocol_rx_task_running = false;
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "Protocol RX task started");
+    return ESP_OK;
 }
