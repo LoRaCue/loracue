@@ -492,7 +492,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         return;
     }
 
-    if (strcmp(command_line, "GET_PAIRED_DEVICES") == 0) {
+    if (strcmp(command_line, "GET_DEVICE_INFO") == 0) {
         handle_get_device_info();
         return;
     }
