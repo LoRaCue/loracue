@@ -381,7 +381,6 @@ void LoRaConfig(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codingRate, 
                 uint8_t payloadLen, bool crcOn, bool invertIrq);
 uint8_t LoRaReceive(uint8_t *pData, int16_t len);
 bool LoRaSend(const uint8_t *pData, int16_t len, uint8_t mode);
-void LoRaDebugPrint(bool enable);
 
 // Private function
 void spi_write_byte(uint8_t *Dataout, size_t DataLength);
