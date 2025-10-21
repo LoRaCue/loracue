@@ -275,11 +275,11 @@ void ui_screen_controller_handle_button(button_event_type_t event)
             if (event == BUTTON_EVENT_SHORT) {
                 general_config_t config;
                 general_config_get(&config);
-                lora_protocol_send_keyboard(config.slot_id, 0, 0x4E); // Page Down
+                lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4E, 2000, 3); // Page Down
             } else if (event == BUTTON_EVENT_DOUBLE) {
                 general_config_t config;
                 general_config_get(&config);
-                lora_protocol_send_keyboard(config.slot_id, 0, 0x4B); // Page Up
+                lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4B, 2000, 3); // Page Up
             } else if (event == BUTTON_EVENT_LONG) {
                 menu_screen_reset();
                 ui_screen_controller_set(OLED_SCREEN_MENU, NULL);

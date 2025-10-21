@@ -61,7 +61,7 @@ static uint32_t total_commands_received                             = 0;
 // Global status for PC mode screen access
 oled_status_t g_oled_status = {0};
 
-static void add_command_to_history(uint16_t device_id, const char *cmd_name)
+static void add_command_to_history(uint16_t device_id, const char *cmd_name, uint8_t keycode, uint8_t modifiers)
 {
     // Shift history down
     for (int i = MAX_COMMAND_HISTORY - 1; i > 0; i--) {
@@ -71,6 +71,8 @@ static void add_command_to_history(uint16_t device_id, const char *cmd_name)
     // Add new entry at top
     command_history[0].timestamp_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
     command_history[0].device_id    = device_id;
+    command_history[0].keycode      = keycode;
+    command_history[0].modifiers    = modifiers;
 
     // Get device name from registry
     paired_device_t device;
@@ -270,15 +272,22 @@ static bool rate_limiter_check(void)
 }
 
 // Application layer: LoRa command to USB HID mapping
-static void lora_rx_handler(uint16_t device_id, lora_command_t command, const uint8_t *payload, uint8_t payload_length,
-                            int16_t rssi, void *user_ctx)
+static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_command_t command, const uint8_t *payload,
+                            uint8_t payload_length, int16_t rssi, void *user_ctx)
 {
+    // In presenter mode, only accept ACKs
     if (current_device_mode == DEVICE_MODE_PRESENTER) {
-        ESP_LOGD(TAG, "Presenter mode: ignoring received LoRa command");
+        if (command == CMD_ACK) {
+            ESP_LOGI(TAG, "Presenter mode: ACK received from 0x%04X (seq=%u)", device_id, sequence_num);
+            // ACK handling is done in lora_protocol layer
+            return;
+        }
+        ESP_LOGD(TAG, "Presenter mode: ignoring non-ACK command");
         return;
     }
 
-    ESP_LOGI(TAG, "PC mode RX: device=0x%04X, cmd=0x%02X, rssi=%d dBm", device_id, command, rssi);
+    ESP_LOGI(TAG, "PC mode RX: device=0x%04X, seq=%u, cmd=0x%02X, rssi=%d dBm", device_id, sequence_num, command,
+             rssi);
 
     // Device pairing validation
     if (!device_registry_is_paired(device_id)) {
@@ -297,12 +306,8 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
         return;
     }
 
-    if (!usb_hid_is_connected()) {
-        ESP_LOGE(TAG, "USB not connected, cannot send HID");
-        return;
-    }
-
     usb_hid_keycode_t keycode = 0;
+    uint8_t modifiers         = 0;
     uint8_t slot_id           = 0;
     const char *cmd_name      = "UNKNOWN";
 
@@ -313,7 +318,8 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
         uint8_t hid_type                    = LORA_HID_TYPE(payload_v2->type_flags);
 
         if (hid_type == HID_TYPE_KEYBOARD) {
-            keycode = payload_v2->hid_report.keyboard.keycode[0];
+            keycode   = payload_v2->hid_report.keyboard.keycode[0];
+            modifiers = payload_v2->hid_report.keyboard.modifiers;
 
             // Map keycode to command name for logging
             switch (keycode) {
@@ -344,11 +350,18 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
         return;
     }
 
-    ESP_LOGI(TAG, "PC mode: forwarding to USB slot %d", slot_id);
-    usb_hid_send_key(keycode);
+    // Forward to USB HID if connected
+    if (usb_hid_is_connected()) {
+        ESP_LOGI(TAG, "PC mode: forwarding to USB slot %d", slot_id);
+        usb_hid_send_key(keycode);
+    } else {
+        ESP_LOGW(TAG, "USB not connected, skipping HID forwarding (ACK sent by protocol layer)");
+    }
+
+    // Note: ACK is automatically sent by lora_protocol layer for successfully decrypted packets
 
     // Add to command history
-    add_command_to_history(device_id, cmd_name);
+    add_command_to_history(device_id, cmd_name, keycode, modifiers);
 
     // Update status for PC mode screen
     oled_status_t *status = (oled_status_t *)user_ctx;
@@ -373,6 +386,12 @@ static void lora_rx_handler(uint16_t device_id, lora_command_t command, const ui
         }
     }
 
+    // Immediate redraw for PC mode screen
+    if (oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
+        extern void pc_mode_screen_draw(const oled_status_t *);
+        pc_mode_screen_draw(status);
+    }
+
     xEventGroupSetBits(system_events, (1 << 3));
 }
 
@@ -385,47 +404,6 @@ static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
                              : (state == LORA_CONNECTION_WEAK)    ? 50
                                                                   : 25;
     xEventGroupSetBits(system_events, (1 << 2));
-}
-
-static void button_handler(button_event_type_t event, void *arg)
-{
-    oled_screen_t screen = oled_ui_get_screen();
-
-    // Allow long press for menu on both MAIN and PC_MODE screens
-    if (screen != OLED_SCREEN_MAIN && screen != OLED_SCREEN_PC_MODE) {
-        return;
-    }
-
-    // In PC mode, only allow menu access (no LoRa commands)
-    if (current_device_mode == DEVICE_MODE_PC) {
-        ESP_LOGD(TAG, "PC mode: buttons disabled for LoRa transmission");
-        return;
-    }
-
-    // Map button events to keyboard HID codes (V2 protocol)
-    uint8_t modifiers = 0;
-    uint8_t keycode   = 0;
-
-    switch (event) {
-        case BUTTON_EVENT_SHORT:
-            keycode = HID_KEY_PAGE_DOWN; // Next slide
-            break;
-        case BUTTON_EVENT_DOUBLE:
-            keycode = HID_KEY_PAGE_UP; // Previous slide
-            break;
-        case BUTTON_EVENT_LONG:
-            // Long press opens menu, don't send HID
-            return;
-        default:
-            return;
-    }
-
-    general_config_t config;
-    general_config_get(&config);
-
-    ESP_LOGI(TAG, "Presenter mode: sending keyboard HID (slot=%d, mod=0x%02X, key=0x%02X)", config.slot_id, modifiers,
-             keycode);
-    lora_protocol_send_keyboard_reliable(config.slot_id, modifiers, keycode, 1000, 3);
 }
 
 void app_main(void)
@@ -681,6 +659,19 @@ void app_main(void)
         return;
     }
 
+    // Initialize status with device name BEFORE showing screen
+    g_oled_status.battery_level  = 85;
+    g_oled_status.lora_connected = false;
+    g_oled_status.lora_signal    = 0;
+    g_oled_status.usb_connected  = false;
+    g_oled_status.device_id      = 0x1234;
+
+    // Load device name from config
+    general_config_t dev_config;
+    general_config_get(&dev_config);
+    strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
+    strcpy(g_oled_status.last_command, "");
+
     // Transition to main UI state (adapts to mode automatically)
     oled_ui_set_screen(OLED_SCREEN_MAIN);
 
@@ -714,24 +705,10 @@ void app_main(void)
         }
     }
 
-    // Main status update loop
-    g_oled_status.battery_level  = 85;
-    g_oled_status.lora_connected = false;
-    g_oled_status.lora_signal    = 0;
-    g_oled_status.usb_connected  = false;
-    g_oled_status.device_id      = 0x1234;
-
-    // Load device name from config
-    general_config_t dev_config;
-    general_config_get(&dev_config);
-    strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
-
-    strcpy(g_oled_status.last_command, "");
-
     // Register application callbacks
     lora_protocol_register_rx_callback(lora_rx_handler, &g_oled_status);
     lora_protocol_register_state_callback(lora_state_handler, &g_oled_status);
-    button_manager_register_callback(button_handler, NULL);
+    // Button manager handles events directly via ui_screen_controller
 
     // Create event group for system events
     system_events = xEventGroupCreate();
