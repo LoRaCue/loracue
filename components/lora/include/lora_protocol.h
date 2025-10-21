@@ -48,14 +48,16 @@ typedef enum {
 /**
  * @brief LoRa RX callback
  * @param device_id Sender device ID
+ * @param sequence_num Packet sequence number
  * @param command Received command
  * @param payload Payload data
  * @param payload_length Payload length
  * @param rssi Signal strength in dBm
  * @param user_ctx User context
  */
-typedef void (*lora_protocol_rx_callback_t)(uint16_t device_id, lora_command_t command, const uint8_t *payload,
-                                            uint8_t payload_length, int16_t rssi, void *user_ctx);
+typedef void (*lora_protocol_rx_callback_t)(uint16_t device_id, uint16_t sequence_num, lora_command_t command,
+                                            const uint8_t *payload, uint8_t payload_length, int16_t rssi,
+                                            void *user_ctx);
 
 /**
  * @brief HID device types
