@@ -44,6 +44,8 @@ static bool rssi_monitor_running             = false;
 // Connection statistics
 static lora_connection_stats_t connection_stats = {0};
 static mbedtls_aes_context aes_ctx;
+static mbedtls_md_context_t hmac_ctx;
+static const mbedtls_md_info_t *hmac_md_info = NULL;
 
 // Callback state
 static lora_protocol_rx_callback_t rx_callback = NULL;
@@ -66,6 +68,15 @@ esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
     int ret = mbedtls_aes_setkey_enc(&aes_ctx, local_device_key, 256);
     if (ret != 0) {
         ESP_LOGE(TAG, "AES-256 key setup failed: %d", ret);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    // Initialize HMAC context (reused for all MAC calculations)
+    mbedtls_md_init(&hmac_ctx);
+    hmac_md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+    if (mbedtls_md_setup(&hmac_ctx, hmac_md_info, 1) != 0) {
+        ESP_LOGE(TAG, "HMAC context setup failed");
+        mbedtls_md_free(&hmac_ctx);
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -97,33 +108,23 @@ esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
 
 static esp_err_t calculate_mac(const uint8_t *data, size_t data_len, const uint8_t *key, uint8_t *mac_out)
 {
-    // MAC using first 4 bytes of HMAC-SHA256 with AES-256 key
-    mbedtls_md_context_t md_ctx;
-    mbedtls_md_init(&md_ctx);
-
-    const mbedtls_md_info_t *md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-    if (mbedtls_md_setup(&md_ctx, md_info, 1) != 0) {
-        mbedtls_md_free(&md_ctx);
+    // Reuse pre-initialized HMAC context for performance
+    if (mbedtls_md_hmac_reset(&hmac_ctx) != 0) {
         return ESP_FAIL;
     }
 
-    if (mbedtls_md_hmac_starts(&md_ctx, key, 32) != 0) {
-        mbedtls_md_free(&md_ctx);
+    if (mbedtls_md_hmac_starts(&hmac_ctx, key, 32) != 0) {
         return ESP_FAIL;
     }
 
-    if (mbedtls_md_hmac_update(&md_ctx, data, data_len) != 0) {
-        mbedtls_md_free(&md_ctx);
+    if (mbedtls_md_hmac_update(&hmac_ctx, data, data_len) != 0) {
         return ESP_FAIL;
     }
 
     uint8_t full_mac[32];
-    if (mbedtls_md_hmac_finish(&md_ctx, full_mac) != 0) {
-        mbedtls_md_free(&md_ctx);
+    if (mbedtls_md_hmac_finish(&hmac_ctx, full_mac) != 0) {
         return ESP_FAIL;
     }
-
-    mbedtls_md_free(&md_ctx);
 
     // Use first 4 bytes as MAC
     memcpy(mac_out, full_mac, LORA_MAC_SIZE);

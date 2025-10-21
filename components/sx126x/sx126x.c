@@ -318,6 +318,11 @@ esp_err_t sx126x_config(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codi
     uint8_t ldro = 0;                       // LowDataRateOptimize OFF
     SetModulationParams(spreadingFactor, bandwidth, codingRate, ldro);
 
+    // Configure FS fallback mode for faster RX transition after TX
+    uint8_t fallback_mode = SX126X_RX_TX_FALLBACK_MODE_FS;
+    WriteCommand(SX126X_CMD_SET_RX_TX_FALLBACK_MODE, &fallback_mode, 1);
+    ESP_LOGI(TAG, "FS fallback mode configured (faster RX transition)");
+
     g_sx126x->packet_params[0] = (preambleLength >> 8) & 0xFF;
     g_sx126x->packet_params[1] = preambleLength;
     if (payloadLen) {
