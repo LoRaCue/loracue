@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build build-console-on-uart0 clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
+.PHONY: all build build-uart-swap clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -55,12 +55,15 @@ endif
 # Build targets
 build: check-idf
 	@echo "🔨 Building LoRaCue firmware..."
+	@echo "   📍 Console: UART1, Commands: USB-CDC + UART0"
+	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py build
 
-build-console-on-uart0: check-idf
-	@echo "🐛 Building LoRaCue firmware (console on UART0, commands on UART1)..."
+build-uart-swap: check-idf
+	@echo "🔨 Building LoRaCue firmware (UART swap)..."
+	@echo "   📍 Console: UART0, Commands: USB-CDC + UART1"
 	@rm -f sdkconfig
-	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.console-on-uart0" idf.py build
+	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.uart-swap" idf.py build
 
 clean:
 	@echo "🧹 Cleaning build artifacts and sdkconfig..."
@@ -151,6 +154,36 @@ lint:
 		-I components/*/include \
 		main/ components/ 2>&1 | grep -v "Checking" || true
 	@echo "✅ Static analysis passed"
+
+# ============================================================================
+# 🧪 Testing
+# ============================================================================
+
+test:
+	@echo "🧪 Running host-based tests with REAL lora_protocol.c code..."
+	@cd test/host_test && gcc -o test_runner test_lora_host.c \
+		-I. \
+		-I../../components/lora/include \
+		-I/opt/homebrew/include \
+		-L/opt/homebrew/lib \
+		-lmbedcrypto && ./test_runner
+
+test-device: check-idf
+	@echo "🧪 Building and running LoRa protocol tests on device..."
+	$(IDF_SETUP) idf.py -DTEST_COMPONENTS='test' build
+	$(IDF_SETUP) idf.py flash monitor
+
+test-build: check-idf
+	@echo "🧪 Building device tests only..."
+	$(IDF_SETUP) idf.py -DTEST_COMPONENTS='test' build
+
+# ============================================================================
+# 🎮 Wokwi Simulator
+# ============================================================================
+
+# Start SX1262 RF relay server
+	@echo "📦 Installing relay server dependencies..."
+	@cd wokwi/sx1262-rf-relay && npm install
 
 # Wokwi simulator
 sim: check-idf build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
@@ -244,7 +277,7 @@ help:
 	@echo ""
 	@echo "📦 Build:"
 	@echo "  make build                    - Build firmware (UART0=commands, UART1=console)"
-	@echo "  make build-console-on-uart0   - Build with console on UART0, commands on UART1"
+	@echo "  make build-uart-swap   - Build with console on UART0, commands on UART1"
 	@echo "  make rebuild                  - Clean and rebuild"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
@@ -269,6 +302,10 @@ help:
 	@echo "  make web-dev       - Start dev server (localhost:3000)"
 	@echo "  make web-build     - Build production web UI"
 	@echo "  make web-flash     - Flash web UI to device"
+	@echo ""
+	@echo "🧪 Testing:"
+	@echo "  make test          - Build and run protocol tests"
+	@echo "  make test-build    - Build tests only"
 	@echo ""
 	@echo "🎨 Code Quality:"
 	@echo "  make format        - Format all code"

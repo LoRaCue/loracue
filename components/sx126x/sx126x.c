@@ -706,10 +706,10 @@ void ClearIrqStatus(uint16_t irq)
 
 void SetRx(uint32_t timeout)
 {
-    ESP_LOGI(TAG, "----- SetRx timeout=%" PRIu32, timeout);
-
     SetStandby(SX126X_STANDBY_RC);
     SetRxEnable();
+    ESP_LOGI(TAG, "SetRx: timeout=%u, TXEN=%d RXEN=%d", timeout, g_sx126x->txen_pin, g_sx126x->rxen_pin);
+    
     uint8_t buf[3];
     buf[0] = (uint8_t)((timeout >> 16) & 0xFF);
     buf[1] = (uint8_t)((timeout >> 8) & 0xFF);
@@ -728,8 +728,6 @@ void SetRx(uint32_t timeout)
 
 void SetRxEnable(void)
 {
-    ESP_LOGI(TAG, "SetRxEnable:g_sx126x->txen_pin=%d g_sx126x->rxen_pin=%d", g_sx126x->txen_pin, g_sx126x->rxen_pin);
-
     if ((g_sx126x->txen_pin != -1) && (g_sx126x->rxen_pin != -1)) {
         gpio_set_level(g_sx126x->rxen_pin, HIGH);
         gpio_set_level(g_sx126x->txen_pin, LOW);
@@ -738,8 +736,6 @@ void SetRxEnable(void)
 
 void SetTx(uint32_t timeoutInMs)
 {
-    ESP_LOGI(TAG, "----- SetTx timeoutInMs=%" PRIu32, timeoutInMs);
-
     SetStandby(SX126X_STANDBY_RC);
     SetTxEnable();
     uint8_t buf[3];
@@ -748,7 +744,7 @@ void SetTx(uint32_t timeoutInMs)
         uint32_t timeoutInUs = timeoutInMs * 1000;
         tout                 = (uint32_t)(timeoutInUs / 0.015625);
     }
-    ESP_LOGI(TAG, "SetTx timeoutInMs=%" PRIu32 " tout=%" PRIu32, timeoutInMs, tout);
+    ESP_LOGI(TAG, "SetTx: timeout=%ums, TXEN=%d RXEN=%d", timeoutInMs, g_sx126x->txen_pin, g_sx126x->rxen_pin);
 
     buf[0] = (uint8_t)((tout >> 16) & 0xFF);
     buf[1] = (uint8_t)((tout >> 8) & 0xFF);
@@ -767,8 +763,6 @@ void SetTx(uint32_t timeoutInMs)
 
 void SetTxEnable(void)
 {
-    ESP_LOGI(TAG, "SetTxEnable:g_sx126x->txen_pin=%d g_sx126x->rxen_pin=%d", g_sx126x->txen_pin, g_sx126x->rxen_pin);
-
     if ((g_sx126x->txen_pin != -1) && (g_sx126x->rxen_pin != -1)) {
         gpio_set_level(g_sx126x->rxen_pin, LOW);
         gpio_set_level(g_sx126x->txen_pin, HIGH);
