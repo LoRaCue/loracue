@@ -48,7 +48,7 @@ lora_protocol_send_keyboard_reliable(slot_id, modifiers, keycode, 1000, 3);
 ### PC Module
 ```c
 // Extract slot from received packet
-uint8_t slot_id = LORA_SLOT(payload_v2->version_slot);
+uint8_t slot_id = LORA_SLOT(payload->version_slot);
 
 // Route to appropriate USB port based on slot_id
 usb_hid_send_key_to_port(slot_id, keycode);

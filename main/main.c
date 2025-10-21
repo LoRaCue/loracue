@@ -312,14 +312,14 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
     const char *cmd_name      = "UNKNOWN";
 
     // Parse HID report from payload
-    if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_v2_t)) {
-        const lora_payload_v2_t *payload_v2 = (const lora_payload_v2_t *)payload;
-        slot_id                             = LORA_SLOT(payload_v2->version_slot);
-        uint8_t hid_type                    = LORA_HID_TYPE(payload_v2->type_flags);
+    if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_t)) {
+        const lora_payload_t *pkt = (const lora_payload_t *)payload;
+        slot_id                   = LORA_SLOT(pkt->version_slot);
+        uint8_t hid_type          = LORA_HID_TYPE(pkt->type_flags);
 
         if (hid_type == HID_TYPE_KEYBOARD) {
-            keycode   = payload_v2->hid_report.keyboard.keycode[0];
-            modifiers = payload_v2->hid_report.keyboard.modifiers;
+            keycode   = pkt->hid_report.keyboard.keycode[0];
+            modifiers = pkt->hid_report.keyboard.modifiers;
 
             // Map keycode to command name for logging
             switch (keycode) {

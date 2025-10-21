@@ -10,7 +10,7 @@ typedef struct __attribute__((packed)) {
     uint8_t version_slot;      // [7:4]=protocol_ver, [3:0]=slot_id (1-16)
     uint8_t type_flags;        // [7:4]=hid_type, [3:0]=flags/reserved
     uint8_t hid_report[5];     // HID report data (device-specific)
-} lora_payload_v2_t;
+} lora_payload_t;
 ```
 
 ### Byte 0: version_slot

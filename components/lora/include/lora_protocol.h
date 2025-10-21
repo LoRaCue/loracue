@@ -87,7 +87,7 @@ typedef struct __attribute__((packed)) {
         uint8_t raw[5];
         lora_keyboard_report_t keyboard;
     } hid_report;
-} lora_payload_v2_t;
+} lora_payload_t;
 
 /**
  * @brief LoRa packet structure (before encryption)
