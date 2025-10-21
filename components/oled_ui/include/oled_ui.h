@@ -76,6 +76,8 @@ typedef struct {
     uint16_t device_id;
     char device_name[16];
     char command[8];
+    uint8_t keycode;
+    uint8_t modifiers;
 } command_history_entry_t;
 
 /**

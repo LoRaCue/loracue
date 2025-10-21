@@ -19,6 +19,84 @@ static const char *TAG = "pc_mode_screen";
 
 extern u8g2_t u8g2;
 
+// Lightbar state: alternates between positions on each new event
+static uint8_t lightbar_state = 0; // 0 = lines 2&4, 1 = lines 1&3
+
+// Keycode to display name lookup
+static const char* keycode_to_name(uint8_t keycode, uint8_t modifiers)
+{
+    static char buf[16];
+    const char *key_name = NULL;
+    
+    // Letters (a-z)
+    if (keycode >= 0x04 && keycode <= 0x1D) {
+        buf[0] = 'a' + (keycode - 0x04);
+        buf[1] = '\0';
+        key_name = buf;
+    }
+    // Numbers (1-9, 0)
+    else if (keycode >= 0x1E && keycode <= 0x26) {
+        buf[0] = '1' + (keycode - 0x1E);
+        buf[1] = '\0';
+        key_name = buf;
+    }
+    else if (keycode == 0x27) key_name = "0";
+    // Function keys
+    else if (keycode >= 0x3A && keycode <= 0x45) {
+        snprintf(buf, sizeof(buf), "F%d", keycode - 0x39);
+        key_name = buf;
+    }
+    // Special keys
+    else {
+        switch (keycode) {
+            case 0x28: key_name = "Enter"; break;
+            case 0x29: key_name = "Esc"; break;
+            case 0x2A: key_name = "BkSp"; break;
+            case 0x2B: key_name = "Tab"; break;
+            case 0x2C: key_name = "Space"; break;
+            case 0x2D: key_name = "-"; break;
+            case 0x2E: key_name = "="; break;
+            case 0x2F: key_name = "["; break;
+            case 0x30: key_name = "]"; break;
+            case 0x31: key_name = "\\"; break;
+            case 0x33: key_name = ";"; break;
+            case 0x34: key_name = "'"; break;
+            case 0x35: key_name = "`"; break;
+            case 0x36: key_name = ","; break;
+            case 0x37: key_name = "."; break;
+            case 0x38: key_name = "/"; break;
+            case 0x4A: key_name = "Home"; break;
+            case 0x4B: key_name = "PgUp"; break;
+            case 0x4C: key_name = "Del"; break;
+            case 0x4D: key_name = "End"; break;
+            case 0x4E: key_name = "PgDn"; break;
+            case 0x4F: key_name = "→"; break;
+            case 0x50: key_name = "←"; break;
+            case 0x51: key_name = "↓"; break;
+            case 0x52: key_name = "↑"; break;
+            default: key_name = "?"; break;
+        }
+    }
+    
+    // Add modifiers
+    buf[0] = '\0';
+    if (modifiers & 0x01) strcat(buf, "Ctrl+");  // Left Ctrl
+    if (modifiers & 0x10) strcat(buf, "Ctrl+");  // Right Ctrl
+    if (modifiers & 0x02) strcat(buf, "Shift+"); // Left Shift
+    if (modifiers & 0x20) strcat(buf, "Shift+"); // Right Shift
+    if (modifiers & 0x04) strcat(buf, "Alt+");   // Left Alt
+    if (modifiers & 0x40) strcat(buf, "Alt+");   // Right Alt
+    if (modifiers & 0x08) strcat(buf, "Win+");   // Left GUI
+    if (modifiers & 0x80) strcat(buf, "Win+");   // Right GUI
+    
+    if (buf[0] != '\0') {
+        strcat(buf, key_name);
+        return buf;
+    }
+    
+    return key_name;
+}
+
 void pc_mode_screen_draw(const oled_status_t *status)
 {
     if (!status) {
@@ -37,31 +115,64 @@ void pc_mode_screen_draw(const oled_status_t *status)
     // Draw status bar (LORACUE + icons)
     ui_status_bar_draw(&ui_status);
 
-    // Viewport: Command history (last 4 commands)
+    // Viewport: Command history (last 4 commands) - moved down 1px
     u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
 
     uint32_t now_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    int y           = 20;
+    int y           = 21; // Moved from 20 to 21
+
+    // Update lightbar state on 5th event and beyond
+    static uint8_t last_count = 0;
+    if (status->command_history_count >= 5 && status->command_history_count != last_count) {
+        lightbar_state = 1 - lightbar_state; // Toggle between 0 and 1
+        last_count = status->command_history_count;
+    }
 
     for (int i = 0; i < status->command_history_count && i < 4; i++) {
         uint32_t elapsed_sec = (now_ms - status->command_history[i].timestamp_ms) / 1000;
+        
+        // Determine if this line should have lightbar
+        bool draw_lightbar = false;
+        if (status->command_history_count >= 2) {
+            if (lightbar_state == 0) {
+                // Lines 2 & 4 (indices 1 & 3)
+                draw_lightbar = (i == 1 || i == 3);
+            } else {
+                // Lines 1 & 3 (indices 0 & 2)
+                draw_lightbar = (i == 0 || i == 2);
+            }
+        }
+        
+        // Draw lightbar background
+        if (draw_lightbar) {
+            u8g2_SetDrawColor(&u8g2, 1);
+            u8g2_DrawBox(&u8g2, 0, y - 7, DISPLAY_WIDTH, 9);
+            u8g2_SetDrawColor(&u8g2, 0); // Inverted text
+        } else {
+            u8g2_SetDrawColor(&u8g2, 1); // Normal text
+        }
+
+        // Get key name from keycode
+        const char *key_display = keycode_to_name(status->command_history[i].keycode, 
+                                                   status->command_history[i].modifiers);
 
         char line[32];
-        snprintf(line, sizeof(line), "%04" PRIu32 " %-8s %s", elapsed_sec, status->command_history[i].device_name,
-                 status->command_history[i].command);
+        snprintf(line, sizeof(line), "%04" PRIu32 " %-8s %s", elapsed_sec, 
+                 status->command_history[i].device_name, key_display);
 
         u8g2_DrawStr(&u8g2, 2, y, line);
+        u8g2_SetDrawColor(&u8g2, 1); // Reset to normal
         y += 9;
     }
 
     // If no commands yet
     if (status->command_history_count == 0) {
         u8g2_SetFont(&u8g2, u8g2_font_helvB12_tr);
-        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 27, "PC MODE");
+        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 28, "PC MODE"); // Moved down 1px
 
         u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
-        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 38, "Waiting for");
-        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 48, "commands...");
+        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 39, "Waiting for"); // Moved down 1px
+        u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 49, "commands..."); // Moved down 1px
     }
 
     // Bottom separator
