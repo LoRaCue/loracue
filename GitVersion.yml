@@ -1,21 +1,19 @@
+mode: ContinuousDeployment
 tag-prefix: 'v'
-increment: Inherit
-commit-message-incrementing: Enabled
 
 branches:
-  develop:
-    mode: ContinuousDeployment
-    label: 'alpha.{CommitsSinceVersionSource}'
-    increment: Minor
   main:
-    mode: ContinuousDelivery
     label: ''
     increment: Patch
+  develop:
+    label: alpha
+    increment: Minor
   feature:
-    mode: ContinuousDeployment
-    label: '{BranchName}.{CommitsSinceVersionSource}'
+    label: '{BranchName}'
     increment: Minor
   hotfix:
-    mode: ContinuousDeployment
-    label: 'beta.{CommitsSinceVersionSource}'
+    label: beta
     increment: Patch
+
+ignore:
+  sha: []
