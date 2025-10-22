@@ -295,8 +295,11 @@ int16_t lora_get_rssi(void)
     // Simulate RSSI for WiFi (always good signal in simulator)
     return -50; // dBm
 #else
-    // Hardware RSSI - placeholder
-    return -80; // dBm
+    // Read actual RSSI from SX126x chip
+    int8_t rssi_packet = 0;
+    int8_t snr_packet = 0;
+    GetPacketStatus(&rssi_packet, &snr_packet);
+    return (int16_t)rssi_packet;
 #endif
 }
 
