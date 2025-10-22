@@ -242,13 +242,17 @@ jobs:
         echo "$SIGNING_KEY" > /tmp/signing_key.pem
         chmod 600 /tmp/signing_key.pem
         
-        cd build
         BINARY_NAME="${{ matrix.board.name }}.bin"
         
-        # Sign all binaries
-        python3 ../scripts/sign_firmware.py $BINARY_NAME /tmp/signing_key.pem
-        python3 ../scripts/sign_firmware.py bootloader/bootloader.bin /tmp/signing_key.pem
-        python3 ../scripts/sign_firmware.py partition_table/partition-table.bin /tmp/signing_key.pem
+        # Copy binaries to workspace for signing
+        cp build/$BINARY_NAME .
+        cp build/bootloader/bootloader.bin .
+        cp build/partition_table/partition-table.bin .
+        
+        # Sign all binaries in workspace
+        python3 scripts/sign_firmware.py $BINARY_NAME /tmp/signing_key.pem
+        python3 scripts/sign_firmware.py bootloader.bin /tmp/signing_key.pem
+        python3 scripts/sign_firmware.py partition-table.bin /tmp/signing_key.pem
         
         # Clean up private key
         rm -f /tmp/signing_key.pem
@@ -261,19 +265,18 @@ jobs:
         echo "$SIGNING_KEY" > /tmp/signing_key.pem
         chmod 600 /tmp/signing_key.pem
         
-        cd build
         BINARY_NAME="${{ matrix.board.name }}.bin"
         
-        # Generate and sign manifest
-        python3 ../scripts/generate_manifest.py \
+        # Generate and sign manifest (all files are in workspace)
+        python3 scripts/generate_manifest.py \
           "${{ needs.version.outputs.version }}" \
           "${{ needs.version.outputs.is_prerelease == 'true' && 'prerelease' || 'release' }}" \
           "${{ github.sha }}" \
           "${{ needs.version.outputs.tag_name }}" \
           "${{ matrix.board.name }}" \
           "$BINARY_NAME" \
-          "bootloader/bootloader.bin" \
-          "partition_table/partition-table.bin" \
+          "bootloader.bin" \
+          "partition-table.bin" \
           "/tmp/signing_key.pem"
         
         # Clean up private key
@@ -288,10 +291,10 @@ jobs:
         
         mkdir -p release/$BOARD
         
-        # Copy binaries
-        cp build/$BINARY_NAME release/$BOARD/
-        cp build/bootloader/bootloader.bin release/$BOARD/
-        cp build/partition_table/partition-table.bin release/$BOARD/
+        # Copy binaries from workspace (already copied there for signing)
+        cp $BINARY_NAME release/$BOARD/
+        cp bootloader.bin release/$BOARD/
+        cp partition-table.bin release/$BOARD/
         
         # Copy checksums from workspace
         cp ${BINARY_NAME}.sha256 release/$BOARD/
