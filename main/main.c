@@ -362,6 +362,10 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
 
     // Add to command history
     add_command_to_history(device_id, cmd_name, keycode, modifiers);
+    
+    // Trigger instant screen update in PC mode
+    extern void ui_pc_history_notify_update(void);
+    ui_pc_history_notify_update();
 
     // Update status for PC mode screen
     oled_status_t *status = (oled_status_t *)user_ctx;

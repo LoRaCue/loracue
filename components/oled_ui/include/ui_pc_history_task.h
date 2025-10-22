@@ -13,3 +13,8 @@ esp_err_t ui_pc_history_task_start(void);
  * @brief Stop PC mode history update task
  */
 esp_err_t ui_pc_history_task_stop(void);
+
+/**
+ * @brief Notify task to update immediately (called when new command received)
+ */
+void ui_pc_history_notify_update(void);
