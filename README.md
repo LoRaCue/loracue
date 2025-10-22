@@ -11,7 +11,7 @@
 
 Enterprise-grade wireless presentation remote with long-range LoRa communication, featuring sub-50ms latency, hardware-accelerated encryption, and professional build quality. Designed for conference halls, auditoriums, and large presentation venues where traditional RF remotes fail.
 
-## 🎯 **Key Features**
+## 🎯 Key Features
 
 - **🌐 Long-Range Communication**: LoRa SX1262 transceiver with >100m range indoors
 - **⚡ Ultra-Low Latency**: <50ms response time with optimized SF7/BW500kHz configuration  
@@ -22,9 +22,9 @@ Enterprise-grade wireless presentation remote with long-range LoRa communication
 - **🔄 OTA Updates**: Wireless firmware updates with dual-partition safety
 - **🎮 Perfect Simulation**: Full Wokwi simulator support for development
 
-## 🏗️ **Hardware Architecture**
+## 🏗️ Hardware Architecture
 
-### **Current Prototyping Hardware: Heltec LoRa V3**
+### Current Prototyping Hardware: Heltec LoRa V3
 
 ![Heltec LoRa V3](assets/HeltecV3.png)
 
@@ -44,7 +44,7 @@ Enterprise-grade wireless presentation remote with long-range LoRa communication
 - **Professional Build**: Injection-molded housing with premium materials
 - **Extended Battery**: Longer runtime with optimized power management
 
-### **Wokwi Simulation Setup**
+### Wokwi Simulation Setup
 ![Wokwi Diagram](assets/wokwi_diagramm.png)
 
 The project includes a complete Wokwi simulation environment with:
@@ -54,9 +54,9 @@ The project includes a complete Wokwi simulation environment with:
 - Real-time serial monitoring
 - Perfect development workflow integration
 
-## 🛠️ **Development Workflow**
+## 🛠️ Development Workflow
 
-### **BSP (Board Support Package) Architecture**
+### BSP (Board Support Package) Architecture
 
 Our innovative BSP abstraction layer enables seamless development across real hardware and simulation:
 
@@ -74,7 +74,7 @@ components/bsp/
 - **Same API**: Application code remains unchanged
 - **Perfect Compatibility**: Identical pinout and behavior
 
-### **Makefile-Driven Development**
+### Makefile-Driven Development
 
 Our comprehensive Makefile provides a streamlined development experience:
 
@@ -129,16 +129,16 @@ make setup-env      # Setup development environment
 - **CI/CD Ready**: GitHub Actions integration for automated testing
 - **Web Development**: Integrated web interface build system
 
-### **Simulation-First Development**
+### Simulation-First Development
 
 1. **🎮 Develop in Wokwi**: Perfect hardware simulation with instant feedback
 2. **🔄 Iterate Rapidly**: No hardware flashing delays, instant code changes
 3. **🧪 Test Thoroughly**: Interactive buttons, OLED display, LED feedback
 4. **📱 Deploy to Hardware**: Same codebase runs on real Heltec V3 boards
 
-## 🚀 **Quick Start**
+## 🚀 Quick Start
 
-### **Prerequisites**
+### Prerequisites
 
 ```bash
 # Install ESP-IDF v5.5
@@ -152,7 +152,7 @@ npm install -g @commitlint/cli @commitlint/config-conventional
 npm install -g @wokwi/cli
 ```
 
-### **Development Setup**
+### Development Setup
 
 ```bash
 # Clone repository
@@ -166,17 +166,21 @@ npm install
 make sim-run
 ```
 
-### **Hardware Development**
+### Hardware Development
 
 ```bash
 # Build for real hardware
 make build
 
-# Flash to connected Heltec V3
+# Flash to connected device (development)
 make flash-monitor
 ```
 
-## 📁 **Project Structure**
+### For End Users
+
+Use **[LoRaCue Manager](https://github.com/LoRaCue/loracue-manager)** to flash firmware to your devices. It provides automatic device detection, one-click updates, and cross-platform support.
+
+## 📁 Project Structure
 
 ```
 LoRaCue/
@@ -198,22 +202,22 @@ LoRaCue/
 └── 📄 README.md             # This file
 ```
 
-## 🔧 **Technical Specifications**
+## 🔧 Technical Specifications
 
-### **Communication Protocol**
+### Communication Protocol
 - **Frequency**: 868MHz (EU) / 915MHz (US)
 - **Modulation**: LoRa with SF7, BW500kHz for low latency
 - **Range**: >100m indoors, >1km line-of-sight
 - **Encryption**: AES-256 with rolling codes
 - **Pairing**: Secure USB-based device registration
 
-### **Power Management**
+### Power Management
 - **Battery Life**: 2-4 weeks typical usage
 - **Sleep Modes**: Deep sleep <10µA, light sleep <1mA
 - **Charging**: USB-C with battery monitoring
 - **Low Battery**: OLED warnings and graceful shutdown
 
-### **Memory Layout (8MB Flash)**
+### Memory Layout (8MB Flash)
 ```
 ├── Bootloader (32KB)
 ├── Partition Table (4KB)
@@ -225,7 +229,7 @@ LoRaCue/
 └── Coredump (56KB)
 ```
 
-## 🤝 **Contributing**
+## 🤝 Contributing
 
 We welcome contributions! Please follow our development workflow:
 
@@ -237,7 +241,7 @@ We welcome contributions! Please follow our development workflow:
 6. **🚀 Push** to your branch (`git push origin feature/amazing-feature`)
 7. **📬 Open** a Pull Request
 
-### **Commit Convention**
+### Commit Convention
 We use [Conventional Commits](https://www.conventionalcommits.org/):
 - `feat:` New features
 - `fix:` Bug fixes  
@@ -247,7 +251,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 - `test:` Adding tests
 - `chore:` Maintenance tasks
 
-## 📋 **Development Roadmap**
+## 📋 Development Roadmap
 
 - [x] **Foundation**: ESP-IDF project structure and BSP abstraction
 - [x] **Simulation**: Complete Wokwi environment with SSD1306 support
@@ -259,8 +263,8 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 - [ ] **OTA Updates**: Wireless firmware update system
 - [ ] **Production**: Hardware testing and certification
 
-## 📄 **License**
+## 📄 License
 
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
 
-## 🏙️ **Made with ❤️ in Hannover**
+## 🏙️ Made with ❤️ in Hannover

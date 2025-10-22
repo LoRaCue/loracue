@@ -251,99 +251,6 @@ jobs:
         cp build/bootloader.bin.sha256 release/$BOARD/
         cp build/partition-table.bin.sha256 release/$BOARD/
         
-        # Generate flash scripts
-        cat > release/$BOARD/flash.sh << EOFSH
-        #!/bin/bash
-        # LoRaCue Firmware Flash Script
-        # Board: ${{ matrix.board.display_name }}
-        # Version: v${{ needs.version.outputs.version }}
-        
-        set -e
-        
-        PORT=\${1:-/dev/ttyUSB0}
-        BINARY_NAME="${BINARY_NAME}"
-        
-        echo "========================================="
-        echo "LoRaCue Firmware Flasher"
-        echo "========================================="
-        echo "Board:   ${{ matrix.board.display_name }}"
-        echo "Version: v${{ needs.version.outputs.version }}"
-        echo "Port:    \$PORT"
-        echo "========================================="
-        
-        if ! command -v esptool.py &> /dev/null; then
-            echo "ERROR: esptool.py not found"
-            echo "Install with: pip install esptool"
-            exit 1
-        fi
-        
-        echo "Verifying checksums..."
-        sha256sum -c \${BINARY_NAME}.sha256 || exit 1
-        sha256sum -c bootloader.bin.sha256 || exit 1
-        sha256sum -c partition-table.bin.sha256 || exit 1
-        echo "✓ Checksums verified"
-        
-        echo ""
-        echo "Flashing firmware..."
-        esptool.py --chip ${{ matrix.board.target }} \\
-                   --port "\$PORT" \\
-                   --baud 921600 \\
-                   --before default_reset \\
-                   --after hard_reset \\
-                   write_flash -z \\
-                   --flash_mode dio \\
-                   --flash_freq 80m \\
-                   --flash_size ${{ matrix.board.flash_size }} \\
-                   0x0 bootloader.bin \\
-                   0x8000 partition-table.bin \\
-                   0x10000 \$BINARY_NAME
-        
-        echo ""
-        echo "✓ Flash complete! Device will restart automatically."
-        EOFSH
-        
-        chmod +x release/$BOARD/flash.sh
-        
-        # Windows flash script
-        cat > release/$BOARD/flash.bat << EOFBAT
-        @echo off
-        setlocal enabledelayedexpansion
-        
-        set PORT=%1
-        if "%PORT%"=="" set PORT=COM3
-        set BINARY_NAME=${BINARY_NAME}
-        
-        echo =========================================
-        echo LoRaCue Firmware Flasher
-        echo =========================================
-        echo Board:   ${{ matrix.board.display_name }}
-        echo Version: v${{ needs.version.outputs.version }}
-        echo Port:    %PORT%
-        echo =========================================
-        
-        where esptool.py >nul 2>nul
-        if %ERRORLEVEL% NEQ 0 (
-            echo ERROR: esptool.py not found
-            echo Install with: pip install esptool
-            pause
-            exit /b 1
-        )
-        
-        echo.
-        echo Flashing firmware...
-        esptool.py --chip ${{ matrix.board.target }} --port %PORT% --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size ${{ matrix.board.flash_size }} 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 %BINARY_NAME%
-        
-        if %ERRORLEVEL% EQU 0 (
-            echo.
-            echo Flash complete! Device will restart automatically.
-        ) else (
-            echo.
-            echo ERROR: Flash failed!
-        )
-        
-        pause
-        EOFBAT
-        
         # README
         BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
         cat > release/$BOARD/README.md << EOFMD
@@ -361,51 +268,24 @@ jobs:
         - \`bootloader.bin\` - ESP32 bootloader
         - \`partition-table.bin\` - Partition table
         - \`*.sha256\` - SHA256 checksums for verification
-        - \`flash.sh\` - Linux/macOS flash script
-        - \`flash.bat\` - Windows flash script
         
         ## 🔐 Firmware Verification
         
-        **Board ID**: `${{ steps.manifest.outputs.board_id }}`  
-        **Firmware Version**: `${{ steps.manifest.outputs.fw_version }}`  
-        **SHA256**: `${{ steps.checksums.outputs.firmware_sha256 }}`
+        **Board ID**: \`${{ steps.manifest.outputs.board_id }}\`  
+        **Firmware Version**: \`${{ steps.manifest.outputs.fw_version }}\`  
+        **SHA256**: \`${{ steps.checksums.outputs.firmware_sha256 }}\`
         
         ## 📥 Installation
         
-        ### Prerequisites
-        ```bash
-        pip install esptool
-        ```
+        Use **[LoRaCue Manager](https://github.com/LoRaCue/loracue-manager)** to flash this firmware.
         
-        ### Quick Flash
+        LoRaCue Manager provides:
+        - ✅ Automatic device detection
+        - ✅ One-click firmware updates  
+        - ✅ Integrity verification
+        - ✅ Cross-platform support (Windows, macOS, Linux)
         
-        **Linux/macOS:**
-        ```bash
-        ./flash.sh [PORT]
-        # Default port: /dev/ttyUSB0
-        ```
-        
-        **Windows:**
-        ```cmd
-        flash.bat [PORT]
-        REM Default port: COM3
-        ```
-        
-        ### Manual Flash
-        \`\`\`bash
-        esptool.py --chip ${{ matrix.board.target }} \\
-                   --port YOUR_PORT \\
-                   --baud 921600 \\
-                   write_flash -z \\
-                   --flash_mode dio \\
-                   --flash_freq 80m \\
-                   --flash_size ${{ matrix.board.flash_size }} \\
-                   0x0 bootloader.bin \\
-                   0x8000 partition-table.bin \\
-                   0x10000 ${BINARY_NAME}
-        \`\`\`
-        
-        ## ✅ Verification
+        ## ✅ Post-Flash Verification
         
         After flashing, the device should:
         1. Display LoRaCue logo on OLED
@@ -418,13 +298,13 @@ jobs:
         This firmware supports OTA updates via:
         - USB CDC commands
         - WiFi web interface
-        - Bluetooth companion app
         
-        **Compatibility**: Only accepts firmware with matching board ID (`${{ steps.manifest.outputs.board_id }}`)
+        **Compatibility**: Only accepts firmware with matching board ID (\`${{ steps.manifest.outputs.board_id }}\`)
         
         ## 📚 Documentation
         
-        - **Repository**: https://github.com/LoRaCue/loracue
+        - **Firmware Repository**: https://github.com/LoRaCue/loracue
+        - **Manager Tool**: https://github.com/LoRaCue/loracue-manager
         - **Issues**: https://github.com/LoRaCue/loracue/issues
         - **Wiki**: https://github.com/LoRaCue/loracue/wiki
         
@@ -575,14 +455,15 @@ jobs:
           |-------|--------|------------|-------------|
           | **Heltec LoRa V3** | ESP32-S3 | 8MB | SX1262 LoRa (868/915MHz) + SSD1306 OLED |
           
-          ## 📥 Quick Start
+          ## 📥 Installation
           
-          1. **Download** the firmware package for your board
-          2. **Extract** the ZIP file
-          3. **Install** esptool: `pip install esptool`
-          4. **Flash** using the included script:
-             - Linux/macOS: `./flash.sh`
-             - Windows: `flash.bat`
+          Use **[LoRaCue Manager](https://github.com/LoRaCue/loracue-manager)** to flash firmware to your devices.
+          
+          LoRaCue Manager provides:
+          - ✅ Automatic device detection
+          - ✅ One-click firmware updates
+          - ✅ Integrity verification
+          - ✅ Cross-platform support (Windows, macOS, Linux)
           
           ## 🔐 Security & Verification
           
