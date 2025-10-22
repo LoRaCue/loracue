@@ -121,21 +121,12 @@ void pc_mode_screen_draw(const oled_status_t *status)
     uint32_t now_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
     int y           = 21; // Moved from 20 to 21
 
-    // Update lightbar state based on line count
-    // 2 lines: 2nd position (state=0)
-    // 3 lines: 1st & 3rd (state=1)
-    // 4 lines: 2nd & 4th (state=0)
-    // 5+ lines: alternates with each new event
+    // Update lightbar state: flip pattern on every new even-numbered log entry
     static uint8_t last_count = 0;
     if (status->command_history_count != last_count) {
-        if (status->command_history_count == 2) {
-            lightbar_state = 0; // Start at 2nd position
-        } else if (status->command_history_count == 3) {
-            lightbar_state = 1; // Switch to 1st & 3rd
-        } else if (status->command_history_count == 4) {
-            lightbar_state = 0; // Back to 2nd & 4th
-        } else if (status->command_history_count > 4) {
-            lightbar_state = 1 - lightbar_state; // Toggle on each new event
+        // Flip lightbar state when count reaches an even number
+        if (status->command_history_count % 2 == 0 && status->command_history_count > last_count) {
+            lightbar_state = 1 - lightbar_state;
         }
         last_count = status->command_history_count;
     }
