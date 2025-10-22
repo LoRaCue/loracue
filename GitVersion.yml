@@ -6,19 +6,19 @@ commit-message-incrementing: Enabled
 branches:
   develop:
     mode: ContinuousDeployment
-    tag: alpha
+    label: alpha
     increment: Minor
     prevent-increment-of-merged-branch-version: false
   main:
     mode: ContinuousDelivery
-    tag: ''
+    label: ''
     increment: Patch
     prevent-increment-of-merged-branch-version: true
   feature:
     mode: ContinuousDeployment
-    tag: useBranchName
+    label: useBranchName
     increment: Minor
   hotfix:
     mode: ContinuousDeployment
-    tag: beta
+    label: beta
     increment: Patch
