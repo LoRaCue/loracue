@@ -131,16 +131,14 @@ void pc_mode_screen_draw(const oled_status_t *status)
     for (int i = 0; i < status->command_history_count && i < 4; i++) {
         uint32_t elapsed_sec = (now_ms - status->command_history[i].timestamp_ms) / 1000;
         
-        // Determine if this line should have lightbar
+        // Determine if this line should have lightbar (only if text exists)
         bool draw_lightbar = false;
-        if (status->command_history_count >= 2) {
-            if (lightbar_state == 0) {
-                // Lines 2 & 4 (indices 1 & 3)
-                draw_lightbar = (i == 1 || i == 3);
-            } else {
-                // Lines 1 & 3 (indices 0 & 2)
-                draw_lightbar = (i == 0 || i == 2);
-            }
+        if (lightbar_state == 0) {
+            // Lines 2 & 4 (indices 1 & 3)
+            draw_lightbar = (i == 1 || i == 3);
+        } else {
+            // Lines 1 & 3 (indices 0 & 2)
+            draw_lightbar = (i == 0 || i == 2);
         }
         
         // Draw lightbar background
