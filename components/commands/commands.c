@@ -303,8 +303,8 @@ static void handle_set_lora_key(cJSON *json)
     // Parse hex string to bytes
     uint8_t key_bytes[32];
     for (int i = 0; i < 32; i++) {
-        char byte_str[3] = {hex_key[i * 2], hex_key[i * 2 + 1], '\0'};
-        key_bytes[i]     = (uint8_t)strtol(byte_str, NULL, 16);
+        const char byte_str[3] = {hex_key[i * 2], hex_key[i * 2 + 1], '\0'};
+        key_bytes[i]           = (uint8_t)strtol(byte_str, NULL, 16);
     }
 
     // Get current config and update key
