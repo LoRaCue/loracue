@@ -23,6 +23,7 @@
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "u8g2.h"
+#include "ui_screen_controller.h"
 #include "version.h"
 #include "xmodem.h"
 #include <inttypes.h>
@@ -178,7 +179,6 @@ static void handle_set_general(cJSON *config_json)
     ui_data_provider_reload_config();
     
     // Trigger immediate screen update to show changes
-    extern void ui_screen_controller_update(const ui_status_t *status);
     ui_screen_controller_update(NULL);
 
     g_send_response("OK Device config updated");
