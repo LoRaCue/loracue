@@ -21,12 +21,12 @@ Complete documentation for the secure firmware release and distribution system.
 │  └────────────────────────────────────────────────────────┘    │
 │         ↓                                                        │
 │  ┌────────────────────────────────────────────────────────┐    │
-│  │    Trigger Webhook to release.loracue.de Repo          │    │
+│  │    Trigger Webhook to release.loracue.com Repo          │    │
 │  └────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│         LoRaCue/release.loracue.de (Private Repo)               │
+│         LoRaCue/release.loracue.com (Private Repo)               │
 │  ┌────────────────────────────────────────────────────────┐    │
 │  │  GitHub Actions: Update releases.json                  │    │
 │  │  1. Fetch all GitHub releases via API                  │    │
@@ -38,7 +38,7 @@ Complete documentation for the secure firmware release and distribution system.
 │         ↓                                                        │
 │  ┌────────────────────────────────────────────────────────┐    │
 │  │           Vercel Auto-Deploy                            │    │
-│  │  • Serves releases.json at release.loracue.de          │    │
+│  │  • Serves releases.json at release.loracue.com          │    │
 │  │  • CDN distribution (global edge network)              │    │
 │  │  • HTTPS with custom domain                            │    │
 │  └────────────────────────────────────────────────────────┘    │
@@ -47,7 +47,7 @@ Complete documentation for the secure firmware release and distribution system.
 ┌─────────────────────────────────────────────────────────────────┐
 │                    LoRaCue Manager (Client)                      │
 │  ┌────────────────────────────────────────────────────────┐    │
-│  │  1. Fetch https://release.loracue.de/releases.json     │    │
+│  │  1. Fetch https://release.loracue.com/releases.json     │    │
 │  │  2. Verify signature with embedded public key          │    │
 │  │  3. Display available versions (stable/prerelease)     │    │
 │  │  4. User selects version                               │    │
@@ -80,7 +80,7 @@ openssl rsa -in firmware_private.pem -pubout -out firmware_public.pem
 - **Private Key**: GitHub Actions Secret `FIRMWARE_SIGNING_KEY` (both repos)
 - **Public Key**: 
   - `keys/firmware_public.pem` in LoRaCue/loracue repo
-  - `keys/firmware_public.pem` in LoRaCue/release.loracue.de repo
+  - `keys/firmware_public.pem` in LoRaCue/release.loracue.com repo
   - Embedded in LoRaCue Manager binary
 
 **Signature Algorithm:**
@@ -106,7 +106,7 @@ Flash to device
 
 ### releases.json
 
-**Location:** `https://release.loracue.de/releases.json`
+**Location:** `https://release.loracue.com/releases.json`
 
 **Structure:**
 ```json
@@ -256,7 +256,7 @@ echo -n '{"schema_version":"1.0.0",...}' | \
 - Download all artifacts
 - Create GitHub Release
 - Upload binaries + signatures + checksums + manifest.json
-- **Trigger webhook to release.loracue.de repo**
+- **Trigger webhook to release.loracue.com repo**
 
 **New Files to Upload:**
 ```
@@ -274,7 +274,7 @@ manifest.json.sig          # NEW
 README.md
 ```
 
-### 2. Release Index Update (LoRaCue/release.loracue.de)
+### 2. Release Index Update (LoRaCue/release.loracue.com)
 
 **Trigger:** Repository dispatch webhook from loracue repo
 
@@ -292,7 +292,7 @@ README.md
 
 **Repository Structure:**
 ```
-LoRaCue/release.loracue.de/
+LoRaCue/release.loracue.com/
 ├── .github/
 │   └── workflows/
 │       └── update-index.yml
@@ -332,8 +332,8 @@ LoRaCue/release.loracue.de/
 ### 3. Vercel Deployment
 
 **Setup:**
-1. Connect LoRaCue/release.loracue.de to Vercel
-2. Configure custom domain: `release.loracue.de`
+1. Connect LoRaCue/release.loracue.com to Vercel
+2. Configure custom domain: `release.loracue.com`
 3. Enable automatic deployments on push to main
 
 **Deployment:**
@@ -358,16 +358,16 @@ LoRaCue/release.loracue.de/
   - [x] Add repository dispatch trigger
 - [ ] **MANUAL**: Create GitHub Secret `RELEASE_REPO_TOKEN` for webhook
 
-**LoRaCue/release.loracue.de Repository:**
+**LoRaCue/release.loracue.com Repository:**
 - [ ] **MANUAL**: Create private repository on GitHub
-- [ ] **MANUAL**: Push files from `/tmp/release.loracue.de/` to repository
+- [ ] **MANUAL**: Push files from `/tmp/release.loracue.com/` to repository
 - [ ] **MANUAL**: Add RSA private key to GitHub Secrets (`FIRMWARE_SIGNING_KEY`)
 - [x] Public key ready at `keys/firmware_public.pem`
 - [x] Created `scripts/generate_releases_index.py`
 - [x] Created `.github/workflows/update-index.yml`
 - [x] Created `vercel.json` configuration
-- [ ] **MANUAL**: Connect to Vercel (see `/tmp/release.loracue.de/SETUP.md`)
-- [ ] **MANUAL**: Configure custom domain `release.loracue.de`
+- [ ] **MANUAL**: Connect to Vercel (see `/tmp/release.loracue.com/SETUP.md`)
+- [ ] **MANUAL**: Configure custom domain `release.loracue.com`
 
 **Implementation Files Ready:**
 - ✅ All code and scripts implemented
@@ -376,7 +376,7 @@ LoRaCue/release.loracue.de/
 - ⏳ Awaiting manual GitHub/Vercel setup steps
 
 **Setup Instructions:**
-See `/tmp/release.loracue.de/SETUP.md` for complete step-by-step guide.
+See `/tmp/release.loracue.com/SETUP.md` for complete step-by-step guide.
 
 ### Phase 2: LoRaCue Manager Integration
 

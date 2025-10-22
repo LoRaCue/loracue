@@ -45,14 +45,14 @@ This document outlines the remaining manual steps to complete the secure firmwar
 5. Click "Add secret"
 ```
 
-## 🏗️ Step 2: Create release.loracue.de Repository
+## 🏗️ Step 2: Create release.loracue.com Repository
 
 ### 2.1 Create Private Repository
 
 ```bash
 # On GitHub:
 1. Go to https://github.com/organizations/LoRaCue/repositories/new
-2. Repository name: release.loracue.de
+2. Repository name: release.loracue.com
 3. Description: "Private repository for LoRaCue firmware release index"
 4. Visibility: ⚠️ Private
 5. Initialize: ❌ Do NOT initialize (we have files ready)
@@ -63,7 +63,7 @@ This document outlines the remaining manual steps to complete the secure firmwar
 
 ```bash
 # From terminal:
-cd /tmp/release.loracue.de
+cd /tmp/release.loracue.com
 
 git init
 git add .
@@ -75,7 +75,7 @@ git commit -m "chore: initial repository setup
 - Add documentation and setup guide"
 
 git branch -M main
-git remote add origin git@github.com:LoRaCue/release.loracue.de.git
+git remote add origin git@github.com:LoRaCue/release.loracue.com.git
 git push -u origin main
 ```
 
@@ -83,7 +83,7 @@ git push -u origin main
 
 ```bash
 # Add FIRMWARE_SIGNING_KEY:
-1. Go to https://github.com/LoRaCue/release.loracue.de/settings/secrets/actions
+1. Go to https://github.com/LoRaCue/release.loracue.com/settings/secrets/actions
 2. Click "New repository secret"
 3. Name: FIRMWARE_SIGNING_KEY
 4. Value: (paste same private key from loracue repo)
@@ -98,7 +98,7 @@ git push -u origin main
 # On Vercel Dashboard:
 1. Go to https://vercel.com/new
 2. Click "Import Git Repository"
-3. Select "LoRaCue/release.loracue.de"
+3. Select "LoRaCue/release.loracue.com"
 4. Configure Project:
    - Framework Preset: Other
    - Root Directory: ./
@@ -114,7 +114,7 @@ git push -u origin main
 ```bash
 # On Vercel Project Settings:
 1. Go to project → Settings → Domains
-2. Add domain: release.loracue.de
+2. Add domain: release.loracue.com
 3. Vercel will show DNS configuration:
    
    Type: CNAME
@@ -130,7 +130,7 @@ git push -u origin main
 
 ```bash
 # Test endpoints:
-curl https://release.loracue.de/releases.json
+curl https://release.loracue.com/releases.json
 curl https://release-loracue-de.vercel.app/releases.json
 
 # Expected response:
@@ -150,7 +150,7 @@ curl https://release-loracue-de.vercel.app/releases.json
 
 ```bash
 # Test release index generation:
-1. Go to https://github.com/LoRaCue/release.loracue.de/actions
+1. Go to https://github.com/LoRaCue/release.loracue.com/actions
 2. Select "Update Release Index" workflow
 3. Click "Run workflow"
 4. Wait for completion
@@ -171,7 +171,7 @@ git push origin v0.2.0-test.1
 1. Watch release.yml in loracue repo
 2. Verify binaries are signed
 3. Verify manifest.json is generated
-4. Verify webhook triggers release.loracue.de workflow
+4. Verify webhook triggers release.loracue.com workflow
 5. Verify releases.json is updated
 6. Check Vercel auto-deploys
 ```
@@ -219,8 +219,8 @@ EOF
 # LoRaCue/loracue workflows:
 https://github.com/LoRaCue/loracue/actions
 
-# LoRaCue/release.loracue.de workflows:
-https://github.com/LoRaCue/release.loracue.de/actions
+# LoRaCue/release.loracue.com workflows:
+https://github.com/LoRaCue/release.loracue.com/actions
 
 # Vercel deployments:
 https://vercel.com/loracue/release-loracue-de
@@ -247,11 +247,11 @@ https://vercel.com/loracue/release-loracue-de
 
 ```bash
 # Verify CORS headers:
-curl -I https://release.loracue.de/releases.json | grep -i "access-control"
+curl -I https://release.loracue.com/releases.json | grep -i "access-control"
 # Expected: Access-Control-Allow-Origin: *
 
 # Verify cache headers:
-curl -I https://release.loracue.de/releases.json | grep -i "cache-control"
+curl -I https://release.loracue.com/releases.json | grep -i "cache-control"
 # Expected: Cache-Control: public, max-age=300, s-maxage=300
 ```
 
@@ -261,7 +261,7 @@ curl -I https://release.loracue.de/releases.json | grep -i "cache-control"
 - [ ] Private key NOT committed to any repository
 - [ ] Public key committed to both repositories
 - [ ] RELEASE_REPO_TOKEN has minimal required permissions
-- [ ] release.loracue.de repository is private
+- [ ] release.loracue.com repository is private
 - [ ] Vercel deployment is public (only serves releases.json)
 - [ ] All signatures verify correctly
 - [ ] HTTPS enabled on custom domain
@@ -272,8 +272,8 @@ curl -I https://release.loracue.de/releases.json | grep -i "cache-control"
 ✅ **Workflow is complete when:**
 
 1. GitHub Secrets configured in both repositories
-2. release.loracue.de repository created and pushed
-3. Vercel deployment live at https://release.loracue.de
+2. release.loracue.com repository created and pushed
+3. Vercel deployment live at https://release.loracue.com
 4. Custom domain configured with HTTPS
 5. Test release creates signed binaries
 6. Webhook triggers release index update
@@ -284,10 +284,10 @@ curl -I https://release.loracue.de/releases.json | grep -i "cache-control"
 
 ## 📚 Reference Documentation
 
-- **Setup Guide**: `/tmp/release.loracue.de/SETUP.md`
+- **Setup Guide**: `/tmp/release.loracue.com/SETUP.md`
 - **Architecture**: `docs/RELEASE_WORKFLOW.md`
 - **Workflow Details**: `.github/workflows/release.yml`
-- **Index Generation**: `/tmp/release.loracue.de/scripts/generate_releases_index.py`
+- **Index Generation**: `/tmp/release.loracue.com/scripts/generate_releases_index.py`
 
 ## 🆘 Troubleshooting
 
@@ -300,7 +300,7 @@ curl -I https://release.loracue.de/releases.json | grep -i "cache-control"
 **Solution**: 
 1. Verify RELEASE_REPO_TOKEN has `repo` scope
 2. Check loracue workflow logs for webhook errors
-3. Manually trigger release.loracue.de workflow
+3. Manually trigger release.loracue.com workflow
 
 ### Issue: Signature verification fails
 
