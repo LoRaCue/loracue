@@ -125,15 +125,17 @@ void pc_mode_screen_draw(const oled_status_t *status)
     // 2 lines: 2nd position (state=0)
     // 3 lines: 1st & 3rd (state=1)
     // 4 lines: 2nd & 4th (state=0)
-    // Then alternates with each new event
+    // 5+ lines: alternates with each new event
     static uint8_t last_count = 0;
     if (status->command_history_count != last_count) {
         if (status->command_history_count == 2) {
             lightbar_state = 0; // Start at 2nd position
         } else if (status->command_history_count == 3) {
             lightbar_state = 1; // Switch to 1st & 3rd
-        } else if (status->command_history_count >= 4) {
-            lightbar_state = 1 - lightbar_state; // Toggle
+        } else if (status->command_history_count == 4) {
+            lightbar_state = 0; // Back to 2nd & 4th
+        } else if (status->command_history_count > 4) {
+            lightbar_state = 1 - lightbar_state; // Toggle on each new event
         }
         last_count = status->command_history_count;
     }
