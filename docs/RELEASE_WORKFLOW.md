@@ -344,28 +344,39 @@ LoRaCue/release.loracue.de/
 
 ## 🔧 Implementation Tasks
 
-### Phase 1: Core Infrastructure
+### Phase 1: Core Infrastructure ✅ COMPLETED
 
 **LoRaCue/loracue Repository:**
-- [ ] Generate RSA key pair
-- [ ] Store private key in GitHub Secrets
-- [ ] Commit public key to `keys/firmware_public.pem`
-- [ ] Create `scripts/sign_firmware.py`
-- [ ] Create `scripts/generate_manifest.py`
-- [ ] Update `.github/workflows/release.yml`:
-  - [ ] Add signing step after build
-  - [ ] Add manifest generation step
-  - [ ] Add repository dispatch trigger
+- [x] Generate RSA key pair
+- [ ] **MANUAL**: Store private key in GitHub Secrets (`FIRMWARE_SIGNING_KEY`)
+- [x] Commit public key to `keys/firmware_public.pem`
+- [x] Create `scripts/sign_firmware.py`
+- [x] Create `scripts/generate_manifest.py`
+- [x] Update `.github/workflows/release.yml`:
+  - [x] Add signing step after build
+  - [x] Add manifest generation step
+  - [x] Add repository dispatch trigger
+- [ ] **MANUAL**: Create GitHub Secret `RELEASE_REPO_TOKEN` for webhook
 
 **LoRaCue/release.loracue.de Repository:**
-- [ ] Create private repository
-- [ ] Add same RSA private key to GitHub Secrets
-- [ ] Commit public key to `keys/firmware_public.pem`
-- [ ] Create `scripts/generate_releases_index.py`
-- [ ] Create `.github/workflows/update-index.yml`
-- [ ] Create `vercel.json` configuration
-- [ ] Connect to Vercel
-- [ ] Configure custom domain `release.loracue.de`
+- [ ] **MANUAL**: Create private repository on GitHub
+- [ ] **MANUAL**: Push files from `/tmp/release.loracue.de/` to repository
+- [ ] **MANUAL**: Add RSA private key to GitHub Secrets (`FIRMWARE_SIGNING_KEY`)
+- [x] Public key ready at `keys/firmware_public.pem`
+- [x] Created `scripts/generate_releases_index.py`
+- [x] Created `.github/workflows/update-index.yml`
+- [x] Created `vercel.json` configuration
+- [ ] **MANUAL**: Connect to Vercel (see `/tmp/release.loracue.de/SETUP.md`)
+- [ ] **MANUAL**: Configure custom domain `release.loracue.de`
+
+**Implementation Files Ready:**
+- ✅ All code and scripts implemented
+- ✅ Workflows configured
+- ✅ Documentation complete
+- ⏳ Awaiting manual GitHub/Vercel setup steps
+
+**Setup Instructions:**
+See `/tmp/release.loracue.de/SETUP.md` for complete step-by-step guide.
 
 ### Phase 2: LoRaCue Manager Integration
 

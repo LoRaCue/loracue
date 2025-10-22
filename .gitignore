@@ -30,3 +30,6 @@ wokwi.log
 
 # Log files
 *.log
+
+# Firmware signing keys (private key only)
+keys/firmware_private.pem

@@ -159,6 +159,9 @@ jobs:
         sudo mv gitversion /usr/local/bin/
         gitversion version
     
+    - name: Install Python dependencies
+      run: pip install cryptography
+    
     - name: Build firmware with ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
@@ -232,6 +235,51 @@ jobs:
         echo "$BOOTLOADER_SHA" > bootloader.bin.sha256
         echo "$PARTITION_SHA" > partition-table.bin.sha256
     
+    - name: Sign firmware binaries
+      env:
+        SIGNING_KEY: ${{ secrets.FIRMWARE_SIGNING_KEY }}
+      run: |
+        # Save private key to temp file
+        echo "$SIGNING_KEY" > /tmp/signing_key.pem
+        chmod 600 /tmp/signing_key.pem
+        
+        cd build
+        BINARY_NAME="${{ matrix.board.name }}.bin"
+        
+        # Sign all binaries
+        python3 ../scripts/sign_firmware.py $BINARY_NAME /tmp/signing_key.pem
+        python3 ../scripts/sign_firmware.py bootloader/bootloader.bin /tmp/signing_key.pem
+        python3 ../scripts/sign_firmware.py partition_table/partition-table.bin /tmp/signing_key.pem
+        
+        # Clean up private key
+        rm -f /tmp/signing_key.pem
+    
+    - name: Generate manifest
+      env:
+        SIGNING_KEY: ${{ secrets.FIRMWARE_SIGNING_KEY }}
+      run: |
+        # Save private key to temp file
+        echo "$SIGNING_KEY" > /tmp/signing_key.pem
+        chmod 600 /tmp/signing_key.pem
+        
+        cd build
+        BINARY_NAME="${{ matrix.board.name }}.bin"
+        
+        # Generate and sign manifest
+        python3 ../scripts/generate_manifest.py \
+          "${{ needs.version.outputs.version }}" \
+          "${{ needs.version.outputs.is_prerelease == 'true' && 'prerelease' || 'release' }}" \
+          "${{ github.sha }}" \
+          "${{ needs.version.outputs.tag_name }}" \
+          "${{ matrix.board.name }}" \
+          "$BINARY_NAME" \
+          "bootloader/bootloader.bin" \
+          "partition_table/partition-table.bin" \
+          "/tmp/signing_key.pem"
+        
+        # Clean up private key
+        rm -f /tmp/signing_key.pem
+    
     - name: Generate firmware package
       run: |
         VERSION="${{ needs.version.outputs.version }}"
@@ -251,6 +299,14 @@ jobs:
         cp build/bootloader.bin.sha256 release/$BOARD/
         cp build/partition-table.bin.sha256 release/$BOARD/
         
+        # Copy signatures
+        cp build/${BINARY_NAME}.sig release/$BOARD/
+        cp build/bootloader/bootloader.bin.sig release/$BOARD/
+        cp build/partition_table/partition-table.bin.sig release/$BOARD/
+        
+        # Copy manifest
+        cp build/manifest.json release/$BOARD/
+        
         # README
         BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
         cat > release/$BOARD/README.md << EOFMD
@@ -267,13 +323,17 @@ jobs:
         - \`${BINARY_NAME}\` - Main firmware binary
         - \`bootloader.bin\` - ESP32 bootloader
         - \`partition-table.bin\` - Partition table
+        - \`manifest.json\` - Firmware manifest with metadata
         - \`*.sha256\` - SHA256 checksums for verification
+        - \`*.sig\` - RSA-4096 signatures for authenticity verification
         
         ## 🔐 Firmware Verification
         
         **Board ID**: \`${{ steps.manifest.outputs.board_id }}\`  
         **Firmware Version**: \`${{ steps.manifest.outputs.fw_version }}\`  
         **SHA256**: \`${{ steps.checksums.outputs.firmware_sha256 }}\`
+        
+        All binaries are signed with RSA-4096 for authenticity verification.
         
         ## 📥 Installation
         
@@ -498,3 +558,12 @@ jobs:
         draft: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Trigger release index update
+      run: |
+        curl -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.RELEASE_REPO_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/LoRaCue/release.loracue.de/dispatches \
+          -d '{"event_type":"new_release","client_payload":{"version":"${{ needs.version.outputs.version }}","tag":"${{ needs.version.outputs.tag_name }}"}}'
