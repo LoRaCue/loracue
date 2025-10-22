@@ -175,8 +175,11 @@ jobs:
         import sys
         import os
         
+        # Binary name matches project name (board name)
+        binary_name = "${{ matrix.board.name }}.bin"
+        
         # ESP-IDF app descriptor is at fixed offset 0x20 in the binary
-        with open('build/loracue.bin', 'rb') as f:
+        with open(f'build/{binary_name}', 'rb') as f:
             f.seek(0x20)
             data = f.read(256)
             
@@ -215,7 +218,8 @@ jobs:
       id: checksums
       run: |
         cd build
-        FIRMWARE_SHA=$(sha256sum loracue.bin | cut -d' ' -f1)
+        BINARY_NAME="${{ matrix.board.name }}.bin"
+        FIRMWARE_SHA=$(sha256sum $BINARY_NAME | cut -d' ' -f1)
         BOOTLOADER_SHA=$(sha256sum bootloader/bootloader.bin | cut -d' ' -f1)
         PARTITION_SHA=$(sha256sum partition_table/partition-table.bin | cut -d' ' -f1)
         
@@ -224,7 +228,7 @@ jobs:
         echo "partition_sha256=$PARTITION_SHA" >> $GITHUB_OUTPUT
         
         # Save to files
-        echo "$FIRMWARE_SHA" > loracue.bin.sha256
+        echo "$FIRMWARE_SHA" > ${BINARY_NAME}.sha256
         echo "$BOOTLOADER_SHA" > bootloader.bin.sha256
         echo "$PARTITION_SHA" > partition-table.bin.sha256
     
@@ -233,21 +237,22 @@ jobs:
         VERSION="${{ needs.version.outputs.version }}"
         BOARD="${{ matrix.board.name }}"
         DISPLAY_NAME="${{ matrix.board.display_name }}"
+        BINARY_NAME="${BOARD}.bin"
         
         mkdir -p release/$BOARD
         
         # Copy binaries
-        cp build/loracue.bin release/$BOARD/
+        cp build/$BINARY_NAME release/$BOARD/
         cp build/bootloader/bootloader.bin release/$BOARD/
         cp build/partition_table/partition-table.bin release/$BOARD/
         
         # Copy checksums
-        cp build/loracue.bin.sha256 release/$BOARD/
+        cp build/${BINARY_NAME}.sha256 release/$BOARD/
         cp build/bootloader.bin.sha256 release/$BOARD/
         cp build/partition-table.bin.sha256 release/$BOARD/
         
         # Generate flash scripts
-        cat > release/$BOARD/flash.sh << 'EOFSH'
+        cat > release/$BOARD/flash.sh << EOFSH
         #!/bin/bash
         # LoRaCue Firmware Flash Script
         # Board: ${{ matrix.board.display_name }}
@@ -255,14 +260,15 @@ jobs:
         
         set -e
         
-        PORT=${1:-/dev/ttyUSB0}
+        PORT=\${1:-/dev/ttyUSB0}
+        BINARY_NAME="${BINARY_NAME}"
         
         echo "========================================="
         echo "LoRaCue Firmware Flasher"
         echo "========================================="
         echo "Board:   ${{ matrix.board.display_name }}"
         echo "Version: v${{ needs.version.outputs.version }}"
-        echo "Port:    $PORT"
+        echo "Port:    \$PORT"
         echo "========================================="
         
         if ! command -v esptool.py &> /dev/null; then
@@ -272,25 +278,25 @@ jobs:
         fi
         
         echo "Verifying checksums..."
-        sha256sum -c loracue.bin.sha256 || exit 1
+        sha256sum -c \${BINARY_NAME}.sha256 || exit 1
         sha256sum -c bootloader.bin.sha256 || exit 1
         sha256sum -c partition-table.bin.sha256 || exit 1
         echo "✓ Checksums verified"
         
         echo ""
         echo "Flashing firmware..."
-        esptool.py --chip ${{ matrix.board.target }} \
-                   --port "$PORT" \
-                   --baud 921600 \
-                   --before default_reset \
-                   --after hard_reset \
-                   write_flash -z \
-                   --flash_mode dio \
-                   --flash_freq 80m \
-                   --flash_size ${{ matrix.board.flash_size }} \
-                   0x0 bootloader.bin \
-                   0x8000 partition-table.bin \
-                   0x10000 loracue.bin
+        esptool.py --chip ${{ matrix.board.target }} \\
+                   --port "\$PORT" \\
+                   --baud 921600 \\
+                   --before default_reset \\
+                   --after hard_reset \\
+                   write_flash -z \\
+                   --flash_mode dio \\
+                   --flash_freq 80m \\
+                   --flash_size ${{ matrix.board.flash_size }} \\
+                   0x0 bootloader.bin \\
+                   0x8000 partition-table.bin \\
+                   0x10000 \$BINARY_NAME
         
         echo ""
         echo "✓ Flash complete! Device will restart automatically."
@@ -299,12 +305,13 @@ jobs:
         chmod +x release/$BOARD/flash.sh
         
         # Windows flash script
-        cat > release/$BOARD/flash.bat << 'EOFBAT'
+        cat > release/$BOARD/flash.bat << EOFBAT
         @echo off
         setlocal enabledelayedexpansion
         
         set PORT=%1
         if "%PORT%"=="" set PORT=COM3
+        set BINARY_NAME=${BINARY_NAME}
         
         echo =========================================
         echo LoRaCue Firmware Flasher
@@ -324,7 +331,7 @@ jobs:
         
         echo.
         echo Flashing firmware...
-        esptool.py --chip ${{ matrix.board.target }} --port %PORT% --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size ${{ matrix.board.flash_size }} 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 loracue.bin
+        esptool.py --chip ${{ matrix.board.target }} --port %PORT% --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size ${{ matrix.board.flash_size }} 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 %BINARY_NAME%
         
         if %ERRORLEVEL% EQU 0 (
             echo.
@@ -350,12 +357,12 @@ jobs:
         
         ## 📋 Package Contents
         
-        - `loracue.bin` - Main firmware binary
-        - `bootloader.bin` - ESP32 bootloader
-        - `partition-table.bin` - Partition table
-        - `*.sha256` - SHA256 checksums for verification
-        - `flash.sh` - Linux/macOS flash script
-        - `flash.bat` - Windows flash script
+        - \`${BINARY_NAME}\` - Main firmware binary
+        - \`bootloader.bin\` - ESP32 bootloader
+        - \`partition-table.bin\` - Partition table
+        - \`*.sha256\` - SHA256 checksums for verification
+        - \`flash.sh\` - Linux/macOS flash script
+        - \`flash.bat\` - Windows flash script
         
         ## 🔐 Firmware Verification
         
@@ -385,18 +392,18 @@ jobs:
         ```
         
         ### Manual Flash
-        ```bash
-        esptool.py --chip ${{ matrix.board.target }} \
-                   --port YOUR_PORT \
-                   --baud 921600 \
-                   write_flash -z \
-                   --flash_mode dio \
-                   --flash_freq 80m \
-                   --flash_size ${{ matrix.board.flash_size }} \
-                   0x0 bootloader.bin \
-                   0x8000 partition-table.bin \
-                   0x10000 loracue.bin
-        ```
+        \`\`\`bash
+        esptool.py --chip ${{ matrix.board.target }} \\
+                   --port YOUR_PORT \\
+                   --baud 921600 \\
+                   write_flash -z \\
+                   --flash_mode dio \\
+                   --flash_freq 80m \\
+                   --flash_size ${{ matrix.board.flash_size }} \\
+                   0x0 bootloader.bin \\
+                   0x8000 partition-table.bin \\
+                   0x10000 ${BINARY_NAME}
+        \`\`\`
         
         ## ✅ Verification
         
