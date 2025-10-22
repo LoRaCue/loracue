@@ -8,12 +8,10 @@ branches:
     mode: ContinuousDeployment
     label: alpha
     increment: Minor
-    prevent-increment-of-merged-branch-version: false
   main:
     mode: ContinuousDelivery
     label: ''
     increment: Patch
-    prevent-increment-of-merged-branch-version: true
   feature:
     mode: ContinuousDeployment
     label: useBranchName
