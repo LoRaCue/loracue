@@ -19,8 +19,10 @@ static const char *TAG = "pc_mode_screen";
 
 extern u8g2_t u8g2;
 
-// Lightbar state: alternates between positions on each new event
-static uint8_t lightbar_state = 0; // 0 = lines 2&4, 1 = lines 1&3
+// Lightbar state: 0 = lines 2&4 (even), 1 = lines 1&3 (odd)
+static uint8_t lightbar_state = 0;
+static uint8_t last_count = 0;
+static bool initialized = false;
 
 // Keycode to display name lookup
 static const char* keycode_to_name(uint8_t keycode, uint8_t modifiers)
@@ -121,8 +123,13 @@ void pc_mode_screen_draw(const oled_status_t *status)
     uint32_t now_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
     int y           = 21; // Moved from 20 to 21
 
-    // Toggle lightbar on every new event: start at 2&4 (even), then 1&3 (odd), repeat
-    static uint8_t last_count = 0;
+    // Toggle lightbar on every new event
+    if (!initialized) {
+        lightbar_state = 0; // Start at 2&4
+        last_count = 0;
+        initialized = true;
+    }
+    
     if (status->command_history_count != last_count && status->command_history_count > 0) {
         lightbar_state = 1 - lightbar_state; // Toggle
         last_count = status->command_history_count;
