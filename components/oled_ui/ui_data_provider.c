@@ -163,7 +163,13 @@ esp_err_t ui_data_provider_reload_config(void)
 
     strncpy(cached_status.device_name, config.device_name, sizeof(cached_status.device_name) - 1);
     cached_status.device_name[sizeof(cached_status.device_name) - 1] = '\0';
+    
+    // Update bluetooth status immediately
+    cached_status.bluetooth_enabled = config.bluetooth_enabled;
+    cached_status.bluetooth_connected = bluetooth_config_is_connected();
 
-    ESP_LOGI(TAG, "Config reloaded: device_name=%s", cached_status.device_name);
+    ESP_LOGI(TAG, "Config reloaded: device_name=%s, bluetooth=%s", 
+             cached_status.device_name, 
+             cached_status.bluetooth_enabled ? "enabled" : "disabled");
     return ESP_OK;
 }

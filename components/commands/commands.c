@@ -176,6 +176,10 @@ static void handle_set_general(cJSON *config_json)
     // Reload UI data provider to update device name display
     extern esp_err_t ui_data_provider_reload_config(void);
     ui_data_provider_reload_config();
+    
+    // Trigger immediate screen update to show changes
+    extern void ui_screen_controller_update(const ui_status_t *status);
+    ui_screen_controller_update(NULL);
 
     g_send_response("OK Device config updated");
 }
