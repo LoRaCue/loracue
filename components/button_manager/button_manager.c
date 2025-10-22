@@ -138,7 +138,10 @@ static void button_manager_task(void *pvParameters)
         {
             power_mode_t recommended_mode = power_mgmt_get_recommended_mode();
 
-            if (recommended_mode == POWER_MODE_LIGHT_SLEEP) {
+            if (recommended_mode == POWER_MODE_DISPLAY_SLEEP) {
+                ESP_LOGI(TAG, "Entering display sleep due to inactivity");
+                power_mgmt_display_sleep();
+            } else if (recommended_mode == POWER_MODE_LIGHT_SLEEP) {
                 ESP_LOGI(TAG, "Entering light sleep due to inactivity");
                 power_mgmt_light_sleep(30000);
                 u8g2_InitDisplay(&u8g2);

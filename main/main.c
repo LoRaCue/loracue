@@ -504,19 +504,24 @@ void app_main(void)
 
     power_config_t power_config = {
 #ifdef SIMULATOR_BUILD
-        .light_sleep_timeout_ms  = 0,
-        .deep_sleep_timeout_ms   = 0,
-        .enable_auto_light_sleep = false,
-        .enable_auto_deep_sleep  = false,
+        .display_sleep_timeout_ms = 0,
+        .light_sleep_timeout_ms   = 0,
+        .deep_sleep_timeout_ms    = 0,
+        .enable_auto_display_sleep = false,
+        .enable_auto_light_sleep  = false,
+        .enable_auto_deep_sleep   = false,
 #else
-        .light_sleep_timeout_ms  = pwr_cfg.light_sleep_timeout_ms,
-        .deep_sleep_timeout_ms   = pwr_cfg.deep_sleep_timeout_ms,
-        .enable_auto_light_sleep = pwr_cfg.light_sleep_enabled,
-        .enable_auto_deep_sleep  = pwr_cfg.deep_sleep_enabled,
+        .display_sleep_timeout_ms  = pwr_cfg.display_sleep_timeout_ms,
+        .light_sleep_timeout_ms    = pwr_cfg.light_sleep_timeout_ms,
+        .deep_sleep_timeout_ms     = pwr_cfg.deep_sleep_timeout_ms,
+        .enable_auto_display_sleep = pwr_cfg.display_sleep_enabled,
+        .enable_auto_light_sleep   = pwr_cfg.light_sleep_enabled,
+        .enable_auto_deep_sleep    = pwr_cfg.deep_sleep_enabled,
 #endif
         .cpu_freq_mhz = 80,
     };
-    ESP_LOGI(TAG, "Power config: light_sleep=%s, deep_sleep=%s",
+    ESP_LOGI(TAG, "Power config: display_sleep=%s, light_sleep=%s, deep_sleep=%s",
+             power_config.enable_auto_display_sleep ? "enabled" : "disabled",
              power_config.enable_auto_light_sleep ? "enabled" : "disabled",
              power_config.enable_auto_deep_sleep ? "enabled" : "disabled");
     ret = power_mgmt_init(&power_config);
