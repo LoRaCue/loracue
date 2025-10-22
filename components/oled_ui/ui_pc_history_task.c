@@ -22,9 +22,6 @@ static void ui_pc_history_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "PC mode history task started");
 
-    // Wait 10 seconds before first update
-    vTaskDelay(pdMS_TO_TICKS(10000));
-
     while (task_running) {
         // Wait for notification (instant update) or timeout (1 second for timestamp updates)
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
