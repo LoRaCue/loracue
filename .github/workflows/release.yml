@@ -220,20 +220,19 @@ jobs:
     - name: Calculate checksums
       id: checksums
       run: |
-        cd build
         BINARY_NAME="${{ matrix.board.name }}.bin"
-        FIRMWARE_SHA=$(sha256sum $BINARY_NAME | cut -d' ' -f1)
-        BOOTLOADER_SHA=$(sha256sum bootloader/bootloader.bin | cut -d' ' -f1)
-        PARTITION_SHA=$(sha256sum partition_table/partition-table.bin | cut -d' ' -f1)
+        FIRMWARE_SHA=$(sha256sum build/$BINARY_NAME | cut -d' ' -f1)
+        BOOTLOADER_SHA=$(sha256sum build/bootloader/bootloader.bin | cut -d' ' -f1)
+        PARTITION_SHA=$(sha256sum build/partition_table/partition-table.bin | cut -d' ' -f1)
         
         echo "firmware_sha256=$FIRMWARE_SHA" >> $GITHUB_OUTPUT
         echo "bootloader_sha256=$BOOTLOADER_SHA" >> $GITHUB_OUTPUT
         echo "partition_sha256=$PARTITION_SHA" >> $GITHUB_OUTPUT
         
-        # Save to files
-        echo "$FIRMWARE_SHA" > ${BINARY_NAME}.sha256
-        echo "$BOOTLOADER_SHA" > bootloader.bin.sha256
-        echo "$PARTITION_SHA" > partition-table.bin.sha256
+        # Save to files in build directory
+        echo "$FIRMWARE_SHA" > build/${BINARY_NAME}.sha256
+        echo "$BOOTLOADER_SHA" > build/bootloader.bin.sha256
+        echo "$PARTITION_SHA" > build/partition-table.bin.sha256
     
     - name: Sign firmware binaries
       env:
