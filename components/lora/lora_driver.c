@@ -107,6 +107,9 @@ static void lora_rx_task(void *arg)
     uint8_t bytes_received;
 
     while (1) {
+        // Check for TX completion (for interrupt-driven TX)
+        sx126x_check_tx_done();
+        
         esp_err_t ret = sx126x_receive(rx_buffer, MAX_PACKET_SIZE, &bytes_received);
 
         if (ret == ESP_OK && bytes_received > 0) {

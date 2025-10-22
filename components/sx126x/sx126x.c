@@ -26,6 +26,7 @@
 typedef struct {
     spi_device_handle_t spi;
     SemaphoreHandle_t spi_mutex;
+    SemaphoreHandle_t tx_done_sem;
     gpio_num_t nss_pin;
     gpio_num_t reset_pin;
     gpio_num_t busy_pin;
@@ -34,6 +35,7 @@ typedef struct {
     uint8_t packet_params[6];
     bool tx_active;
     int tx_lost;
+    uint16_t last_irq_status;
 } sx126x_handle_internal_t;
 
 // Global handle (single instance)
@@ -56,6 +58,16 @@ esp_err_t sx126x_init(void)
     g_sx126x->spi_mutex = xSemaphoreCreateMutex();
     if (!g_sx126x->spi_mutex) {
         ESP_LOGE(TAG, "Failed to create SPI mutex");
+        free(g_sx126x);
+        g_sx126x = NULL;
+        return ESP_ERR_NO_MEM;
+    }
+
+    // Create TX done semaphore for interrupt-driven TX
+    g_sx126x->tx_done_sem = xSemaphoreCreateBinary();
+    if (!g_sx126x->tx_done_sem) {
+        ESP_LOGE(TAG, "Failed to create TX done semaphore");
+        vSemaphoreDelete(g_sx126x->spi_mutex);
         free(g_sx126x);
         g_sx126x = NULL;
         return ESP_ERR_NO_MEM;
@@ -402,28 +414,44 @@ esp_err_t sx126x_send(const uint8_t *pData, int16_t len, uint8_t mode)
     SetTx(500);
 
     if (mode & SX126x_TXMODE_SYNC) {
-        uint16_t irqStatus = GetIrqStatus();
-        while ((!(irqStatus & SX126X_IRQ_TX_DONE)) && (!(irqStatus & SX126X_IRQ_TIMEOUT))) {
-            vTaskDelay(pdMS_TO_TICKS(1));
-            irqStatus = GetIrqStatus();
-        }
-        
-        g_sx126x->tx_active = false;
-        SetRx(0xFFFFFF);
+        // Wait for TX completion via semaphore (signaled by IRQ polling)
+        if (xSemaphoreTake(g_sx126x->tx_done_sem, pdMS_TO_TICKS(600)) == pdTRUE) {
+            g_sx126x->tx_active = false;
+            SetRx(0xFFFFFF);
 
-        if (irqStatus & SX126X_IRQ_TX_DONE) {
-            ESP_LOGI(TAG, "TX done");
-            return ESP_OK;
-        }
-        
-        if (irqStatus & SX126X_IRQ_TIMEOUT) {
-            ESP_LOGW(TAG, "TX timeout");
+            if (g_sx126x->last_irq_status & SX126X_IRQ_TX_DONE) {
+                ESP_LOGI(TAG, "TX done");
+                return ESP_OK;
+            }
+            
+            if (g_sx126x->last_irq_status & SX126X_IRQ_TIMEOUT) {
+                ESP_LOGW(TAG, "TX timeout");
+                g_sx126x->tx_lost++;
+                return ESP_ERR_TIMEOUT;
+            }
+        } else {
+            // Semaphore timeout
+            g_sx126x->tx_active = false;
+            ESP_LOGW(TAG, "TX semaphore timeout");
             g_sx126x->tx_lost++;
             return ESP_ERR_TIMEOUT;
         }
     }
 
     return ESP_OK;
+}
+
+void sx126x_check_tx_done(void)
+{
+    if (!g_sx126x || !g_sx126x->tx_active) {
+        return;
+    }
+
+    uint16_t irqStatus = GetIrqStatus();
+    if ((irqStatus & SX126X_IRQ_TX_DONE) || (irqStatus & SX126X_IRQ_TIMEOUT)) {
+        g_sx126x->last_irq_status = irqStatus;
+        xSemaphoreGive(g_sx126x->tx_done_sem);
+    }
 }
 
 bool ReceiveMode(void)

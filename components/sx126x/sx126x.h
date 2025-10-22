@@ -358,6 +358,7 @@ esp_err_t sx126x_config(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codi
                         uint8_t payloadLen, bool crcOn, bool invertIrq);
 esp_err_t sx126x_receive(uint8_t *pData, int16_t len, uint8_t *received);
 esp_err_t sx126x_send(const uint8_t *pData, int16_t len, uint8_t mode);
+void sx126x_check_tx_done(void);
 
 // Private function
 void spi_write_byte(uint8_t *Dataout, size_t DataLength);
