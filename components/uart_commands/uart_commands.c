@@ -7,6 +7,7 @@
 
 #ifdef CONFIG_UART_COMMANDS_ENABLED
 
+#include "bsp.h"
 #include "commands.h"
 #include "driver/uart.h"
 #include "esp_log.h"
@@ -16,29 +17,14 @@
 
 static const char *TAG = "UART_CMD";
 
-// UART configuration
-// UART0 = Command parser (USB/Serial)
-// UART1 = Console logging (except when console is on UART0)
-#ifdef CONFIG_UART_COMMANDS_PORT_NUM
-#define UART_NUM ((uart_port_t)CONFIG_UART_COMMANDS_PORT_NUM)
-#else
-#define UART_NUM UART_NUM_0
-#endif
-
-// Pin configuration
-#if CONFIG_UART_COMMANDS_PORT_NUM == 0
-// UART0 - default for commands
-#define UART_TX_PIN 43
-#define UART_RX_PIN 44
-#define UART_RTS_PIN 16
-#define UART_CTS_PIN 15
-#else
-// UART1
-#define UART_TX_PIN 2
-#define UART_RX_PIN 3
-#define UART_RTS_PIN UART_PIN_NO_CHANGE
-#define UART_CTS_PIN UART_PIN_NO_CHANGE
-#endif
+// Dynamic UART configuration based on button press at boot
+// Default: UART0=commands, UART1=console
+// If PREV button pressed at boot: UART0=console, UART1=commands (swapped)
+static uart_port_t uart_num = UART_NUM_0;
+static int uart_tx_pin      = 43;
+static int uart_rx_pin      = 44;
+static int uart_rts_pin     = 16;
+static int uart_cts_pin     = 15;
 
 #define UART_BAUD_RATE 460800
 #define UART_RX_BUF_SIZE 8192   // Large RX buffer for high-speed bursts
@@ -57,8 +43,8 @@ static void send_response(const char *response)
     if (response && uart_tx_mutex) {
         xSemaphoreTake(uart_tx_mutex, portMAX_DELAY);
 
-        uart_write_bytes(UART_NUM, response, strlen(response));
-        uart_write_bytes(UART_NUM, "\r\n", 2);
+        uart_write_bytes(uart_num, response, strlen(response));
+        uart_write_bytes(uart_num, "\r\n", 2);
 
         xSemaphoreGive(uart_tx_mutex);
     }
@@ -79,7 +65,7 @@ static void uart_rx_task(void *pvParameters)
     ESP_LOGI(TAG, "UART RX task started (high priority)");
 
     while (uart_running) {
-        int len = uart_read_bytes(UART_NUM, data, sizeof(data), pdMS_TO_TICKS(20));
+        int len = uart_read_bytes(uart_num, data, sizeof(data), pdMS_TO_TICKS(20));
 
         for (int i = 0; i < len; i++) {
             char c = (char)data[i];
@@ -135,8 +121,21 @@ static void cmd_processor_task(void *pvParameters)
 
 esp_err_t uart_commands_init(void)
 {
-    ESP_LOGI(TAG, "Initializing UART command interface");
-    ESP_LOGI(TAG, "CONFIG_UART_COMMANDS_PORT_NUM=%d, UART_NUM=%d", CONFIG_UART_COMMANDS_PORT_NUM, (int)UART_NUM);
+    // Check if button is pressed at boot to swap UARTs
+    // Default: UART0=commands, UART1=console
+    // Swapped: UART0=console, UART1=commands
+    if (bsp_read_button(BSP_BUTTON_NEXT)) {
+        uart_num     = UART_NUM_1;
+        uart_tx_pin  = 2;
+        uart_rx_pin  = 3;
+        uart_rts_pin = UART_PIN_NO_CHANGE;
+        uart_cts_pin = UART_PIN_NO_CHANGE;
+        ESP_LOGI(TAG, "🔄 UART swap detected (button pressed at boot)");
+        ESP_LOGI(TAG, "   Console: UART0, Commands: UART1");
+    } else {
+        ESP_LOGI(TAG, "📡 Default UART configuration");
+        ESP_LOGI(TAG, "   Commands: UART0, Console: UART1");
+    }
 
     // Create TX mutex for thread-safe HAL writes
     uart_tx_mutex = xSemaphoreCreateMutex();
@@ -146,7 +145,7 @@ esp_err_t uart_commands_init(void)
     }
 
     // Delete existing driver if present
-    uart_driver_delete(UART_NUM);
+    uart_driver_delete(uart_num);
 
     // Configure UART parameters
     // Note: Flow control disabled - Heltec V3 doesn't have RTS/CTS wired
@@ -160,21 +159,21 @@ esp_err_t uart_commands_init(void)
         .source_clk = UART_SCLK_DEFAULT,
     };
 
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM, UART_TX_PIN, UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(uart_num, uart_tx_pin, uart_rx_pin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
 
     // Install with large buffers and event queue
     QueueHandle_t uart_queue;
-    esp_err_t ret = uart_driver_install(UART_NUM, UART_RX_BUF_SIZE, UART_TX_BUF_SIZE, 20, &uart_queue, 0);
+    esp_err_t ret = uart_driver_install(uart_num, UART_RX_BUF_SIZE, UART_TX_BUF_SIZE, 20, &uart_queue, 0);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to install UART driver: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    ESP_LOGI(TAG, "UART%d driver installed: RX=%d, TX=%d, no flow control", UART_NUM, UART_RX_BUF_SIZE,
+    ESP_LOGI(TAG, "UART%d driver installed: RX=%d, TX=%d, no flow control", uart_num, UART_RX_BUF_SIZE,
              UART_TX_BUF_SIZE);
 
-    ESP_LOGI(TAG, "UART%d configured: %d baud, TX=%d, RX=%d", UART_NUM, UART_BAUD_RATE, UART_TX_PIN, UART_RX_PIN);
+    ESP_LOGI(TAG, "UART%d configured: %d baud, TX=%d, RX=%d", uart_num, UART_BAUD_RATE, uart_tx_pin, uart_rx_pin);
 
     return ESP_OK;
 }

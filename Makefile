@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build build-uart-swap clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
+.PHONY: all build clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -55,15 +55,10 @@ endif
 # Build targets
 build: check-idf
 	@echo "🔨 Building LoRaCue firmware..."
-	@echo "   📍 Console: UART1, Commands: USB-CDC + UART0"
+	@echo "   📍 Default: Commands on UART0, Console on UART1"
+	@echo "   📍 Hold button at boot to swap UARTs"
 	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py build
-
-build-uart-swap: check-idf
-	@echo "🔨 Building LoRaCue firmware (UART swap)..."
-	@echo "   📍 Console: UART0, Commands: USB-CDC + UART1"
-	@rm -f sdkconfig
-	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.uart-swap" idf.py build
 
 clean:
 	@echo "🧹 Cleaning build artifacts and sdkconfig..."
@@ -276,8 +271,7 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📦 Build:"
-	@echo "  make build                    - Build firmware (UART0=commands, UART1=console)"
-	@echo "  make build-uart-swap   - Build with console on UART0, commands on UART1"
+	@echo "  make build                    - Build firmware (hold button at boot to swap UARTs)"
 	@echo "  make rebuild                  - Clean and rebuild"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
