@@ -15,9 +15,6 @@ static void ui_status_bar_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "Status bar update task started");
 
-    // Wait 10 seconds before first update
-    vTaskDelay(pdMS_TO_TICKS(10000));
-
     TickType_t last_update = xTaskGetTickCount();
 
     while (task_running) {

@@ -125,8 +125,8 @@ static void lora_rx_task(void *arg)
             }
         }
 
-        // Poll every 10ms
-        vTaskDelay(pdMS_TO_TICKS(10));
+        // Poll every 5ms for better responsiveness
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 #endif

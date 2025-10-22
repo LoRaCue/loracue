@@ -94,7 +94,6 @@ static void new_dev_callback(usb_device_handle_t usb_dev)
 static esp_err_t switch_to_host_mode(void)
 {
     ESP_LOGI(TAG, "Switching to USB host mode");
-    vTaskDelay(pdMS_TO_TICKS(100));
 
     const usb_host_config_t host_config = {
         .skip_phy_setup = false,
@@ -162,12 +161,10 @@ static esp_err_t switch_to_device_mode(void)
 
     host_mode_active = false;
     if (usb_host_task_handle) {
-        vTaskDelay(pdMS_TO_TICKS(100));
         usb_host_task_handle = NULL;
     }
 
     usb_host_uninstall();
-    vTaskDelay(pdMS_TO_TICKS(200));
 
     tinyusb_config_t tusb_cfg = {.port       = TINYUSB_PORT_FULL_SPEED_0,
                                  .phy        = {.skip_setup = false, .self_powered = false},
@@ -183,7 +180,7 @@ static void pairing_task(void *arg)
 {
     uint32_t start_time = esp_timer_get_time() / 1000;
     while (!cdc_device && (esp_timer_get_time() / 1000 - start_time) < PAIRING_TIMEOUT_MS) {
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 
     if (!cdc_device) {
@@ -236,7 +233,7 @@ static void pairing_task(void *arg)
 
     start_time = esp_timer_get_time() / 1000;
     while (pairing_active && !pairing_success && (esp_timer_get_time() / 1000 - start_time) < PAIRING_TIMEOUT_MS) {
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 
     pairing_active = false;

@@ -148,7 +148,7 @@ esp_err_t general_config_factory_reset(void)
     }
 
     ESP_LOGI(TAG, "NVS erased successfully, rebooting...");
-    vTaskDelay(pdMS_TO_TICKS(1000)); // Give time for log output
+    vTaskDelay(pdMS_TO_TICKS(500)); // Give time for log output
 
     // Reboot device
     esp_restart();

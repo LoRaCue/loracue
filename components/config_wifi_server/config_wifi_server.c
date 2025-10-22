@@ -308,7 +308,7 @@ static esp_err_t api_firmware_upload_handler(httpd_req_t *req)
 
     httpd_resp_sendstr(req, "{\"status\":\"success\"}");
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(500));
     esp_restart();
 
     return ESP_OK;
@@ -339,7 +339,7 @@ static esp_err_t factory_reset_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Factory reset initiated\"}", 52);
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(500));
     general_config_factory_reset();
     return ESP_OK;
 }

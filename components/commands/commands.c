@@ -704,7 +704,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         // USB-UART/USB-CDC: Use XMODEM-1K
         // BLE: Intercepted by ble_ota_handle_control() before reaching here
         g_send_response("OK Ready for XMODEM");
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(50));
 
         esp_err_t ret = xmodem_receive(size);
         if (ret == ESP_OK) {
@@ -725,7 +725,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
 
             ESP_LOGW(TAG, "Boot partition set. Device will boot from %s after restart", update_partition->label);
             g_send_response("OK Firmware uploaded, rebooting...");
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            vTaskDelay(pdMS_TO_TICKS(500));
             esp_restart();
         } else {
             ESP_LOGE(TAG, "XMODEM upload failed: %s", esp_err_to_name(ret));

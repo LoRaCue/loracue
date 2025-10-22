@@ -586,7 +586,7 @@ static void protocol_rx_task(void *arg)
             }
         }
         
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
     
     ESP_LOGI(TAG, "Protocol RX task stopped");

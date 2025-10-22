@@ -147,7 +147,6 @@ esp_err_t uart_commands_init(void)
 
     // Delete existing driver if present
     uart_driver_delete(UART_NUM);
-    vTaskDelay(pdMS_TO_TICKS(100)); // Wait for cleanup
 
     // Configure UART parameters
     // Note: Flow control disabled - Heltec V3 doesn't have RTS/CTS wired
@@ -226,9 +225,6 @@ esp_err_t uart_commands_stop(void)
     }
 
     uart_running = false;
-
-    // Wait for tasks to exit
-    vTaskDelay(pdMS_TO_TICKS(200));
 
     // Clean up queue (free any pending commands)
     if (cmd_queue) {

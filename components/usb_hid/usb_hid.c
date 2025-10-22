@@ -30,7 +30,7 @@ static void send_key(uint8_t keycode, uint8_t modifier)
 
     // Send key press
     tud_hid_keyboard_report(0, modifier, keycodes);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(5));
 
     // Send key release
     tud_hid_keyboard_report(0, 0, NULL);

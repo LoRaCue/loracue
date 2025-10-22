@@ -223,7 +223,7 @@ static void usb_monitor_task(void *pvParameters)
             prev_usb = current_usb;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -242,7 +242,7 @@ static void pc_mode_update_task(void *pvParameters)
             xEventGroupSetBits(system_events, (1 << 4));
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -558,7 +558,6 @@ void app_main(void)
 
     // Show boot logo
     oled_ui_set_screen(OLED_SCREEN_BOOT);
-    vTaskDelay(pdMS_TO_TICKS(2000));
 
     // Initialize button manager
     ESP_LOGI(TAG, "Initializing button manager...");

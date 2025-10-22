@@ -13,10 +13,6 @@ static void ui_monitor_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "UI monitor task started");
 
-    // Wait 10 seconds before first update to allow full system initialization
-    // and avoid collision with early user interactions (mode changes, etc.)
-    vTaskDelay(pdMS_TO_TICKS(10000));
-
     TickType_t last_update           = xTaskGetTickCount();
     const TickType_t update_interval = pdMS_TO_TICKS(5000); // Update every 5 seconds
 
