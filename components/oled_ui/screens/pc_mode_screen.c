@@ -21,7 +21,7 @@ extern u8g2_t u8g2;
 
 // Lightbar state: 0 = lines 2&4 (even), 1 = lines 1&3 (odd)
 static uint8_t lightbar_state = 0;
-static uint8_t last_count = 0;
+static uint32_t last_timestamp = 0;
 static bool initialized = false;
 
 // Keycode to display name lookup
@@ -126,13 +126,17 @@ void pc_mode_screen_draw(const oled_status_t *status)
     // Toggle lightbar on every new event
     if (!initialized) {
         lightbar_state = 0; // Start at 2&4
-        last_count = 0;
+        last_timestamp = 0;
         initialized = true;
     }
     
-    if (status->command_history_count != last_count && status->command_history_count > 0) {
-        lightbar_state = 1 - lightbar_state; // Toggle
-        last_count = status->command_history_count;
+    // Check if newest entry (index 0) has changed
+    if (status->command_history_count > 0) {
+        uint32_t newest_timestamp = status->command_history[0].timestamp_ms;
+        if (newest_timestamp != last_timestamp) {
+            lightbar_state = 1 - lightbar_state; // Toggle
+            last_timestamp = newest_timestamp;
+        }
     }
 
     for (int i = 0; i < status->command_history_count && i < 4; i++) {
