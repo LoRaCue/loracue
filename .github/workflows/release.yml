@@ -57,10 +57,23 @@ jobs:
         
         # Determine source
         if [ "${{ github.event_name }}" == "push" ] && [[ "${{ github.ref }}" == refs/tags/* ]]; then
-          # Tag was pushed
+          # Tag was pushed - validate it
           VERSION="${PUSHED_TAG#v}"
           TAG_NAME="$PUSHED_TAG"
           echo "Using pushed tag: $TAG_NAME"
+          
+          # Validate tag format
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "ERROR: Invalid tag format: $TAG_NAME"
+            echo "Expected format: v1.2.3 or v1.2.3-alpha.1"
+            exit 1
+          fi
+          
+          # Warn if tag doesn't match GitVersion
+          if [ "$VERSION" != "$GITVERSION" ]; then
+            echo "WARNING: Pushed tag v$VERSION differs from GitVersion v$GITVERSION"
+            echo "This may indicate the tag was created manually"
+          fi
         elif [ -n "$MANUAL_TAG" ]; then
           # Manual tag specified
           VERSION="${MANUAL_TAG#v}"
@@ -325,13 +338,14 @@ jobs:
         EOFBAT
         
         # README
-        cat > release/$BOARD/README.md << 'EOFMD'
+        BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        cat > release/$BOARD/README.md << EOFMD
         # LoRaCue Firmware v${{ needs.version.outputs.version }}
         
         **Board**: ${{ matrix.board.display_name }}  
         **Target**: ${{ matrix.board.target }}  
         **Description**: ${{ matrix.board.description }}  
-        **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")  
+        **Build Date**: $BUILD_DATE  
         **Commit**: ${{ github.sha }}
         
         ## 📋 Package Contents
@@ -416,7 +430,7 @@ jobs:
         zip -r loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}.zip ${{ matrix.board.name }}/
     
     - name: Upload firmware package
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}
         path: release/loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}.zip
@@ -466,27 +480,27 @@ jobs:
         CHANGELOG=""
         
         if [ -n "$FEATURES" ]; then
-          CHANGELOG+="## 🚀 Features%0A%0A$FEATURES%0A%0A"
+          CHANGELOG+="## 🚀 Features"$'\n\n'"$FEATURES"$'\n\n'
         fi
         
         if [ -n "$FIXES" ]; then
-          CHANGELOG+="## 🐛 Bug Fixes%0A%0A$FIXES%0A%0A"
+          CHANGELOG+="## 🐛 Bug Fixes"$'\n\n'"$FIXES"$'\n\n'
         fi
         
         if [ -n "$PERF" ]; then
-          CHANGELOG+="## ⚡ Performance%0A%0A$PERF%0A%0A"
+          CHANGELOG+="## ⚡ Performance"$'\n\n'"$PERF"$'\n\n'
         fi
         
         if [ -n "$DOCS" ]; then
-          CHANGELOG+="## 📚 Documentation%0A%0A$DOCS%0A%0A"
+          CHANGELOG+="## 📚 Documentation"$'\n\n'"$DOCS"$'\n\n'
         fi
         
         if [ -n "$REFACTOR" ]; then
-          CHANGELOG+="## 🔧 Refactoring%0A%0A$REFACTOR%0A%0A"
+          CHANGELOG+="## 🔧 Refactoring"$'\n\n'"$REFACTOR"$'\n\n'
         fi
         
         if [ -n "$OTHER" ]; then
-          CHANGELOG+="## 📋 Other Changes%0A%0A$OTHER%0A%0A"
+          CHANGELOG+="## 📋 Other Changes"$'\n\n'"$OTHER"$'\n\n'
         fi
         
         if [ -z "$CHANGELOG" ]; then
@@ -522,7 +536,7 @@ jobs:
     
     steps:
     - name: Download all firmware packages
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v4
       with:
         path: firmware-packages/
         
@@ -531,6 +545,10 @@ jobs:
         mkdir -p release-assets
         find firmware-packages -name "*.zip" -exec cp {} release-assets/ \;
         ls -lah release-assets/
+    
+    - name: Get build timestamp
+      id: timestamp
+      run: echo "date=$(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_OUTPUT
         
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -573,7 +591,7 @@ jobs:
           ## 🛠️ Technical Details
           
           - **ESP-IDF**: ${{ env.ESP_IDF_VERSION }}
-          - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - **Build Date**: ${{ steps.timestamp.outputs.date }}
           - **Commit**: ${{ github.sha }}
           - **Branch**: ${{ github.ref_name }}
           
