@@ -493,6 +493,7 @@ jobs:
       run: |
         mkdir -p release-assets
         find firmware-packages -name "*.zip" -exec cp {} release-assets/ \;
+        find firmware-packages -name "manifest.json" -exec cp {} release-assets/ \;
         ls -lah release-assets/
     
     - name: Get build timestamp
