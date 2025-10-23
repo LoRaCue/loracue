@@ -31,6 +31,7 @@ typedef enum {
 /**
  * @brief Power management configuration
  */
+// cppcheck-suppress unusedStructMember
 typedef struct {
     uint32_t display_sleep_timeout_ms; ///< Timeout for display sleep (default: 10s)
     uint32_t light_sleep_timeout_ms;   ///< Timeout for light sleep (default: 30s)
@@ -44,6 +45,7 @@ typedef struct {
 /**
  * @brief Power statistics
  */
+// cppcheck-suppress unusedStructMember
 typedef struct {
     uint32_t active_time_ms;        ///< Total active time
     uint32_t display_sleep_time_ms; ///< Total display sleep time
