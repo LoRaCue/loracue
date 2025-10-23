@@ -1,19 +1,20 @@
 mode: ContinuousDeployment
 tag-prefix: 'v'
+increment: None
 
 branches:
   main:
     label: ''
-    increment: Patch
+    increment: None
   develop:
     label: alpha
-    increment: Minor
+    increment: None
   feature:
     label: '{BranchName}'
-    increment: Minor
+    increment: None
   hotfix:
     label: beta
-    increment: Patch
+    increment: None
 
 ignore:
   sha: []
