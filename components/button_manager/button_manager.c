@@ -143,9 +143,9 @@ static void button_manager_task(void *pvParameters)
                 power_mgmt_display_sleep();
             } else if (recommended_mode == POWER_MODE_LIGHT_SLEEP) {
                 ESP_LOGI(TAG, "Entering light sleep due to inactivity");
-                power_mgmt_light_sleep(30000);
-                u8g2_InitDisplay(&u8g2);
-                u8g2_SetPowerSave(&u8g2, 0);
+                // Use configured timeout from power_mgmt
+                power_mgmt_light_sleep(0); // 0 = indefinite, wake on button/UART
+                // Display and peripherals restored by power_mgmt_light_sleep()
                 ui_screen_controller_update(NULL);
                 last_activity_time = current_time;
             } else if (recommended_mode == POWER_MODE_DEEP_SLEEP) {

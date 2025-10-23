@@ -129,13 +129,6 @@ esp_sleep_wakeup_cause_t power_mgmt_get_wake_cause(void);
  */
 esp_err_t power_mgmt_prepare_sleep(void);
 
-/**
- * @brief Restore system after wake (re-enable peripherals)
- *
- * @return ESP_OK on success
- */
-esp_err_t power_mgmt_restore_wake(void);
-
 #ifdef __cplusplus
 }
 #endif
