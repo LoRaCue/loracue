@@ -38,8 +38,12 @@ include_directories("${CMAKE_BINARY_DIR}/include")
 # Set project name based on board (used as board_id in app descriptor)
 if(DEFINED ENV{WOKWI_BUILD})
     set(PROJECT_NAME "wokwi_sim")
-else()
+elseif(CONFIG_BOARD_LILYGO_T5)
+    set(PROJECT_NAME "lilygo_t5")
+elseif(CONFIG_BOARD_HELTEC_V3)
     set(PROJECT_NAME "heltec_v3")
+else()
+    set(PROJECT_NAME "loracue")  # Default fallback
 endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
