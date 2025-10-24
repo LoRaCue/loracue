@@ -15,9 +15,6 @@ static void ui_status_bar_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "Status bar update task started");
 
-    // Wait 10 seconds before first update
-    vTaskDelay(pdMS_TO_TICKS(10000));
-
     TickType_t last_update = xTaskGetTickCount();
 
     while (task_running) {
@@ -47,17 +44,16 @@ static void ui_status_bar_task(void *pvParameters)
 
         // Dynamic update interval: 500ms for low battery or Bluetooth pairing, 5s otherwise
         const ui_status_t *status = ui_data_provider_get_status();
-        bool needs_fast_update = (status && status->battery_level <= 5);
-        
+        bool needs_fast_update    = (status && status->battery_level <= 5);
+
         // Also use fast updates during Bluetooth pairing
         uint32_t dummy_passkey;
         if (bluetooth_config_get_passkey(&dummy_passkey)) {
             needs_fast_update = true;
         }
-        
-        TickType_t update_interval = needs_fast_update
-            ? pdMS_TO_TICKS(500)   // Fast updates for blinking/pairing
-            : pdMS_TO_TICKS(5000); // Normal updates
+
+        TickType_t update_interval = needs_fast_update ? pdMS_TO_TICKS(500)   // Fast updates for blinking/pairing
+                                                       : pdMS_TO_TICKS(5000); // Normal updates
 
         // Wait for next update interval
         vTaskDelayUntil(&last_update, update_interval);

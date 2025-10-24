@@ -22,9 +22,7 @@ extern "C" {
 typedef enum {
     BSP_BUTTON_PREV = 0, ///< Previous/Back button
     BSP_BUTTON_NEXT = 1, ///< Next/Forward button
-#ifdef SIMULATOR_BUILD
-    BSP_BUTTON_BOTH = 2, ///< Both buttons (Wokwi simulation only)
-#endif
+    BSP_BUTTON_BOTH = 2, ///< Both buttons (Wokwi simulation only, ignored on hardware)
 } bsp_button_t;
 
 /**
@@ -144,22 +142,22 @@ esp_err_t bsp_u8g2_init(void *u8g2);
  *
  * @return Constant string with board ID (e.g., "heltec_v3", "wokwi_sim")
  */
-const char* bsp_get_board_id(void);
+const char *bsp_get_board_id(void);
 
 /**
  * @brief USB descriptor configuration
  */
 typedef struct {
-    uint16_t usb_pid;           ///< USB Product ID
-    const char *usb_product;    ///< USB Product string
-} bsp_usb_config_t; // cppcheck-suppress unusedStructMember
+    uint16_t usb_pid;        ///< USB Product ID
+    const char *usb_product; ///< USB Product string
+} bsp_usb_config_t;          // cppcheck-suppress unusedStructMember
 
 /**
  * @brief Get USB configuration for this board
  *
  * @return Pointer to USB configuration structure
  */
-const bsp_usb_config_t* bsp_get_usb_config(void);
+const bsp_usb_config_t *bsp_get_usb_config(void);
 
 // I2C Bus Management
 #include "driver/i2c_master.h"

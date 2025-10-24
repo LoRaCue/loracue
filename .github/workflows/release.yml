@@ -57,10 +57,23 @@ jobs:
         
         # Determine source
         if [ "${{ github.event_name }}" == "push" ] && [[ "${{ github.ref }}" == refs/tags/* ]]; then
-          # Tag was pushed
+          # Tag was pushed - validate it
           VERSION="${PUSHED_TAG#v}"
           TAG_NAME="$PUSHED_TAG"
           echo "Using pushed tag: $TAG_NAME"
+          
+          # Validate tag format
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "ERROR: Invalid tag format: $TAG_NAME"
+            echo "Expected format: v1.2.3 or v1.2.3-alpha.1"
+            exit 1
+          fi
+          
+          # Warn if tag doesn't match GitVersion
+          if [ "$VERSION" != "$GITVERSION" ]; then
+            echo "WARNING: Pushed tag v$VERSION differs from GitVersion v$GITVERSION"
+            echo "This may indicate the tag was created manually"
+          fi
         elif [ -n "$MANUAL_TAG" ]; then
           # Manual tag specified
           VERSION="${MANUAL_TAG#v}"
@@ -146,6 +159,9 @@ jobs:
         sudo mv gitversion /usr/local/bin/
         gitversion version
     
+    - name: Install Python dependencies
+      run: pip install cryptography
+    
     - name: Build firmware with ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
@@ -162,8 +178,11 @@ jobs:
         import sys
         import os
         
+        # Binary name matches project name (board name)
+        binary_name = "${{ matrix.board.name }}.bin"
+        
         # ESP-IDF app descriptor is at fixed offset 0x20 in the binary
-        with open('build/loracue.bin', 'rb') as f:
+        with open(f'build/{binary_name}', 'rb') as f:
             f.seek(0x20)
             data = f.read(256)
             
@@ -201,190 +220,134 @@ jobs:
     - name: Calculate checksums
       id: checksums
       run: |
-        cd build
-        FIRMWARE_SHA=$(sha256sum loracue.bin | cut -d' ' -f1)
-        BOOTLOADER_SHA=$(sha256sum bootloader/bootloader.bin | cut -d' ' -f1)
-        PARTITION_SHA=$(sha256sum partition_table/partition-table.bin | cut -d' ' -f1)
+        BINARY_NAME="${{ matrix.board.name }}.bin"
+        FIRMWARE_SHA=$(sha256sum build/$BINARY_NAME | cut -d' ' -f1)
+        BOOTLOADER_SHA=$(sha256sum build/bootloader/bootloader.bin | cut -d' ' -f1)
+        PARTITION_SHA=$(sha256sum build/partition_table/partition-table.bin | cut -d' ' -f1)
         
         echo "firmware_sha256=$FIRMWARE_SHA" >> $GITHUB_OUTPUT
         echo "bootloader_sha256=$BOOTLOADER_SHA" >> $GITHUB_OUTPUT
         echo "partition_sha256=$PARTITION_SHA" >> $GITHUB_OUTPUT
         
-        # Save to files
-        echo "$FIRMWARE_SHA" > loracue.bin.sha256
+        # Save to files in workspace (not build directory)
+        echo "$FIRMWARE_SHA" > ${BINARY_NAME}.sha256
         echo "$BOOTLOADER_SHA" > bootloader.bin.sha256
         echo "$PARTITION_SHA" > partition-table.bin.sha256
+    
+    - name: Sign firmware binaries
+      env:
+        SIGNING_KEY: ${{ secrets.FIRMWARE_SIGNING_KEY }}
+      run: |
+        # Save private key to temp file
+        echo "$SIGNING_KEY" > /tmp/signing_key.pem
+        chmod 600 /tmp/signing_key.pem
+        
+        BINARY_NAME="${{ matrix.board.name }}.bin"
+        
+        # Copy binaries to workspace for signing
+        cp build/$BINARY_NAME .
+        cp build/bootloader/bootloader.bin .
+        cp build/partition_table/partition-table.bin .
+        
+        # Sign all binaries in workspace
+        python3 scripts/sign_firmware.py $BINARY_NAME /tmp/signing_key.pem
+        python3 scripts/sign_firmware.py bootloader.bin /tmp/signing_key.pem
+        python3 scripts/sign_firmware.py partition-table.bin /tmp/signing_key.pem
+        
+        # Clean up private key
+        rm -f /tmp/signing_key.pem
+    
+    - name: Generate manifest
+      env:
+        SIGNING_KEY: ${{ secrets.FIRMWARE_SIGNING_KEY }}
+      run: |
+        # Save private key to temp file
+        echo "$SIGNING_KEY" > /tmp/signing_key.pem
+        chmod 600 /tmp/signing_key.pem
+        
+        BINARY_NAME="${{ matrix.board.name }}.bin"
+        
+        # Generate and sign manifest (all files are in workspace)
+        python3 scripts/generate_manifest.py \
+          "${{ needs.version.outputs.version }}" \
+          "${{ needs.version.outputs.is_prerelease == 'true' && 'prerelease' || 'release' }}" \
+          "${{ github.sha }}" \
+          "${{ needs.version.outputs.tag_name }}" \
+          "${{ matrix.board.name }}" \
+          "$BINARY_NAME" \
+          "bootloader.bin" \
+          "partition-table.bin" \
+          "/tmp/signing_key.pem"
+        
+        # Clean up private key
+        rm -f /tmp/signing_key.pem
     
     - name: Generate firmware package
       run: |
         VERSION="${{ needs.version.outputs.version }}"
         BOARD="${{ matrix.board.name }}"
         DISPLAY_NAME="${{ matrix.board.display_name }}"
+        BINARY_NAME="${BOARD}.bin"
         
         mkdir -p release/$BOARD
         
-        # Copy binaries
-        cp build/loracue.bin release/$BOARD/
-        cp build/bootloader/bootloader.bin release/$BOARD/
-        cp build/partition_table/partition-table.bin release/$BOARD/
+        # Copy binaries from workspace (already copied there for signing)
+        cp $BINARY_NAME release/$BOARD/
+        cp bootloader.bin release/$BOARD/
+        cp partition-table.bin release/$BOARD/
         
-        # Copy checksums
-        cp build/loracue.bin.sha256 release/$BOARD/
-        cp build/bootloader.bin.sha256 release/$BOARD/
-        cp build/partition-table.bin.sha256 release/$BOARD/
+        # Copy checksums from workspace
+        cp ${BINARY_NAME}.sha256 release/$BOARD/
+        cp bootloader.bin.sha256 release/$BOARD/
+        cp partition-table.bin.sha256 release/$BOARD/
         
-        # Generate flash scripts
-        cat > release/$BOARD/flash.sh << 'EOFSH'
-        #!/bin/bash
-        # LoRaCue Firmware Flash Script
-        # Board: ${{ matrix.board.display_name }}
-        # Version: v${{ needs.version.outputs.version }}
+        # Copy signatures from workspace
+        cp ${BINARY_NAME}.sig release/$BOARD/
+        cp bootloader.bin.sig release/$BOARD/
+        cp partition-table.bin.sig release/$BOARD/
         
-        set -e
-        
-        PORT=${1:-/dev/ttyUSB0}
-        
-        echo "========================================="
-        echo "LoRaCue Firmware Flasher"
-        echo "========================================="
-        echo "Board:   ${{ matrix.board.display_name }}"
-        echo "Version: v${{ needs.version.outputs.version }}"
-        echo "Port:    $PORT"
-        echo "========================================="
-        
-        if ! command -v esptool.py &> /dev/null; then
-            echo "ERROR: esptool.py not found"
-            echo "Install with: pip install esptool"
-            exit 1
-        fi
-        
-        echo "Verifying checksums..."
-        sha256sum -c loracue.bin.sha256 || exit 1
-        sha256sum -c bootloader.bin.sha256 || exit 1
-        sha256sum -c partition-table.bin.sha256 || exit 1
-        echo "✓ Checksums verified"
-        
-        echo ""
-        echo "Flashing firmware..."
-        esptool.py --chip ${{ matrix.board.target }} \
-                   --port "$PORT" \
-                   --baud 921600 \
-                   --before default_reset \
-                   --after hard_reset \
-                   write_flash -z \
-                   --flash_mode dio \
-                   --flash_freq 80m \
-                   --flash_size ${{ matrix.board.flash_size }} \
-                   0x0 bootloader.bin \
-                   0x8000 partition-table.bin \
-                   0x10000 loracue.bin
-        
-        echo ""
-        echo "✓ Flash complete! Device will restart automatically."
-        EOFSH
-        
-        chmod +x release/$BOARD/flash.sh
-        
-        # Windows flash script
-        cat > release/$BOARD/flash.bat << 'EOFBAT'
-        @echo off
-        setlocal enabledelayedexpansion
-        
-        set PORT=%1
-        if "%PORT%"=="" set PORT=COM3
-        
-        echo =========================================
-        echo LoRaCue Firmware Flasher
-        echo =========================================
-        echo Board:   ${{ matrix.board.display_name }}
-        echo Version: v${{ needs.version.outputs.version }}
-        echo Port:    %PORT%
-        echo =========================================
-        
-        where esptool.py >nul 2>nul
-        if %ERRORLEVEL% NEQ 0 (
-            echo ERROR: esptool.py not found
-            echo Install with: pip install esptool
-            pause
-            exit /b 1
-        )
-        
-        echo.
-        echo Flashing firmware...
-        esptool.py --chip ${{ matrix.board.target }} --port %PORT% --baud 921600 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size ${{ matrix.board.flash_size }} 0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 loracue.bin
-        
-        if %ERRORLEVEL% EQU 0 (
-            echo.
-            echo Flash complete! Device will restart automatically.
-        ) else (
-            echo.
-            echo ERROR: Flash failed!
-        )
-        
-        pause
-        EOFBAT
+        # Copy manifest from workspace
+        cp manifest.json release/$BOARD/
         
         # README
-        cat > release/$BOARD/README.md << 'EOFMD'
+        BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        cat > release/$BOARD/README.md << EOFMD
         # LoRaCue Firmware v${{ needs.version.outputs.version }}
         
         **Board**: ${{ matrix.board.display_name }}  
         **Target**: ${{ matrix.board.target }}  
         **Description**: ${{ matrix.board.description }}  
-        **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")  
+        **Build Date**: $BUILD_DATE  
         **Commit**: ${{ github.sha }}
         
         ## 📋 Package Contents
         
-        - `loracue.bin` - Main firmware binary
-        - `bootloader.bin` - ESP32 bootloader
-        - `partition-table.bin` - Partition table
-        - `*.sha256` - SHA256 checksums for verification
-        - `flash.sh` - Linux/macOS flash script
-        - `flash.bat` - Windows flash script
+        - \`${BINARY_NAME}\` - Main firmware binary
+        - \`bootloader.bin\` - ESP32 bootloader
+        - \`partition-table.bin\` - Partition table
+        - \`manifest.json\` - Firmware manifest with metadata
+        - \`*.sha256\` - SHA256 checksums for verification
+        - \`*.sig\` - RSA-4096 signatures for authenticity verification
         
         ## 🔐 Firmware Verification
         
-        **Board ID**: `${{ steps.manifest.outputs.board_id }}`  
-        **Firmware Version**: `${{ steps.manifest.outputs.fw_version }}`  
-        **SHA256**: `${{ steps.checksums.outputs.firmware_sha256 }}`
+        **Board ID**: \`${{ steps.manifest.outputs.board_id }}\`  
+        **Firmware Version**: \`${{ steps.manifest.outputs.fw_version }}\`  
+        **SHA256**: \`${{ steps.checksums.outputs.firmware_sha256 }}\`
+        
+        All binaries are signed with RSA-4096 for authenticity verification.
         
         ## 📥 Installation
         
-        ### Prerequisites
-        ```bash
-        pip install esptool
-        ```
+        Use **[LoRaCue Manager](https://github.com/LoRaCue/loracue-manager)** to flash this firmware.
         
-        ### Quick Flash
+        LoRaCue Manager provides:
+        - ✅ Automatic device detection
+        - ✅ One-click firmware updates  
+        - ✅ Integrity verification
+        - ✅ Cross-platform support (Windows, macOS, Linux)
         
-        **Linux/macOS:**
-        ```bash
-        ./flash.sh [PORT]
-        # Default port: /dev/ttyUSB0
-        ```
-        
-        **Windows:**
-        ```cmd
-        flash.bat [PORT]
-        REM Default port: COM3
-        ```
-        
-        ### Manual Flash
-        ```bash
-        esptool.py --chip ${{ matrix.board.target }} \
-                   --port YOUR_PORT \
-                   --baud 921600 \
-                   write_flash -z \
-                   --flash_mode dio \
-                   --flash_freq 80m \
-                   --flash_size ${{ matrix.board.flash_size }} \
-                   0x0 bootloader.bin \
-                   0x8000 partition-table.bin \
-                   0x10000 loracue.bin
-        ```
-        
-        ## ✅ Verification
+        ## ✅ Post-Flash Verification
         
         After flashing, the device should:
         1. Display LoRaCue logo on OLED
@@ -397,13 +360,13 @@ jobs:
         This firmware supports OTA updates via:
         - USB CDC commands
         - WiFi web interface
-        - Bluetooth companion app
         
-        **Compatibility**: Only accepts firmware with matching board ID (`${{ steps.manifest.outputs.board_id }}`)
+        **Compatibility**: Only accepts firmware with matching board ID (\`${{ steps.manifest.outputs.board_id }}\`)
         
         ## 📚 Documentation
         
-        - **Repository**: https://github.com/LoRaCue/loracue
+        - **Firmware Repository**: https://github.com/LoRaCue/loracue
+        - **Manager Tool**: https://github.com/LoRaCue/loracue-manager
         - **Issues**: https://github.com/LoRaCue/loracue/issues
         - **Wiki**: https://github.com/LoRaCue/loracue/wiki
         
@@ -420,6 +383,13 @@ jobs:
       with:
         name: loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}
         path: release/loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}.zip
+        retention-days: 90
+    
+    - name: Upload manifest
+      uses: actions/upload-artifact@v4
+      with:
+        name: manifest-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}
+        path: release/${{ matrix.board.name }}/manifest.json
         retention-days: 90
 
   generate-changelog:
@@ -460,33 +430,33 @@ jobs:
         OTHER=$(git log $COMMIT_RANGE --pretty=format:"%s" --no-merges | grep -vE "^(feat|fix|docs|perf|refactor)(\(.+\))?:" | sed 's/^/- /' || echo "")
         
         # Detect breaking changes (BREAKING CHANGE: or ! in commit)
-        BREAKING=$(git log $COMMIT_RANGE --pretty=format:"%s%n%b" --no-merges | grep -A 10 -E "(^[a-z]+(\(.+\))?!:|BREAKING CHANGE:)" | grep -v "^--$" || echo "")
+        BREAKING=$(git log $COMMIT_RANGE --pretty=format:"%s%n%b" --no-merges | grep -A 10 -E "(^[a-z]+(\(.+\))?!:|BREAKING CHANGE:)" | grep -v "^--$" | sed 's/^/- /' || echo "")
         
         # Build changelog
         CHANGELOG=""
         
         if [ -n "$FEATURES" ]; then
-          CHANGELOG+="## 🚀 Features%0A%0A$FEATURES%0A%0A"
+          CHANGELOG+="## 🚀 Features"$'\n\n'"$FEATURES"$'\n\n'
         fi
         
         if [ -n "$FIXES" ]; then
-          CHANGELOG+="## 🐛 Bug Fixes%0A%0A$FIXES%0A%0A"
+          CHANGELOG+="## 🐛 Bug Fixes"$'\n\n'"$FIXES"$'\n\n'
         fi
         
         if [ -n "$PERF" ]; then
-          CHANGELOG+="## ⚡ Performance%0A%0A$PERF%0A%0A"
+          CHANGELOG+="## ⚡ Performance"$'\n\n'"$PERF"$'\n\n'
         fi
         
         if [ -n "$DOCS" ]; then
-          CHANGELOG+="## 📚 Documentation%0A%0A$DOCS%0A%0A"
+          CHANGELOG+="## 📚 Documentation"$'\n\n'"$DOCS"$'\n\n'
         fi
         
         if [ -n "$REFACTOR" ]; then
-          CHANGELOG+="## 🔧 Refactoring%0A%0A$REFACTOR%0A%0A"
+          CHANGELOG+="## 🔧 Refactoring"$'\n\n'"$REFACTOR"$'\n\n'
         fi
         
         if [ -n "$OTHER" ]; then
-          CHANGELOG+="## 📋 Other Changes%0A%0A$OTHER%0A%0A"
+          CHANGELOG+="## 📋 Other Changes"$'\n\n'"$OTHER"$'\n\n'
         fi
         
         if [ -z "$CHANGELOG" ]; then
@@ -530,7 +500,12 @@ jobs:
       run: |
         mkdir -p release-assets
         find firmware-packages -name "*.zip" -exec cp {} release-assets/ \;
+        find firmware-packages -name "manifest.json" -exec cp {} release-assets/ \;
         ls -lah release-assets/
+    
+    - name: Get build timestamp
+      id: timestamp
+      run: echo "date=$(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_OUTPUT
         
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -542,22 +517,23 @@ jobs:
           
           Enterprise LoRa presentation clicker firmware release.
           
-          ${{ needs.generate-changelog.outputs.breaking_changes != '' && format('## ⚠️ BREAKING CHANGES\n\n{0}\n\n', needs.generate-changelog.outputs.breaking_changes) || '' }}
-          ${{ needs.generate-changelog.outputs.known_issues != '' && format('## 🐛 Known Issues\n\n{0}\n\n', needs.generate-changelog.outputs.known_issues) || '' }}
+          ${{ needs.generate-changelog.outputs.breaking_changes != '' && format('## ⚠️ BREAKING CHANGES{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.breaking_changes) || '' }}
+          ${{ needs.generate-changelog.outputs.known_issues != '' && format('## 🐛 Known Issues{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.known_issues) || '' }}
           ## 📦 Supported Boards
           
           | Board | Target | Flash Size | Description |
           |-------|--------|------------|-------------|
           | **Heltec LoRa V3** | ESP32-S3 | 8MB | SX1262 LoRa (868/915MHz) + SSD1306 OLED |
           
-          ## 📥 Quick Start
+          ## 📥 Installation
           
-          1. **Download** the firmware package for your board
-          2. **Extract** the ZIP file
-          3. **Install** esptool: `pip install esptool`
-          4. **Flash** using the included script:
-             - Linux/macOS: `./flash.sh`
-             - Windows: `flash.bat`
+          Use **[LoRaCue Manager](https://github.com/LoRaCue/loracue-manager)** to flash firmware to your devices.
+          
+          LoRaCue Manager provides:
+          - ✅ Automatic device detection
+          - ✅ One-click firmware updates
+          - ✅ Integrity verification
+          - ✅ Cross-platform support (Windows, macOS, Linux)
           
           ## 🔐 Security & Verification
           
@@ -573,7 +549,7 @@ jobs:
           ## 🛠️ Technical Details
           
           - **ESP-IDF**: ${{ env.ESP_IDF_VERSION }}
-          - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          - **Build Date**: ${{ steps.timestamp.outputs.date }}
           - **Commit**: ${{ github.sha }}
           - **Branch**: ${{ github.ref_name }}
           
@@ -592,3 +568,12 @@ jobs:
         draft: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Trigger release index update
+      run: |
+        curl -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.RELEASE_REPO_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/LoRaCue/release.loracue.com/dispatches \
+          -d '{"event_type":"new_release","client_payload":{"version":"${{ needs.version.outputs.version }}","tag":"${{ needs.version.outputs.tag_name }}"}}'

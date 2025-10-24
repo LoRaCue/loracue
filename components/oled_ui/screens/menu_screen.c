@@ -1,14 +1,14 @@
 #include "menu_screen.h"
 #include "u8g2.h"
 #include "ui_config.h"
-#include "ui_icons.h"
 #include "ui_helpers.h"
+#include "ui_icons.h"
 
 extern u8g2_t u8g2;
 
-static const char *menu_items[] = {"Device Mode",     "Slot",               "LoRa Settings",      "Device Pairing",
-                                   "Device Registry", "Display Brightness", "Battery Status",     "Bluetooth",
-                                   "Configuration Mode", "Device Info",     "System Info",        "Factory Reset"};
+static const char *menu_items[] = {
+    "Device Mode",    "Slot",      "LoRa Settings",      "Device Pairing", "Device Registry", "Display Brightness",
+    "Battery Status", "Bluetooth", "Configuration Mode", "Device Info",    "System Info",     "Factory Reset"};
 
 static const int menu_item_count = sizeof(menu_items) / sizeof(menu_items[0]);
 static int selected_item         = 0;
@@ -84,8 +84,7 @@ void menu_screen_navigate(menu_direction_t direction)
             // Handle wrap-around from top to bottom
             if (selected_item == menu_item_count - 1) {
                 // Wrapped to last item - scroll to show it
-                scroll_offset = (menu_item_count > MAX_VISIBLE_ITEMS) ? 
-                                (menu_item_count - MAX_VISIBLE_ITEMS) : 0;
+                scroll_offset = (menu_item_count > MAX_VISIBLE_ITEMS) ? (menu_item_count - MAX_VISIBLE_ITEMS) : 0;
             } else if (selected_item < scroll_offset) {
                 // Normal scroll up
                 scroll_offset = selected_item;

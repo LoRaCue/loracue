@@ -28,7 +28,7 @@ u8g2_t u8g2;
 #define STATUS_LED_PIN GPIO_NUM_35
 #define BATTERY_ADC_PIN GPIO_NUM_1
 #define BATTERY_CTRL_PIN GPIO_NUM_37
-#define VEXT_CTRL_PIN GPIO_NUM_36  // Controls power to OLED and LoRa
+#define VEXT_CTRL_PIN GPIO_NUM_36 // Controls power to OLED and LoRa
 
 // LoRa SX1262 Pins
 #define LORA_CS_PIN GPIO_NUM_8
@@ -377,25 +377,21 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
 
     // Enable Vext power (powers OLED and LoRa module)
     ESP_LOGI(TAG, "Enabling Vext power for OLED");
-    gpio_config_t vext_conf = {
-        .pin_bit_mask = (1ULL << VEXT_CTRL_PIN),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
-    };
+    gpio_config_t vext_conf = {.pin_bit_mask = (1ULL << VEXT_CTRL_PIN),
+                               .mode         = GPIO_MODE_OUTPUT,
+                               .pull_up_en   = GPIO_PULLUP_DISABLE,
+                               .pull_down_en = GPIO_PULLDOWN_DISABLE,
+                               .intr_type    = GPIO_INTR_DISABLE};
     gpio_config(&vext_conf);
-    gpio_set_level(VEXT_CTRL_PIN, 0);  // LOW = power ON (active low)
-    vTaskDelay(pdMS_TO_TICKS(200));    // Wait for power to stabilize
+    gpio_set_level(VEXT_CTRL_PIN, 0); // LOW = power ON (active low)
+    vTaskDelay(pdMS_TO_TICKS(200));   // Wait for power to stabilize
 
     // Configure OLED reset pin
-    gpio_config_t rst_conf = {
-        .pin_bit_mask = (1ULL << OLED_RST_PIN),
-        .mode = GPIO_MODE_OUTPUT,
-        .pull_up_en = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE
-    };
+    gpio_config_t rst_conf = {.pin_bit_mask = (1ULL << OLED_RST_PIN),
+                              .mode         = GPIO_MODE_OUTPUT,
+                              .pull_up_en   = GPIO_PULLUP_DISABLE,
+                              .pull_down_en = GPIO_PULLDOWN_DISABLE,
+                              .intr_type    = GPIO_INTR_DISABLE};
     gpio_config(&rst_conf);
 
     // Hardware reset sequence for SSD1306
@@ -409,9 +405,7 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     vTaskDelay(pdMS_TO_TICKS(200));
 
     // Initialize u8g2 with SSD1306 128x64 display using BSP callbacks
-    u8g2_Setup_ssd1306_i2c_128x64_noname_f(u8g2_local, U8G2_R0, 
-                                           bsp_u8g2_i2c_byte_cb, 
-                                           bsp_u8g2_gpio_and_delay_cb);
+    u8g2_Setup_ssd1306_i2c_128x64_noname_f(u8g2_local, U8G2_R0, bsp_u8g2_i2c_byte_cb, bsp_u8g2_gpio_and_delay_cb);
 
     // Initialize display
     u8g2_InitDisplay(u8g2_local);
@@ -422,18 +416,14 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
     return ESP_OK;
 }
 
-const char* bsp_get_board_id(void)
+const char *bsp_get_board_id(void)
 {
     return "heltec_v3";
 }
 
-static const bsp_usb_config_t usb_config = {
-    .usb_pid = 0xFAB0,
-    .usb_product = "LC-alpha"
-};
+static const bsp_usb_config_t usb_config = {.usb_pid = 0xFAB0, .usb_product = "LC-alpha"};
 
-const bsp_usb_config_t* bsp_get_usb_config(void)
+const bsp_usb_config_t *bsp_get_usb_config(void)
 {
     return &usb_config;
 }
-

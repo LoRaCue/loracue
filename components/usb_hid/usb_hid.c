@@ -8,9 +8,9 @@
 #include "cJSON.h"
 #include "class/cdc/cdc_device.h"
 #include "class/hid/hid_device.h"
-#include "general_config.h"
 #include "device_registry.h"
 #include "esp_log.h"
+#include "general_config.h"
 #include "tinyusb.h"
 #include "tusb.h"
 #include "usb_cdc.h"
@@ -30,7 +30,7 @@ static void send_key(uint8_t keycode, uint8_t modifier)
 
     // Send key press
     tud_hid_keyboard_report(0, modifier, keycodes);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(5));
 
     // Send key release
     tud_hid_keyboard_report(0, 0, NULL);
@@ -80,7 +80,7 @@ void tud_cdc_rx_cb(uint8_t itf)
 }
 
 // TinyUSB HID Callbacks
-uint8_t const* tud_hid_descriptor_report_cb(uint8_t instance)
+uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 {
     (void)instance;
     return hid_keyboard_report_desc;
@@ -122,19 +122,15 @@ esp_err_t usb_hid_init(void)
 {
     ESP_LOGI(TAG, "Initializing USB composite device (HID + CDC)");
 
-    tinyusb_config_t tusb_cfg = {
-        .port = TINYUSB_PORT_FULL_SPEED_0,
-        .phy = {.skip_setup = false, .self_powered = false},
-        .task = {.size = 4096, .priority = 5, .xCoreID = 0},
-        .descriptor = {
-            .device = usb_get_device_descriptor(),
-            .full_speed_config = usb_get_config_descriptor(),
-            .string = usb_get_string_descriptors(),
-            .string_count = 4
-        },
-        .event_cb = NULL,
-        .event_arg = NULL
-    };
+    tinyusb_config_t tusb_cfg = {.port       = TINYUSB_PORT_FULL_SPEED_0,
+                                 .phy        = {.skip_setup = false, .self_powered = false},
+                                 .task       = {.size = 4096, .priority = 5, .xCoreID = 0},
+                                 .descriptor = {.device            = usb_get_device_descriptor(),
+                                                .full_speed_config = usb_get_config_descriptor(),
+                                                .string            = usb_get_string_descriptors(),
+                                                .string_count      = 4},
+                                 .event_cb   = NULL,
+                                 .event_arg  = NULL};
 
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 

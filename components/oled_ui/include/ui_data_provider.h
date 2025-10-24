@@ -46,3 +46,9 @@ esp_err_t ui_data_provider_get_battery_info(battery_info_t *battery_info);
  * @return ESP_OK on success
  */
 esp_err_t ui_data_provider_force_update(bool usb_connected, bool lora_connected, uint8_t battery_level);
+
+/**
+ * @brief Reload device name from config (call after SET_GENERAL)
+ * @return ESP_OK on success
+ */
+esp_err_t ui_data_provider_reload_config(void);

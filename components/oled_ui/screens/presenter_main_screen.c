@@ -1,12 +1,12 @@
 #include "presenter_main_screen.h"
 #include "bluetooth_config.h"
+#include "icons/ui_status_icons.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
 #include "ui_icons.h"
-#include "ui_status_bar.h"
 #include "ui_pairing_overlay.h"
-#include "icons/ui_status_icons.h"
+#include "ui_status_bar.h"
 
 extern u8g2_t u8g2;
 
@@ -27,7 +27,7 @@ void presenter_main_screen_draw(const ui_status_t *status)
     u8g2_DrawStr(&u8g2, BUTTON_MARGIN + 15, 43, "PREV");
 
     int next_text_width = u8g2_GetStrWidth(&u8g2, "NEXT");
-    int next_x = DISPLAY_WIDTH - BUTTON_MARGIN - 7 - next_text_width - 2;
+    int next_x          = DISPLAY_WIDTH - BUTTON_MARGIN - 7 - next_text_width - 2;
     u8g2_DrawStr(&u8g2, next_x, 43, "NEXT");
     ui_button_short_draw_at(next_x + next_text_width + 2, 36);
 

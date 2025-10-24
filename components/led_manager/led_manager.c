@@ -166,7 +166,7 @@ static void fade_task(void *pvParameters)
 esp_err_t led_manager_button_feedback(bool active)
 {
     button_feedback_active = active;
-    
+
     // For non-fade patterns, immediately turn LED off/on
     if (active && current_pattern != LED_PATTERN_FADE) {
         ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, 0);
@@ -175,6 +175,6 @@ esp_err_t led_manager_button_feedback(bool active)
         ledc_set_duty(LEDC_MODE, LEDC_CHANNEL, LEDC_MAX_DUTY);
         ledc_update_duty(LEDC_MODE, LEDC_CHANNEL);
     }
-    
+
     return ESP_OK;
 }

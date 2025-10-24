@@ -1,31 +1,8 @@
-#ifndef _RA01S_H
-#define _RA01S_H
+#ifndef SX126X_H
+#define SX126X_H
 
 #include "driver/spi_master.h"
-
-// return values
-#define ERR_NONE 0
-#define ERR_PACKET_TOO_LONG 1
-#define ERR_UNKNOWN 2
-#define ERR_TX_TIMEOUT 3
-#define ERR_RX_TIMEOUT 4
-#define ERR_CRC_MISMATCH 5
-#define ERR_WRONG_MODEM 6
-#define ERR_INVALID_BANDWIDTH 7
-#define ERR_INVALID_SPREADING_FACTOR 8
-#define ERR_INVALID_CODING_RATE 9
-#define ERR_INVALID_FREQUENCY_DEVIATION 10
-#define ERR_INVALID_BIT_RATE 11
-#define ERR_INVALID_RX_BANDWIDTH 12
-#define ERR_INVALID_DATA_SHAPING 13
-#define ERR_INVALID_SYNC_WORD 14
-#define ERR_INVALID_OUTPUT_POWER 15
-#define ERR_INVALID_MODE 16
-#define ERR_INVALID_TRANCEIVER 17
-#define ERR_INVALID_SETRX_STATE 18
-#define ERR_INVALID_SETTX_STATE 19
-#define ERR_IDLE_TIMEOUT 20
-#define ERR_SPI_TRANSACTION 21
+#include "esp_err.h"
 
 // SX126X physical layer properties
 #define XTAL_FREQ (double)32000000
@@ -374,14 +351,14 @@
 #define SX126x_TXMODE_SYNC 0x02
 #define SX126x_TXMODE_BACK2RX 0x04
 
-// Public function
-void LoRaInit(void);
-int16_t LoRaBegin(uint32_t frequencyInHz, int8_t txPowerInDbm, float tcxoVoltage, bool useRegulatorLDO);
-void LoRaConfig(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codingRate, uint16_t preambleLength,
-                uint8_t payloadLen, bool crcOn, bool invertIrq);
-uint8_t LoRaReceive(uint8_t *pData, int16_t len);
-bool LoRaSend(const uint8_t *pData, int16_t len, uint8_t mode);
-void LoRaDebugPrint(bool enable);
+// Public API
+esp_err_t sx126x_init(void);
+esp_err_t sx126x_begin(uint32_t frequencyInHz, int8_t txPowerInDbm, float tcxoVoltage, bool useRegulatorLDO);
+esp_err_t sx126x_config(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codingRate, uint16_t preambleLength,
+                        uint8_t payloadLen, bool crcOn, bool invertIrq);
+esp_err_t sx126x_receive(uint8_t *pData, int16_t len, uint8_t *received);
+esp_err_t sx126x_send(const uint8_t *pData, int16_t len, uint8_t mode);
+void sx126x_check_tx_done(void);
 
 // Private function
 void spi_write_byte(uint8_t *Dataout, size_t DataLength);
@@ -437,4 +414,4 @@ void ReadCommand(uint8_t cmd, uint8_t *data, uint8_t numBytes);
 void SPItransfer(uint8_t cmd, bool write, uint8_t *dataOut, uint8_t *dataIn, uint8_t numBytes, bool waitForBusy);
 void LoRaError(int error);
 
-#endif
+#endif // SX126X_H

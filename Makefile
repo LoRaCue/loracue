@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build build-debug clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint sim sim-run sim-debug web-dev web-build web-flash help check-idf
+.PHONY: all build clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -55,12 +55,10 @@ endif
 # Build targets
 build: check-idf
 	@echo "🔨 Building LoRaCue firmware..."
-	$(IDF_SETUP) idf.py build
-
-build-debug: check-idf
-	@echo "🐛 Building LoRaCue firmware (DEBUG mode - logging on UART0)..."
+	@echo "   📍 Default: Commands on UART0, Console on UART1"
+	@echo "   📍 Hold button at boot to swap UARTs"
 	@rm -f sdkconfig
-	$(IDF_SETUP) SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.debug" idf.py build
+	$(IDF_SETUP) idf.py build
 
 clean:
 	@echo "🧹 Cleaning build artifacts and sdkconfig..."
@@ -152,26 +150,98 @@ lint:
 		main/ components/ 2>&1 | grep -v "Checking" || true
 	@echo "✅ Static analysis passed"
 
+# ============================================================================
+# 🧪 Testing
+# ============================================================================
+
+test:
+	@echo "🧪 Running host-based tests with REAL lora_protocol.c code..."
+	@cd test/host_test && gcc -o test_runner test_lora_host.c \
+		-I. \
+		-I../../components/lora/include \
+		-I/opt/homebrew/include \
+		-L/opt/homebrew/lib \
+		-lmbedcrypto && ./test_runner
+
+test-device: check-idf
+	@echo "🧪 Building and running LoRa protocol tests on device..."
+	$(IDF_SETUP) idf.py -DTEST_COMPONENTS='test' build
+	$(IDF_SETUP) idf.py flash monitor
+
+test-build: check-idf
+	@echo "🧪 Building device tests only..."
+	$(IDF_SETUP) idf.py -DTEST_COMPONENTS='test' build
+
+# ============================================================================
+# 🎮 Wokwi Simulator
+# ============================================================================
+
+# Start SX1262 RF relay server
+	@echo "📦 Installing relay server dependencies..."
+	@cd wokwi/sx1262-rf-relay && npm install
+
 # Wokwi simulator
-sim: check-idf
+sim: check-idf build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
 ifndef WOKWI_CLI
 	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
 	@false
 endif
 	@echo "🎮 Building for Wokwi simulator..."
-	$(IDF_SETUP) SIMULATOR_BUILD=1 SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.debug" idf.py -D CMAKE_C_FLAGS=-DSIMULATOR_BUILD=1 build
+	$(IDF_SETUP) WOKWI_BUILD=1 idf.py build
 
-sim-run: sim
+# Build all custom Wokwi chips
+chips: build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
+	@echo "✅ All custom chips compiled"
+
+# Build custom UART bridge chip
+build/wokwi-chips/uart.chip.wasm: wokwi-chips/uart.chip.c wokwi-chips/wokwi-api.h wokwi-chips/uart.chip.json
+	@echo "🔧 Compiling custom UART bridge chip..."
+	@mkdir -p build/wokwi-chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi-chips/uart.o wokwi-chips/uart.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi-chips/uart.chip.wasm \
+		build/wokwi-chips/uart.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi-chips/uart.chip.json build/wokwi-chips/
+	@rm build/wokwi-chips/uart.o
+	@echo "✅ Custom chip compiled"
+
+# Build custom SX1262 LoRa chip
+build/wokwi-chips/sx1262.chip.wasm: wokwi-chips/sx1262.chip.c wokwi-chips/wokwi-api.h wokwi-chips/sx1262.chip.json wokwi-chips/sx1262.chip.svg
+	@echo "🔧 Compiling custom SX1262 LoRa chip..."
+	@mkdir -p build/wokwi-chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi-chips/sx1262.o wokwi-chips/sx1262.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi-chips/sx1262.chip.wasm \
+		build/wokwi-chips/sx1262.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi-chips/sx1262.chip.json build/wokwi-chips/
+	@cp wokwi-chips/sx1262.chip.svg build/wokwi-chips/
+	@rm build/wokwi-chips/sx1262.o
+	@echo "✅ SX1262 chip compiled"
+
+sim-run: build/wokwi_sim.bin
 	@echo "🚀 Starting Wokwi simulation..."
+	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
+	@echo "💡 Serial log: wokwi.log"
 	@echo "💡 Press Ctrl+C to stop"
 	@echo ""
-	wokwi-cli --timeout 0 --serial-log-file -
+	wokwi-cli --timeout 0 --interactive --serial-log-file wokwi.log
 
-sim-debug: sim
+sim-debug: build/wokwi_sim.bin
 	@echo "🐛 Starting debug simulation with interactive serial..."
-	@echo "💡 Type commands to send to device. Press Ctrl+C to stop"
+	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
+	@echo "💡 Serial log: wokwi.log"
+	@echo "💡 Press Ctrl+C to stop"
 	@echo ""
-	wokwi-cli --timeout 0 --interactive --serial-log-file -
+	wokwi-cli --timeout 0 --interactive --serial-log-file wokwi.log
+
+build/wokwi_sim.bin:
+	@$(MAKE) sim
 
 # Web interface
 web-dev:
@@ -201,9 +271,8 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📦 Build:"
-	@echo "  make build         - Build firmware (production)"
-	@echo "  make build-debug   - Build with debug logging on UART0"
-	@echo "  make rebuild       - Clean and rebuild"
+	@echo "  make build                    - Build firmware (hold button at boot to swap UARTs)"
+	@echo "  make rebuild                  - Clean and rebuild"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
 	@echo ""
@@ -227,6 +296,10 @@ help:
 	@echo "  make web-dev       - Start dev server (localhost:3000)"
 	@echo "  make web-build     - Build production web UI"
 	@echo "  make web-flash     - Flash web UI to device"
+	@echo ""
+	@echo "🧪 Testing:"
+	@echo "  make test          - Build and run protocol tests"
+	@echo "  make test-build    - Build tests only"
 	@echo ""
 	@echo "🎨 Code Quality:"
 	@echo "  make format        - Format all code"

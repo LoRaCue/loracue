@@ -1,24 +1,24 @@
 #include "config_wifi_server.h"
-#include "commands.h"
 #include "cJSON.h"
-#include "general_config.h"
+#include "commands.h"
 #include "device_registry.h"
 #include "esp_app_format.h"
 #include "esp_crc.h"
 #include "esp_event.h"
 #include "esp_http_server.h"
+#include "esp_littlefs.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
-#include "esp_littlefs.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
+#include "general_config.h"
 #include "lora_driver.h"
+#include "ota_engine.h"
 #include "power_mgmt_config.h"
 #include "version.h"
-#include "ota_engine.h"
 #include <string.h>
 #include <sys/stat.h>
 
@@ -33,7 +33,8 @@ static httpd_req_t *g_current_req = NULL;
 
 static void http_response_callback(const char *response)
 {
-    if (!g_current_req || !response) return;
+    if (!g_current_req || !response)
+        return;
     httpd_resp_sendstr(g_current_req, response);
 }
 
@@ -90,22 +91,22 @@ static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
 {
     ESP_LOGI(TAG, "Attempting to serve: %s", filepath);
     FILE *file = fopen(filepath, "r");
-    
+
     // If file not found and path doesn't end with .html/.js/.css, try index.html
     if (!file) {
         const char *ext = strrchr(filepath, '.');
-        if (!ext || (strcmp(ext, ".html") != 0 && strcmp(ext, ".js") != 0 && 
-                     strcmp(ext, ".css") != 0 && strcmp(ext, ".json") != 0)) {
+        if (!ext || (strcmp(ext, ".html") != 0 && strcmp(ext, ".js") != 0 && strcmp(ext, ".css") != 0 &&
+                     strcmp(ext, ".json") != 0)) {
             char index_path[512];
-            snprintf(index_path, sizeof(index_path), "%s%sindex.html", 
-                     filepath, (filepath[strlen(filepath)-1] == '/') ? "" : "/");
+            snprintf(index_path, sizeof(index_path), "%s%sindex.html", filepath,
+                     (filepath[strlen(filepath) - 1] == '/') ? "" : "/");
             file = fopen(index_path, "r");
             if (file) {
                 ESP_LOGI(TAG, "Serving index: %s", index_path);
             }
         }
     }
-    
+
     if (!file) {
         ESP_LOGW(TAG, "File not found: %s", filepath);
         httpd_resp_send_404(req);
@@ -139,12 +140,12 @@ static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
 static esp_err_t static_handler(httpd_req_t *req)
 {
     char filepath[512];
-    
+
     // If root is requested, serve index.html
     if (strcmp(req->uri, "/") == 0) {
         return serve_static_file(req, "/storage/index.html");
     }
-    
+
     if (strlen(req->uri) > 500) {
         httpd_resp_send_404(req);
         return ESP_FAIL;
@@ -210,20 +211,19 @@ static esp_err_t api_devices_post_handler(httpd_req_t *req)
     }
 
     const cJSON *mac = cJSON_GetObjectItem(json, "mac");
-    bool is_update = false;
-    
+    bool is_update   = false;
+
     if (mac && cJSON_IsString(mac)) {
         // Parse MAC to get device_id
         uint8_t mac_bytes[6];
-        if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
-                   &mac_bytes[0], &mac_bytes[1], &mac_bytes[2],
-                   &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) == 6) {
+        if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
+                   &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) == 6) {
             uint16_t device_id = (mac_bytes[4] << 8) | mac_bytes[5];
             paired_device_t existing;
             is_update = (device_registry_get(device_id, &existing) == ESP_OK);
         }
     }
-    
+
     cJSON_Delete(json);
 
     // Use appropriate command
@@ -261,22 +261,22 @@ static esp_err_t api_devices_delete_handler(httpd_req_t *req)
 static esp_err_t api_firmware_upload_handler(httpd_req_t *req)
 {
     size_t content_length = req->content_len;
-    
+
     if (content_length == 0) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No content");
         return ESP_FAIL;
     }
-    
+
     esp_err_t ret = ota_engine_start(content_length);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "OTA start failed: %s", esp_err_to_name(ret));
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA start failed");
         return ESP_FAIL;
     }
-    
+
     uint8_t buffer[4096];
     size_t received = 0;
-    
+
     while (received < content_length) {
         int len = httpd_req_recv(req, (char *)buffer, sizeof(buffer));
         if (len <= 0) {
@@ -287,7 +287,7 @@ static esp_err_t api_firmware_upload_handler(httpd_req_t *req)
             ota_engine_abort();
             return ESP_FAIL;
         }
-        
+
         ret = ota_engine_write(buffer, len);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "OTA write failed: %s", esp_err_to_name(ret));
@@ -295,22 +295,22 @@ static esp_err_t api_firmware_upload_handler(httpd_req_t *req)
             httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Write failed");
             return ESP_FAIL;
         }
-        
+
         received += len;
     }
-    
+
     ret = ota_engine_finish();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "OTA finish failed: %s", esp_err_to_name(ret));
         httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Validation failed");
         return ESP_FAIL;
     }
-    
+
     httpd_resp_sendstr(req, "{\"status\":\"success\"}");
-    
-    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    vTaskDelay(pdMS_TO_TICKS(500));
     esp_restart();
-    
+
     return ESP_OK;
 }
 
@@ -318,15 +318,13 @@ static esp_err_t api_firmware_upload_handler(httpd_req_t *req)
 static esp_err_t api_firmware_progress_handler(httpd_req_t *req)
 {
     httpd_resp_set_type(req, "application/json");
-    
-    size_t progress = ota_engine_get_progress();
+
+    size_t progress   = ota_engine_get_progress();
     ota_state_t state = ota_engine_get_state();
-    
+
     char response[128];
-    snprintf(response, sizeof(response), 
-             "{\"progress\":%zu,\"state\":%d}", 
-             progress, state);
-    
+    snprintf(response, sizeof(response), "{\"progress\":%zu,\"state\":%d}", progress, state);
+
     httpd_resp_sendstr(req, response);
     return ESP_OK;
 }
@@ -341,7 +339,7 @@ static esp_err_t factory_reset_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Factory reset initiated\"}", 52);
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(500));
     general_config_factory_reset();
     return ESP_OK;
 }
@@ -356,11 +354,7 @@ esp_err_t config_wifi_server_start(void)
 
     // Initialize LittleFS
     esp_vfs_littlefs_conf_t littlefs_conf = {
-        .base_path = "/storage",
-        .partition_label = "storage",
-        .format_if_mount_failed = true,
-        .dont_mount = false
-    };
+        .base_path = "/storage", .partition_label = "storage", .format_if_mount_failed = true, .dont_mount = false};
     esp_err_t ret = esp_vfs_littlefs_register(&littlefs_conf);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to mount LittleFS: %s", esp_err_to_name(ret));
@@ -403,21 +397,24 @@ esp_err_t config_wifi_server_start(void)
     httpd_config_t config   = HTTPD_DEFAULT_CONFIG();
     config.server_port      = 80;
     config.max_uri_handlers = 32;
-    config.uri_match_fn     = httpd_uri_match_wildcard;  // Enable wildcard matching
-    config.stack_size       = 12288;  // Increase to 12KB for file serving + WiFi operations
+    config.uri_match_fn     = httpd_uri_match_wildcard; // Enable wildcard matching
+    config.stack_size       = 12288;                    // Increase to 12KB for file serving + WiFi operations
 
     if (httpd_start(&server, &config) == ESP_OK) {
         // API endpoints first (specific routes)
         httpd_uri_t api_general_get = {.uri = "/api/general", .method = HTTP_GET, .handler = api_general_get_handler};
         httpd_register_uri_handler(server, &api_general_get);
 
-        httpd_uri_t api_general_post = {.uri = "/api/general", .method = HTTP_POST, .handler = api_general_post_handler};
+        httpd_uri_t api_general_post = {
+            .uri = "/api/general", .method = HTTP_POST, .handler = api_general_post_handler};
         httpd_register_uri_handler(server, &api_general_post);
 
-        httpd_uri_t api_power_get = {.uri = "/api/power-management", .method = HTTP_GET, .handler = api_power_get_handler};
+        httpd_uri_t api_power_get = {
+            .uri = "/api/power-management", .method = HTTP_GET, .handler = api_power_get_handler};
         httpd_register_uri_handler(server, &api_power_get);
 
-        httpd_uri_t api_power_post = {.uri = "/api/power-management", .method = HTTP_POST, .handler = api_power_post_handler};
+        httpd_uri_t api_power_post = {
+            .uri = "/api/power-management", .method = HTTP_POST, .handler = api_power_post_handler};
         httpd_register_uri_handler(server, &api_power_post);
 
         httpd_uri_t api_lora_get = {.uri = "/api/lora*", .method = HTTP_GET, .handler = api_lora_get_handler};
@@ -429,13 +426,16 @@ esp_err_t config_wifi_server_start(void)
         httpd_uri_t api_devices_get = {.uri = "/api/devices", .method = HTTP_GET, .handler = api_devices_get_handler};
         httpd_register_uri_handler(server, &api_devices_get);
 
-        httpd_uri_t api_devices_post = {.uri = "/api/devices", .method = HTTP_POST, .handler = api_devices_post_handler};
+        httpd_uri_t api_devices_post = {
+            .uri = "/api/devices", .method = HTTP_POST, .handler = api_devices_post_handler};
         httpd_register_uri_handler(server, &api_devices_post);
 
-        httpd_uri_t api_devices_delete = {.uri = "/api/devices/*", .method = HTTP_DELETE, .handler = api_devices_delete_handler};
+        httpd_uri_t api_devices_delete = {
+            .uri = "/api/devices/*", .method = HTTP_DELETE, .handler = api_devices_delete_handler};
         httpd_register_uri_handler(server, &api_devices_delete);
 
-        httpd_uri_t api_device_info = {.uri = "/api/device/info", .method = HTTP_GET, .handler = api_device_info_handler};
+        httpd_uri_t api_device_info = {
+            .uri = "/api/device/info", .method = HTTP_GET, .handler = api_device_info_handler};
         httpd_register_uri_handler(server, &api_device_info);
 
         // Streaming firmware upload (OTA engine)

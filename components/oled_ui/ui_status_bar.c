@@ -20,12 +20,14 @@ void ui_status_bar_draw(const ui_status_t *status)
     // RF and Battery are fixed on the right
     // USB and Bluetooth fill in from the right when active
     int next_x = RF_ICON_X;
-    
+
     // Count active dynamic icons
     int active_count = 0;
-    if (status->bluetooth_enabled) active_count++;
-    if (status->usb_connected) active_count++;
-    
+    if (status->bluetooth_enabled)
+        active_count++;
+    if (status->usb_connected)
+        active_count++;
+
     // Calculate starting position for dynamic icons
     if (active_count > 0) {
         next_x = RF_ICON_X - ICON_SPACING;
@@ -39,17 +41,17 @@ void ui_status_bar_draw(const ui_status_t *status)
             }
         }
     }
-    
+
     // Draw icons left to right: USB, Bluetooth, RF, Battery
     if (status->usb_connected) {
         ui_usb_draw_at(next_x, 0);
         next_x += USB_ICON_WIDTH + ICON_SPACING;
     }
-    
+
     if (status->bluetooth_enabled) {
         ui_bluetooth_draw_at(next_x, 0, status->bluetooth_connected);
     }
-    
+
     // Fixed positions for RF and Battery
     ui_rf_draw(status->signal_strength);
     ui_battery_draw(status->battery_level);

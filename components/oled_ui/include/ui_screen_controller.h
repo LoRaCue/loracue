@@ -1,8 +1,8 @@
 #pragma once
 
+#include "button_manager.h"
 #include "oled_ui.h"
 #include "ui_config.h"
-#include "button_manager.h"
 
 /**
  * @brief Initialize screen controller

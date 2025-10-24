@@ -36,7 +36,7 @@ endif()
 include_directories("${CMAKE_BINARY_DIR}/include")
 
 # Set project name based on board (used as board_id in app descriptor)
-if(DEFINED ENV{SIMULATOR_BUILD})
+if(DEFINED ENV{WOKWI_BUILD})
     set(PROJECT_NAME "wokwi_sim")
 else()
     set(PROJECT_NAME "heltec_v3")

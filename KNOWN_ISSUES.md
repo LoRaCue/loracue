@@ -5,7 +5,11 @@
 
 ## Current Issues
 
-*No known critical issues at this time.*
+### Implemented But Not Working
+
+- **[HIGH]** BLE configuration connection - Implemented but not working (detection and connect functional)
+- **[HIGH]** BLE firmware upgrade - Implemented but not working (OTA engine and BLE transport exist)
+- **[HIGH]** USB-CDC firmware upgrade - Implemented but not working (XMODEM-1K and command handler exist)
 
 <!-- 
 Example format:

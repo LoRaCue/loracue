@@ -11,7 +11,7 @@ extern u8g2_t u8g2;
 
 static int selected_item = 0;
 
-static const char *bt_items[] = {"ON", "OFF"};
+static const char *bt_items[]  = {"ON", "OFF"};
 static const int bt_item_count = 2;
 
 void bluetooth_screen_draw(void)
@@ -32,9 +32,9 @@ void bluetooth_screen_draw(void)
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
 
     for (int i = 0; i < bt_item_count; i++) {
-        int item_y_start = SEPARATOR_Y_TOP + 1 + (i * item_height);
-        int bar_y_center = item_y_start + (item_height / 2);
-        int bar_y        = bar_y_center - (bar_height / 2);
+        int item_y_start        = SEPARATOR_Y_TOP + 1 + (i * item_height);
+        int bar_y_center        = item_y_start + (item_height / 2);
+        int bar_y               = bar_y_center - (bar_height / 2);
         int adjusted_bar_height = bar_height;
 
         if (i == 0) {
@@ -83,14 +83,14 @@ void bluetooth_screen_handle_input(int button)
     } else if (button == 2) { // SELECT
         general_config_t config;
         general_config_get(&config);
-        
+
         // Toggle bluetooth based on selection
         config.bluetooth_enabled = (selected_item == 0);
         general_config_set(&config);
-        
+
         // Apply immediately
         bluetooth_config_set_enabled(config.bluetooth_enabled);
-        
+
         bluetooth_screen_draw();
     }
 }

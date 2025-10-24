@@ -71,23 +71,24 @@ static void button_manager_task(void *pvParameters)
 
         // Button press detection
         if (btn_pressed && !button.pressed) {
-            button.pressed = true;
+            button.pressed          = true;
             button.press_start_time = current_time;
-            button.long_press_sent = false;
-            last_activity_time = current_time;
+            button.long_press_sent  = false;
+            last_activity_time      = current_time;
             led_manager_button_feedback(true);
-            
+
             u8g2_SetPowerSave(&u8g2, 0);
-            
+            power_mgmt_update_activity();
+
             ESP_LOGD(TAG, "Button pressed");
         }
         // Button release detection
         else if (!btn_pressed && button.pressed) {
-            button.pressed = false;
+            button.pressed          = false;
             uint32_t press_duration = current_time - button.press_start_time;
-            last_activity_time = current_time;
-            led_manager_button_feedback(false);  // Restore LED
-            
+            last_activity_time      = current_time;
+            led_manager_button_feedback(false); // Restore LED
+
             // Check if long press was already sent
             if (button.long_press_sent) {
                 ESP_LOGD(TAG, "Button released (long press already sent)");
@@ -109,22 +110,21 @@ static void button_manager_task(void *pvParameters)
                 if (event_callback)
                     event_callback(BUTTON_EVENT_LONG, callback_arg);
                 button.long_press_sent = true;
-                button.click_count = 0;
+                button.click_count     = 0;
             }
         }
 
         // Double-click detection (after release)
         if (!button.pressed && button.click_count > 0) {
             uint32_t time_since_release = current_time - button.last_release_time;
-            
+
             if (button.click_count == 2) {
                 ESP_LOGI(TAG, "Double press");
                 ui_screen_controller_handle_button(BUTTON_EVENT_DOUBLE);
                 if (event_callback)
                     event_callback(BUTTON_EVENT_DOUBLE, callback_arg);
                 button.click_count = 0;
-            }
-            else if (time_since_release >= DOUBLE_CLICK_WINDOW_MS) {
+            } else if (time_since_release >= DOUBLE_CLICK_WINDOW_MS) {
                 // Single click confirmed
                 ESP_LOGI(TAG, "Short press");
                 ui_screen_controller_handle_button(BUTTON_EVENT_SHORT);
@@ -138,11 +138,14 @@ static void button_manager_task(void *pvParameters)
         {
             power_mode_t recommended_mode = power_mgmt_get_recommended_mode();
 
-            if (recommended_mode == POWER_MODE_LIGHT_SLEEP) {
+            if (recommended_mode == POWER_MODE_DISPLAY_SLEEP) {
+                ESP_LOGI(TAG, "Entering display sleep due to inactivity");
+                power_mgmt_display_sleep();
+            } else if (recommended_mode == POWER_MODE_LIGHT_SLEEP) {
                 ESP_LOGI(TAG, "Entering light sleep due to inactivity");
-                power_mgmt_light_sleep(30000);
-                u8g2_InitDisplay(&u8g2);
-                u8g2_SetPowerSave(&u8g2, 0);
+                // Use configured timeout from power_mgmt
+                power_mgmt_light_sleep(0); // 0 = indefinite, wake on button/UART
+                // Display and peripherals restored by power_mgmt_light_sleep()
                 ui_screen_controller_update(NULL);
                 last_activity_time = current_time;
             } else if (recommended_mode == POWER_MODE_DEEP_SLEEP) {

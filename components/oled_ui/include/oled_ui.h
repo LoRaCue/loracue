@@ -36,7 +36,7 @@ typedef enum {
     OLED_SCREEN_LORA_CR,         ///< LoRa coding rate
     OLED_SCREEN_LORA_TXPOWER,    ///< LoRa TX power
     OLED_SCREEN_LORA_BAND,       ///< LoRa frequency band
-    OLED_SCREEN_SLOT,       ///< LoRa slot selection
+    OLED_SCREEN_SLOT,            ///< LoRa slot selection
     OLED_SCREEN_DEVICE_PAIRING,  ///< Device pairing
     OLED_SCREEN_DEVICE_REGISTRY, ///< Device registry
     OLED_SCREEN_BRIGHTNESS,      ///< Display brightness
@@ -76,6 +76,8 @@ typedef struct {
     uint16_t device_id;
     char device_name[16];
     char command[8];
+    uint8_t keycode;
+    uint8_t modifiers;
 } command_history_entry_t;
 
 /**

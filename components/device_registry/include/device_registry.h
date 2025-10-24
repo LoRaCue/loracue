@@ -20,7 +20,7 @@ extern "C" {
 #define DEVICE_NAME_MAX_LEN 32
 #define DEVICE_AES_KEY_LEN 32 // AES-256 requires 32 bytes
 #define DEVICE_MAC_ADDR_LEN 6
-#define MAX_PAIRED_DEVICES 32  // Optimal for 100KB NVS (~3.5KB storage)
+#define MAX_PAIRED_DEVICES 32 // Optimal for 100KB NVS (~3.5KB storage)
 
 /**
  * @brief Paired device information
@@ -30,7 +30,9 @@ typedef struct {
     char device_name[DEVICE_NAME_MAX_LEN];    ///< User-assigned device name
     uint8_t mac_address[DEVICE_MAC_ADDR_LEN]; ///< Hardware MAC address
     uint8_t aes_key[DEVICE_AES_KEY_LEN];      ///< Per-device AES key
-    uint16_t last_sequence;                   ///< Last received sequence number
+    // Deduplication tracking (RAM-only, not persisted to NVS)
+    uint16_t highest_sequence; ///< Highest sequence number seen
+    uint64_t recent_bitmap;    ///< Bitmap of last 64 packets (for out-of-order handling)
 } paired_device_t;
 
 /**
@@ -62,13 +64,14 @@ esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const
 esp_err_t device_registry_get(uint16_t device_id, paired_device_t *device);
 
 /**
- * @brief Update last seen timestamp and sequence number
+ * @brief Update sequence tracking for deduplication (RAM-only, not persisted)
  *
  * @param device_id Device ID
- * @param sequence_num Last received sequence number
+ * @param highest_sequence Highest sequence number seen
+ * @param recent_bitmap Bitmap of recent packets
  * @return ESP_OK on success
  */
-esp_err_t device_registry_update_last_seen(uint16_t device_id, uint16_t sequence_num);
+esp_err_t device_registry_update_sequence(uint16_t device_id, uint16_t highest_sequence, uint64_t recent_bitmap);
 
 /**
  * @brief Remove device from registry

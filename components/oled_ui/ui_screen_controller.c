@@ -4,28 +4,28 @@
 #include "brightness_screen.h"
 #include "config_mode_screen.h"
 #include "config_wifi_server.h"
-#include "general_config.h"
 #include "device_mode_screen.h"
 #include "device_registry_screen.h"
 #include "esp_log.h"
 #include "factory_reset_screen.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "general_config.h"
 #include "info_screens.h"
-#include "lora_protocol.h"
-#include "lora_settings_screen.h"
-#include "lora_submenu_screen.h"
-#include "lora_frequency_screen.h"
-#include "lora_sf_screen.h"
+#include "lora_band_screen.h"
 #include "lora_bw_screen.h"
 #include "lora_cr_screen.h"
+#include "lora_frequency_screen.h"
+#include "lora_protocol.h"
+#include "lora_settings_screen.h"
+#include "lora_sf_screen.h"
+#include "lora_submenu_screen.h"
 #include "lora_txpower_screen.h"
-#include "lora_band_screen.h"
-#include "slot_screen.h"
 #include "main_screen.h"
 #include "menu_screen.h"
 #include "pairing_screen.h"
 #include "pc_mode_screen.h"
+#include "slot_screen.h"
 #include "ui_data_provider.h"
 
 static const char *TAG              = "ui_screen_controller";
@@ -275,11 +275,19 @@ void ui_screen_controller_handle_button(button_event_type_t event)
             if (event == BUTTON_EVENT_SHORT) {
                 general_config_t config;
                 general_config_get(&config);
-                lora_protocol_send_keyboard(config.slot_id, 0, 0x4E); // Page Down
+#ifdef CONFIG_LORA_SEND_RELIABLE
+                lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4E, 2000, 3); // Page Down
+#else
+                lora_protocol_send_keyboard(config.slot_id, 0, 0x4E); // Page Down (unreliable)
+#endif
             } else if (event == BUTTON_EVENT_DOUBLE) {
                 general_config_t config;
                 general_config_get(&config);
-                lora_protocol_send_keyboard(config.slot_id, 0, 0x4B); // Page Up
+#ifdef CONFIG_LORA_SEND_RELIABLE
+                lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4B, 2000, 3); // Page Up
+#else
+                lora_protocol_send_keyboard(config.slot_id, 0, 0x4B); // Page Up (unreliable)
+#endif
             } else if (event == BUTTON_EVENT_LONG) {
                 menu_screen_reset();
                 ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
@@ -438,17 +446,27 @@ void ui_screen_controller_handle_button(button_event_type_t event)
         case OLED_SCREEN_LORA_TXPOWER:
         case OLED_SCREEN_LORA_BAND:
             if (event == BUTTON_EVENT_SHORT) {
-                if (current_screen == OLED_SCREEN_LORA_SF) lora_sf_screen_navigate(MENU_DOWN);
-                else if (current_screen == OLED_SCREEN_LORA_BW) lora_bw_screen_navigate(MENU_DOWN);
-                else if (current_screen == OLED_SCREEN_LORA_CR) lora_cr_screen_navigate(MENU_DOWN);
-                else if (current_screen == OLED_SCREEN_LORA_TXPOWER) lora_txpower_screen_navigate(MENU_DOWN);
-                else if (current_screen == OLED_SCREEN_LORA_BAND) lora_band_screen_navigate(MENU_DOWN);
-                
-                if (current_screen == OLED_SCREEN_LORA_SF) lora_sf_screen_draw();
-                else if (current_screen == OLED_SCREEN_LORA_BW) lora_bw_screen_draw();
-                else if (current_screen == OLED_SCREEN_LORA_CR) lora_cr_screen_draw();
-                else if (current_screen == OLED_SCREEN_LORA_TXPOWER) lora_txpower_screen_draw();
-                else if (current_screen == OLED_SCREEN_LORA_BAND) lora_band_screen_draw();
+                if (current_screen == OLED_SCREEN_LORA_SF)
+                    lora_sf_screen_navigate(MENU_DOWN);
+                else if (current_screen == OLED_SCREEN_LORA_BW)
+                    lora_bw_screen_navigate(MENU_DOWN);
+                else if (current_screen == OLED_SCREEN_LORA_CR)
+                    lora_cr_screen_navigate(MENU_DOWN);
+                else if (current_screen == OLED_SCREEN_LORA_TXPOWER)
+                    lora_txpower_screen_navigate(MENU_DOWN);
+                else if (current_screen == OLED_SCREEN_LORA_BAND)
+                    lora_band_screen_navigate(MENU_DOWN);
+
+                if (current_screen == OLED_SCREEN_LORA_SF)
+                    lora_sf_screen_draw();
+                else if (current_screen == OLED_SCREEN_LORA_BW)
+                    lora_bw_screen_draw();
+                else if (current_screen == OLED_SCREEN_LORA_CR)
+                    lora_cr_screen_draw();
+                else if (current_screen == OLED_SCREEN_LORA_TXPOWER)
+                    lora_txpower_screen_draw();
+                else if (current_screen == OLED_SCREEN_LORA_BAND)
+                    lora_band_screen_draw();
             } else if (event == BUTTON_EVENT_DOUBLE) {
                 // Double press = back to submenu
                 ui_screen_controller_set(OLED_SCREEN_LORA_SUBMENU, NULL);
@@ -503,7 +521,7 @@ void ui_screen_controller_handle_button(button_event_type_t event)
                     brightness_screen_navigate(MENU_UP);
                     brightness_screen_draw();
                 } else if (event == BUTTON_EVENT_LONG) {
-                    brightness_screen_select(); // Saves and exits edit mode
+                    brightness_screen_select();                       // Saves and exits edit mode
                     ui_screen_controller_set(OLED_SCREEN_MENU, NULL); // Return to menu
                 }
             } else {

@@ -24,12 +24,12 @@
 
 #define RF_ICON_WIDTH 11
 #define RF_ICON_HEIGHT 8
-#define RF_ICON_X 98   // 128 - 16 (battery) - 3 (spacing) - 11 (RF) = 98
+#define RF_ICON_X 98 // 128 - 16 (battery) - 3 (spacing) - 11 (RF) = 98
 #define RF_ICON_Y 0
 
 #define BATTERY_ICON_WIDTH 16
 #define BATTERY_ICON_HEIGHT 8
-#define BATTERY_ICON_X 112  // 128 - 16 = 112 (right edge)
+#define BATTERY_ICON_X 112 // 128 - 16 = 112 (right edge)
 #define BATTERY_ICON_Y 0
 
 #define ICON_SPACING 3

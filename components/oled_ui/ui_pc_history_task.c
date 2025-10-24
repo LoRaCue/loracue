@@ -1,8 +1,8 @@
 #include "ui_pc_history_task.h"
-#include "general_config.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "general_config.h"
 #include "pc_mode_screen.h"
 #include "ui_screen_controller.h"
 
@@ -10,21 +10,25 @@ static const char *TAG                     = "ui_pc_history";
 static TaskHandle_t pc_history_task_handle = NULL;
 static bool task_running                   = false;
 
+// Notification mechanism for instant updates
+void ui_pc_history_notify_update(void)
+{
+    if (pc_history_task_handle != NULL) {
+        xTaskNotifyGive(pc_history_task_handle);
+    }
+}
+
 static void ui_pc_history_task(void *pvParameters)
 {
     ESP_LOGI(TAG, "PC mode history task started");
 
-    // Wait 10 seconds before first update
-    vTaskDelay(pdMS_TO_TICKS(10000));
-
-    TickType_t last_update           = xTaskGetTickCount();
-    const TickType_t update_interval = pdMS_TO_TICKS(1000); // Update every 1 second
-
     while (task_running) {
+        // Wait for notification (instant update) or timeout (1 second for timestamp updates)
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
+        
         // Check if background tasks are enabled
         extern bool oled_ui_background_tasks_enabled(void);
         if (!oled_ui_background_tasks_enabled()) {
-            vTaskDelayUntil(&last_update, update_interval);
             continue;
         }
 
@@ -47,9 +51,6 @@ static void ui_pc_history_task(void *pvParameters)
                 }
             }
         }
-
-        // Wait for next update interval
-        vTaskDelayUntil(&last_update, update_interval);
     }
 
     ESP_LOGI(TAG, "PC mode history task stopped");

@@ -1,13 +1,13 @@
 #include "device_mode_screen.h"
-#include "general_config.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
+#include "general_config.h"
 #include "oled_ui.h"
 #include "u8g2.h"
 #include "ui_config.h"
-#include "ui_icons.h"
 #include "ui_helpers.h"
+#include "ui_icons.h"
 
 extern u8g2_t u8g2;
 

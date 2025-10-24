@@ -1,10 +1,9 @@
 /**
  * @file lora_protocol.h
- * @brief LoRaCue LoRa Protocol - Migrating to V2
+ * @brief LoRaCue LoRa Protocol
  *
  * PACKET: DeviceID(2) + Encrypted[SeqNum(2) + Cmd(1) + Payload(7)] + MAC(4)
- * V1: Uses simple commands (CMD_NEXT_SLIDE, etc.) with unused payload
- * V2: Uses CMD_HID_REPORT with structured payload for extensible HID support
+ * Uses CMD_HID_REPORT with structured payload for extensible HID support
  */
 
 #pragma once
@@ -24,30 +23,44 @@ extern "C" {
 #define LORA_PAYLOAD_MAX_SIZE 7
 #define LORA_MAC_SIZE 4
 
-// V2 Protocol macros
+// Protocol macros
 #define LORA_PROTOCOL_VERSION 0x01
-#define LORA_DEFAULT_SLOT     1
+#define LORA_DEFAULT_SLOT 1
 
 // Byte 0: version_slot
-#define LORA_VERSION(vs)      (((vs) >> 4) & 0x0F)
-#define LORA_SLOT(vs)         ((vs) & 0x0F)
-#define LORA_MAKE_VS(v, s)    ((((v) & 0x0F) << 4) | ((s) & 0x0F))
+#define LORA_VERSION(vs) (((vs) >> 4) & 0x0F)
+#define LORA_SLOT(vs) ((vs) & 0x0F)
+#define LORA_MAKE_VS(v, s) ((((v) & 0x0F) << 4) | ((s) & 0x0F))
 
 // Byte 1: type_flags
-#define LORA_HID_TYPE(tf)     (((tf) >> 4) & 0x0F)
-#define LORA_FLAGS(tf)        ((tf) & 0x0F)
-#define LORA_MAKE_TF(t, f)    ((((t) & 0x0F) << 4) | ((f) & 0x0F))
+#define LORA_HID_TYPE(tf) (((tf) >> 4) & 0x0F)
+#define LORA_FLAGS(tf) ((tf) & 0x0F)
+#define LORA_MAKE_TF(t, f) ((((t) & 0x0F) << 4) | ((f) & 0x0F))
 
 /**
  * @brief LoRa command types
  */
 typedef enum {
     CMD_HID_REPORT = 0x01, ///< HID report with structured payload
-    CMD_ACK        = 0x80, ///< Acknowledgment
+    CMD_ACK        = 0xAC, ///< Acknowledgment (AC = ACk)
 } lora_command_t;
 
 /**
- * @brief HID device types (V2)
+ * @brief LoRa RX callback
+ * @param device_id Sender device ID
+ * @param sequence_num Packet sequence number
+ * @param command Received command
+ * @param payload Payload data
+ * @param payload_length Payload length
+ * @param rssi Signal strength in dBm
+ * @param user_ctx User context
+ */
+typedef void (*lora_protocol_rx_callback_t)(uint16_t device_id, uint16_t sequence_num, lora_command_t command,
+                                            const uint8_t *payload, uint8_t payload_length, int16_t rssi,
+                                            void *user_ctx);
+
+/**
+ * @brief HID device types
  */
 typedef enum {
     HID_TYPE_NONE     = 0x0, ///< No HID device
@@ -65,16 +78,16 @@ typedef struct __attribute__((packed)) {
 } lora_keyboard_report_t;
 
 /**
- * @brief V2 Payload structure (7 bytes)
+ * @brief Payload structure (7 bytes)
  */
 typedef struct __attribute__((packed)) {
-    uint8_t version_slot;  ///< [7:4]=protocol_ver, [3:0]=slot_id (1-16)
-    uint8_t type_flags;    ///< [7:4]=hid_type, [3:0]=flags/reserved
+    uint8_t version_slot; ///< [7:4]=protocol_ver, [3:0]=slot_id (1-16)
+    uint8_t type_flags;   ///< [7:4]=hid_type, [3:0]=flags/reserved
     union {
         uint8_t raw[5];
         lora_keyboard_report_t keyboard;
     } hid_report;
-} lora_payload_v2_t;
+} lora_payload_t;
 
 /**
  * @brief LoRa packet structure (before encryption)
@@ -109,8 +122,8 @@ esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_
 /**
  * @brief Send keyboard with ACK
  */
-esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifiers, uint8_t keycode,
-                                               uint32_t timeout_ms, uint8_t max_retries);
+esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifiers, uint8_t keycode, uint32_t timeout_ms,
+                                               uint8_t max_retries);
 
 /**
  * @brief Receive and decrypt LoRa packet
@@ -121,7 +134,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
  * @brief Send command with ACK and retries
  */
 esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
-                                     uint32_t timeout_ms, uint8_t max_retries);
+                                      uint32_t timeout_ms, uint8_t max_retries);
 
 /**
  * @brief Send ACK packet
@@ -149,6 +162,13 @@ typedef enum {
     LORA_CONNECTION_POOR      = 3, ///< RSSI <= -100 dBm
     LORA_CONNECTION_LOST      = 4  ///< No packets received recently
 } lora_connection_state_t;
+
+/**
+ * @brief LoRa connection state callback
+ * @param state New connection state
+ * @param user_ctx User context
+ */
+typedef void (*lora_protocol_state_callback_t)(lora_connection_state_t state, void *user_ctx);
 
 /**
  * @brief Get current connection quality
@@ -195,6 +215,26 @@ esp_err_t lora_protocol_get_stats(lora_connection_stats_t *stats);
  * @brief Reset connection statistics
  */
 void lora_protocol_reset_stats(void);
+
+/**
+ * @brief Register RX callback
+ * @param callback Callback function
+ * @param user_ctx User context
+ */
+void lora_protocol_register_rx_callback(lora_protocol_rx_callback_t callback, void *user_ctx);
+
+/**
+ * @brief Register state change callback
+ * @param callback Callback function
+ * @param user_ctx User context
+ */
+void lora_protocol_register_state_callback(lora_protocol_state_callback_t callback, void *user_ctx);
+
+/**
+ * @brief Start protocol RX task
+ * @return ESP_OK on success
+ */
+esp_err_t lora_protocol_start(void);
 
 #ifdef __cplusplus
 }

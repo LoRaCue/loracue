@@ -19,11 +19,11 @@ esp_err_t bsp_i2c_init(gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz)
     }
 
     i2c_master_bus_config_t bus_config = {
-        .i2c_port = I2C_NUM_0,
-        .sda_io_num = sda,
-        .scl_io_num = scl,
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .glitch_ignore_cnt = 7,
+        .i2c_port                     = I2C_NUM_0,
+        .sda_io_num                   = sda,
+        .scl_io_num                   = scl,
+        .clk_source                   = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt            = 7,
         .flags.enable_internal_pullup = true,
     };
 
@@ -45,8 +45,8 @@ esp_err_t bsp_i2c_add_device(uint8_t addr, uint32_t freq_hz, i2c_master_dev_hand
 
     i2c_device_config_t dev_config = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = addr,
-        .scl_speed_hz = freq_hz,
+        .device_address  = addr,
+        .scl_speed_hz    = freq_hz,
     };
 
     ESP_LOGI(TAG, "Adding I2C device: addr=0x%02X, freq=%lu Hz", addr, freq_hz);
