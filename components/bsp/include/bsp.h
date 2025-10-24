@@ -209,6 +209,20 @@ uint8_t bsp_u8g2_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, v
  */
 void bsp_oled_set_reset_pin(gpio_num_t pin);
 
+/**
+ * @brief Power on E-Paper display (UI_RICH only)
+ *
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_epaper_power_on(void);
+
+/**
+ * @brief Power off E-Paper display (UI_RICH only)
+ *
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_epaper_power_off(void);
+
 #ifdef __cplusplus
 }
 #endif

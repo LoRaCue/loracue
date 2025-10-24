@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
+.PHONY: all build build-heltec build-lilygo build-sim clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -53,12 +53,26 @@ endif
 endif
 
 # Build targets
-build: check-idf
-	@echo "🔨 Building LoRaCue firmware..."
-	@echo "   📍 Default: Commands on UART0, Console on UART1"
-	@echo "   📍 Hold button at boot to swap UARTs"
+build: build-heltec build-lilygo
+	@echo "✅ All board variants built successfully!"
+
+build-heltec: check-idf
+	@echo "🔨 Building for Heltec V3..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py build
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.heltec_v3" build
+	@echo "✅ Heltec V3 build complete"
+
+build-lilygo: check-idf
+	@echo "🔨 Building for LilyGO T5..."
+	@rm -f sdkconfig
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.lilygo_t5" build
+	@echo "✅ LilyGO T5 build complete"
+
+build-sim: check-idf
+	@echo "🔨 Building for Wokwi Simulator..."
+	@rm -f sdkconfig
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.wokwi" build
+	@echo "✅ Wokwi build complete"
 
 clean:
 	@echo "🧹 Cleaning build artifacts and sdkconfig..."
@@ -70,7 +84,7 @@ fullclean:
 	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py fullclean
 
-rebuild: clean build
+rebuild: fullclean build
 
 # Flash targets
 flash: check-idf
@@ -181,14 +195,12 @@ test-build: check-idf
 	@cd wokwi/sx1262-rf-relay && npm install
 
 # Wokwi simulator
-sim: check-idf build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
+sim: check-idf build-sim build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
 ifndef WOKWI_CLI
 	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
 	@false
 endif
-	@echo "🎮 Building for Wokwi simulator..."
-	$(IDF_SETUP) WOKWI_BUILD=1 idf.py build
-
+	@echo "✅ Wokwi build ready"
 # Build all custom Wokwi chips
 chips: build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
 	@echo "✅ All custom chips compiled"
@@ -224,7 +236,7 @@ build/wokwi-chips/sx1262.chip.wasm: wokwi-chips/sx1262.chip.c wokwi-chips/wokwi-
 	@rm build/wokwi-chips/sx1262.o
 	@echo "✅ SX1262 chip compiled"
 
-sim-run: build/wokwi_sim.bin
+sim-run: sim
 	@echo "🚀 Starting Wokwi simulation..."
 	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
 	@echo "💡 Serial log: wokwi.log"
@@ -232,7 +244,7 @@ sim-run: build/wokwi_sim.bin
 	@echo ""
 	wokwi-cli --timeout 0 --interactive --serial-log-file wokwi.log
 
-sim-debug: build/wokwi_sim.bin
+sim-debug: sim
 	@echo "🐛 Starting debug simulation with interactive serial..."
 	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
 	@echo "💡 Serial log: wokwi.log"
@@ -270,9 +282,12 @@ web-flash: check-idf
 help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
-	@echo "📦 Build:"
-	@echo "  make build                    - Build firmware (hold button at boot to swap UARTs)"
-	@echo "  make rebuild                  - Clean and rebuild"
+	@echo "📦 Build (Board-Specific):"
+	@echo "  make build         - Build all board variants"
+	@echo "  make build-heltec  - Build for Heltec V3 (128x64 OLED)"
+	@echo "  make build-lilygo  - Build for LilyGO T5 (4.7\" E-Paper)"
+	@echo "  make build-sim     - Build for Wokwi Simulator"
+	@echo "  make rebuild       - Clean and rebuild all"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
 	@echo ""

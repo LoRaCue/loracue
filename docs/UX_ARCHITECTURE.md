@@ -45,11 +45,11 @@ LoRaCue supports two fundamentally different UX paradigms that should **not** be
 
 **Directory Structure:**
 ```
-components/embedded_ui/
+components/ui_embedded/
 ├── include/
-│   ├── embedded_ui.h
+│   ├── ui_embedded.h
 │   └── embedded_screens.h
-├── embedded_ui.c
+├── ui_embedded.c
 ├── embedded_screen_controller.c
 ├── screens/
 │   ├── menu_screen.c
@@ -87,11 +87,11 @@ components/embedded_ui/
 
 **Directory Structure:**
 ```
-components/rich_ui/
+components/ui_touch/
 ├── include/
-│   ├── rich_ui.h
+│   ├── ui_touch.h
 │   └── rich_screens.h
-├── rich_ui.c
+├── ui_touch.c
 ├── rich_screen_controller.c
 ├── screens/
 │   ├── dashboard_screen.c
@@ -233,12 +233,12 @@ typedef struct {
 ## 7. Migration Path
 
 ### Current State (v1.0)
-- `components/oled_ui/` → Rename to `components/embedded_ui/`
+- `components/oled_ui/` → Rename to `components/ui_embedded/`
 - Keep u8g2-based implementation
 - One-button navigation model
 
 ### Future (v2.0)
-- Add `components/rich_ui/` when building touch hardware
+- Add `components/ui_touch/` when building touch hardware
 - LVGL-based dashboard implementation
 - Touch gesture support
 
@@ -246,9 +246,9 @@ typedef struct {
 ```cmake
 # Only one UI system compiled per build
 if(CONFIG_UI_EMBEDDED)
-    list(APPEND EXTRA_COMPONENT_DIRS "components/embedded_ui")
+    list(APPEND EXTRA_COMPONENT_DIRS "components/ui_embedded")
 elseif(CONFIG_UI_RICH)
-    list(APPEND EXTRA_COMPONENT_DIRS "components/rich_ui")
+    list(APPEND EXTRA_COMPONENT_DIRS "components/ui_touch")
 endif()
 ```
 

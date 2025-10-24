@@ -1,0 +1,42 @@
+menu "LoRaCue Configuration"
+
+    choice LORACUE_BOARD
+        prompt "Target Board"
+        default BOARD_HELTEC_V3
+        help
+            Select the target hardware board.
+        
+        config BOARD_HELTEC_V3
+            bool "Heltec WiFi LoRa 32 V3"
+            select UI_EMBEDDED
+            help
+                Heltec LoRa V3 with 128x64 OLED, single button.
+                ESP32-S3, SX1262 LoRa, USB-C.
+        
+        config BOARD_LILYGO_T5
+            bool "LilyGO T5 4.7\" E-Paper"
+            select UI_RICH
+            help
+                LilyGO T5 with 960x540 E-Paper, touch, full I2C peripherals.
+                ESP32-S3, ED047TC1 display, GT911 touch, battery management.
+        
+        config BOARD_WOKWI
+            bool "Wokwi Simulator"
+            select UI_EMBEDDED
+            help
+                Wokwi simulation environment for development.
+    endchoice
+
+    config UI_EMBEDDED
+        bool
+        help
+            Lightweight UI for small monochrome displays with button-only navigation.
+            Uses u8g2 framework.
+    
+    config UI_RICH
+        bool
+        help
+            Feature-rich UI for large displays with touch support.
+            Uses LVGL framework.
+
+endmenu
