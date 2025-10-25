@@ -1,5 +1,28 @@
 echo "🔍 Running pre-commit quality checks..."
 
+# Check GitHub Actions workflow files
+WORKFLOW_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.github/workflows/.*\.yml$' || true)
+
+if [ -n "$WORKFLOW_FILES" ]; then
+    echo "🔍 Checking GitHub Actions workflows..."
+    
+    if ! command -v actionlint &> /dev/null; then
+        echo "⚠️  actionlint not found. Install with: brew install actionlint (macOS)"
+        exit 1
+    fi
+    
+    for file in $WORKFLOW_FILES; do
+        if [ -f "$file" ]; then
+            if ! actionlint "$file"; then
+                echo "❌ Workflow validation failed: $file"
+                exit 1
+            fi
+        fi
+    done
+    
+    echo "✅ Workflow validation passed"
+fi
+
 # Get staged C/C++ files (excluding submodules)
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h|cpp|hpp)$' | grep -v -E '^components/(sx126x|u8g2|u8g2-hal-esp-idf)/' || true)
 
