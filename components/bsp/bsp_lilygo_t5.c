@@ -258,6 +258,11 @@ void bsp_power_deep_sleep(uint64_t time_us)
     ESP_LOGI(TAG, "Entering deep sleep for %llu us", time_us);
 }
 
+const char *bsp_get_board_id(void)
+{
+    return "lilygo_t5";
+}
+
 lv_disp_t *bsp_display_get_lvgl_disp(void)
 {
     return disp;
