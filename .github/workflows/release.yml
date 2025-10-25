@@ -464,7 +464,13 @@ jobs:
       run: |
         mkdir -p release-assets
         find firmware-packages -name "*.zip" -exec cp {} release-assets/ \;
-        find firmware-packages -name "manifest.json" -exec cp {} release-assets/ \;
+        
+        # Copy manifests with board-specific names
+        for manifest in firmware-packages/*/manifest.json; do
+          board=$(basename $(dirname "$manifest"))
+          cp "$manifest" "release-assets/manifest-${board}.json"
+        done
+        
         ls -lah release-assets/
     
     - name: Get build timestamp
