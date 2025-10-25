@@ -139,7 +139,7 @@ jobs:
             flash_size: "8MB"
             sdkconfig: "sdkconfig.heltec_v3"
           - name: "lilygo_t5"
-            display_name: "LilyGO T5 4.7\" E-Paper"
+            display_name: "LilyGO T5"
             target: "esp32s3"
             description: "ESP32-S3 with ED047TC1 E-Paper (960x540, 16 grayscale) and GT911 touch"
             flash_size: "16MB"
@@ -324,9 +324,10 @@ jobs:
         cp manifest.json release/$BOARD/
         
         # README
+        DISPLAY_NAME_ESCAPED=$(echo '${{ matrix.board.display_name }}' | sed 's/"/\\"/g')
         bash scripts/generate_readme.sh \
           "${{ needs.version.outputs.version }}" \
-          "${{ matrix.board.display_name }}" \
+          "$DISPLAY_NAME_ESCAPED" \
           "${{ matrix.board.target }}" \
           "${{ matrix.board.description }}" \
           "${{ github.sha }}" \
