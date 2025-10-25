@@ -23,47 +23,44 @@ static const char *TAG = "BSP_LILYGO_T5";
 #define EPAPER_HEIGHT 540
 #define EPAPER_GRAYSCALE 16
 
-// I2C Configuration
+// I2C Configuration (T5 Pro uses GPIO40/39, not 17/18!)
 #define BOARD_I2C_PORT      I2C_NUM_0
-#define BOARD_SCL           GPIO_NUM_17
-#define BOARD_SDA           GPIO_NUM_18
+#define BOARD_SCL           GPIO_NUM_40
+#define BOARD_SDA           GPIO_NUM_39
 #define PCA9535_ADDR        0x20
 
-// SPI Configuration (SD Card - optional)
-#define BOARD_SPI_MISO      GPIO_NUM_16
-#define BOARD_SPI_MOSI      GPIO_NUM_15
-#define BOARD_SPI_SCLK      GPIO_NUM_11
+// SPI Configuration (shared by LoRa and SD Card)
+#define BOARD_SPI_MISO      GPIO_NUM_21
+#define BOARD_SPI_MOSI      GPIO_NUM_13
+#define BOARD_SPI_SCLK      GPIO_NUM_14
 
 // Touch (GT911 on I2C)
-#define BOARD_TOUCH_INT     GPIO_NUM_47
-#define BOARD_TOUCH_RST     GPIO_NUM_NC  // Not connected
+#define BOARD_TOUCH_INT     GPIO_NUM_3
+#define BOARD_TOUCH_RST     GPIO_NUM_9
 
-// LoRa (SPI) - Using free GPIOs
-#define BOARD_LORA_CS       GPIO_NUM_45
+// LoRa SX1262 (SPI)
+#define BOARD_LORA_CS       GPIO_NUM_46
 #define BOARD_LORA_IRQ      GPIO_NUM_10
-#define BOARD_LORA_RST      GPIO_NUM_48
-#define BOARD_LORA_BUSY     GPIO_NUM_39
+#define BOARD_LORA_RST      GPIO_NUM_1
+#define BOARD_LORA_BUSY     GPIO_NUM_47
 
 // SD Card (SPI)
-#define BOARD_SD_CS         GPIO_NUM_42
+#define BOARD_SD_CS         GPIO_NUM_12
 
 // E-Paper Parallel Interface
-#define EP_D0               GPIO_NUM_8
-#define EP_D1               GPIO_NUM_1
-#define EP_D2               GPIO_NUM_2
-#define EP_D3               GPIO_NUM_3
-#define EP_D4               GPIO_NUM_4
-#define EP_D5               GPIO_NUM_5
-#define EP_D6               GPIO_NUM_6
-#define EP_D7               GPIO_NUM_7
-#define EP_CKV              GPIO_NUM_38
-#define EP_STH              GPIO_NUM_40
-#define EP_CKH              GPIO_NUM_41
-
-// 74HCT4094D Shift Register (E-Paper power control)
-#define CFG_DATA            GPIO_NUM_13
-#define CFG_CLK             GPIO_NUM_12
-#define CFG_STR             GPIO_NUM_0
+#define EP_D0               GPIO_NUM_5
+#define EP_D1               GPIO_NUM_6
+#define EP_D2               GPIO_NUM_7
+#define EP_D3               GPIO_NUM_15
+#define EP_D4               GPIO_NUM_16
+#define EP_D5               GPIO_NUM_17
+#define EP_D6               GPIO_NUM_18
+#define EP_D7               GPIO_NUM_8
+#define EP_CKV              GPIO_NUM_48
+#define EP_STH              GPIO_NUM_41
+#define EP_LEH              GPIO_NUM_42
+#define EP_STV              GPIO_NUM_45
+#define EP_CKH              GPIO_NUM_4
 
 // PCA9535 pin mapping for E-Paper control
 #define PCA_EP_OE           PCA9535_IO10
@@ -76,11 +73,12 @@ static const char *TAG = "BSP_LILYGO_T5";
 #define PCA_TPS_INT         PCA9535_IO17
 
 // Other
-#define BOARD_BL_EN         GPIO_NUM_NC  // Not used on T5
-#define BOARD_PCA9535_INT   GPIO_NUM_NC  // Not documented
-#define BOARD_BOOT_BTN      GPIO_NUM_21
-#define BOARD_BATTERY_ADC   GPIO_NUM_14
-#define BOARD_RTC_IRQ       GPIO_NUM_NC  // Not documented
+#define BOARD_BL_EN         GPIO_NUM_11
+#define BOARD_PCA9535_INT   GPIO_NUM_38
+#define BOARD_BOOT_BTN      GPIO_NUM_0
+#define BOARD_RTC_IRQ       GPIO_NUM_2
+#define BOARD_GPS_RXD       GPIO_NUM_44
+#define BOARD_GPS_TXD       GPIO_NUM_43
 
 static spi_device_handle_t spi_handle;
 static lv_disp_t *disp;
