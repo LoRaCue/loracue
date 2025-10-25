@@ -325,23 +325,24 @@ jobs:
         
         # README
         BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-        cat > release/$BOARD/README.md << EOFMD
-        # LoRaCue Firmware v${{ needs.version.outputs.version }}
-        
-        **Board**: ${{ matrix.board.display_name }}  
-        **Target**: ${{ matrix.board.target }}  
-        **Description**: ${{ matrix.board.description }}  
-        **Build Date**: $BUILD_DATE  
-        **Commit**: ${{ github.sha }}
-        
-        ## 📋 Package Contents
-        
-        - \`${BINARY_NAME}\` - Main firmware binary
-        - \`bootloader.bin\` - ESP32 bootloader
-        - \`partition-table.bin\` - Partition table
-        - \`manifest.json\` - Firmware manifest with metadata
-        - \`*.sha256\` - SHA256 checksums for verification
-        - \`*.sig\` - RSA-4096 signatures for authenticity verification
+        cat > release/$BOARD/README.md <<EOFMD
+# LoRaCue Firmware v${{ needs.version.outputs.version }}
+
+**Board**: ${{ matrix.board.display_name }}  
+**Target**: ${{ matrix.board.target }}  
+**Description**: ${{ matrix.board.description }}  
+**Build Date**: $BUILD_DATE  
+**Commit**: ${{ github.sha }}
+
+## 📋 Package Contents
+
+- \`${BINARY_NAME}\` - Main firmware binary
+- \`bootloader.bin\` - ESP32 bootloader
+- \`partition-table.bin\` - Partition table
+- \`manifest.json\` - Firmware manifest with metadata
+- \`*.sha256\` - SHA256 checksums for verification
+- \`*.sig\` - RSA-4096 signatures for authenticity verification
+EOFMD
         
         ## 🔐 Firmware Verification
         
