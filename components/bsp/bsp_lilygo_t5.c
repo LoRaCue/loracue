@@ -16,7 +16,7 @@
 #include "driver/i2c.h"
 #include "lvgl.h"
 
-static const char *TAG = "bsp_lilygo_t5";
+static const char *TAG = "BSP_LILYGO_T5";
 
 // Display specifications
 #define EPAPER_WIDTH  960
