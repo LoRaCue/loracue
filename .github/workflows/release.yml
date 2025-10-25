@@ -181,7 +181,7 @@ jobs:
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
         target: ${{ matrix.board.target }}
-        command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.board.sdkconfig }}" build
+        command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.board.sdkconfig }}" -D BOARD_ID="${{ matrix.board.name }}" build
     
     - name: Extract and validate firmware manifest
       id: manifest

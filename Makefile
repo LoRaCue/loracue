@@ -59,13 +59,13 @@ build: build-heltec build-lilygo
 build-heltec: check-idf
 	@echo "🔨 Building for Heltec V3..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.heltec_v3" build
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.heltec_v3" -D BOARD_ID="heltec_v3" build
 	@echo "✅ Heltec V3 build complete"
 
 build-lilygo: check-idf
 	@echo "🔨 Building for LilyGO T5..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.lilygo_t5" build
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.lilygo_t5" -D BOARD_ID="lilygo_t5" build
 	@echo "✅ LilyGO T5 build complete"
 
 build-sim: check-idf
@@ -87,22 +87,27 @@ fullclean:
 rebuild: fullclean build
 
 # Flash targets
-flash: check-idf
-	@echo "🔍 Checking firmware type..."
-	@if [ -f build/wokwi_sim.bin ] && [ ! -f build/heltec_v3.bin ]; then \
-		echo "❌ ERROR: Cannot flash simulator build to real hardware!"; \
-		echo "Run: make fullclean && make build"; \
-		exit 1; \
-	fi
-	@if [ ! -f build/heltec_v3.bin ]; then \
-		echo "❌ ERROR: Hardware firmware not found! Run: make build"; \
-		exit 1; \
-	fi
-	@echo "✅ Hardware firmware detected"
-	@echo "📡 Flashing firmware to device..."
+flash-heltec: build-heltec
+	@echo "📡 Flashing Heltec V3 firmware..."
 	$(IDF_SETUP) idf.py flash
 
-flash-monitor: flash monitor
+flash-lilygo: build-lilygo
+	@echo "📡 Flashing LilyGO T5 firmware..."
+	$(IDF_SETUP) idf.py flash
+
+flash:
+	@echo "❌ ERROR: Specify board target!"
+	@echo "Use: make flash-heltec  OR  make flash-lilygo"
+	@exit 1
+
+flash-monitor-heltec: flash-heltec monitor
+
+flash-monitor-lilygo: flash-lilygo monitor
+
+flash-monitor:
+	@echo "❌ ERROR: Specify board target!"
+	@echo "Use: make flash-monitor-heltec  OR  make flash-monitor-lilygo"
+	@exit 1
 
 monitor:
 	@echo "📺 Starting serial monitor (Ctrl+] to exit)..."
@@ -292,8 +297,10 @@ help:
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
 	@echo ""
 	@echo "📡 Flash:"
-	@echo "  make flash         - Flash firmware to device"
-	@echo "  make flash-monitor - Flash and start serial monitor"
+	@echo "  make flash-heltec        - Flash Heltec V3 firmware"
+	@echo "  make flash-lilygo        - Flash LilyGO T5 firmware"
+	@echo "  make flash-monitor-heltec - Flash Heltec and monitor"
+	@echo "  make flash-monitor-lilygo - Flash LilyGO and monitor"
 	@echo "  make monitor       - Serial monitor only"
 	@echo "  make erase         - Erase entire flash"
 	@echo ""
@@ -324,5 +331,5 @@ help:
 	@echo "💡 Quick Start:"
 	@echo "  source ~/esp-idf-v5.5/export.sh  # Setup ESP-IDF"
 	@echo "  make set-target                   # First time only"
-	@echo "  make build                        # Build firmware"
-	@echo "  make flash-monitor                # Flash and monitor"
+	@echo "  make build-heltec                 # Build for Heltec V3"
+	@echo "  make flash-monitor-heltec         # Flash and monitor"
