@@ -13,10 +13,7 @@ wokwi/
 ├── heltec_v3/          # Heltec WiFi LoRa 32 V3 simulation
 │   ├── diagram.json    # Hardware diagram
 │   └── wokwi.toml      # Build configuration
-├── lilygo_t5/          # LilyGO T5 EPD47 simulation
-│   ├── diagram.json    # Hardware diagram
-│   └── wokwi.toml      # Build configuration
-└── wokwi/              # Generic ESP32-S3 simulation
+└── lilygo_t5/          # LilyGO T5 EPD47 simulation
     ├── diagram.json    # Hardware diagram
     └── wokwi.toml      # Build configuration
 ```
@@ -25,14 +22,9 @@ wokwi/
 
 ### Run simulation for specific board:
 ```bash
-make sim-run WOKWI_BOARD=heltec_v3
-make sim-run WOKWI_BOARD=lilygo_t5
-make sim-run WOKWI_BOARD=wokwi  # Generic
-```
-
-### Default (generic):
-```bash
-make sim-run
+make sim-run                        # Default: Heltec V3
+make sim-run WOKWI_BOARD=heltec_v3  # Heltec V3
+make sim-run WOKWI_BOARD=lilygo_t5  # LilyGO T5
 ```
 
 ## Custom Chips

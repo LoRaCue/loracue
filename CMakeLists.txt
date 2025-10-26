@@ -42,9 +42,7 @@ endif()
 include_directories("${CMAKE_BINARY_DIR}/include")
 
 # Set project name based on board (used as board_id in app descriptor)
-if(DEFINED ENV{WOKWI_BUILD})
-    set(PROJECT_NAME "wokwi_sim")
-elseif(DEFINED BOARD_ID)
+if(DEFINED BOARD_ID)
     set(PROJECT_NAME "${BOARD_ID}")
 else()
     set(PROJECT_NAME "loracue")  # Default fallback

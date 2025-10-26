@@ -84,7 +84,7 @@ build-lilygo: check-idf
 build-sim: check-idf
 	@echo "🔨 Building for Wokwi Simulator..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) WOKWI_BUILD=1 idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.wokwi" build
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.wokwi" build
 	@echo "✅ Wokwi build complete"
 
 clean:
@@ -219,7 +219,7 @@ test-build: check-idf
 	@cd wokwi/sx1262-rf-relay && npm install
 
 # Wokwi simulator
-WOKWI_BOARD ?= wokwi
+WOKWI_BOARD ?= heltec_v3
 WOKWI_DIR = wokwi/$(WOKWI_BOARD)
 
 sim: check-idf build-sim build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
@@ -266,12 +266,11 @@ build/wokwi/chips/sx1262.chip.wasm: wokwi/chips/sx1262.chip.c wokwi/chips/wokwi-
 
 sim-run: sim
 	@if [ ! -d $(WOKWI_DIR) ]; then \
-		echo "❌ Board $(WOKWI_BOARD) not found, using generic wokwi"; \
-		cd wokwi/wokwi && wokwi-cli .; \
-	else \
-		echo "🚀 Starting Wokwi simulation for $(WOKWI_BOARD)..."; \
-		cd $(WOKWI_DIR) && wokwi-cli .; \
+		echo "❌ Board $(WOKWI_BOARD) not found"; \
+		exit 1; \
 	fi
+	@echo "🚀 Starting Wokwi simulation for $(WOKWI_BOARD)..."
+	@cd $(WOKWI_DIR) && wokwi-cli .
 	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
 	@echo "💡 Serial log: wokwi.log"
 	@echo "💡 Press Ctrl+C to stop"
@@ -340,7 +339,7 @@ help:
 	@echo ""
 	@echo "🎮 Simulator:"
 	@echo "  make sim           - Build for Wokwi"
-	@echo "  make sim-run       - Run Wokwi simulation (WOKWI_BOARD=wokwi|heltec_v3|lilygo_t5)"
+	@echo "  make sim-run       - Run Wokwi simulation (WOKWI_BOARD=heltec_v3|lilygo_t5)"
 	@echo "  make sim-debug     - Interactive simulation"
 	@echo ""
 	@echo "🌐 Web Interface:"
