@@ -1,0 +1,9 @@
+{
+  "name": "BQ27220 Fuel Gauge",
+  "author": "Fabian Schmieder",
+  "pins": [
+    "SCL",
+    "SDA"
+  ],
+  "controls": []
+}

@@ -85,6 +85,22 @@
       "left": -250,
       "rotate": 0,
       "attrs": {}
+    },
+    {
+      "type": "chip-bq27220",
+      "id": "fuel_gauge",
+      "top": 400,
+      "left": -250,
+      "rotate": 0,
+      "attrs": {}
+    },
+    {
+      "type": "chip-bq25896",
+      "id": "charger",
+      "top": 450,
+      "left": -250,
+      "rotate": 0,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -114,7 +130,13 @@
     [ "esp:39", "pca:SDA", "green", [  ] ],
     
     [ "esp:40", "rtc:SCL", "blue", [  ] ],
-    [ "esp:39", "rtc:SDA", "green", [  ] ]
+    [ "esp:39", "rtc:SDA", "green", [  ] ],
+    
+    [ "esp:40", "fuel_gauge:SCL", "blue", [  ] ],
+    [ "esp:39", "fuel_gauge:SDA", "green", [  ] ],
+    
+    [ "esp:40", "charger:SCL", "blue", [  ] ],
+    [ "esp:39", "charger:SDA", "green", [  ] ]
   ],
   "dependencies": {}
 }

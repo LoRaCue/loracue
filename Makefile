@@ -230,7 +230,7 @@ endif
 	@echo "✅ Wokwi build ready"
 
 # Build all custom Wokwi chips
-chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm
+chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm
 	@echo "✅ All custom chips compiled"
 
 # Build custom UART bridge chip
@@ -293,6 +293,36 @@ build/wokwi/chips/pcf85063.chip.wasm: wokwi/chips/pcf85063.chip.c wokwi/chips/wo
 	@cp wokwi/chips/pcf85063.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/pcf85063.o
 	@echo "✅ PCF85063 chip compiled"
+
+# Build custom BQ27220 fuel gauge chip
+build/wokwi/chips/bq27220.chip.wasm: wokwi/chips/bq27220.chip.c wokwi/chips/wokwi-api.h wokwi/chips/bq27220.chip.json
+	@echo "🔧 Compiling custom BQ27220 fuel gauge chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/bq27220.o wokwi/chips/bq27220.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/bq27220.chip.wasm \
+		build/wokwi/chips/bq27220.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/bq27220.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/bq27220.o
+	@echo "✅ BQ27220 chip compiled"
+
+# Build custom BQ25896 charger chip
+build/wokwi/chips/bq25896.chip.wasm: wokwi/chips/bq25896.chip.c wokwi/chips/wokwi-api.h wokwi/chips/bq25896.chip.json
+	@echo "🔧 Compiling custom BQ25896 charger chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/bq25896.o wokwi/chips/bq25896.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/bq25896.chip.wasm \
+		build/wokwi/chips/bq25896.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/bq25896.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/bq25896.o
+	@echo "✅ BQ25896 chip compiled"
 
 sim-run: sim
 	@if [ ! -d $(WOKWI_DIR) ]; then \

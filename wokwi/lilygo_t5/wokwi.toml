@@ -23,3 +23,11 @@ binary = "../../build/wokwi/chips/pca9535.chip.wasm"
 [[chip]]
 name = "pcf85063"
 binary = "../../build/wokwi/chips/pcf85063.chip.wasm"
+
+[[chip]]
+name = "bq27220"
+binary = "../../build/wokwi/chips/bq27220.chip.wasm"
+
+[[chip]]
+name = "bq25896"
+binary = "../../build/wokwi/chips/bq25896.chip.wasm"
