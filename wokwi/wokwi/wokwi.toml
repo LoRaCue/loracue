@@ -1,7 +1,7 @@
 [wokwi]
 version = 1
-firmware = "../../build/lilygo_t5.bin"
-elf = "../../build/lilygo_t5.elf"
+firmware = "../../build/wokwi_sim.bin"
+elf = "../../build/wokwi_sim.elf"
 rfc2217ServerPort = 4000
 
 [[net.forward]]

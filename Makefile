@@ -84,7 +84,7 @@ build-lilygo: check-idf
 build-sim: check-idf
 	@echo "🔨 Building for Wokwi Simulator..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.wokwi" build
+	$(IDF_SETUP) WOKWI_BUILD=1 idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.wokwi" build
 	@echo "✅ Wokwi build complete"
 
 clean:
