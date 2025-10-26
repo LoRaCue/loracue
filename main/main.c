@@ -24,11 +24,8 @@
 #include "lora_protocol.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#ifdef CONFIG_UI_RICH
-#include "ui_rich.h"
-#else
 #include "ui_mini.h"
-#endif
+#include "ui_rich.h"
 #include "ota_engine.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
@@ -64,7 +61,7 @@ static uint8_t command_history_count                                = 0;
 static uint32_t total_commands_received                             = 0;
 
 // Global status for PC mode screen access
-oled_status_t g_oled_status = {0};
+ui_mini_status_t g_oled_status = {0};
 
 static void add_command_to_history(uint16_t device_id, const char *cmd_name, uint8_t keycode, uint8_t modifiers)
 {
@@ -192,7 +189,7 @@ static void update_active_presenter(uint16_t device_id, int16_t rssi)
 
 static void battery_monitor_task(void *pvParameters)
 {
-    oled_status_t *status = (oled_status_t *)pvParameters;
+    ui_mini_status_t *status = (ui_mini_status_t *)pvParameters;
     uint8_t prev_battery  = 0;
 
     while (1) {
@@ -210,7 +207,7 @@ static void battery_monitor_task(void *pvParameters)
 
 static void usb_monitor_task(void *pvParameters)
 {
-    oled_status_t *status = (oled_status_t *)pvParameters;
+    ui_mini_status_t *status = (ui_mini_status_t *)pvParameters;
     bool prev_usb         = false;
 
     while (1) {
@@ -234,7 +231,7 @@ static void usb_monitor_task(void *pvParameters)
 
 static void pc_mode_update_task(void *pvParameters)
 {
-    oled_status_t *status = (oled_status_t *)pvParameters;
+    ui_mini_status_t *status = (ui_mini_status_t *)pvParameters;
 
     while (1) {
         // Only update in PC mode (check global mode instead of NVS)
@@ -373,7 +370,7 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
     ui_pc_history_notify_update();
 
     // Update status for PC mode screen
-    oled_status_t *status = (oled_status_t *)user_ctx;
+    ui_mini_status_t *status = (ui_mini_status_t *)user_ctx;
     status->lora_signal   = rssi;
     strncpy(status->last_command, cmd_name, sizeof(status->last_command) - 1);
 
@@ -397,7 +394,7 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
 
     // Immediate redraw for PC mode screen
     if (ui_mini_get_screen() == OLED_SCREEN_PC_MODE) {
-        extern void pc_mode_screen_draw(const oled_status_t *);
+        extern void pc_mode_screen_draw(const ui_mini_status_t *);
         pc_mode_screen_draw(status);
     }
 
@@ -406,7 +403,7 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
 
 static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
 {
-    oled_status_t *status  = (oled_status_t *)user_ctx;
+    ui_mini_status_t *status  = (ui_mini_status_t *)user_ctx;
     status->lora_connected = (state != LORA_CONNECTION_LOST);
     status->lora_signal    = (state == LORA_CONNECTION_EXCELLENT) ? 100
                              : (state == LORA_CONNECTION_GOOD)    ? 75
@@ -775,7 +772,7 @@ void app_main(void)
         if (events & (1 << 4)) { // PC mode periodic update
             // Just redraw PC mode screen, don't update full status
             if (ui_mini_get_screen() == OLED_SCREEN_PC_MODE) {
-                extern void pc_mode_screen_draw(const oled_status_t *);
+                extern void pc_mode_screen_draw(const ui_mini_status_t *);
                 pc_mode_screen_draw(&g_oled_status);
             }
         }
