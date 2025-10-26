@@ -1,0 +1,9 @@
+{
+  "name": "ED047TC1 E-Paper Display",
+  "author": "Fabian Schmieder",
+  "pins": [
+    "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7",
+    "CKV", "STH", "LEH", "STV", "CKH", "OE", "MODE"
+  ],
+  "controls": []
+}

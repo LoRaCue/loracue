@@ -230,7 +230,7 @@ endif
 	@echo "✅ Wokwi build ready"
 
 # Build all custom Wokwi chips
-chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm
+chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm build/wokwi/chips/ed047tc1.chip.wasm
 	@echo "✅ All custom chips compiled"
 
 # Build custom UART bridge chip
@@ -353,6 +353,21 @@ build/wokwi/chips/gt911.chip.wasm: wokwi/chips/gt911.chip.c wokwi/chips/wokwi-ap
 	@cp wokwi/chips/gt911.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/gt911.o
 	@echo "✅ GT911 chip compiled"
+
+# Build custom ED047TC1 e-paper display chip
+build/wokwi/chips/ed047tc1.chip.wasm: wokwi/chips/ed047tc1.chip.c wokwi/chips/wokwi-api.h wokwi/chips/ed047tc1.chip.json
+	@echo "🔧 Compiling custom ED047TC1 e-paper display chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/ed047tc1.o wokwi/chips/ed047tc1.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/ed047tc1.chip.wasm \
+		build/wokwi/chips/ed047tc1.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/ed047tc1.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/ed047tc1.o
+	@echo "✅ ED047TC1 chip compiled"
 
 sim-run: sim
 	@if [ ! -d $(WOKWI_DIR) ]; then \

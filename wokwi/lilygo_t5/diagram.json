@@ -117,6 +117,14 @@
       "left": -250,
       "rotate": 0,
       "attrs": {}
+    },
+    {
+      "type": "chip-ed047tc1",
+      "id": "epaper",
+      "top": 100,
+      "left": 300,
+      "rotate": 0,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -158,7 +166,21 @@
     [ "esp:39", "epaper_pmic:SDA", "green", [  ] ],
     
     [ "esp:40", "touch:SCL", "blue", [  ] ],
-    [ "esp:39", "touch:SDA", "green", [  ] ]
+    [ "esp:39", "touch:SDA", "green", [  ] ],
+    
+    [ "esp:5", "epaper:D0", "gray", [  ] ],
+    [ "esp:6", "epaper:D1", "gray", [  ] ],
+    [ "esp:7", "epaper:D2", "gray", [  ] ],
+    [ "esp:15", "epaper:D3", "gray", [  ] ],
+    [ "esp:16", "epaper:D4", "gray", [  ] ],
+    [ "esp:17", "epaper:D5", "gray", [  ] ],
+    [ "esp:18", "epaper:D6", "gray", [  ] ],
+    [ "esp:8", "epaper:D7", "gray", [  ] ],
+    [ "esp:48", "epaper:CKV", "purple", [  ] ],
+    [ "esp:41", "epaper:STH", "purple", [  ] ],
+    [ "esp:42", "epaper:LEH", "purple", [  ] ],
+    [ "esp:45", "epaper:STV", "purple", [  ] ],
+    [ "esp:4", "epaper:CKH", "purple", [  ] ]
   ],
   "dependencies": {}
 }
