@@ -5,7 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "icons/ui_status_icons.h"
-#include "oled_ui.h"
+#include "ui_mini.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
@@ -99,7 +99,7 @@ static const char* keycode_to_name(uint8_t keycode, uint8_t modifiers)
     return key_name;
 }
 
-void pc_mode_screen_draw(const oled_status_t *status)
+void pc_mode_screen_draw(const ui_mini_status_t *status)
 {
     if (!status) {
         ESP_LOGE(TAG, "NULL status pointer");

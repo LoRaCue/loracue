@@ -193,7 +193,7 @@ LoRaCue/
 │   ├── 📁 bsp/                # Board Support Package
 │   ├── 📁 button_manager/     # Button event handling
 │   ├── 📁 led_manager/        # LED pattern control
-│   ├── 📁 oled_ui/           # Display user interface
+│   ├── 📁 ui_mini/           # Display user interface
 │   ├── 📁 lora/              # LoRa communication
 │   ├── 📁 usb_hid/           # USB keyboard emulation
 │   ├── 📁 power_mgmt/        # Power management

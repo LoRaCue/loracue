@@ -3,7 +3,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 #include "general_config.h"
-#include "oled_ui.h"
+#include "ui_mini.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
@@ -118,7 +118,7 @@ void device_mode_screen_select(void)
     current_device_mode = new_mode;
 
     // Return to main screen to show new mode
-    extern void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status);
+    extern void ui_screen_controller_set(ui_mini_screen_t screen, const ui_status_t *status);
     ui_screen_controller_set(OLED_SCREEN_MAIN, NULL);
 }
 

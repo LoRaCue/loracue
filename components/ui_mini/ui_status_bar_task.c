@@ -19,26 +19,26 @@ static void ui_status_bar_task(void *pvParameters)
 
     while (task_running) {
         // Check if background tasks are enabled
-        extern bool oled_ui_background_tasks_enabled(void);
-        if (!oled_ui_background_tasks_enabled()) {
+        extern bool ui_mini_background_tasks_enabled(void);
+        if (!ui_mini_background_tasks_enabled()) {
             vTaskDelayUntil(&last_update, pdMS_TO_TICKS(5000));
             continue;
         }
 
-        oled_screen_t current = ui_screen_controller_get_current();
+        ui_mini_screen_t current = ui_screen_controller_get_current();
 
         // Only update MAIN screen (which adapts to mode)
         if (current == OLED_SCREEN_MAIN) {
             // Try to acquire draw lock
-            extern bool oled_ui_try_lock_draw(void);
-            extern void oled_ui_unlock_draw(void);
+            extern bool ui_mini_try_lock_draw(void);
+            extern void ui_mini_unlock_draw(void);
 
-            if (oled_ui_try_lock_draw()) {
+            if (ui_mini_try_lock_draw()) {
                 const ui_status_t *status = ui_data_provider_get_status();
                 if (status) {
                     ui_screen_controller_update(status);
                 }
-                oled_ui_unlock_draw();
+                ui_mini_unlock_draw();
             }
         }
 

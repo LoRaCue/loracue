@@ -1,6 +1,6 @@
 #include "lora_submenu_screen.h"
 #include "lora_driver.h"
-#include "oled_ui.h"
+#include "ui_mini.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
@@ -110,25 +110,25 @@ void lora_submenu_screen_select(void)
 {
     switch (selected_item) {
         case 0:
-            oled_ui_set_screen(OLED_SCREEN_LORA_SETTINGS);
+            ui_mini_set_screen(OLED_SCREEN_LORA_SETTINGS);
             break;
         case 1:
-            oled_ui_set_screen(OLED_SCREEN_LORA_FREQUENCY);
+            ui_mini_set_screen(OLED_SCREEN_LORA_FREQUENCY);
             break;
         case 2:
-            oled_ui_set_screen(OLED_SCREEN_LORA_SF);
+            ui_mini_set_screen(OLED_SCREEN_LORA_SF);
             break;
         case 3:
-            oled_ui_set_screen(OLED_SCREEN_LORA_BW);
+            ui_mini_set_screen(OLED_SCREEN_LORA_BW);
             break;
         case 4:
-            oled_ui_set_screen(OLED_SCREEN_LORA_CR);
+            ui_mini_set_screen(OLED_SCREEN_LORA_CR);
             break;
         case 5:
-            oled_ui_set_screen(OLED_SCREEN_LORA_TXPOWER);
+            ui_mini_set_screen(OLED_SCREEN_LORA_TXPOWER);
             break;
         case 6:
-            oled_ui_set_screen(OLED_SCREEN_LORA_BAND);
+            ui_mini_set_screen(OLED_SCREEN_LORA_BAND);
             break;
     }
 }

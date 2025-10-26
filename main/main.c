@@ -24,7 +24,11 @@
 #include "lora_protocol.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "oled_ui.h"
+#ifdef CONFIG_UI_RICH
+#include "ui_rich.h"
+#else
+#include "ui_mini.h"
+#endif
 #include "ota_engine.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"

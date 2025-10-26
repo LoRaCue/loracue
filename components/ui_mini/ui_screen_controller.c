@@ -29,7 +29,7 @@
 #include "ui_data_provider.h"
 
 static const char *TAG              = "ui_screen_controller";
-static oled_screen_t current_screen = OLED_SCREEN_BOOT;
+static ui_mini_screen_t current_screen = OLED_SCREEN_BOOT;
 static uint32_t menu_enter_time     = 0;
 
 #define MENU_TIMEOUT_MS 15000 // 15 seconds
@@ -47,13 +47,13 @@ void ui_screen_controller_init(void)
     ESP_LOGI(TAG, "Screen controller initialized");
 }
 
-void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status)
+void ui_screen_controller_set(ui_mini_screen_t screen, const ui_status_t *status)
 {
     // Acquire draw lock
-    extern bool oled_ui_try_lock_draw(void);
-    extern void oled_ui_unlock_draw(void);
+    extern bool ui_mini_try_lock_draw(void);
+    extern void ui_mini_unlock_draw(void);
 
-    if (!oled_ui_try_lock_draw()) {
+    if (!ui_mini_try_lock_draw()) {
         ESP_LOGW(TAG, "Failed to acquire draw lock, skipping screen change");
         return;
     }
@@ -73,7 +73,7 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status)
 
     if (!status) {
         ESP_LOGE(TAG, "No status data available");
-        oled_ui_unlock_draw(); // Release lock before returning
+        ui_mini_unlock_draw(); // Release lock before returning
         return;
     }
 
@@ -89,15 +89,15 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status)
             break;
 
         case OLED_SCREEN_PC_MODE:
-            // PC mode needs oled_status_t for command history
+            // PC mode needs ui_mini_status_t for command history
             {
-                extern oled_status_t g_oled_status;
+                extern ui_mini_status_t g_oled_status;
                 // Check if g_oled_status is initialized (device_name will be set)
                 if (g_oled_status.device_name[0] != '\0') {
                     pc_mode_screen_draw(&g_oled_status);
                 } else {
                     // Not initialized yet, draw empty PC mode screen
-                    oled_status_t temp_status  = {0};
+                    ui_mini_status_t temp_status  = {0};
                     temp_status.battery_level  = status->battery_level;
                     temp_status.usb_connected  = status->usb_connected;
                     temp_status.lora_connected = status->lora_connected;
@@ -194,15 +194,15 @@ void ui_screen_controller_set(oled_screen_t screen, const ui_status_t *status)
     }
 
     // Release draw lock
-    oled_ui_unlock_draw();
+    ui_mini_unlock_draw();
 }
 
-oled_screen_t ui_screen_controller_get_current(void)
+ui_mini_screen_t ui_screen_controller_get_current(void)
 {
     return current_screen;
 }
 
-void ui_screen_controller_set_no_draw(oled_screen_t screen)
+void ui_screen_controller_set_no_draw(ui_mini_screen_t screen)
 {
     current_screen = screen;
     ESP_LOGI(TAG, "Screen type changed to: %d (no draw)", screen);
@@ -244,7 +244,7 @@ void ui_screen_controller_update(const ui_status_t *status)
             break;
 
         case OLED_SCREEN_PC_MODE: {
-            extern oled_status_t g_oled_status;
+            extern ui_mini_status_t g_oled_status;
             pc_mode_screen_draw(&g_oled_status);
         } break;
 

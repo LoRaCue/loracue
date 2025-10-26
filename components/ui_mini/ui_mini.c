@@ -1,4 +1,4 @@
-#include "oled_ui.h"
+#include "ui_mini.h"
 #include "bsp.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -14,7 +14,7 @@
 #include "version.h"
 #include <string.h>
 
-static const char *TAG               = "oled_ui";
+static const char *TAG               = "ui_mini";
 static bool ui_initialized           = false;
 static SemaphoreHandle_t draw_mutex  = NULL;
 static bool background_tasks_enabled = true;
@@ -22,51 +22,51 @@ static bool background_tasks_enabled = true;
 // Global u8g2 instance (initialized by BSP)
 extern u8g2_t u8g2;
 
-void oled_ui_enable_background_tasks(bool enable)
+void ui_mini_enable_background_tasks(bool enable)
 {
     background_tasks_enabled = enable;
 }
 
-bool oled_ui_background_tasks_enabled(void)
+bool ui_mini_background_tasks_enabled(void)
 {
     return background_tasks_enabled;
 }
 
-bool oled_ui_try_lock_draw(void)
+bool ui_mini_try_lock_draw(void)
 {
     if (!draw_mutex)
         return false;
     return xSemaphoreTake(draw_mutex, 0) == pdTRUE;
 }
 
-void oled_ui_unlock_draw(void)
+void ui_mini_unlock_draw(void)
 {
     if (draw_mutex) {
         xSemaphoreGive(draw_mutex);
     }
 }
 
-esp_err_t oled_ui_display_off(void)
+esp_err_t ui_mini_display_off(void)
 {
-    if (!oled_ui_try_lock_draw()) {
+    if (!ui_mini_try_lock_draw()) {
         return ESP_ERR_TIMEOUT;
     }
     u8g2_SetPowerSave(&u8g2, 1);
-    oled_ui_unlock_draw();
+    ui_mini_unlock_draw();
     return ESP_OK;
 }
 
-esp_err_t oled_ui_display_on(void)
+esp_err_t ui_mini_display_on(void)
 {
-    if (!oled_ui_try_lock_draw()) {
+    if (!ui_mini_try_lock_draw()) {
         return ESP_ERR_TIMEOUT;
     }
     u8g2_SetPowerSave(&u8g2, 0);
-    oled_ui_unlock_draw();
+    ui_mini_unlock_draw();
     return ESP_OK;
 }
 
-esp_err_t oled_ui_init(void)
+esp_err_t ui_mini_init(void)
 {
     ESP_LOGI(TAG, "Initializing OLED UI");
 
@@ -113,25 +113,25 @@ esp_err_t oled_ui_init(void)
     return ESP_OK;
 }
 
-esp_err_t oled_ui_set_screen(oled_screen_t screen)
+esp_err_t ui_mini_set_screen(ui_mini_screen_t screen)
 {
     ui_screen_controller_set(screen, NULL);
     return ESP_OK;
 }
 
-oled_screen_t oled_ui_get_screen(void)
+ui_mini_screen_t ui_mini_get_screen(void)
 {
     return ui_screen_controller_get_current();
 }
 
-esp_err_t oled_ui_show_message(const char *title, const char *message, uint32_t timeout_ms)
+esp_err_t ui_mini_show_message(const char *title, const char *message, uint32_t timeout_ms)
 {
     ESP_LOGI(TAG, "Message: %s - %s", title, message);
     // TODO: Implement message overlay screen
     return ESP_OK;
 }
 
-esp_err_t oled_ui_update_status(const oled_status_t *status)
+esp_err_t ui_mini_update_status(const ui_mini_status_t *status)
 {
     if (!status) {
         return ESP_ERR_INVALID_ARG;

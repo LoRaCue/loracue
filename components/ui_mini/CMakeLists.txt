@@ -1,0 +1,10 @@
+if(NOT CONFIG_UI_RICH)
+    idf_component_register(
+        SRCS "ui_mini.c" "ui_helpers.c" "icons/ui_status_icons.c" "ui_status_bar.c" "ui_pairing_overlay.c" "ui_screen_controller.c" "ui_data_provider.c" "ui_data_update_task.c" "ui_status_bar_task.c" "ui_pc_history_task.c" "screens/boot_screen.c" "screens/main_screen.c" "screens/presenter_main_screen.c" "screens/pc_mode_screen.c" "screens/info_screens.c" "screens/menu_screen.c" "screens/device_mode_screen.c" "screens/lora_settings_screen.c" "screens/lora_submenu_screen.c" "screens/lora_frequency_screen.c" "screens/lora_sf_screen.c" "screens/lora_bw_screen.c" "screens/lora_cr_screen.c" "screens/lora_txpower_screen.c" "screens/lora_band_screen.c" "screens/slot_screen.c" "screens/pairing_screen.c" "screens/device_registry_screen.c" "screens/brightness_screen.c" "screens/bluetooth_screen.c" "screens/config_mode_screen.c" "screens/factory_reset_screen.c"
+        INCLUDE_DIRS "include" "include/icons"
+        REQUIRES power_mgmt freertos u8g2 driver esp_driver_i2c bsp lora general_config config_wifi_server device_registry esp_timer usb_pairing bluetooth_config button_manager
+    )
+else()
+    # UI_RICH build - provide empty component
+    idf_component_register()
+endif()

@@ -4,7 +4,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "general_config.h"
-#include "oled_ui.h"
+#include "ui_mini.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
 #include "ui_icons.h"

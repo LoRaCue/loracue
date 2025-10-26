@@ -103,7 +103,7 @@ make sim-web
 ### 1. Code → Simulate → Test
 ```bash
 # Make changes to code
-vim components/oled_ui/oled_ui.c
+vim components/ui_mini/ui_mini.c
 
 # Build for simulator
 make sim-build

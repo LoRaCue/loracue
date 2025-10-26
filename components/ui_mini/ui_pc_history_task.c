@@ -27,12 +27,12 @@ static void ui_pc_history_task(void *pvParameters)
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
         
         // Check if background tasks are enabled
-        extern bool oled_ui_background_tasks_enabled(void);
-        if (!oled_ui_background_tasks_enabled()) {
+        extern bool ui_mini_background_tasks_enabled(void);
+        if (!ui_mini_background_tasks_enabled()) {
             continue;
         }
 
-        oled_screen_t current = ui_screen_controller_get_current();
+        ui_mini_screen_t current = ui_screen_controller_get_current();
 
         // Only update when on MAIN screen in PC mode
         if (current == OLED_SCREEN_MAIN) {
@@ -41,13 +41,13 @@ static void ui_pc_history_task(void *pvParameters)
 
             if (current_device_mode == DEVICE_MODE_PC) {
                 // Try to acquire draw lock
-                extern bool oled_ui_try_lock_draw(void);
-                extern void oled_ui_unlock_draw(void);
+                extern bool ui_mini_try_lock_draw(void);
+                extern void ui_mini_unlock_draw(void);
 
-                if (oled_ui_try_lock_draw()) {
-                    extern oled_status_t g_oled_status;
+                if (ui_mini_try_lock_draw()) {
+                    extern ui_mini_status_t g_oled_status;
                     pc_mode_screen_draw(&g_oled_status);
-                    oled_ui_unlock_draw();
+                    ui_mini_unlock_draw();
                 }
             }
         }

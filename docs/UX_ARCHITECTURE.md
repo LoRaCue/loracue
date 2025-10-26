@@ -233,7 +233,7 @@ typedef struct {
 ## 7. Migration Path
 
 ### Current State (v1.0)
-- `components/oled_ui/` → Rename to `components/ui_embedded/`
+- `components/ui_mini/` → Rename to `components/ui_embedded/`
 - Keep u8g2-based implementation
 - One-button navigation model
 

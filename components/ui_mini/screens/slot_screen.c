@@ -1,6 +1,6 @@
 #include "slot_screen.h"
 #include "general_config.h"
-#include "oled_ui.h"
+#include "ui_mini.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"
@@ -71,7 +71,7 @@ void slot_screen_select(void)
         general_config_get(&config);
         config.slot_id = selected_slot + 1; // Convert 0-15 to 1-16
         general_config_set(&config);
-        oled_ui_set_screen(OLED_SCREEN_MENU);
+        ui_mini_set_screen(OLED_SCREEN_MENU);
     } else {
         // Enter edit mode
         edit_mode = true;

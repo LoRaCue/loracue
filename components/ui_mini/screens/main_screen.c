@@ -11,12 +11,12 @@ void main_screen_draw(const ui_status_t *status)
 
     if (current_device_mode == DEVICE_MODE_PC) {
         // Draw PC mode layout
-        extern oled_status_t g_oled_status;
+        extern ui_mini_status_t g_oled_status;
         if (g_oled_status.device_name[0] != '\0') {
             pc_mode_screen_draw(&g_oled_status);
         } else {
             // Not initialized yet, draw empty PC mode
-            oled_status_t temp  = {0};
+            ui_mini_status_t temp  = {0};
             temp.battery_level  = status->battery_level;
             temp.usb_connected  = status->usb_connected;
             temp.lora_connected = status->lora_connected;

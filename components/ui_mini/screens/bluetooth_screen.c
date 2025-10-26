@@ -1,7 +1,7 @@
 #include "bluetooth_screen.h"
 #include "bluetooth_config.h"
 #include "general_config.h"
-#include "oled_ui.h"
+#include "ui_mini.h"
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_helpers.h"

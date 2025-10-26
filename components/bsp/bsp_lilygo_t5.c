@@ -19,7 +19,7 @@
 
 static const char *TAG = "BSP_LILYGO_T5";
 
-// Dummy u8g2 for oled_ui linker compatibility (not used on LilyGO)
+// Dummy u8g2 for ui_mini linker compatibility (not used on LilyGO)
 u8g2_t u8g2;
 
 // Display specifications

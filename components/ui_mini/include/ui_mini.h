@@ -1,6 +1,6 @@
 /**
- * @file oled_ui.h
- * @brief OLED User Interface using u8g2 graphics library
+ * @file ui_mini.h
+ * @brief Mini User Interface using u8g2 graphics library
  *
  * CONTEXT: LoRaCue enterprise presentation clicker OLED display
  * HARDWARE: SSD1306 128x64 OLED
@@ -48,7 +48,7 @@ typedef enum {
     OLED_SCREEN_FACTORY_RESET,   ///< Factory reset
     OLED_SCREEN_LOW_BATTERY,     ///< Low battery warning
     OLED_SCREEN_CONNECTION_LOST  ///< Connection lost
-} oled_screen_t;
+} ui_mini_screen_t;
 
 /**
  * @brief Button types for navigation
@@ -96,7 +96,7 @@ typedef struct {
     active_presenter_info_t active_presenters[4];
     command_history_entry_t command_history[4];
     uint8_t command_history_count;
-} oled_status_t;
+} ui_mini_status_t;
 
 /**
  * @brief Initialize OLED UI system
@@ -105,7 +105,7 @@ typedef struct {
  *
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t oled_ui_init(void);
+esp_err_t ui_mini_init(void);
 
 /**
  * @brief Update device status and refresh display
@@ -113,7 +113,7 @@ esp_err_t oled_ui_init(void);
  * @param status Device status structure
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t oled_ui_update_status(const oled_status_t *status);
+esp_err_t ui_mini_update_status(const ui_mini_status_t *status);
 
 /**
  * @brief Switch to different screen
@@ -121,14 +121,14 @@ esp_err_t oled_ui_update_status(const oled_status_t *status);
  * @param screen Screen type to display
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t oled_ui_set_screen(oled_screen_t screen);
+esp_err_t ui_mini_set_screen(ui_mini_screen_t screen);
 
 /**
  * @brief Get current screen
  *
  * @return Current screen type
  */
-oled_screen_t oled_ui_get_screen(void);
+ui_mini_screen_t ui_mini_get_screen(void);
 
 /**
  * @brief Show message on display
@@ -138,44 +138,44 @@ oled_screen_t oled_ui_get_screen(void);
  * @param timeout_ms Auto-clear timeout (0 = no timeout)
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t oled_ui_show_message(const char *title, const char *message, uint32_t timeout_ms);
+esp_err_t ui_mini_show_message(const char *title, const char *message, uint32_t timeout_ms);
 
 /**
  * @brief Clear display
  *
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t oled_ui_clear(void);
+esp_err_t ui_mini_clear(void);
 
 /**
  * @brief Get u8g2 instance for custom drawing
  *
  * @return Pointer to u8g2 instance
  */
-u8g2_t *oled_ui_get_u8g2(void);
+u8g2_t *ui_mini_get_u8g2(void);
 
 /**
  * @brief Try to acquire draw lock (non-blocking)
  * @return true if lock acquired, false if busy
  */
-bool oled_ui_try_lock_draw(void);
+bool ui_mini_try_lock_draw(void);
 
 /**
  * @brief Release draw lock
  */
-void oled_ui_unlock_draw(void);
+void ui_mini_unlock_draw(void);
 
 /**
  * @brief Turn off display (power save mode)
  * @return ESP_OK on success
  */
-esp_err_t oled_ui_display_off(void);
+esp_err_t ui_mini_display_off(void);
 
 /**
  * @brief Turn on display (wake from power save)
  * @return ESP_OK on success
  */
-esp_err_t oled_ui_display_on(void);
+esp_err_t ui_mini_display_on(void);
 
 #ifdef __cplusplus
 }
