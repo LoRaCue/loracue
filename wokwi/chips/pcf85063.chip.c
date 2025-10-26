@@ -27,6 +27,7 @@ static uint8_t dec_to_bcd(uint8_t val) {
 
 void chip_init(void) {
     chip_state_t *chip = malloc(sizeof(chip_state_t));
+    if (!chip) return;
     
     // Initialize with default time (2025-01-01 00:00:00)
     chip->seconds = 0x00;

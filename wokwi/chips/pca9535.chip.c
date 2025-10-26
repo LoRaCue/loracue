@@ -33,6 +33,7 @@ static void chip_i2c_disconnect(void *user_data);
 
 void chip_init(void) {
     chip_state_t *chip = malloc(sizeof(chip_state_t));
+    if (!chip) return;
     
     // Initialize with default values
     chip->input_port0 = 0xFF;      // All inputs high
