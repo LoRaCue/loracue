@@ -24,14 +24,13 @@ typedef struct {
     uint8_t config_port0;
     uint8_t config_port1;
     uint8_t current_reg;
-    bool button_pressed;
+    uint32_t button_attr;
 } chip_state_t;
 
 static bool chip_i2c_connect(void *user_data, uint32_t address, bool connect);
 static uint8_t chip_i2c_read(void *user_data);
 static bool chip_i2c_write(void *user_data, uint8_t data);
 static void chip_i2c_disconnect(void *user_data);
-static void chip_control_change(void *user_data, uint8_t control_id, uint32_t value);
 
 void chip_init(void) {
     chip_state_t *chip = malloc(sizeof(chip_state_t));
@@ -47,7 +46,7 @@ void chip_init(void) {
     chip->config_port0 = 0xFF;     // All pins as inputs
     chip->config_port1 = 0xFF;
     chip->current_reg = 0x00;
-    chip->button_pressed = false;
+    chip->button_attr = 0;
 
     const i2c_config_t i2c_config = {
         .user_data = chip,
@@ -62,8 +61,8 @@ void chip_init(void) {
     
     i2c_init(&i2c_config);
     
-    // Register button control
-    attr_init_button("button", chip_control_change, chip);
+    // Register button control (0 = not pressed)
+    chip->button_attr = attr_init("button", 0);
     
     printf("PCA9535: Initialized at address 0x20\n");
 }
@@ -90,7 +89,7 @@ static uint8_t chip_i2c_read(void *user_data) {
             // Bit 6 (IO16) = TPS_PWR_GOOD - always HIGH (power is good)
             // Bit 7 (IO17) = TPS_INT - always HIGH (no interrupt)
             value = chip->input_port1 | 0xC0;  // Set bits 6 and 7
-            if (chip->button_pressed) {
+            if (attr_read(chip->button_attr)) {
                 value &= ~0x04;  // Clear bit 2 (button pressed = LOW)
             }
             break;
@@ -115,11 +114,6 @@ static uint8_t chip_i2c_read(void *user_data) {
     }
     
     return value;
-}
-
-static void chip_control_change(void *user_data, uint8_t control_id, uint32_t value) {
-    chip_state_t *chip = (chip_state_t*)user_data;
-    chip->button_pressed = (value != 0);
 }
 
 static bool chip_i2c_write(void *user_data, uint8_t data) {
