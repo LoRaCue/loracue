@@ -13,6 +13,7 @@
 extern "C" {
 #endif
 
+// cppcheck-suppress unusedStructMember
 typedef struct {
     uint8_t battery_percent;
     bool charging;

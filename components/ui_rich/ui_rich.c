@@ -137,6 +137,7 @@ static void update_time(void)
 
 static void timer_cb(lv_timer_t *timer)
 {
+    (void)timer;
     update_time();
 }
 
