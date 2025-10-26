@@ -77,6 +77,14 @@
       "left": -250,
       "rotate": 0,
       "attrs": {}
+    },
+    {
+      "type": "chip-pcf85063",
+      "id": "rtc",
+      "top": 350,
+      "left": -250,
+      "rotate": 0,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -103,7 +111,10 @@
     [ "esp:10", "lora:DIO1", "cyan", [  ] ],
     
     [ "esp:40", "pca:SCL", "blue", [  ] ],
-    [ "esp:39", "pca:SDA", "green", [  ] ]
+    [ "esp:39", "pca:SDA", "green", [  ] ],
+    
+    [ "esp:40", "rtc:SCL", "blue", [  ] ],
+    [ "esp:39", "rtc:SDA", "green", [  ] ]
   ],
   "dependencies": {}
 }

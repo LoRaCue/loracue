@@ -230,7 +230,7 @@ endif
 	@echo "✅ Wokwi build ready"
 
 # Build all custom Wokwi chips
-chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm
+chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm
 	@echo "✅ All custom chips compiled"
 
 # Build custom UART bridge chip
@@ -278,6 +278,21 @@ build/wokwi/chips/pca9535.chip.wasm: wokwi/chips/pca9535.chip.c wokwi/chips/wokw
 	@cp wokwi/chips/pca9535.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/pca9535.o
 	@echo "✅ PCA9535 chip compiled"
+
+# Build custom PCF85063 RTC chip
+build/wokwi/chips/pcf85063.chip.wasm: wokwi/chips/pcf85063.chip.c wokwi/chips/wokwi-api.h wokwi/chips/pcf85063.chip.json
+	@echo "🔧 Compiling custom PCF85063 RTC chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/pcf85063.o wokwi/chips/pcf85063.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/pcf85063.chip.wasm \
+		build/wokwi/chips/pcf85063.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/pcf85063.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/pcf85063.o
+	@echo "✅ PCF85063 chip compiled"
 
 sim-run: sim
 	@if [ ! -d $(WOKWI_DIR) ]; then \
