@@ -12,13 +12,13 @@
     },
     {
       "type": "wokwi-pushbutton",
-      "id": "btn_pca",
+      "id": "btn_boot",
       "top": 130,
       "left": 111,
       "rotate": 0,
       "attrs": {
-        "color": "red",
-        "label": "BUTTON (PCA)"
+        "color": "blue",
+        "label": "BOOT"
       }
     },
     {
@@ -130,6 +130,9 @@
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    
+    [ "esp:0", "btn_boot:1.l", "yellow", [] ],
+    [ "btn_boot:2.l", "esp:GND.1", "black", [] ],
     
     [ "esp:2", "uart1:RX", "green", [ "h0" ] ],
     [ "esp:3", "uart1:TX", "yellow", [ "h0" ] ],
