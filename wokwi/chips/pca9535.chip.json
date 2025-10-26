@@ -1,0 +1,9 @@
+{
+  "name": "PCA9535 I2C GPIO Expander",
+  "author": "Fabian Schmieder",
+  "pins": [
+    "SCL",
+    "SDA"
+  ],
+  "controls": []
+}

@@ -69,6 +69,14 @@
       "left": -250,
       "rotate": 90,
       "attrs": {}
+    },
+    {
+      "type": "chip-pca9535",
+      "id": "pca",
+      "top": 300,
+      "left": -250,
+      "rotate": 0,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -92,7 +100,10 @@
     [ "esp:21", "lora:MISO", "brown", [  ] ],
     [ "esp:47", "lora:BUSY", "orange", [  ] ],
     [ "esp:1", "lora:RESET", "red", [  ] ],
-    [ "esp:10", "lora:DIO1", "cyan", [  ] ]
+    [ "esp:10", "lora:DIO1", "cyan", [  ] ],
+    
+    [ "esp:40", "pca:SCL", "blue", [  ] ],
+    [ "esp:39", "pca:SDA", "green", [  ] ]
   ],
   "dependencies": {}
 }
