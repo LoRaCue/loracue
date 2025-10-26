@@ -5,5 +5,11 @@
     "SCL",
     "SDA"
   ],
-  "controls": []
+  "controls": [
+    {
+      "id": "button",
+      "label": "Button",
+      "type": "button"
+    }
+  ]
 }
