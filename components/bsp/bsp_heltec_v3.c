@@ -427,3 +427,29 @@ const bsp_usb_config_t *bsp_get_usb_config(void)
 {
     return &usb_config;
 }
+
+const bsp_lora_pins_t *bsp_get_lora_pins(void)
+{
+    static const bsp_lora_pins_t lora_pins = {
+        .miso = 11,
+        .mosi = 10,
+        .sclk = 9,
+        .cs = 8,
+        .rst = 12,
+        .busy = 13,
+        .dio1 = 14
+    };
+    return &lora_pins;
+}
+
+esp_err_t bsp_set_display_brightness(uint8_t brightness)
+{
+    u8g2_SetContrast(&u8g2, brightness);
+    return ESP_OK;
+}
+
+esp_err_t bsp_display_wake(void)
+{
+    u8g2_SetPowerSave(&u8g2, 0);
+    return ESP_OK;
+}

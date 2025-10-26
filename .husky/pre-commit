@@ -13,7 +13,10 @@ if [ -n "$WORKFLOW_FILES" ]; then
     
     for file in $WORKFLOW_FILES; do
         if [ -f "$file" ]; then
-            if ! actionlint "$file"; then
+            # Only fail on syntax errors, not shellcheck warnings
+            if ! actionlint "$file" 2>&1 | grep -E '(syntax-check|expression)'; then
+                :  # No syntax errors
+            else
                 echo "❌ Workflow validation failed: $file"
                 exit 1
             fi

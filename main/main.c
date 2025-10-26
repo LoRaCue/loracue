@@ -29,6 +29,7 @@
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "uart_commands.h"
+#include "usb_console.h"
 #include "usb_hid.h"
 #include "version.h"
 #include <stdio.h>
@@ -547,22 +548,28 @@ void app_main(void)
     }
     led_manager_solid(true); // Turn on LED during startup
 
-    // Initialize OLED UI
-    ESP_LOGI(TAG, "Initializing OLED UI...");
-    ret = oled_ui_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "OLED UI initialization failed: %s", esp_err_to_name(ret));
-        return;
+    // Initialize UI based on board type
+    const char *board_id = bsp_get_board_id();
+    if (strcmp(board_id, "lilygo_t5") == 0) {
+        ESP_LOGI(TAG, "Initializing Rich UI (LVGL)...");
+        // TODO: Initialize ui_rich when implemented
+        ESP_LOGW(TAG, "Rich UI not yet implemented");
+    } else {
+        ESP_LOGI(TAG, "Initializing OLED UI...");
+        ret = oled_ui_init();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "OLED UI initialization failed: %s", esp_err_to_name(ret));
+            return;
+        }
+
+        // Apply brightness from config (reuse config from power mgmt)
+        general_config_get(&config);
+        bsp_set_display_brightness(config.display_brightness);
+        ESP_LOGI(TAG, "Display brightness set to %d", config.display_brightness);
+
+        // Show boot logo
+        oled_ui_set_screen(OLED_SCREEN_BOOT);
     }
-
-    // Apply brightness from config (reuse config from power mgmt)
-    general_config_get(&config);
-    extern u8g2_t u8g2;
-    u8g2_SetContrast(&u8g2, config.display_brightness);
-    ESP_LOGI(TAG, "OLED brightness set to %d", config.display_brightness);
-
-    // Show boot logo
-    oled_ui_set_screen(OLED_SCREEN_BOOT);
 
     // Initialize button manager
     ESP_LOGI(TAG, "Initializing button manager...");
@@ -628,6 +635,16 @@ void app_main(void)
         ESP_LOGE(TAG, "USB HID initialization failed: %s", esp_err_to_name(ret));
         return;
     }
+
+#if 0  // Disable USB console redirection - causes issues
+    // Wait for USB enumeration before redirecting console
+    ESP_LOGI(TAG, "Waiting for USB enumeration...");
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    
+    // Redirect console to USB CDC port 1 (debug)
+    usb_console_init();
+    ESP_LOGI(TAG, "Console redirected to USB CDC + UART");
+#endif
 
     // Initialize Bluetooth configuration
     ESP_LOGI(TAG, "Initializing Bluetooth configuration...");

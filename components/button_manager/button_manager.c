@@ -13,13 +13,10 @@
 #include "freertos/task.h"
 #include "led_manager.h"
 #include "power_mgmt.h"
-#include "u8g2.h"
 #include "ui_screen_controller.h"
 #include <string.h>
 
 static const char *TAG = "BUTTON_MGR";
-
-extern u8g2_t u8g2;
 
 // Timing constants (in milliseconds)
 #define DEBOUNCE_TIME_MS 50
@@ -77,7 +74,7 @@ static void button_manager_task(void *pvParameters)
             last_activity_time      = current_time;
             led_manager_button_feedback(true);
 
-            u8g2_SetPowerSave(&u8g2, 0);
+            bsp_display_wake();
             power_mgmt_update_activity();
 
             ESP_LOGD(TAG, "Button pressed");

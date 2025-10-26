@@ -153,11 +153,43 @@ typedef struct {
 } bsp_usb_config_t;          // cppcheck-suppress unusedStructMember
 
 /**
+ * @brief LoRa SX126X pin configuration
+ */
+typedef struct {
+    int miso;
+    int mosi;
+    int sclk;
+    int cs;
+    int rst;
+    int busy;
+    int dio1;
+} bsp_lora_pins_t;
+
+/**
  * @brief Get USB configuration for this board
  *
  * @return Pointer to USB configuration structure
  */
 const bsp_usb_config_t *bsp_get_usb_config(void);
+
+/**
+ * @brief Get LoRa pin configuration
+ * @return Pointer to LoRa pin configuration structure
+ */
+const bsp_lora_pins_t *bsp_get_lora_pins(void);
+
+/**
+ * @brief Set display brightness/contrast
+ * @param brightness Brightness level (0-255)
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_set_display_brightness(uint8_t brightness);
+
+/**
+ * @brief Wake display from power save mode
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_display_wake(void);
 
 // I2C Bus Management
 #include "driver/i2c_master.h"

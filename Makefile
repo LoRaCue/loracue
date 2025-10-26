@@ -53,8 +53,21 @@ endif
 endif
 
 # Build targets
+# Usage: make build           - Build all boards
+#        make build BOARD=heltec - Build Heltec only
+#        make build BOARD=lilygo - Build LilyGO only
+ifdef BOARD
+ifeq ($(BOARD),heltec)
+build: build-heltec
+else ifeq ($(BOARD),lilygo)
+build: build-lilygo
+else
+$(error Invalid BOARD=$(BOARD). Use: BOARD=heltec or BOARD=lilygo)
+endif
+else
 build: build-heltec build-lilygo
 	@echo "✅ All board variants built successfully!"
+endif
 
 build-heltec: check-idf
 	@echo "🔨 Building for Heltec V3..."
@@ -86,28 +99,34 @@ fullclean:
 
 rebuild: fullclean build
 
-# Flash targets
-flash-heltec: build-heltec
-	@echo "📡 Flashing Heltec V3 firmware..."
-	$(IDF_SETUP) idf.py flash
+# Flash targets with BOARD parameter
+# Usage: make flash BOARD=heltec  OR  make flash BOARD=lilygo
+BOARD ?= heltec
 
-flash-lilygo: build-lilygo
-	@echo "📡 Flashing LilyGO T5 firmware..."
-	$(IDF_SETUP) idf.py flash
+ifeq ($(BOARD),heltec)
+BOARD_TARGET = heltec_v3
+BOARD_NAME = Heltec V3
+else ifeq ($(BOARD),lilygo)
+BOARD_TARGET = lilygo_t5
+BOARD_NAME = LilyGO T5
+else
+$(error Invalid BOARD=$(BOARD). Use: BOARD=heltec or BOARD=lilygo)
+endif
 
-flash:
-	@echo "❌ ERROR: Specify board target!"
-	@echo "Use: make flash-heltec  OR  make flash-lilygo"
-	@exit 1
+flash: check-idf
+	@echo "📡 Flashing $(BOARD_NAME) firmware..."
+	@rm -f sdkconfig
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash
 
-flash-monitor-heltec: flash-heltec monitor
+flash-only: check-idf
+	@echo "📡 Flashing $(BOARD_NAME) firmware (no rebuild)..."
+	@test -f build/$(BOARD_TARGET).bin || { echo "❌ Firmware not found. Run 'make build BOARD=$(BOARD)' first"; exit 1; }
+	$(IDF_SETUP) esptool.py --chip esp32s3 write_flash 0x10000 build/$(BOARD_TARGET).bin
 
-flash-monitor-lilygo: flash-lilygo monitor
-
-flash-monitor:
-	@echo "❌ ERROR: Specify board target!"
-	@echo "Use: make flash-monitor-heltec  OR  make flash-monitor-lilygo"
-	@exit 1
+flash-monitor: check-idf
+	@echo "📡 Flashing $(BOARD_NAME) firmware and starting monitor..."
+	@rm -f sdkconfig
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash monitor
 
 monitor:
 	@echo "📺 Starting serial monitor (Ctrl+] to exit)..."
@@ -287,20 +306,20 @@ web-flash: check-idf
 help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
-	@echo "📦 Build (Board-Specific):"
+	@echo "📦 Build:"
 	@echo "  make build         - Build all board variants"
-	@echo "  make build-heltec  - Build for Heltec V3 (128x64 OLED)"
-	@echo "  make build-lilygo  - Build for LilyGO T5 (4.7\" E-Paper)"
+	@echo "  make build BOARD=heltec - Build Heltec V3 only"
+	@echo "  make build BOARD=lilygo - Build LilyGO T5 only"
 	@echo "  make build-sim     - Build for Wokwi Simulator"
 	@echo "  make rebuild       - Clean and rebuild all"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
 	@echo ""
 	@echo "📡 Flash:"
-	@echo "  make flash-heltec        - Flash Heltec V3 firmware"
-	@echo "  make flash-lilygo        - Flash LilyGO T5 firmware"
-	@echo "  make flash-monitor-heltec - Flash Heltec and monitor"
-	@echo "  make flash-monitor-lilygo - Flash LilyGO and monitor"
+	@echo "  make flash BOARD=heltec  - Flash Heltec V3 firmware"
+	@echo "  make flash BOARD=lilygo  - Flash LilyGO T5 firmware"
+	@echo "  make flash-monitor BOARD=heltec - Flash Heltec and monitor"
+	@echo "  make flash-monitor BOARD=lilygo - Flash LilyGO and monitor"
 	@echo "  make monitor       - Serial monitor only"
 	@echo "  make erase         - Erase entire flash"
 	@echo ""

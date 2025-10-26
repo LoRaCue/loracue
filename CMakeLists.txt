@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
+# Set default BOARD_ID if not provided (MUST be before anything else)
+if(NOT DEFINED BOARD_ID)
+    set(BOARD_ID "heltec_v3")
+    message(STATUS "BOARD_ID not set, defaulting to: ${BOARD_ID}")
+endif()
+
 # Set the target before project()
 set(IDF_TARGET esp32s3)
 

@@ -96,10 +96,12 @@ make sim-web        # Run simulation in web browser
 make sim-info       # Show Wokwi simulation information
 
 # 📡 Hardware Commands
-make flash          # Flash firmware to connected device
-make monitor        # Serial monitor for debugging
-make flash-monitor  # Flash and immediately start monitoring
-make erase          # Erase entire flash memory
+make flash BOARD=heltec  # Flash Heltec V3 firmware
+make flash BOARD=lilygo  # Flash LilyGO T5 firmware
+make monitor             # Serial monitor for debugging
+make flash-monitor BOARD=heltec  # Flash and monitor Heltec
+make flash-monitor BOARD=lilygo  # Flash and monitor LilyGO
+make erase               # Erase entire flash memory
 
 # 🌐 Web Interface Commands
 make web-build      # Build web interface for WiFi configuration
@@ -172,8 +174,10 @@ make sim-run
 # Build for real hardware
 make build
 
-# Flash to connected device (development)
-make flash-monitor
+# Flash to connected device (specify board)
+make flash-monitor BOARD=heltec
+# or
+make flash-monitor BOARD=lilygo
 ```
 
 ### For End Users

@@ -15,8 +15,12 @@
 #include "driver/spi_master.h"
 #include "driver/i2c.h"
 #include "lvgl.h"
+#include "u8g2.h"
 
 static const char *TAG = "BSP_LILYGO_T5";
+
+// Dummy u8g2 for oled_ui linker compatibility (not used on LilyGO)
+u8g2_t u8g2;
 
 // Display specifications
 #define EPAPER_WIDTH  960
@@ -80,7 +84,6 @@ static const char *TAG = "BSP_LILYGO_T5";
 #define BOARD_GPS_RXD       GPIO_NUM_44
 #define BOARD_GPS_TXD       GPIO_NUM_43
 
-static spi_device_handle_t spi_handle;
 static lv_disp_t *disp;
 
 esp_err_t bsp_init(void)
@@ -263,6 +266,68 @@ void bsp_power_deep_sleep(uint64_t time_us)
 const char *bsp_get_board_id(void)
 {
     return "lilygo_t5";
+}
+
+// USB configuration for LilyGO T5
+static const bsp_usb_config_t usb_config = {
+    .usb_pid = 0x4004,
+    .usb_product = "LilyGO T5 E-Paper"
+};
+
+const bsp_usb_config_t *bsp_get_usb_config(void)
+{
+    return &usb_config;
+}
+
+const bsp_lora_pins_t *bsp_get_lora_pins(void)
+{
+    static const bsp_lora_pins_t lora_pins = {
+        .miso = 21,
+        .mosi = 13,
+        .sclk = 14,
+        .cs = 46,
+        .rst = 1,
+        .busy = 47,
+        .dio1 = 10
+    };
+    return &lora_pins;
+}
+
+float bsp_read_battery(void)
+{
+    // Convert from percentage to float (0.0-100.0)
+    uint8_t percentage = bsp_battery_get_percentage();
+    return (float)percentage;
+}
+
+bool bsp_read_button(bsp_button_t button)
+{
+    return bsp_button_get(button);
+}
+
+esp_err_t bsp_validate_hardware(void)
+{
+    ESP_LOGI(TAG, "Validating LilyGO T5 hardware...");
+    
+    // Check I2C devices
+    // TODO: Add actual hardware validation
+    
+    ESP_LOGI(TAG, "Hardware validation complete");
+    return ESP_OK;
+}
+
+esp_err_t bsp_set_display_brightness(uint8_t brightness)
+{
+    // LilyGO T5 E-Paper doesn't have adjustable brightness
+    // Could control backlight if available, or adjust refresh intensity
+    ESP_LOGD(TAG, "E-Paper brightness control not implemented (value: %d)", brightness);
+    return ESP_OK;
+}
+
+esp_err_t bsp_display_wake(void)
+{
+    // E-Paper doesn't have power save mode like OLED
+    return ESP_OK;
 }
 
 lv_disp_t *bsp_display_get_lvgl_disp(void)

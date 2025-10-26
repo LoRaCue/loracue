@@ -11,6 +11,7 @@
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
 
+#include "bsp.h"
 #include "sx126x.h"
 
 #define TAG "SX126X"
@@ -73,20 +74,23 @@ esp_err_t sx126x_init(void)
         return ESP_ERR_NO_MEM;
     }
 
-    ESP_LOGI(TAG, "CONFIG_MISO_GPIO=%d", CONFIG_MISO_GPIO);
-    ESP_LOGI(TAG, "CONFIG_MOSI_GPIO=%d", CONFIG_MOSI_GPIO);
-    ESP_LOGI(TAG, "CONFIG_SCLK_GPIO=%d", CONFIG_SCLK_GPIO);
-    ESP_LOGI(TAG, "CONFIG_NSS_GPIO=%d", CONFIG_NSS_GPIO);
-    ESP_LOGI(TAG, "CONFIG_RST_GPIO=%d", CONFIG_RST_GPIO);
-    ESP_LOGI(TAG, "CONFIG_BUSY_GPIO=%d", CONFIG_BUSY_GPIO);
-    ESP_LOGI(TAG, "CONFIG_TXEN_GPIO=%d", CONFIG_TXEN_GPIO);
-    ESP_LOGI(TAG, "CONFIG_RXEN_GPIO=%d", CONFIG_RXEN_GPIO);
+    // Get board-specific LoRa pins from BSP
+    const bsp_lora_pins_t *pins = bsp_get_lora_pins();
+    
+    ESP_LOGI(TAG, "CONFIG_MISO_GPIO=%d", pins->miso);
+    ESP_LOGI(TAG, "CONFIG_MOSI_GPIO=%d", pins->mosi);
+    ESP_LOGI(TAG, "CONFIG_SCLK_GPIO=%d", pins->sclk);
+    ESP_LOGI(TAG, "CONFIG_NSS_GPIO=%d", pins->cs);
+    ESP_LOGI(TAG, "CONFIG_RST_GPIO=%d", pins->rst);
+    ESP_LOGI(TAG, "CONFIG_BUSY_GPIO=%d", pins->busy);
+    ESP_LOGI(TAG, "CONFIG_TXEN_GPIO=%d", -1);
+    ESP_LOGI(TAG, "CONFIG_RXEN_GPIO=%d", -1);
 
-    g_sx126x->nss_pin = CONFIG_NSS_GPIO;
-    g_sx126x->reset_pin = CONFIG_RST_GPIO;
-    g_sx126x->busy_pin = CONFIG_BUSY_GPIO;
-    g_sx126x->txen_pin = CONFIG_TXEN_GPIO;
-    g_sx126x->rxen_pin = CONFIG_RXEN_GPIO;
+    g_sx126x->nss_pin = pins->cs;
+    g_sx126x->reset_pin = pins->rst;
+    g_sx126x->busy_pin = pins->busy;
+    g_sx126x->txen_pin = -1;
+    g_sx126x->rxen_pin = -1;
     g_sx126x->tx_active = false;
     g_sx126x->tx_lost = 0;
 
@@ -111,9 +115,9 @@ esp_err_t sx126x_init(void)
     }
 
     spi_bus_config_t spi_bus_config = {
-        .sclk_io_num = CONFIG_SCLK_GPIO,
-        .mosi_io_num = CONFIG_MOSI_GPIO,
-        .miso_io_num = CONFIG_MISO_GPIO,
+        .sclk_io_num = pins->sclk,
+        .mosi_io_num = pins->mosi,
+        .miso_io_num = pins->miso,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1
     };
@@ -132,7 +136,7 @@ esp_err_t sx126x_init(void)
     spi_device_interface_config_t devcfg = {
         .clock_speed_hz = 9000000,
         .mode = 0,
-        .spics_io_num = CONFIG_NSS_GPIO,
+        .spics_io_num = pins->cs,
         .queue_size = 7,
         .flags = 0,
         .pre_cb = NULL
