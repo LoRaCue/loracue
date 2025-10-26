@@ -3,7 +3,11 @@
   "author": "Fabian Schmieder",
   "pins": [
     "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7",
-    "CKV", "STH", "LEH", "STV", "CKH", "OE", "MODE"
+    "CKV", "STH", "LEH", "STV", "CKH"
   ],
-  "controls": []
+  "controls": [],
+  "display": {
+    "width": 540,
+    "height": 960
+  }
 }
