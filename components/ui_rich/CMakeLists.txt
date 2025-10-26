@@ -2,12 +2,10 @@ if(CONFIG_UI_RICH)
     idf_component_register(
         SRCS 
             "ui_rich.c"
-            "screens/boot_screen.c"
-            "screens/launcher_screen.c"
-            "screens/app_presenter.c"
-            "widgets/status_bar.c"
+            "images/bootscreen.c"
         INCLUDE_DIRS 
             "include"
+            "images"
         REQUIRES 
             lvgl
             bsp

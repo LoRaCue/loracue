@@ -1,36 +1,27 @@
+/**
+ * @file ui_rich.h
+ * @brief Rich UI for e-paper displays (LVGL-based)
+ */
+
 #pragma once
 
-#include "lvgl.h"
 #include "esp_err.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum {
-    UI_RICH_SCREEN_HOME,
-    UI_RICH_SCREEN_SETTINGS,
-    UI_RICH_SCREEN_PRESENTER,
-    UI_RICH_SCREEN_PC_MODE
-} ui_rich_screen_t;
+typedef struct {
+    uint8_t battery_percent;
+    bool charging;
+    bool lora_connected;
+    bool wifi_connected;
+} ui_rich_status_t;
 
-/**
- * @brief Initialize the rich UI system
- * @return ESP_OK on success
- */
 esp_err_t ui_rich_init(void);
-
-/**
- * @brief Navigate to a specific screen
- * @param screen Screen to navigate to
- */
-void ui_rich_navigate(ui_rich_screen_t screen);
-
-/**
- * @brief Get current active screen
- * @return Current screen
- */
-ui_rich_screen_t ui_rich_get_current_screen(void);
+void ui_rich_update_status(const ui_rich_status_t *status);
 
 #ifdef __cplusplus
 }
