@@ -267,10 +267,11 @@ build/wokwi/chips/sx1262.chip.wasm: wokwi/chips/sx1262.chip.c wokwi/chips/wokwi-
 sim-run: sim
 	@if [ ! -d $(WOKWI_DIR) ]; then \
 		echo "❌ Board $(WOKWI_BOARD) not found, using generic wokwi"; \
-		WOKWI_DIR=wokwi/wokwi; \
+		cd wokwi/wokwi && wokwi-cli .; \
+	else \
+		echo "🚀 Starting Wokwi simulation for $(WOKWI_BOARD)..."; \
+		cd $(WOKWI_DIR) && wokwi-cli .; \
 	fi
-	@echo "🚀 Starting Wokwi simulation for $(WOKWI_BOARD)..."
-	@cd $(WOKWI_DIR) && wokwi-cli diagram.json
 	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
 	@echo "💡 Serial log: wokwi.log"
 	@echo "💡 Press Ctrl+C to stop"
