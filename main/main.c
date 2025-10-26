@@ -636,7 +636,7 @@ void app_main(void)
         return;
     }
 
-#ifndef LORACUE_RELEASE
+#if 0  // USB CDC is only for command parser, not console
     // Wait for USB enumeration before redirecting console
     ESP_LOGI(TAG, "Waiting for USB enumeration...");
     vTaskDelay(pdMS_TO_TICKS(2000));
