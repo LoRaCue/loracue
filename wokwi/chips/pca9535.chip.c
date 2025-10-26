@@ -75,10 +75,14 @@ static uint8_t chip_i2c_read(void *user_data) {
     
     switch (chip->current_reg) {
         case PCA9535_INPUT_PORT0:
+            // Port 0: bits 0-7 (IO0-IO7)
             value = chip->input_port0;
             break;
         case PCA9535_INPUT_PORT1:
-            value = chip->input_port1;
+            // Port 1: bits 0-7 (IO10-IO17)
+            // Bit 6 (IO16) = TPS_PWR_GOOD - always HIGH (power is good)
+            // Bit 7 (IO17) = TPS_INT - always HIGH (no interrupt)
+            value = chip->input_port1 | 0xC0;  // Set bits 6 and 7
             break;
         case PCA9535_OUTPUT_PORT0:
             value = chip->output_port0;
