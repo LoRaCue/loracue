@@ -20,44 +20,22 @@ static vprintf_like_t original_vprintf = NULL;
 
 static int usb_console_vprintf(const char *fmt, va_list args)
 {
-    // Send to USB CDC port 1 (debug console)
-    if (tud_cdc_n_connected(1)) {
+    // Send to USB CDC port 0 (same port as commands)
+    if (tud_cdc_connected()) {
         char buf[256];
         int len = vsnprintf(buf, sizeof(buf), fmt, args);
         if (len > 0) {
-            tud_cdc_n_write(1, buf, len);
-            tud_cdc_n_write_flush(1);
+            tud_cdc_write(buf, len);
+            tud_cdc_write_flush();
         }
-    }
-    
-    // Also send to UART (dual output)
-    if (original_vprintf) {
-        return original_vprintf(fmt, args);
     }
     
     return 0;
 }
 
-// Handle DTR/RTS signals for bootloader reset on CDC port 1
-void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
-{
-    if (itf == 1) {  // Only handle CDC port 1 (debug console)
-        // DTR=low, RTS=high = Enter bootloader
-        // DTR=high, RTS=low = Reset and run
-        if (!dtr && rts) {
-            ESP_LOGI(TAG, "Bootloader mode requested via DTR/RTS");
-            esp_restart();  // Restart into bootloader
-        } else if (dtr && !rts) {
-            ESP_LOGI(TAG, "Reset requested via DTR/RTS");
-            esp_restart();  // Normal reset
-        }
-    }
-}
-
 esp_err_t usb_console_init(void)
 {
-    ESP_LOGI(TAG, "Redirecting console to USB CDC port 1 (debug) + UART");
-    ESP_LOGI(TAG, "DTR/RTS control enabled for bootloader reset");
+    ESP_LOGI(TAG, "Redirecting console to USB CDC port 0");
     
     // Save original vprintf (UART output)
     original_vprintf = esp_log_set_vprintf(usb_console_vprintf);

@@ -219,49 +219,58 @@ test-build: check-idf
 	@cd wokwi/sx1262-rf-relay && npm install
 
 # Wokwi simulator
-sim: check-idf build-sim build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
+WOKWI_BOARD ?= wokwi
+WOKWI_DIR = wokwi/$(WOKWI_BOARD)
+
+sim: check-idf build-sim build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
 ifndef WOKWI_CLI
 	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
 	@false
 endif
 	@echo "✅ Wokwi build ready"
+
 # Build all custom Wokwi chips
-chips: build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
+chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
 	@echo "✅ All custom chips compiled"
 
 # Build custom UART bridge chip
-build/wokwi-chips/uart.chip.wasm: wokwi-chips/uart.chip.c wokwi-chips/wokwi-api.h wokwi-chips/uart.chip.json
+build/wokwi/chips/uart.chip.wasm: wokwi/chips/uart.chip.c wokwi/chips/wokwi-api.h wokwi/chips/uart.chip.json
 	@echo "🔧 Compiling custom UART bridge chip..."
-	@mkdir -p build/wokwi-chips
+	@mkdir -p build/wokwi/chips
 	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
 		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
-		-c -o build/wokwi-chips/uart.o wokwi-chips/uart.chip.c
+		-c -o build/wokwi/chips/uart.o wokwi/chips/uart.chip.c
 	@wasm-ld --no-entry --import-memory --export-table \
-		-o build/wokwi-chips/uart.chip.wasm \
-		build/wokwi-chips/uart.o \
+		-o build/wokwi/chips/uart.chip.wasm \
+		build/wokwi/chips/uart.o \
 		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
-	@cp wokwi-chips/uart.chip.json build/wokwi-chips/
-	@rm build/wokwi-chips/uart.o
+	@cp wokwi/chips/uart.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/uart.o
 	@echo "✅ Custom chip compiled"
 
 # Build custom SX1262 LoRa chip
-build/wokwi-chips/sx1262.chip.wasm: wokwi-chips/sx1262.chip.c wokwi-chips/wokwi-api.h wokwi-chips/sx1262.chip.json wokwi-chips/sx1262.chip.svg
+build/wokwi/chips/sx1262.chip.wasm: wokwi/chips/sx1262.chip.c wokwi/chips/wokwi-api.h wokwi/chips/sx1262.chip.json wokwi/chips/sx1262.chip.svg
 	@echo "🔧 Compiling custom SX1262 LoRa chip..."
-	@mkdir -p build/wokwi-chips
+	@mkdir -p build/wokwi/chips
 	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
 		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
-		-c -o build/wokwi-chips/sx1262.o wokwi-chips/sx1262.chip.c
+		-c -o build/wokwi/chips/sx1262.o wokwi/chips/sx1262.chip.c
 	@wasm-ld --no-entry --import-memory --export-table \
-		-o build/wokwi-chips/sx1262.chip.wasm \
-		build/wokwi-chips/sx1262.o \
+		-o build/wokwi/chips/sx1262.chip.wasm \
+		build/wokwi/chips/sx1262.o \
 		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
-	@cp wokwi-chips/sx1262.chip.json build/wokwi-chips/
-	@cp wokwi-chips/sx1262.chip.svg build/wokwi-chips/
-	@rm build/wokwi-chips/sx1262.o
+	@cp wokwi/chips/sx1262.chip.json build/wokwi/chips/
+	@cp wokwi/chips/sx1262.chip.svg build/wokwi/chips/
+	@rm build/wokwi/chips/sx1262.o
 	@echo "✅ SX1262 chip compiled"
 
 sim-run: sim
-	@echo "🚀 Starting Wokwi simulation..."
+	@if [ ! -d $(WOKWI_DIR) ]; then \
+		echo "❌ Board $(WOKWI_BOARD) not found, using generic wokwi"; \
+		WOKWI_DIR=wokwi/wokwi; \
+	fi
+	@echo "🚀 Starting Wokwi simulation for $(WOKWI_BOARD)..."
+	@cd $(WOKWI_DIR) && wokwi-cli diagram.json
 	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
 	@echo "💡 Serial log: wokwi.log"
 	@echo "💡 Press Ctrl+C to stop"
@@ -330,7 +339,7 @@ help:
 	@echo ""
 	@echo "🎮 Simulator:"
 	@echo "  make sim           - Build for Wokwi"
-	@echo "  make sim-run       - Run Wokwi simulation"
+	@echo "  make sim-run       - Run Wokwi simulation (WOKWI_BOARD=wokwi|heltec_v3|lilygo_t5)"
 	@echo "  make sim-debug     - Interactive simulation"
 	@echo ""
 	@echo "🌐 Web Interface:"

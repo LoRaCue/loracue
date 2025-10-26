@@ -1,0 +1,17 @@
+[wokwi]
+version = 1
+firmware = "../../build/lilygo_t5.bin"
+elf = "../../build/lilygo_t5.elf"
+rfc2217ServerPort = 4000
+
+[[net.forward]]
+from = "localhost:8180"
+to = "target:80"
+
+[[chip]]
+name = "uart"
+binary = "../../build/wokwi/chips/uart.chip.wasm"
+
+[[chip]]
+name = "sx1262"
+binary = "../../build/wokwi/chips/sx1262.chip.wasm"

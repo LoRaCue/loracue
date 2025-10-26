@@ -636,14 +636,14 @@ void app_main(void)
         return;
     }
 
-#if 0  // Disable USB console redirection - causes issues
+#ifndef LORACUE_RELEASE
     // Wait for USB enumeration before redirecting console
     ESP_LOGI(TAG, "Waiting for USB enumeration...");
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(2000));
     
-    // Redirect console to USB CDC port 1 (debug)
+    // Redirect console to USB CDC (same port as commands)
     usb_console_init();
-    ESP_LOGI(TAG, "Console redirected to USB CDC + UART");
+    ESP_LOGI(TAG, "Console redirected to USB CDC");
 #endif
 
     // Initialize Bluetooth configuration
