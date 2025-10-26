@@ -1,0 +1,9 @@
+{
+  "name": "GT911 Touch Controller",
+  "author": "Fabian Schmieder",
+  "pins": [
+    "SCL",
+    "SDA"
+  ],
+  "controls": []
+}

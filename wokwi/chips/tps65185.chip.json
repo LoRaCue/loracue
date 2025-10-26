@@ -1,0 +1,9 @@
+{
+  "name": "TPS65185 E-Paper PMIC",
+  "author": "Fabian Schmieder",
+  "pins": [
+    "SCL",
+    "SDA"
+  ],
+  "controls": []
+}

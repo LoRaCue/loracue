@@ -230,7 +230,7 @@ endif
 	@echo "✅ Wokwi build ready"
 
 # Build all custom Wokwi chips
-chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm
+chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm
 	@echo "✅ All custom chips compiled"
 
 # Build custom UART bridge chip
@@ -323,6 +323,36 @@ build/wokwi/chips/bq25896.chip.wasm: wokwi/chips/bq25896.chip.c wokwi/chips/wokw
 	@cp wokwi/chips/bq25896.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/bq25896.o
 	@echo "✅ BQ25896 chip compiled"
+
+# Build custom TPS65185 e-paper PMIC chip
+build/wokwi/chips/tps65185.chip.wasm: wokwi/chips/tps65185.chip.c wokwi/chips/wokwi-api.h wokwi/chips/tps65185.chip.json
+	@echo "🔧 Compiling custom TPS65185 PMIC chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/tps65185.o wokwi/chips/tps65185.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/tps65185.chip.wasm \
+		build/wokwi/chips/tps65185.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/tps65185.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/tps65185.o
+	@echo "✅ TPS65185 chip compiled"
+
+# Build custom GT911 touch controller chip
+build/wokwi/chips/gt911.chip.wasm: wokwi/chips/gt911.chip.c wokwi/chips/wokwi-api.h wokwi/chips/gt911.chip.json
+	@echo "🔧 Compiling custom GT911 touch chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/gt911.o wokwi/chips/gt911.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/gt911.chip.wasm \
+		build/wokwi/chips/gt911.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/gt911.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/gt911.o
+	@echo "✅ GT911 chip compiled"
 
 sim-run: sim
 	@if [ ! -d $(WOKWI_DIR) ]; then \

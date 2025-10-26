@@ -101,6 +101,22 @@
       "left": -250,
       "rotate": 0,
       "attrs": {}
+    },
+    {
+      "type": "chip-tps65185",
+      "id": "epaper_pmic",
+      "top": 500,
+      "left": -250,
+      "rotate": 0,
+      "attrs": {}
+    },
+    {
+      "type": "chip-gt911",
+      "id": "touch",
+      "top": 550,
+      "left": -250,
+      "rotate": 0,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -136,7 +152,13 @@
     [ "esp:39", "fuel_gauge:SDA", "green", [  ] ],
     
     [ "esp:40", "charger:SCL", "blue", [  ] ],
-    [ "esp:39", "charger:SDA", "green", [  ] ]
+    [ "esp:39", "charger:SDA", "green", [  ] ],
+    
+    [ "esp:40", "epaper_pmic:SCL", "blue", [  ] ],
+    [ "esp:39", "epaper_pmic:SDA", "green", [  ] ],
+    
+    [ "esp:40", "touch:SCL", "blue", [  ] ],
+    [ "esp:39", "touch:SDA", "green", [  ] ]
   ],
   "dependencies": {}
 }
