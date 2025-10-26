@@ -15,7 +15,6 @@
 #include "driver/spi_master.h"
 #include "driver/i2c.h"
 #include "lvgl.h"
-#include "u8g2.h"
 
 static const char *TAG = "BSP_LILYGO_T5";
 
