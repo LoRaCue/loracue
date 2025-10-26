@@ -13,23 +13,12 @@
     {
       "type": "wokwi-pushbutton",
       "id": "btn_boot",
-      "top": 130,
-      "left": 111,
+      "top": 249,
+      "left": -100,
       "rotate": 0,
       "attrs": {
         "color": "blue",
         "label": "BOOT"
-      }
-    },
-    {
-      "type": "wokwi-potentiometer",
-      "id": "battery_sim",
-      "top": 0,
-      "left": 130,
-      "rotate": 0,
-      "attrs": {
-        "value": "75000",
-        "label": "Battery"
       }
     },
     {
@@ -65,9 +54,9 @@
     {
       "type": "chip-sx1262",
       "id": "lora",
-      "top": 200,
+      "top": 120,
       "left": -250,
-      "rotate": 90,
+      "rotate": 0,
       "attrs": {}
     },
     {
@@ -121,7 +110,7 @@
     {
       "type": "chip-ed047tc1",
       "id": "epaper",
-      "top": 100,
+      "top": 180,
       "left": 300,
       "rotate": 0,
       "attrs": {}
@@ -131,16 +120,12 @@
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
     
-    [ "esp:0", "btn_boot:1.l", "yellow", [] ],
-    [ "btn_boot:2.l", "esp:GND.1", "black", [] ],
+    [ "esp:0", "btn_boot:1.r", "yellow", [] ],
+    [ "btn_boot:2.r", "esp:GND.1", "black", [] ],
     
     [ "esp:2", "uart1:RX", "green", [ "h0" ] ],
     [ "esp:3", "uart1:TX", "yellow", [ "h0" ] ],
-    
-    [ "esp:1", "battery_sim:SIG", "orange", [ ] ],
-    [ "esp:3V3.1", "battery_sim:VCC", "red", [ "v-85", "h208", "v85" ] ],
-    [ "esp:GND.2", "battery_sim:GND", "black", [  ] ],
-    
+   
     [ "esp:11", "r_backlight:1", "yellow", [  ] ],
     [ "r_backlight:2", "led_backlight:A", "yellow", [ "v22" ] ],
     [ "esp:GND.4", "led_backlight:C", "black", [  ] ],

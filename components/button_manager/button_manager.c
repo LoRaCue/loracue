@@ -28,6 +28,7 @@ static const char *TAG = "BUTTON_MGR";
 // Button manager state
 static TaskHandle_t button_task_handle = NULL;
 static bool manager_running            = false;
+static bool display_sleep_active       = false;
 static uint32_t last_activity_time     = 0;
 
 // Button event callback
@@ -72,6 +73,7 @@ static void button_manager_task(void *pvParameters)
             button.press_start_time = current_time;
             button.long_press_sent  = false;
             last_activity_time      = current_time;
+            display_sleep_active    = false;  // Wake from display sleep
             led_manager_button_feedback(true);
 
             bsp_display_wake();
@@ -136,7 +138,10 @@ static void button_manager_task(void *pvParameters)
             power_mode_t recommended_mode = power_mgmt_get_recommended_mode();
 
             if (recommended_mode == POWER_MODE_DISPLAY_SLEEP) {
-                ESP_LOGI(TAG, "Entering display sleep due to inactivity");
+                if (!display_sleep_active) {
+                    ESP_LOGI(TAG, "Entering display sleep due to inactivity");
+                    display_sleep_active = true;
+                }
                 power_mgmt_display_sleep();
             } else if (recommended_mode == POWER_MODE_LIGHT_SLEEP) {
                 ESP_LOGI(TAG, "Entering light sleep due to inactivity");
