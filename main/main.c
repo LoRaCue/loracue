@@ -60,8 +60,9 @@ static command_history_entry_t command_history[MAX_COMMAND_HISTORY] = {0};
 static uint8_t command_history_count                                = 0;
 static uint32_t total_commands_received                             = 0;
 
-// Global status for PC mode screen access
+// Global status for PC mode screen access (ui_mini only)
 ui_mini_status_t g_oled_status = {0};
+static bool is_lilygo_board = false;
 
 static void add_command_to_history(uint16_t device_id, const char *cmd_name, uint8_t keycode, uint8_t modifiers)
 {
@@ -532,6 +533,11 @@ void app_main(void)
         return;
     }
 
+    // Detect board type early
+    const char *board_id = bsp_get_board_id();
+    is_lilygo_board = (strcmp(board_id, "lilygo_t5") == 0);
+    ESP_LOGI(TAG, "Board: %s", board_id);
+
     // Initialize LED manager and turn on status LED
     ESP_LOGI(TAG, "Initializing LED manager...");
     ret = led_manager_init();
@@ -542,8 +548,7 @@ void app_main(void)
     led_manager_solid(true); // Turn on LED during startup
 
     // Initialize UI based on board type
-    const char *board_id = bsp_get_board_id();
-    if (strcmp(board_id, "lilygo_t5") == 0) {
+    if (is_lilygo_board) {
         ESP_LOGI(TAG, "Initializing Rich UI (LVGL)...");
         ret = ui_rich_init();
         if (ret != ESP_OK) {
@@ -551,7 +556,7 @@ void app_main(void)
             return;
         }
     } else {
-        ESP_LOGI(TAG, "Initializing OLED UI...");
+        ESP_LOGI(TAG, "Initializing Mini UI...");
         ret = ui_mini_init();
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "OLED UI initialization failed: %s", esp_err_to_name(ret));
@@ -680,21 +685,23 @@ void app_main(void)
         return;
     }
 
-    // Initialize status with device name BEFORE showing screen
-    g_oled_status.battery_level  = 85;
-    g_oled_status.lora_connected = false;
-    g_oled_status.lora_signal    = 0;
-    g_oled_status.usb_connected  = false;
-    g_oled_status.device_id      = 0x1234;
+    // Initialize status with device name BEFORE showing screen (ui_mini only)
+    if (!is_lilygo_board) {
+        g_oled_status.battery_level  = 85;
+        g_oled_status.lora_connected = false;
+        g_oled_status.lora_signal    = 0;
+        g_oled_status.usb_connected  = false;
+        g_oled_status.device_id      = 0x1234;
 
-    // Load device name from config
-    general_config_t dev_config;
-    general_config_get(&dev_config);
-    strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
-    strcpy(g_oled_status.last_command, "");
+        // Load device name from config
+        general_config_t dev_config;
+        general_config_get(&dev_config);
+        strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
+        strcpy(g_oled_status.last_command, "");
 
-    // Transition to main UI state (adapts to mode automatically)
-    ui_mini_set_screen(OLED_SCREEN_MAIN);
+        // Transition to main UI state (adapts to mode automatically)
+        ui_mini_set_screen(OLED_SCREEN_MAIN);
+    }
 
     // Start LED fading after initialization complete
     ESP_LOGI(TAG, "Starting LED fade pattern");
@@ -734,10 +741,12 @@ void app_main(void)
     // Create event group for system events
     system_events = xEventGroupCreate();
 
-    // Start periodic tasks
-    xTaskCreate(battery_monitor_task, "battery_monitor", 4096, &g_oled_status, 5, NULL);
-    xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &g_oled_status, 5, NULL);
-    xTaskCreate(pc_mode_update_task, "pc_mode_update", 4096, &g_oled_status, 5, NULL);
+    // Start periodic tasks (ui_mini only)
+    if (!is_lilygo_board) {
+        xTaskCreate(battery_monitor_task, "battery_monitor", 4096, &g_oled_status, 5, NULL);
+        xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &g_oled_status, 5, NULL);
+        xTaskCreate(pc_mode_update_task, "pc_mode_update", 4096, &g_oled_status, 5, NULL);
+    }
 
     // Main task now just handles events
     ESP_LOGI(TAG, "Main loop starting - should have low CPU usage when idle");
@@ -746,7 +755,13 @@ void app_main(void)
         // Reset watchdog
         esp_task_wdt_reset();
 
-        // Wait for any system event
+        // Skip UI event handling for LilyGO (ui_rich handles its own updates)
+        if (is_lilygo_board) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
+
+        // Wait for any system event (ui_mini only)
         EventBits_t events = xEventGroupWaitBits(system_events,
                                                  0xFF,                  // Wait for any event
                                                  pdTRUE,                // Clear on exit
