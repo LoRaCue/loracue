@@ -75,7 +75,7 @@ static void chip_pin_change(void *user_data, pin_t pin, uint32_t value) {
         
         if (chip->x < chip->width && chip->y < chip->height) {
             uint32_t pix_index = chip->y * chip->width + chip->x;
-            buffer_write(chip->framebuffer, pix_index * sizeof(color), &color, sizeof(color));
+            buffer_write(chip->framebuffer, pix_index * sizeof(color), (uint8_t*)&color, sizeof(color));
             chip->x++;
         }
     } else if (pin == chip->ckv) {
