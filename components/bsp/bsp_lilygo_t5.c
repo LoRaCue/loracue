@@ -11,6 +11,7 @@
 #include "bq27220.h"
 #include "pcf85063.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "driver/i2c.h"
@@ -83,13 +84,89 @@ u8g2_t u8g2;
 #define BOARD_GPS_RXD       GPIO_NUM_44
 #define BOARD_GPS_TXD       GPIO_NUM_43
 
-static lv_disp_t *disp;
+// LVGL display configuration
+#define LVGL_DISPLAY_WIDTH      540
+#define LVGL_DISPLAY_HEIGHT     960
+#define LVGL_BUFFER_LINES       10      // Reduced to fit in DRAM (balance memory vs performance)
+#define LVGL_TASK_STACK_SIZE    8192    // Increased for LVGL operations
+#define LVGL_TASK_PRIORITY      5       // Medium priority (below critical tasks)
+
+static lv_disp_t *disp = NULL;
+static lv_color_t buf1[LVGL_DISPLAY_WIDTH * LVGL_BUFFER_LINES];
+static lv_color_t buf2[LVGL_DISPLAY_WIDTH * LVGL_BUFFER_LINES];
+static SemaphoreHandle_t lvgl_mutex = NULL;
+
+static void lvgl_task(void *arg);
+
+static uint32_t lvgl_tick_get(void)
+{
+    return esp_timer_get_time() / 1000;
+}
+
+static void disp_flush(lv_display_t *disp_drv, const lv_area_t *area, uint8_t *px_map)
+{
+    if (!area || !px_map) {
+        ESP_LOGE(TAG, "Invalid flush parameters: area=%p, px_map=%p", area, px_map);
+        lv_display_flush_ready(disp_drv);
+        return;
+    }
+    
+    // Calculate flush area
+    int32_t width = area->x2 - area->x1 + 1;
+    int32_t height = area->y2 - area->y1 + 1;
+    
+    ESP_LOGD(TAG, "Flushing area: (%d,%d) to (%d,%d), size: %dx%d", 
+             area->x1, area->y1, area->x2, area->y2, width, height);
+    
+    // TODO: Implement actual e-paper transfer
+    // For now, just acknowledge the flush
+    // Real implementation would:
+    // 1. Convert LVGL buffer to e-paper format
+    // 2. Transfer to ED047TC1 via SPI
+    // 3. Trigger display update
+    
+    lv_display_flush_ready(disp_drv);
+}
 
 esp_err_t bsp_init(void)
 {
     ESP_LOGI(TAG, "Initializing BSP for LilyGO T5 4.7\" E-Paper");
+    esp_err_t ret;
+    
+    // Initialize LVGL
+    ESP_LOGD(TAG, "Initializing LVGL library");
+    lv_init();
+    lv_tick_set_cb(lvgl_tick_get);
+    
+    // Create LVGL mutex for thread safety
+    ESP_LOGD(TAG, "Creating LVGL mutex");
+    lvgl_mutex = xSemaphoreCreateMutex();
+    if (!lvgl_mutex) {
+        ESP_LOGE(TAG, "Failed to create LVGL mutex - out of memory");
+        return ESP_ERR_NO_MEM;
+    }
+    
+    // Create display
+    ESP_LOGD(TAG, "Creating LVGL display (%dx%d)", LVGL_DISPLAY_WIDTH, LVGL_DISPLAY_HEIGHT);
+    disp = lv_display_create(LVGL_DISPLAY_WIDTH, LVGL_DISPLAY_HEIGHT);
+    if (!disp) {
+        ESP_LOGE(TAG, "Failed to create LVGL display - lv_display_create returned NULL");
+        vSemaphoreDelete(lvgl_mutex);
+        lvgl_mutex = NULL;
+        return ESP_ERR_NO_MEM;
+    }
+    lv_display_set_flush_cb(disp, disp_flush);
+    
+    // Set draw buffers (using static allocation)
+    ESP_LOGD(TAG, "Configuring draw buffers (%d lines, %zu bytes each)", 
+             LVGL_BUFFER_LINES, sizeof(buf1));
+    lv_display_set_buffers(disp, buf1, buf2, sizeof(buf1), LV_DISPLAY_RENDER_MODE_PARTIAL);
+    
+    ESP_LOGI(TAG, "LVGL initialized (%dx%d, %d-line buffers)", 
+             LVGL_DISPLAY_WIDTH, LVGL_DISPLAY_HEIGHT, LVGL_BUFFER_LINES);
     
     // Initialize I2C
+    ESP_LOGD(TAG, "Initializing I2C (SDA=%d, SCL=%d, 400kHz)", BOARD_SDA, BOARD_SCL);
     i2c_config_t i2c_conf = {
         .mode = I2C_MODE_MASTER,
         .sda_io_num = BOARD_SDA,
@@ -98,8 +175,16 @@ esp_err_t bsp_init(void)
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 400000
     };
-    ESP_ERROR_CHECK(i2c_param_config(BOARD_I2C_PORT, &i2c_conf));
-    ESP_ERROR_CHECK(i2c_driver_install(BOARD_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0));
+    ret = i2c_param_config(BOARD_I2C_PORT, &i2c_conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C param config failed: %s", esp_err_to_name(ret));
+        goto cleanup;
+    }
+    ret = i2c_driver_install(BOARD_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C driver install failed: %s", esp_err_to_name(ret));
+        goto cleanup;
+    }
     
     // Initialize PCA9535 GPIO expander
     ESP_ERROR_CHECK(pca9535_init(BOARD_I2C_PORT, PCA9535_ADDR));
@@ -166,6 +251,61 @@ esp_err_t bsp_init(void)
     ESP_LOGI(TAG, "LilyGO T5 initialized: %dx%d, %d grayscale", 
              EPAPER_WIDTH, EPAPER_HEIGHT, EPAPER_GRAYSCALE);
     
+    // Start LVGL task handler
+    ESP_LOGD(TAG, "Creating LVGL task (stack=%d, priority=%d)", 
+             LVGL_TASK_STACK_SIZE, LVGL_TASK_PRIORITY);
+    BaseType_t task_ret = xTaskCreate(lvgl_task, "lvgl", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
+    if (task_ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create LVGL task - xTaskCreate returned %d", task_ret);
+        ret = ESP_FAIL;
+        goto cleanup;
+    }
+    
+    ESP_LOGI(TAG, "BSP initialization complete");
+    return ESP_OK;
+
+cleanup:
+    ESP_LOGW(TAG, "Cleaning up after initialization failure");
+    if (disp) {
+        lv_deinit();
+        disp = NULL;
+    }
+    if (lvgl_mutex) {
+        vSemaphoreDelete(lvgl_mutex);
+        lvgl_mutex = NULL;
+    }
+    return ret;
+}
+
+static void lvgl_task(void *arg)
+{
+    ESP_LOGI(TAG, "LVGL task started");
+    while (1) {
+        if (xSemaphoreTake(lvgl_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            lv_task_handler();
+            xSemaphoreGive(lvgl_mutex);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+esp_err_t bsp_deinit(void)
+{
+    ESP_LOGI(TAG, "Deinitializing BSP");
+    
+    // Clean up LVGL resources
+    if (disp) {
+        lv_deinit();
+        disp = NULL;
+    }
+    
+    // Delete mutex
+    if (lvgl_mutex) {
+        vSemaphoreDelete(lvgl_mutex);
+        lvgl_mutex = NULL;
+    }
+    
+    ESP_LOGI(TAG, "BSP deinitialized");
     return ESP_OK;
 }
 

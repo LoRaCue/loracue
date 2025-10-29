@@ -35,6 +35,16 @@ typedef enum {
 esp_err_t bsp_init(void);
 
 /**
+ * @brief Deinitialize BSP and free resources
+ *
+ * Cleans up LVGL, mutexes, and other allocated resources.
+ * Should be called before system shutdown or reset.
+ *
+ * @return ESP_OK on success, error code otherwise
+ */
+esp_err_t bsp_deinit(void);
+
+/**
  * @brief Initialize button GPIO pins
  *
  * Configures button pins as inputs with internal pull-ups enabled.
