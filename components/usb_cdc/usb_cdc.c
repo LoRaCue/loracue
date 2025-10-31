@@ -12,7 +12,7 @@
 static const char *TAG = "USB_CDC";
 
 #define CDC_RX_QUEUE_SIZE 10
-#define CDC_TASK_STACK_SIZE 4096
+#define CDC_TASK_STACK_SIZE 8192  // Increased for cJSON operations
 #define CDC_TASK_PRIORITY 5
 #define CMD_MAX_LENGTH 2048
 
