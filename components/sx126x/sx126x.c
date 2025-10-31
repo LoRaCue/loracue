@@ -389,6 +389,10 @@ esp_err_t sx126x_receive(uint8_t *pData, int16_t len, uint8_t *received)
     if (irqRegs & SX126X_IRQ_RX_DONE) {
         ClearIrqStatus(SX126X_IRQ_ALL);
         *received = ReadBuffer(pData, len);
+        
+        // Return to RX mode after reading packet
+        SetRx(0xFFFFFF);
+        
         return ESP_OK;
     }
 

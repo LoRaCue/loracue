@@ -189,7 +189,7 @@ typedef struct {
 } bsp_usb_config_t;          // cppcheck-suppress unusedStructMember
 
 /**
- * @brief LoRa SX126X pin configuration
+ * @brief LoRa SX126X pin configuration (all fields used in sx126x.c)
  */
 typedef struct {
     int miso;
@@ -199,7 +199,7 @@ typedef struct {
     int rst;
     int busy;
     int dio1;
-} bsp_lora_pins_t;
+} bsp_lora_pins_t; // cppcheck-suppress unusedStructMember
 
 /**
  * @brief Get USB configuration for this board

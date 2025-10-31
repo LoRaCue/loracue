@@ -29,8 +29,9 @@ typedef struct __attribute__((packed)) {
   - `0x2` - Mouse
   - `0x3` - Media keys
   - `0x4-F` - Reserved
-- **Bits [3:0]**: Flags (reserved for future use)
-  - Currently always `0x0`
+- **Bits [3:0]**: Flags
+  - **Bit 0**: ACK_REQUEST - Request acknowledgment from receiver
+  - **Bits 1-3**: Reserved for future use
 
 ### Bytes 2-6: hid_report (5 bytes)
 Device-specific HID report data.
@@ -87,6 +88,12 @@ struct {
 #define LORA_HID_TYPE(tf)     (((tf) >> 4) & 0x0F)
 #define LORA_FLAGS(tf)        ((tf) & 0x0F)
 #define LORA_MAKE_TF(t, f)    ((((t) & 0x0F) << 4) | ((f) & 0x0F))
+
+// Flag bits (Byte 1, bits [3:0])
+#define LORA_FLAG_ACK_REQUEST  0x01  // Bit 0: Request ACK from receiver
+#define LORA_FLAG_RESERVED_1   0x02  // Bit 1: Reserved
+#define LORA_FLAG_RESERVED_2   0x04  // Bit 2: Reserved
+#define LORA_FLAG_RESERVED_3   0x08  // Bit 3: Reserved
 ```
 
 ## Example Payloads
@@ -141,6 +148,17 @@ Byte 0: 0x10  [0001 0000]  version=1, slot=16 (0x0 encodes slot 16)
 Byte 1: 0x10  [0001 0000]  hid_type=keyboard(1), flags=0
 Byte 2: 0x00               modifiers=none
 Byte 3: 0x05               keycode[0]='B' key
+Byte 4-6: 0x00             empty
+```
+
+### Example 5: Next Slide with ACK Request (Slot 1)
+```
+Hex: 11 11 00 4E 00 00 00
+
+Byte 0: 0x11  [0001 0001]  version=1, slot=1
+Byte 1: 0x11  [0001 0001]  hid_type=keyboard(1), flags=ACK_REQUEST(1)
+Byte 2: 0x00               modifiers=none
+Byte 3: 0x4E               keycode[0]=PAGE_DOWN
 Byte 4-6: 0x00             empty
 ```
 

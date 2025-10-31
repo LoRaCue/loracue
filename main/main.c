@@ -359,7 +359,7 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
         ESP_LOGI(TAG, "PC mode: forwarding to USB slot %d", slot_id);
         usb_hid_send_key(keycode);
     } else {
-        ESP_LOGW(TAG, "USB not connected, skipping HID forwarding (ACK sent by protocol layer)");
+        ESP_LOGW(TAG, "USB not connected, skipping HID forwarding (ACK sent only if requested)");
     }
 
     // Note: ACK is automatically sent by lora_protocol layer for successfully decrypted packets
