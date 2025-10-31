@@ -73,18 +73,6 @@ static void button_event_handler(button_event_type_t event, void *arg)
     send_key(mapping.keycode, mapping.modifier);
 }
 
-// TinyUSB CDC callbacks
-void tud_cdc_rx_cb(uint8_t itf)
-{
-    ESP_LOGI(TAG, "CDC RX callback triggered on interface %d", itf);
-    usb_cdc_process_commands();
-}
-
-void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
-{
-    ESP_LOGI(TAG, "CDC line state changed: itf=%d, dtr=%d, rts=%d", itf, dtr, rts);
-}
-
 // TinyUSB HID Callbacks
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 {

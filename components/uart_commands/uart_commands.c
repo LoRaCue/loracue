@@ -18,7 +18,7 @@
 static const char *TAG = "UART_CMD";
 
 // Dynamic UART configuration based on button press at boot
-// Default: UART0=commands, UART1=console
+// Default: UART0=commands, UART1=console, USB-CDC=commands
 // If PREV button pressed at boot: UART0=console, UART1=commands (swapped)
 static uart_port_t uart_num = UART_NUM_0;
 static int uart_tx_pin      = 43;
@@ -121,20 +121,38 @@ static void cmd_processor_task(void *pvParameters)
 
 esp_err_t uart_commands_init(void)
 {
-    // Check if button is pressed at boot to swap UARTs
+    // Check if PREV button is pressed at boot to swap UARTs
     // Default: UART0=commands, UART1=console
     // Swapped: UART0=console, UART1=commands
-    if (bsp_read_button(BSP_BUTTON_NEXT)) {
+    bool swap_uarts = bsp_read_button(BSP_BUTTON_PREV);
+    
+    if (swap_uarts) {
         uart_num     = UART_NUM_1;
         uart_tx_pin  = 2;
         uart_rx_pin  = 3;
         uart_rts_pin = UART_PIN_NO_CHANGE;
         uart_cts_pin = UART_PIN_NO_CHANGE;
-        ESP_LOGI(TAG, "🔄 UART swap detected (button pressed at boot)");
-        ESP_LOGI(TAG, "   Console: UART0, Commands: UART1");
+        
+        // Reconfigure console to UART0 at runtime
+        // Note: This requires console to be on UART1 in sdkconfig by default
+        uart_config_t console_config = {
+            .baud_rate  = 115200,
+            .data_bits  = UART_DATA_8_BITS,
+            .parity     = UART_PARITY_DISABLE,
+            .stop_bits  = UART_STOP_BITS_1,
+            .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
+            .source_clk = UART_SCLK_DEFAULT,
+        };
+        uart_driver_delete(UART_NUM_0);
+        uart_param_config(UART_NUM_0, &console_config);
+        uart_set_pin(UART_NUM_0, 43, 44, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+        uart_driver_install(UART_NUM_0, 256, 256, 0, NULL, 0);
+        
+        ESP_LOGI(TAG, "🔄 UART swap detected (PREV button pressed at boot)");
+        ESP_LOGI(TAG, "   Console: UART0 (TX=43, RX=44), Commands: UART1 (TX=2, RX=3)");
     } else {
         ESP_LOGI(TAG, "📡 Default UART configuration");
-        ESP_LOGI(TAG, "   Commands: UART0, Console: UART1");
+        ESP_LOGI(TAG, "   Commands: UART0 (TX=43, RX=44) + USB-CDC, Console: UART1 (TX=2, RX=3)");
     }
 
     // Create TX mutex for thread-safe HAL writes
