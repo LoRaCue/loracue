@@ -9,7 +9,7 @@
 #pragma once
 
 #include "esp_err.h"
-#include "oled_ui.h"
+#include "ui_mini.h"
 
 #ifdef __cplusplus
 extern "C" {

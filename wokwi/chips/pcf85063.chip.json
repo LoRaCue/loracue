@@ -1,0 +1,9 @@
+{
+  "name": "PCF85063 RTC",
+  "author": "Fabian Schmieder",
+  "pins": [
+    "SCL",
+    "SDA"
+  ],
+  "controls": []
+}

@@ -46,7 +46,7 @@ components/bsp/
 components/
 ├── bsp/                      # Board Support Package
 ├── lora/                     # LoRa Kommunikation + WiFi Simulation
-├── oled_ui/                  # Benutzeroberfläche
+├── ui_mini/                  # Benutzeroberfläche
 ├── device_registry/          # Geräte-Management
 ├── power_mgmt/              # Energieverwaltung
 ├── usb_hid/                 # USB Keyboard Emulation
@@ -240,7 +240,7 @@ Encrypted Payload:
 - [ ] Paket-Routing und ACK-Handling
 
 ### Phase 4: User Interface
-- [ ] OLED UI System (SH1106)
+- [ ] Mini UI System (SH1106)
 - [ ] Menü-Navigation (2-Tasten)
 - [ ] Status-Anzeigen und Feedback
 - [ ] Batterie-Monitoring UI

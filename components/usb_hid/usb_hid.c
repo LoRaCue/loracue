@@ -76,7 +76,13 @@ static void button_event_handler(button_event_type_t event, void *arg)
 // TinyUSB CDC callbacks
 void tud_cdc_rx_cb(uint8_t itf)
 {
+    ESP_LOGI(TAG, "CDC RX callback triggered on interface %d", itf);
     usb_cdc_process_commands();
+}
+
+void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
+{
+    ESP_LOGI(TAG, "CDC line state changed: itf=%d, dtr=%d, rts=%d", itf, dtr, rts);
 }
 
 // TinyUSB HID Callbacks
@@ -128,7 +134,7 @@ esp_err_t usb_hid_init(void)
                                  .descriptor = {.device            = usb_get_device_descriptor(),
                                                 .full_speed_config = usb_get_config_descriptor(),
                                                 .string            = usb_get_string_descriptors(),
-                                                .string_count      = 4},
+                                                .string_count      = 6},
                                  .event_cb   = NULL,
                                  .event_arg  = NULL};
 

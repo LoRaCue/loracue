@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
+# Set default BOARD_ID if not provided (MUST be before anything else)
+if(NOT DEFINED BOARD_ID)
+    set(BOARD_ID "heltec_v3")
+    message(STATUS "BOARD_ID not set, defaulting to: ${BOARD_ID}")
+endif()
+
 # Set the target before project()
 set(IDF_TARGET esp32s3)
 
@@ -36,10 +42,10 @@ endif()
 include_directories("${CMAKE_BINARY_DIR}/include")
 
 # Set project name based on board (used as board_id in app descriptor)
-if(DEFINED ENV{WOKWI_BUILD})
-    set(PROJECT_NAME "wokwi_sim")
+if(DEFINED BOARD_ID)
+    set(PROJECT_NAME "${BOARD_ID}")
 else()
-    set(PROJECT_NAME "heltec_v3")
+    set(PROJECT_NAME "loracue")  # Default fallback
 endif()
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)

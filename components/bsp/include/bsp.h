@@ -35,6 +35,32 @@ typedef enum {
 esp_err_t bsp_init(void);
 
 /**
+ * @brief Deinitialize BSP and free resources
+ *
+ * Cleans up LVGL, mutexes, and other allocated resources.
+ * Should be called before system shutdown or reset.
+ *
+ * @return ESP_OK on success, error code otherwise
+ */
+esp_err_t bsp_deinit(void);
+
+/**
+ * @brief Lock u8g2 mutex for thread-safe access
+ * 
+ * Must be called before any u8g2 operations.
+ * Always pair with bsp_u8g2_unlock().
+ * 
+ * @param timeout_ms Timeout in milliseconds (portMAX_DELAY for infinite)
+ * @return true if lock acquired, false on timeout
+ */
+bool bsp_u8g2_lock(uint32_t timeout_ms);
+
+/**
+ * @brief Unlock u8g2 mutex after operations complete
+ */
+void bsp_u8g2_unlock(void);
+
+/**
  * @brief Initialize button GPIO pins
  *
  * Configures button pins as inputs with internal pull-ups enabled.
@@ -153,11 +179,43 @@ typedef struct {
 } bsp_usb_config_t;          // cppcheck-suppress unusedStructMember
 
 /**
+ * @brief LoRa SX126X pin configuration
+ */
+typedef struct {
+    int miso;
+    int mosi;
+    int sclk;
+    int cs;
+    int rst;
+    int busy;
+    int dio1;
+} bsp_lora_pins_t;
+
+/**
  * @brief Get USB configuration for this board
  *
  * @return Pointer to USB configuration structure
  */
 const bsp_usb_config_t *bsp_get_usb_config(void);
+
+/**
+ * @brief Get LoRa pin configuration
+ * @return Pointer to LoRa pin configuration structure
+ */
+const bsp_lora_pins_t *bsp_get_lora_pins(void);
+
+/**
+ * @brief Set display brightness/contrast
+ * @param brightness Brightness level (0-255)
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_set_display_brightness(uint8_t brightness);
+
+/**
+ * @brief Wake display from power save mode
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_display_wake(void);
 
 // I2C Bus Management
 #include "driver/i2c_master.h"
@@ -171,6 +229,13 @@ const bsp_usb_config_t *bsp_get_usb_config(void);
  * @return ESP_OK on success
  */
 esp_err_t bsp_i2c_init(gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz);
+
+/**
+ * @brief Deinitialize I2C bus
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_i2c_deinit(void);
 
 /**
  * @brief Get I2C bus handle for adding devices
@@ -208,6 +273,20 @@ uint8_t bsp_u8g2_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, v
  * @param pin Reset GPIO pin
  */
 void bsp_oled_set_reset_pin(gpio_num_t pin);
+
+/**
+ * @brief Power on E-Paper display (UI_RICH only)
+ *
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_epaper_power_on(void);
+
+/**
+ * @brief Power off E-Paper display (UI_RICH only)
+ *
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_epaper_power_off(void);
 
 #ifdef __cplusplus
 }

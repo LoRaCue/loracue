@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
+.PHONY: all build build-heltec build-lilygo build-sim clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -53,12 +53,39 @@ endif
 endif
 
 # Build targets
-build: check-idf
-	@echo "🔨 Building LoRaCue firmware..."
-	@echo "   📍 Default: Commands on UART0, Console on UART1"
-	@echo "   📍 Hold button at boot to swap UARTs"
+# Usage: make build           - Build all boards
+#        make build BOARD=heltec - Build Heltec only
+#        make build BOARD=lilygo - Build LilyGO only
+ifdef BOARD
+ifeq ($(BOARD),heltec)
+build: build-heltec
+else ifeq ($(BOARD),lilygo)
+build: build-lilygo
+else
+$(error Invalid BOARD=$(BOARD). Use: BOARD=heltec or BOARD=lilygo)
+endif
+else
+build: build-heltec build-lilygo
+	@echo "✅ All board variants built successfully!"
+endif
+
+build-heltec: check-idf
+	@echo "🔨 Building for Heltec V3..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py build
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.heltec_v3" -D BOARD_ID="heltec_v3" build
+	@echo "✅ Heltec V3 build complete"
+
+build-lilygo: check-idf
+	@echo "🔨 Building for LilyGO T5..."
+	@rm -f sdkconfig
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.lilygo_t5" -D BOARD_ID="lilygo_t5" build
+	@echo "✅ LilyGO T5 build complete"
+
+build-sim: check-idf
+	@echo "🔨 Building for Wokwi Simulator..."
+	@rm -f sdkconfig
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.wokwi" build
+	@echo "✅ Wokwi build complete"
 
 clean:
 	@echo "🧹 Cleaning build artifacts and sdkconfig..."
@@ -70,25 +97,36 @@ fullclean:
 	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py fullclean
 
-rebuild: clean build
+rebuild: fullclean build
 
-# Flash targets
+# Flash targets with BOARD parameter
+# Usage: make flash BOARD=heltec  OR  make flash BOARD=lilygo
+BOARD ?= heltec
+
+ifeq ($(BOARD),heltec)
+BOARD_TARGET = heltec_v3
+BOARD_NAME = Heltec V3
+else ifeq ($(BOARD),lilygo)
+BOARD_TARGET = lilygo_t5
+BOARD_NAME = LilyGO T5
+else
+$(error Invalid BOARD=$(BOARD). Use: BOARD=heltec or BOARD=lilygo)
+endif
+
 flash: check-idf
-	@echo "🔍 Checking firmware type..."
-	@if [ -f build/wokwi_sim.bin ] && [ ! -f build/heltec_v3.bin ]; then \
-		echo "❌ ERROR: Cannot flash simulator build to real hardware!"; \
-		echo "Run: make fullclean && make build"; \
-		exit 1; \
-	fi
-	@if [ ! -f build/heltec_v3.bin ]; then \
-		echo "❌ ERROR: Hardware firmware not found! Run: make build"; \
-		exit 1; \
-	fi
-	@echo "✅ Hardware firmware detected"
-	@echo "📡 Flashing firmware to device..."
-	$(IDF_SETUP) idf.py flash
+	@echo "📡 Flashing $(BOARD_NAME) firmware..."
+	@rm -f sdkconfig
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash
 
-flash-monitor: flash monitor
+flash-only: check-idf
+	@echo "📡 Flashing $(BOARD_NAME) firmware (no rebuild)..."
+	@test -f build/$(BOARD_TARGET).bin || { echo "❌ Firmware not found. Run 'make build BOARD=$(BOARD)' first"; exit 1; }
+	$(IDF_SETUP) esptool.py --chip esp32s3 write_flash 0x10000 build/$(BOARD_TARGET).bin
+
+flash-monitor: check-idf
+	@echo "📡 Flashing $(BOARD_NAME) firmware and starting monitor..."
+	@rm -f sdkconfig
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash monitor
 
 monitor:
 	@echo "📺 Starting serial monitor (Ctrl+] to exit)..."
@@ -181,58 +219,170 @@ test-build: check-idf
 	@cd wokwi/sx1262-rf-relay && npm install
 
 # Wokwi simulator
-sim: check-idf build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
+WOKWI_BOARD ?= heltec_v3
+WOKWI_DIR = wokwi/$(WOKWI_BOARD)
+
+sim: check-idf build-sim build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
 ifndef WOKWI_CLI
 	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
 	@false
 endif
-	@echo "🎮 Building for Wokwi simulator..."
-	$(IDF_SETUP) WOKWI_BUILD=1 idf.py build
+	@echo "✅ Wokwi build ready"
 
 # Build all custom Wokwi chips
-chips: build/wokwi-chips/uart.chip.wasm build/wokwi-chips/sx1262.chip.wasm
+chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm build/wokwi/chips/ed047tc1.chip.wasm
 	@echo "✅ All custom chips compiled"
 
 # Build custom UART bridge chip
-build/wokwi-chips/uart.chip.wasm: wokwi-chips/uart.chip.c wokwi-chips/wokwi-api.h wokwi-chips/uart.chip.json
+build/wokwi/chips/uart.chip.wasm: wokwi/chips/uart.chip.c wokwi/chips/wokwi-api.h wokwi/chips/uart.chip.json
 	@echo "🔧 Compiling custom UART bridge chip..."
-	@mkdir -p build/wokwi-chips
+	@mkdir -p build/wokwi/chips
 	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
 		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
-		-c -o build/wokwi-chips/uart.o wokwi-chips/uart.chip.c
+		-c -o build/wokwi/chips/uart.o wokwi/chips/uart.chip.c
 	@wasm-ld --no-entry --import-memory --export-table \
-		-o build/wokwi-chips/uart.chip.wasm \
-		build/wokwi-chips/uart.o \
+		-o build/wokwi/chips/uart.chip.wasm \
+		build/wokwi/chips/uart.o \
 		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
-	@cp wokwi-chips/uart.chip.json build/wokwi-chips/
-	@rm build/wokwi-chips/uart.o
+	@cp wokwi/chips/uart.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/uart.o
 	@echo "✅ Custom chip compiled"
 
 # Build custom SX1262 LoRa chip
-build/wokwi-chips/sx1262.chip.wasm: wokwi-chips/sx1262.chip.c wokwi-chips/wokwi-api.h wokwi-chips/sx1262.chip.json wokwi-chips/sx1262.chip.svg
+build/wokwi/chips/sx1262.chip.wasm: wokwi/chips/sx1262.chip.c wokwi/chips/wokwi-api.h wokwi/chips/sx1262.chip.json wokwi/chips/sx1262.chip.svg
 	@echo "🔧 Compiling custom SX1262 LoRa chip..."
-	@mkdir -p build/wokwi-chips
+	@mkdir -p build/wokwi/chips
 	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
 		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
-		-c -o build/wokwi-chips/sx1262.o wokwi-chips/sx1262.chip.c
+		-c -o build/wokwi/chips/sx1262.o wokwi/chips/sx1262.chip.c
 	@wasm-ld --no-entry --import-memory --export-table \
-		-o build/wokwi-chips/sx1262.chip.wasm \
-		build/wokwi-chips/sx1262.o \
+		-o build/wokwi/chips/sx1262.chip.wasm \
+		build/wokwi/chips/sx1262.o \
 		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
-	@cp wokwi-chips/sx1262.chip.json build/wokwi-chips/
-	@cp wokwi-chips/sx1262.chip.svg build/wokwi-chips/
-	@rm build/wokwi-chips/sx1262.o
+	@cp wokwi/chips/sx1262.chip.json build/wokwi/chips/
+	@cp wokwi/chips/sx1262.chip.svg build/wokwi/chips/
+	@rm build/wokwi/chips/sx1262.o
 	@echo "✅ SX1262 chip compiled"
 
-sim-run: build/wokwi_sim.bin
-	@echo "🚀 Starting Wokwi simulation..."
+# Build custom PCA9535 GPIO expander chip
+build/wokwi/chips/pca9535.chip.wasm: wokwi/chips/pca9535.chip.c wokwi/chips/wokwi-api.h wokwi/chips/pca9535.chip.json
+	@echo "🔧 Compiling custom PCA9535 chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/pca9535.o wokwi/chips/pca9535.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/pca9535.chip.wasm \
+		build/wokwi/chips/pca9535.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/pca9535.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/pca9535.o
+	@echo "✅ PCA9535 chip compiled"
+
+# Build custom PCF85063 RTC chip
+build/wokwi/chips/pcf85063.chip.wasm: wokwi/chips/pcf85063.chip.c wokwi/chips/wokwi-api.h wokwi/chips/pcf85063.chip.json
+	@echo "🔧 Compiling custom PCF85063 RTC chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/pcf85063.o wokwi/chips/pcf85063.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/pcf85063.chip.wasm \
+		build/wokwi/chips/pcf85063.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/pcf85063.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/pcf85063.o
+	@echo "✅ PCF85063 chip compiled"
+
+# Build custom BQ27220 fuel gauge chip
+build/wokwi/chips/bq27220.chip.wasm: wokwi/chips/bq27220.chip.c wokwi/chips/wokwi-api.h wokwi/chips/bq27220.chip.json
+	@echo "🔧 Compiling custom BQ27220 fuel gauge chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/bq27220.o wokwi/chips/bq27220.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/bq27220.chip.wasm \
+		build/wokwi/chips/bq27220.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/bq27220.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/bq27220.o
+	@echo "✅ BQ27220 chip compiled"
+
+# Build custom BQ25896 charger chip
+build/wokwi/chips/bq25896.chip.wasm: wokwi/chips/bq25896.chip.c wokwi/chips/wokwi-api.h wokwi/chips/bq25896.chip.json
+	@echo "🔧 Compiling custom BQ25896 charger chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/bq25896.o wokwi/chips/bq25896.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/bq25896.chip.wasm \
+		build/wokwi/chips/bq25896.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/bq25896.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/bq25896.o
+	@echo "✅ BQ25896 chip compiled"
+
+# Build custom TPS65185 e-paper PMIC chip
+build/wokwi/chips/tps65185.chip.wasm: wokwi/chips/tps65185.chip.c wokwi/chips/wokwi-api.h wokwi/chips/tps65185.chip.json
+	@echo "🔧 Compiling custom TPS65185 PMIC chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/tps65185.o wokwi/chips/tps65185.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/tps65185.chip.wasm \
+		build/wokwi/chips/tps65185.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/tps65185.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/tps65185.o
+	@echo "✅ TPS65185 chip compiled"
+
+# Build custom GT911 touch controller chip
+build/wokwi/chips/gt911.chip.wasm: wokwi/chips/gt911.chip.c wokwi/chips/wokwi-api.h wokwi/chips/gt911.chip.json
+	@echo "🔧 Compiling custom GT911 touch chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/gt911.o wokwi/chips/gt911.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/gt911.chip.wasm \
+		build/wokwi/chips/gt911.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/gt911.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/gt911.o
+	@echo "✅ GT911 chip compiled"
+
+# Build custom ED047TC1 e-paper display chip
+build/wokwi/chips/ed047tc1.chip.wasm: wokwi/chips/ed047tc1.chip.c wokwi/chips/wokwi-api.h wokwi/chips/ed047tc1.chip.json
+	@echo "🔧 Compiling custom ED047TC1 e-paper display chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/ed047tc1.o wokwi/chips/ed047tc1.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/ed047tc1.chip.wasm \
+		build/wokwi/chips/ed047tc1.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/ed047tc1.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/ed047tc1.o
+	@echo "✅ ED047TC1 chip compiled"
+
+sim-run: sim
+	@if [ ! -d $(WOKWI_DIR) ]; then \
+		echo "❌ Board $(WOKWI_BOARD) not found"; \
+		exit 1; \
+	fi
+	@echo "🚀 Starting Wokwi simulation for $(WOKWI_BOARD)..."
+	@cd $(WOKWI_DIR) && wokwi-cli .
 	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
 	@echo "💡 Serial log: wokwi.log"
 	@echo "💡 Press Ctrl+C to stop"
 	@echo ""
 	wokwi-cli --timeout 0 --interactive --serial-log-file wokwi.log
 
-sim-debug: build/wokwi_sim.bin
+sim-debug: sim
 	@echo "🐛 Starting debug simulation with interactive serial..."
 	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
 	@echo "💡 Serial log: wokwi.log"
@@ -271,14 +421,19 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📦 Build:"
-	@echo "  make build                    - Build firmware (hold button at boot to swap UARTs)"
-	@echo "  make rebuild                  - Clean and rebuild"
+	@echo "  make build         - Build all board variants"
+	@echo "  make build BOARD=heltec - Build Heltec V3 only"
+	@echo "  make build BOARD=lilygo - Build LilyGO T5 only"
+	@echo "  make build-sim     - Build for Wokwi Simulator"
+	@echo "  make rebuild       - Clean and rebuild all"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
 	@echo ""
 	@echo "📡 Flash:"
-	@echo "  make flash         - Flash firmware to device"
-	@echo "  make flash-monitor - Flash and start serial monitor"
+	@echo "  make flash BOARD=heltec  - Flash Heltec V3 firmware"
+	@echo "  make flash BOARD=lilygo  - Flash LilyGO T5 firmware"
+	@echo "  make flash-monitor BOARD=heltec - Flash Heltec and monitor"
+	@echo "  make flash-monitor BOARD=lilygo - Flash LilyGO and monitor"
 	@echo "  make monitor       - Serial monitor only"
 	@echo "  make erase         - Erase entire flash"
 	@echo ""
@@ -289,7 +444,7 @@ help:
 	@echo ""
 	@echo "🎮 Simulator:"
 	@echo "  make sim           - Build for Wokwi"
-	@echo "  make sim-run       - Run Wokwi simulation"
+	@echo "  make sim-run       - Run Wokwi simulation (WOKWI_BOARD=heltec_v3|lilygo_t5)"
 	@echo "  make sim-debug     - Interactive simulation"
 	@echo ""
 	@echo "🌐 Web Interface:"
@@ -309,5 +464,5 @@ help:
 	@echo "💡 Quick Start:"
 	@echo "  source ~/esp-idf-v5.5/export.sh  # Setup ESP-IDF"
 	@echo "  make set-target                   # First time only"
-	@echo "  make build                        # Build firmware"
-	@echo "  make flash-monitor                # Flash and monitor"
+	@echo "  make build-heltec                 # Build for Heltec V3"
+	@echo "  make flash-monitor-heltec         # Flash and monitor"

@@ -104,6 +104,8 @@ jobs:
     
     - name: Create and push tag
       if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         TAG_NAME="${{ steps.version.outputs.tag_name }}"
         
@@ -115,7 +117,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
-          git push origin "$TAG_NAME"
+          
+          # Use GitHub CLI to push tag (has proper permissions)
+          gh api repos/${{ github.repository }}/git/refs \
+            -X POST \
+            -f ref="refs/tags/$TAG_NAME" \
+            -f sha="${{ github.sha }}"
         fi
 
   build-matrix:
@@ -130,6 +137,13 @@ jobs:
             target: "esp32s3"
             description: "ESP32-S3 with SX1262 LoRa (868/915MHz) and SSD1306 OLED"
             flash_size: "8MB"
+            sdkconfig: "sdkconfig.heltec_v3"
+          - name: "lilygo_t5"
+            display_name: "LilyGO T5"
+            target: "esp32s3"
+            description: "ESP32-S3 with ED047TC1 E-Paper (960x540, 16 grayscale) and GT911 touch"
+            flash_size: "16MB"
+            sdkconfig: "sdkconfig.lilygo_t5"
     
     name: Build ${{ matrix.board.display_name }}
     
@@ -167,7 +181,7 @@ jobs:
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
         target: ${{ matrix.board.target }}
-        command: idf.py build
+        command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.board.sdkconfig }}" -D BOARD_ID="${{ matrix.board.name }}" build
     
     - name: Extract and validate firmware manifest
       id: manifest
@@ -310,68 +324,18 @@ jobs:
         cp manifest.json release/$BOARD/
         
         # README
-        BUILD_DATE=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-        cat > release/$BOARD/README.md << EOFMD
-        # LoRaCue Firmware v${{ needs.version.outputs.version }}
-        
-        **Board**: ${{ matrix.board.display_name }}  
-        **Target**: ${{ matrix.board.target }}  
-        **Description**: ${{ matrix.board.description }}  
-        **Build Date**: $BUILD_DATE  
-        **Commit**: ${{ github.sha }}
-        
-        ## 📋 Package Contents
-        
-        - \`${BINARY_NAME}\` - Main firmware binary
-        - \`bootloader.bin\` - ESP32 bootloader
-        - \`partition-table.bin\` - Partition table
-        - \`manifest.json\` - Firmware manifest with metadata
-        - \`*.sha256\` - SHA256 checksums for verification
-        - \`*.sig\` - RSA-4096 signatures for authenticity verification
-        
-        ## 🔐 Firmware Verification
-        
-        **Board ID**: \`${{ steps.manifest.outputs.board_id }}\`  
-        **Firmware Version**: \`${{ steps.manifest.outputs.fw_version }}\`  
-        **SHA256**: \`${{ steps.checksums.outputs.firmware_sha256 }}\`
-        
-        All binaries are signed with RSA-4096 for authenticity verification.
-        
-        ## 📥 Installation
-        
-        Use **[LoRaCue Manager](https://github.com/LoRaCue/loracue-manager)** to flash this firmware.
-        
-        LoRaCue Manager provides:
-        - ✅ Automatic device detection
-        - ✅ One-click firmware updates  
-        - ✅ Integrity verification
-        - ✅ Cross-platform support (Windows, macOS, Linux)
-        
-        ## ✅ Post-Flash Verification
-        
-        After flashing, the device should:
-        1. Display LoRaCue logo on OLED
-        2. Status LED breathing effect
-        3. Buttons make LED solid when pressed
-        4. Serial output shows firmware version
-        
-        ## 🔄 OTA Updates
-        
-        This firmware supports OTA updates via:
-        - USB CDC commands
-        - WiFi web interface
-        
-        **Compatibility**: Only accepts firmware with matching board ID (\`${{ steps.manifest.outputs.board_id }}\`)
-        
-        ## 📚 Documentation
-        
-        - **Firmware Repository**: https://github.com/LoRaCue/loracue
-        - **Manager Tool**: https://github.com/LoRaCue/loracue-manager
-        - **Issues**: https://github.com/LoRaCue/loracue/issues
-        - **Wiki**: https://github.com/LoRaCue/loracue/wiki
-        
-        ## 🏙️ Made with ❤️ in Hannover
-        EOFMD
+        DISPLAY_NAME_ESCAPED=$(echo '${{ matrix.board.display_name }}' | sed 's/"/\\"/g')
+        bash scripts/generate_readme.sh \
+          "${{ needs.version.outputs.version }}" \
+          "$DISPLAY_NAME_ESCAPED" \
+          "${{ matrix.board.target }}" \
+          "${{ matrix.board.description }}" \
+          "${{ github.sha }}" \
+          "${{ steps.manifest.outputs.board_id }}" \
+          "${{ steps.manifest.outputs.fw_version }}" \
+          "${{ steps.checksums.outputs.firmware_sha256 }}" \
+          "${BINARY_NAME}" \
+          "release/$BOARD/README.md"
     
     - name: Create firmware archive
       run: |
@@ -500,7 +464,13 @@ jobs:
       run: |
         mkdir -p release-assets
         find firmware-packages -name "*.zip" -exec cp {} release-assets/ \;
-        find firmware-packages -name "manifest.json" -exec cp {} release-assets/ \;
+        
+        # Copy manifests with board-specific names
+        for manifest in firmware-packages/*/manifest.json; do
+          board=$(basename $(dirname "$manifest"))
+          cp "$manifest" "release-assets/manifest-${board}.json"
+        done
+        
         ls -lah release-assets/
     
     - name: Get build timestamp
@@ -524,6 +494,7 @@ jobs:
           | Board | Target | Flash Size | Description |
           |-------|--------|------------|-------------|
           | **Heltec LoRa V3** | ESP32-S3 | 8MB | SX1262 LoRa (868/915MHz) + SSD1306 OLED |
+          | **LilyGO T5 4.7"** | ESP32-S3 | 16MB | ED047TC1 E-Paper (960×540, 16 grayscale) + GT911 touch |
           
           ## 📥 Installation
           
@@ -568,6 +539,15 @@ jobs:
         draft: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Notify release.loracue.com
+      run: |
+        curl -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.RELEASE_SITE_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/LoRaCue/release.loracue.com/dispatches \
+          -d '{"event_type":"new_release","client_payload":{"version":"${{ needs.version.outputs.version }}","tag":"${{ needs.version.outputs.tag_name }}"}}'
     
     - name: Trigger release index update
       run: |

@@ -24,11 +24,13 @@
 #include "lora_protocol.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "oled_ui.h"
+#include "ui_mini.h"
+#include "ui_rich.h"
 #include "ota_engine.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "uart_commands.h"
+#include "usb_console.h"
 #include "usb_hid.h"
 #include "version.h"
 #include <stdio.h>
@@ -41,7 +43,7 @@ static const esp_partition_t *running_partition = NULL;
 static TimerHandle_t ota_validation_timer       = NULL;
 
 // External UI functions
-extern void oled_ui_enable_background_tasks(bool enable);
+extern void ui_mini_enable_background_tasks(bool enable);
 
 // Active presenter tracking (PC mode)
 typedef struct {
@@ -58,8 +60,9 @@ static command_history_entry_t command_history[MAX_COMMAND_HISTORY] = {0};
 static uint8_t command_history_count                                = 0;
 static uint32_t total_commands_received                             = 0;
 
-// Global status for PC mode screen access
-oled_status_t g_oled_status = {0};
+// Global status for PC mode screen access (ui_mini only)
+ui_mini_status_t g_oled_status = {0};
+static bool is_lilygo_board = false;
 
 static void add_command_to_history(uint16_t device_id, const char *cmd_name, uint8_t keycode, uint8_t modifiers)
 {
@@ -187,7 +190,7 @@ static void update_active_presenter(uint16_t device_id, int16_t rssi)
 
 static void battery_monitor_task(void *pvParameters)
 {
-    oled_status_t *status = (oled_status_t *)pvParameters;
+    ui_mini_status_t *status = (ui_mini_status_t *)pvParameters;
     uint8_t prev_battery  = 0;
 
     while (1) {
@@ -205,7 +208,7 @@ static void battery_monitor_task(void *pvParameters)
 
 static void usb_monitor_task(void *pvParameters)
 {
-    oled_status_t *status = (oled_status_t *)pvParameters;
+    ui_mini_status_t *status = (ui_mini_status_t *)pvParameters;
     bool prev_usb         = false;
 
     while (1) {
@@ -217,7 +220,7 @@ static void usb_monitor_task(void *pvParameters)
 
             if (current_device_mode == DEVICE_MODE_PC && !current_usb) {
                 ESP_LOGW(TAG, "PC mode: USB disconnected - cannot send HID events");
-                oled_ui_show_message("PC Mode", "Connect USB Cable", 3000);
+                ui_mini_show_message("PC Mode", "Connect USB Cable", 3000);
             }
 
             prev_usb = current_usb;
@@ -229,11 +232,11 @@ static void usb_monitor_task(void *pvParameters)
 
 static void pc_mode_update_task(void *pvParameters)
 {
-    oled_status_t *status = (oled_status_t *)pvParameters;
+    ui_mini_status_t *status = (ui_mini_status_t *)pvParameters;
 
     while (1) {
         // Only update in PC mode (check global mode instead of NVS)
-        if (current_device_mode == DEVICE_MODE_PC && oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
+        if (current_device_mode == DEVICE_MODE_PC && ui_mini_get_screen() == OLED_SCREEN_PC_MODE) {
             // Update command history timestamps
             status->command_history_count = command_history_count;
             for (int i = 0; i < command_history_count && i < 4; i++) {
@@ -368,7 +371,7 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
     ui_pc_history_notify_update();
 
     // Update status for PC mode screen
-    oled_status_t *status = (oled_status_t *)user_ctx;
+    ui_mini_status_t *status = (ui_mini_status_t *)user_ctx;
     status->lora_signal   = rssi;
     strncpy(status->last_command, cmd_name, sizeof(status->last_command) - 1);
 
@@ -391,8 +394,8 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
     }
 
     // Immediate redraw for PC mode screen
-    if (oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
-        extern void pc_mode_screen_draw(const oled_status_t *);
+    if (ui_mini_get_screen() == OLED_SCREEN_PC_MODE) {
+        extern void pc_mode_screen_draw(const ui_mini_status_t *);
         pc_mode_screen_draw(status);
     }
 
@@ -401,7 +404,7 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
 
 static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
 {
-    oled_status_t *status  = (oled_status_t *)user_ctx;
+    ui_mini_status_t *status  = (ui_mini_status_t *)user_ctx;
     status->lora_connected = (state != LORA_CONNECTION_LOST);
     status->lora_signal    = (state == LORA_CONNECTION_EXCELLENT) ? 100
                              : (state == LORA_CONNECTION_GOOD)    ? 75
@@ -503,23 +506,15 @@ void app_main(void)
     power_mgmt_config_get(&pwr_cfg);
 
     power_config_t power_config = {
-#ifdef SIMULATOR_BUILD
-        .display_sleep_timeout_ms = 0,
-        .light_sleep_timeout_ms   = 0,
-        .deep_sleep_timeout_ms    = 0,
-        .enable_auto_display_sleep = false,
-        .enable_auto_light_sleep  = false,
-        .enable_auto_deep_sleep   = false,
-#else
         .display_sleep_timeout_ms  = pwr_cfg.display_sleep_timeout_ms,
         .light_sleep_timeout_ms    = pwr_cfg.light_sleep_timeout_ms,
         .deep_sleep_timeout_ms     = pwr_cfg.deep_sleep_timeout_ms,
         .enable_auto_display_sleep = pwr_cfg.display_sleep_enabled,
         .enable_auto_light_sleep   = pwr_cfg.light_sleep_enabled,
         .enable_auto_deep_sleep    = pwr_cfg.deep_sleep_enabled,
-#endif
         .cpu_freq_mhz = 80,
     };
+
     ESP_LOGI(TAG, "Power config: display_sleep=%s, light_sleep=%s, deep_sleep=%s",
              power_config.enable_auto_display_sleep ? "enabled" : "disabled",
              power_config.enable_auto_light_sleep ? "enabled" : "disabled",
@@ -538,6 +533,11 @@ void app_main(void)
         return;
     }
 
+    // Detect board type early
+    const char *board_id = bsp_get_board_id();
+    is_lilygo_board = (strcmp(board_id, "lilygo_t5") == 0);
+    ESP_LOGI(TAG, "Board: %s", board_id);
+
     // Initialize LED manager and turn on status LED
     ESP_LOGI(TAG, "Initializing LED manager...");
     ret = led_manager_init();
@@ -547,22 +547,30 @@ void app_main(void)
     }
     led_manager_solid(true); // Turn on LED during startup
 
-    // Initialize OLED UI
-    ESP_LOGI(TAG, "Initializing OLED UI...");
-    ret = oled_ui_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "OLED UI initialization failed: %s", esp_err_to_name(ret));
-        return;
+    // Initialize UI based on board type
+    if (is_lilygo_board) {
+        ESP_LOGI(TAG, "Initializing Rich UI (LVGL)...");
+        ret = ui_rich_init();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Rich UI initialization failed: %s", esp_err_to_name(ret));
+            return;
+        }
+    } else {
+        ESP_LOGI(TAG, "Initializing Mini UI...");
+        ret = ui_mini_init();
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "OLED UI initialization failed: %s", esp_err_to_name(ret));
+            return;
+        }
+
+        // Apply brightness from config (reuse config from power mgmt)
+        general_config_get(&config);
+        bsp_set_display_brightness(config.display_brightness);
+        ESP_LOGI(TAG, "Display brightness set to %d", config.display_brightness);
+
+        // Show boot logo
+        ui_mini_set_screen(OLED_SCREEN_BOOT);
     }
-
-    // Apply brightness from config (reuse config from power mgmt)
-    general_config_get(&config);
-    extern u8g2_t u8g2;
-    u8g2_SetContrast(&u8g2, config.display_brightness);
-    ESP_LOGI(TAG, "OLED brightness set to %d", config.display_brightness);
-
-    // Show boot logo
-    oled_ui_set_screen(OLED_SCREEN_BOOT);
 
     // Initialize button manager
     ESP_LOGI(TAG, "Initializing button manager...");
@@ -629,6 +637,16 @@ void app_main(void)
         return;
     }
 
+#if 0  // USB CDC is only for command parser, not console
+    // Wait for USB enumeration before redirecting console
+    ESP_LOGI(TAG, "Waiting for USB enumeration...");
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    
+    // Redirect console to USB CDC (same port as commands)
+    usb_console_init();
+    ESP_LOGI(TAG, "Console redirected to USB CDC");
+#endif
+
     // Initialize Bluetooth configuration
     ESP_LOGI(TAG, "Initializing Bluetooth configuration...");
     ret = bluetooth_config_init();
@@ -667,21 +685,23 @@ void app_main(void)
         return;
     }
 
-    // Initialize status with device name BEFORE showing screen
-    g_oled_status.battery_level  = 85;
-    g_oled_status.lora_connected = false;
-    g_oled_status.lora_signal    = 0;
-    g_oled_status.usb_connected  = false;
-    g_oled_status.device_id      = 0x1234;
+    // Initialize status with device name BEFORE showing screen (ui_mini only)
+    if (!is_lilygo_board) {
+        g_oled_status.battery_level  = 85;
+        g_oled_status.lora_connected = false;
+        g_oled_status.lora_signal    = 0;
+        g_oled_status.usb_connected  = false;
+        g_oled_status.device_id      = 0x1234;
 
-    // Load device name from config
-    general_config_t dev_config;
-    general_config_get(&dev_config);
-    strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
-    strcpy(g_oled_status.last_command, "");
+        // Load device name from config
+        general_config_t dev_config;
+        general_config_get(&dev_config);
+        strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
+        strcpy(g_oled_status.last_command, "");
 
-    // Transition to main UI state (adapts to mode automatically)
-    oled_ui_set_screen(OLED_SCREEN_MAIN);
+        // Transition to main UI state (adapts to mode automatically)
+        ui_mini_set_screen(OLED_SCREEN_MAIN);
+    }
 
     // Start LED fading after initialization complete
     ESP_LOGI(TAG, "Starting LED fade pattern");
@@ -721,10 +741,12 @@ void app_main(void)
     // Create event group for system events
     system_events = xEventGroupCreate();
 
-    // Start periodic tasks
-    xTaskCreate(battery_monitor_task, "battery_monitor", 4096, &g_oled_status, 5, NULL);
-    xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &g_oled_status, 5, NULL);
-    xTaskCreate(pc_mode_update_task, "pc_mode_update", 4096, &g_oled_status, 5, NULL);
+    // Start periodic tasks (ui_mini only)
+    if (!is_lilygo_board) {
+        xTaskCreate(battery_monitor_task, "battery_monitor", 4096, &g_oled_status, 5, NULL);
+        xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &g_oled_status, 5, NULL);
+        xTaskCreate(pc_mode_update_task, "pc_mode_update", 4096, &g_oled_status, 5, NULL);
+    }
 
     // Main task now just handles events
     ESP_LOGI(TAG, "Main loop starting - should have low CPU usage when idle");
@@ -733,7 +755,13 @@ void app_main(void)
         // Reset watchdog
         esp_task_wdt_reset();
 
-        // Wait for any system event
+        // Skip UI event handling for LilyGO (ui_rich handles its own updates)
+        if (is_lilygo_board) {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;
+        }
+
+        // Wait for any system event (ui_mini only)
         EventBits_t events = xEventGroupWaitBits(system_events,
                                                  0xFF,                  // Wait for any event
                                                  pdTRUE,                // Clear on exit
@@ -741,25 +769,25 @@ void app_main(void)
                                                  pdMS_TO_TICKS(10000)); // 10s timeout
 
         if (events & (1 << 0)) { // Battery changed
-            oled_ui_update_status(&g_oled_status);
+            ui_mini_update_status(&g_oled_status);
         }
 
         if (events & (1 << 1)) { // USB status changed
-            oled_ui_update_status(&g_oled_status);
+            ui_mini_update_status(&g_oled_status);
         }
 
         if (events & (1 << 2)) { // LoRa state changed
-            oled_ui_update_status(&g_oled_status);
+            ui_mini_update_status(&g_oled_status);
         }
 
         if (events & (1 << 3)) { // Command received
-            oled_ui_update_status(&g_oled_status);
+            ui_mini_update_status(&g_oled_status);
         }
 
         if (events & (1 << 4)) { // PC mode periodic update
             // Just redraw PC mode screen, don't update full status
-            if (oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
-                extern void pc_mode_screen_draw(const oled_status_t *);
+            if (ui_mini_get_screen() == OLED_SCREEN_PC_MODE) {
+                extern void pc_mode_screen_draw(const ui_mini_status_t *);
                 pc_mode_screen_draw(&g_oled_status);
             }
         }
@@ -774,7 +802,7 @@ void app_main(void)
             general_config_set(&cfg);
 
             // Force screen redraw with new mode
-            oled_ui_update_status(&g_oled_status);
+            ui_mini_update_status(&g_oled_status);
         }
 
         // Check if device mode changed and persist to NVS (fallback for missed events)

@@ -118,7 +118,7 @@ esp_err_t lora_comm_stop(void);
 - **UI updates**: Update OLED display based on connection state
 - **User feedback**: LED patterns, status messages
 
-**Dependencies**: `lora_comm`, `usb_hid`, `button_manager`, `oled_ui`
+**Dependencies**: `lora_comm`, `usb_hid`, `button_manager`, `ui_mini`
 
 **Implementation Example**:
 ```c
@@ -144,7 +144,7 @@ static void lora_state_handler(lora_connection_state_t state, void *ctx)
     status->lora_signal = (state == LORA_CONNECTION_EXCELLENT) ? 100 : 
                           (state == LORA_CONNECTION_GOOD) ? 75 :
                           (state == LORA_CONNECTION_WEAK) ? 50 : 25;
-    oled_ui_update_status(status);
+    ui_mini_update_status(status);
 }
 
 // Button pressed → Send LoRa command

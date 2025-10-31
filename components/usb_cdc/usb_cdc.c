@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "tinyusb.h"
 #include "tusb.h"
+#include "class/cdc/cdc_device.h"
 #include <string.h>
 
 static const char *TAG = "USB_CDC";

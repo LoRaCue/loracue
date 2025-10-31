@@ -1,0 +1,9 @@
+{
+  "name": "BQ25896 Battery Charger",
+  "author": "Fabian Schmieder",
+  "pins": [
+    "SCL",
+    "SDA"
+  ],
+  "controls": []
+}

@@ -34,7 +34,6 @@ const uint8_t hid_keyboard_report_desc[] = {TUD_HID_REPORT_DESC_KEYBOARD()};
 
 // Configuration Descriptor (CDC + HID)
 enum { ITF_NUM_CDC_CTRL = 0, ITF_NUM_CDC_DATA, ITF_NUM_HID, ITF_NUM_TOTAL };
-
 #define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_HID_DESC_LEN)
 
 static const uint8_t config_descriptor[] = {
@@ -44,7 +43,7 @@ static const uint8_t config_descriptor[] = {
 
 // String descriptor state
 static char serial_number[32];
-static const char *string_descriptors[4];
+static const char *string_descriptors[6];
 static bool descriptors_initialized = false;
 
 static void init_descriptors(void)
@@ -67,6 +66,8 @@ static void init_descriptors(void)
     string_descriptors[1] = "LoRaCue";
     string_descriptors[2] = usb_config->usb_product;
     string_descriptors[3] = serial_number;
+    string_descriptors[4] = "LoRaCue Commands";
+    string_descriptors[5] = "LoRaCue HID";
 
     descriptors_initialized = true;
 }
