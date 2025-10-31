@@ -103,7 +103,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
 
 bool usb_hid_is_connected(void)
 {
-    return tud_hid_ready() && tud_cdc_connected();
+    return tud_hid_ready();
 }
 
 esp_err_t usb_hid_send_key(usb_hid_keycode_t keycode)
