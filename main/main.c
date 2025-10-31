@@ -30,6 +30,7 @@
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "uart_commands.h"
+#include "usb_cdc.h"
 #include "usb_console.h"
 #include "usb_hid.h"
 #include "version.h"
@@ -634,6 +635,14 @@ void app_main(void)
     ret = usb_hid_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "USB HID initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+
+    // Initialize USB CDC command interface
+    ESP_LOGI(TAG, "Initializing USB CDC command interface...");
+    ret = usb_cdc_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "USB CDC initialization failed: %s", esp_err_to_name(ret));
         return;
     }
 

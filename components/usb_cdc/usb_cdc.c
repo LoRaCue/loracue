@@ -37,7 +37,11 @@ static void send_response(const char *response)
 
 static void process_command(const char *command_line)
 {
-    ESP_LOGD(TAG, "Processing command: %s", command_line);
+    ESP_LOGI(TAG, "Processing command: '%s' (len=%d)", command_line, strlen(command_line));
+    for (int i = 0; command_line[i] != '\0'; i++) {
+        ESP_LOGI(TAG, "  [%d] = 0x%02X ('%c')", i, (unsigned char)command_line[i], 
+                 command_line[i] >= 32 && command_line[i] < 127 ? command_line[i] : '.');
+    }
     commands_execute(command_line, send_response);
 }
 
