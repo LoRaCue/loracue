@@ -103,7 +103,6 @@ static void lora_rx_task(void *arg)
         vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
-#endif
 
 esp_err_t lora_driver_init(void)
 {
@@ -196,7 +195,6 @@ esp_err_t lora_driver_init(void)
 
     ESP_LOGI(TAG, "SX1262 initialized successfully with TX/RX tasks");
     return ESP_OK;
-#endif
 }
 
 esp_err_t lora_send_packet(const uint8_t *data, size_t length)
