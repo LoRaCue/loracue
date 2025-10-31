@@ -17,14 +17,12 @@
 
 static const char *TAG = "UART_CMD";
 
-// Dynamic UART configuration based on button press at boot
-// Default: UART0=commands, UART1=console, USB-CDC=commands
-// If PREV button pressed at boot: UART0=console, UART1=commands (swapped)
-static uart_port_t uart_num = UART_NUM_0;
-static int uart_tx_pin      = 43;
-static int uart_rx_pin      = 44;
-static int uart_rts_pin     = 16;
-static int uart_cts_pin     = 15;
+// UART configuration from Kconfig
+#ifdef CONFIG_UART_COMMANDS_PORT_NUM
+#define UART_PORT_NUM CONFIG_UART_COMMANDS_PORT_NUM
+#else
+#define UART_PORT_NUM 1  // Default to UART1 if not configured
+#endif
 
 #define UART_BAUD_RATE 460800
 #define UART_RX_BUF_SIZE 8192   // Large RX buffer for high-speed bursts
@@ -121,39 +119,16 @@ static void cmd_processor_task(void *pvParameters)
 
 esp_err_t uart_commands_init(void)
 {
-    // Check if PREV button is pressed at boot to swap UARTs
-    // Default: UART0=commands, UART1=console
-    // Swapped: UART0=console, UART1=commands
-    bool swap_uarts = bsp_read_button(BSP_BUTTON_PREV);
-    
-    if (swap_uarts) {
-        uart_num     = UART_NUM_1;
-        uart_tx_pin  = 2;
-        uart_rx_pin  = 3;
-        uart_rts_pin = UART_PIN_NO_CHANGE;
-        uart_cts_pin = UART_PIN_NO_CHANGE;
-        
-        // Reconfigure console to UART0 at runtime
-        // Note: This requires console to be on UART1 in sdkconfig by default
-        uart_config_t console_config = {
-            .baud_rate  = 115200,
-            .data_bits  = UART_DATA_8_BITS,
-            .parity     = UART_PARITY_DISABLE,
-            .stop_bits  = UART_STOP_BITS_1,
-            .flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-            .source_clk = UART_SCLK_DEFAULT,
-        };
-        uart_driver_delete(UART_NUM_0);
-        uart_param_config(UART_NUM_0, &console_config);
-        uart_set_pin(UART_NUM_0, 43, 44, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-        uart_driver_install(UART_NUM_0, 256, 256, 0, NULL, 0);
-        
-        ESP_LOGI(TAG, "🔄 UART swap detected (PREV button pressed at boot)");
-        ESP_LOGI(TAG, "   Console: UART0 (TX=43, RX=44), Commands: UART1 (TX=2, RX=3)");
-    } else {
-        ESP_LOGI(TAG, "📡 Default UART configuration");
-        ESP_LOGI(TAG, "   Commands: UART0 (TX=43, RX=44) + USB-CDC, Console: UART1 (TX=2, RX=3)");
+    // Get UART pins from BSP
+    int tx_pin, rx_pin;
+    esp_err_t ret = bsp_get_uart_pins(UART_PORT_NUM, &tx_pin, &rx_pin);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get UART%d pins from BSP", UART_PORT_NUM);
+        return ret;
     }
+
+    ESP_LOGI(TAG, "Initializing UART%d command interface (TX=%d, RX=%d, %d baud)",
+             UART_PORT_NUM, tx_pin, rx_pin, UART_BAUD_RATE);
 
     // Create TX mutex for thread-safe HAL writes
     uart_tx_mutex = xSemaphoreCreateMutex();
@@ -163,11 +138,9 @@ esp_err_t uart_commands_init(void)
     }
 
     // Delete existing driver if present
-    uart_driver_delete(uart_num);
+    uart_driver_delete(UART_PORT_NUM);
 
     // Configure UART parameters
-    // Note: Flow control disabled - Heltec V3 doesn't have RTS/CTS wired
-    // Decoupled task architecture provides robustness without hardware flow control
     uart_config_t uart_config = {
         .baud_rate  = UART_BAUD_RATE,
         .data_bits  = UART_DATA_8_BITS,

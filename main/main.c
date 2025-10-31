@@ -700,6 +700,7 @@ void app_main(void)
         g_oled_status.lora_connected = false;
         g_oled_status.lora_signal    = 0;
         g_oled_status.usb_connected  = false;
+        g_oled_status.bluetooth_connected = bluetooth_config_is_connected();
         g_oled_status.device_id      = 0x1234;
 
         // Load device name from config

@@ -89,6 +89,7 @@ typedef struct {
     bool lora_connected;   ///< LoRa connection status
     uint8_t lora_signal;   ///< LoRa signal strength (0-100)
     bool usb_connected;    ///< USB connection status
+    bool bluetooth_connected; ///< Bluetooth connection status
     uint16_t device_id;    ///< Device ID
     char device_name[32];  ///< Device name
     char last_command[16]; ///< Last received command (PC mode)

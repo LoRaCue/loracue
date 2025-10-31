@@ -75,12 +75,30 @@ static const uint8_t UART_RX_CHAR_UUID[16] = {0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5
 #define GATTS_DIS_NUM_HANDLE 12
 #define GATTS_OTA_NUM_HANDLE 10
 
+// BLE UART Configuration
+#define BLE_UART_RX_QUEUE_SIZE 10
+#define BLE_UART_TASK_STACK_SIZE 4096
+#define BLE_UART_TASK_PRIORITY 5
+#define BLE_UART_CMD_MAX_LENGTH 2048
+#define BLE_UART_MTU_SIZE 512  // Default MTU, updated on MTU exchange
+
+typedef struct {
+    char data[BLE_UART_CMD_MAX_LENGTH];
+    size_t len;
+} ble_uart_msg_t;
+
 static bool ble_enabled         = false;
 static bool ble_connected       = false;
+static bool notifications_enabled = false;
 static uint16_t conn_id         = 0;
 static uint16_t gatts_if_global = 0;
 static uint16_t tx_char_handle  = 0;
 static uint16_t rx_char_handle  = 0;
+static uint16_t current_mtu     = 23;  // Default BLE MTU
+
+static QueueHandle_t ble_uart_queue = NULL;
+static TaskHandle_t ble_uart_task_handle = NULL;
+static SemaphoreHandle_t ble_state_mutex = NULL;
 
 // DIS service handles
 static esp_gatt_if_t dis_gatts_if       = 0;
@@ -101,37 +119,69 @@ esp_gatt_if_t ota_gatts_if   = 0;
 static bool pairing_in_progress = false;
 static uint32_t pairing_passkey = 0;
 
-// Command buffer
-static char rx_buffer[16384];
-static size_t rx_len = 0;
-
 // Service handles
 static uint16_t service_handle = 0;
 
+static void send_response(const char *response);
+
+static void ble_uart_task(void *arg)
+{
+    ESP_LOGI(TAG, "BLE UART task started");
+    ble_uart_msg_t msg;
+    
+    while (1) {
+        if (xQueueReceive(ble_uart_queue, &msg, portMAX_DELAY) == pdTRUE) {
+            msg.data[msg.len] = '\0';
+            ESP_LOGD(TAG, "Processing BLE command: %s", msg.data);
+            commands_execute(msg.data, send_response);
+        }
+    }
+}
+
 static void send_response(const char *response)
 {
-    ESP_LOGI(TAG, "send_response called: connected=%d, handle=%d, response='%s'", ble_connected, tx_char_handle,
-             response);
-
-    if (!ble_connected || tx_char_handle == 0) {
-        ESP_LOGW(TAG, "Cannot send response - not connected or no handle");
+    if (!response) {
         return;
     }
 
-    size_t len = strlen(response);
-    esp_err_t ret =
-        esp_ble_gatts_send_indicate(gatts_if_global, conn_id, tx_char_handle, len, (uint8_t *)response, false);
-    ESP_LOGI(TAG, "send_indicate returned: %d", ret);
+    // Take mutex to protect global state
+    if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
+        ESP_LOGW(TAG, "Failed to acquire mutex for send_response");
+        return;
+    }
 
-    // Send newline
-    ret = esp_ble_gatts_send_indicate(gatts_if_global, conn_id, tx_char_handle, 1, (uint8_t *)"\n", false);
-    ESP_LOGI(TAG, "send_indicate (newline) returned: %d", ret);
-}
+    if (!ble_connected || !notifications_enabled || tx_char_handle == 0) {
+        ESP_LOGD(TAG, "Cannot send response - not ready (connected=%d, notif=%d, handle=%d)",
+                 ble_connected, notifications_enabled, tx_char_handle);
+        xSemaphoreGive(ble_state_mutex);
+        return;
+    }
 
-static void process_command(const char *command_line)
-{
-    ESP_LOGI(TAG, "Processing command: %s", command_line);
-    commands_execute(command_line, send_response);
+    // Combine response + newline in single packet
+    size_t resp_len = strlen(response);
+    size_t total_len = resp_len + 1;  // +1 for newline
+    
+    // Respect MTU size
+    if (total_len > current_mtu - 3) {  // -3 for ATT header
+        total_len = current_mtu - 3;
+        resp_len = total_len - 1;
+    }
+    
+    char *buffer = malloc(total_len);
+    if (buffer) {
+        memcpy(buffer, response, resp_len);
+        buffer[resp_len] = '\n';
+        
+        esp_err_t ret = esp_ble_gatts_send_indicate(gatts_if_global, conn_id, tx_char_handle, 
+                                                     total_len, (uint8_t *)buffer, false);
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to send notification: %s", esp_err_to_name(ret));
+        }
+        
+        free(buffer);
+    }
+    
+    xSemaphoreGive(ble_state_mutex);
 }
 
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
@@ -477,16 +527,24 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
             break;
 
         case ESP_GATTS_CONNECT_EVT:
-            conn_id       = param->connect.conn_id;
-            ble_connected = true;
+            if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                conn_id       = param->connect.conn_id;
+                ble_connected = true;
+                notifications_enabled = false;  // Reset until client enables
+                xSemaphoreGive(ble_state_mutex);
+            }
             ble_ota_set_connection(conn_id);
-            ESP_LOGI(TAG, "Client connected");
+            ESP_LOGI(TAG, "Client connected (conn_id=%d)", conn_id);
             break;
 
         case ESP_GATTS_DISCONNECT_EVT:
-            ble_connected = false;
-            conn_id       = 0;
-            rx_len        = 0;
+            if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                ble_connected = false;
+                notifications_enabled = false;
+                conn_id       = 0;
+                current_mtu   = 23;  // Reset to default
+                xSemaphoreGive(ble_state_mutex);
+            }
             ble_ota_handle_disconnect();
             ESP_LOGI(TAG, "Client disconnected, restarting advertising");
             esp_ble_gap_start_advertising(&(esp_ble_adv_params_t){
@@ -499,34 +557,60 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
             });
             break;
 
+        case ESP_GATTS_MTU_EVT:
+            if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                current_mtu = param->mtu.mtu;
+                xSemaphoreGive(ble_state_mutex);
+            }
+            ESP_LOGI(TAG, "MTU exchanged: %d", param->mtu.mtu);
+            break;
+
         case ESP_GATTS_WRITE_EVT:
-            ESP_LOGI(TAG, "WRITE_EVT: handle=%d, rx_char_handle=%d, len=%d", param->write.handle, rx_char_handle,
-                     param->write.len);
-            if (param->write.handle == rx_char_handle) {
-                ESP_LOGI(TAG, "RX data received: %.*s", param->write.len, param->write.value);
+            // Check if this is CCCD write (notification enable/disable)
+            if (param->write.handle == tx_char_handle + 1 && param->write.len == 2) {
+                uint16_t descr_value = param->write.value[1] << 8 | param->write.value[0];
+                if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                    notifications_enabled = (descr_value == 0x0001);
+                    xSemaphoreGive(ble_state_mutex);
+                }
+                ESP_LOGI(TAG, "Notifications %s", notifications_enabled ? "enabled" : "disabled");
+            }
+            // Check if this is RX characteristic write (command data)
+            else if (param->write.handle == rx_char_handle) {
+                ESP_LOGD(TAG, "RX data received: len=%d", param->write.len);
+                
                 // Check for OTA commands - reject and direct to OTA service
                 if (param->write.len >= 17 && strncmp((char *)param->write.value, "FIRMWARE_UPGRADE ", 17) == 0) {
                     const char *error_msg = "ERROR Use dedicated OTA GATT service (UUID "
                                             "49589A79-7CC5-465D-BFF1-FE37C5065000) for firmware upgrades\n";
                     esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, tx_char_handle, strlen(error_msg),
                                                 (uint8_t *)error_msg, false);
-                } else {
-                    // FIXME: BLE configuration protocol implemented but not working
-                    // Command parsing exists but responses/integration broken
-                    // Process as text command
-                    for (int i = 0; i < param->write.len; i++) {
-                        char c = param->write.value[i];
+                    break;
+                }
+                
+                // Non-blocking: parse and queue commands
+                static char rx_buffer[BLE_UART_CMD_MAX_LENGTH];
+                static size_t rx_len = 0;
+                
+                for (int i = 0; i < param->write.len; i++) {
+                    char c = param->write.value[i];
 
-                        if (c == '\n' || c == '\r') {
-                            if (rx_len > 0) {
-                                rx_buffer[rx_len] = '\0';
-                                ESP_LOGI(TAG, "Processing command: %s", rx_buffer);
-                                process_command(rx_buffer);
-                                rx_len = 0;
+                    if (c == '\n' || c == '\r') {
+                        if (rx_len > 0) {
+                            ble_uart_msg_t msg;
+                            msg.len = rx_len;
+                            memcpy(msg.data, rx_buffer, rx_len);
+                            
+                            if (xQueueSend(ble_uart_queue, &msg, 0) != pdTRUE) {
+                                ESP_LOGW(TAG, "BLE UART queue full, dropping command");
                             }
-                        } else if (rx_len < sizeof(rx_buffer) - 1) {
-                            rx_buffer[rx_len++] = c;
+                            rx_len = 0;
                         }
+                    } else if (rx_len < sizeof(rx_buffer) - 1) {
+                        rx_buffer[rx_len++] = c;
+                    } else {
+                        ESP_LOGW(TAG, "Command too long, dropping");
+                        rx_len = 0;
                     }
                 }
             }
@@ -554,6 +638,34 @@ esp_err_t bluetooth_config_init(void)
         ESP_LOGI(TAG, "Bluetooth disabled in config");
         return ESP_OK;
     }
+
+    // Create BLE UART infrastructure
+    ESP_LOGI(TAG, "Creating BLE UART queue and task...");
+    
+    ble_state_mutex = xSemaphoreCreateMutex();
+    if (!ble_state_mutex) {
+        ESP_LOGE(TAG, "Failed to create BLE state mutex");
+        return ESP_ERR_NO_MEM;
+    }
+    
+    ble_uart_queue = xQueueCreate(BLE_UART_RX_QUEUE_SIZE, sizeof(ble_uart_msg_t));
+    if (!ble_uart_queue) {
+        ESP_LOGE(TAG, "Failed to create BLE UART queue");
+        vSemaphoreDelete(ble_state_mutex);
+        return ESP_ERR_NO_MEM;
+    }
+    
+    BaseType_t task_ret = xTaskCreate(ble_uart_task, "ble_uart", BLE_UART_TASK_STACK_SIZE, 
+                                       NULL, BLE_UART_TASK_PRIORITY, &ble_uart_task_handle);
+    if (task_ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create BLE UART task");
+        vQueueDelete(ble_uart_queue);
+        vSemaphoreDelete(ble_state_mutex);
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "BLE UART initialized (queue=%d, stack=%d, priority=%d)",
+             BLE_UART_RX_QUEUE_SIZE, BLE_UART_TASK_STACK_SIZE, BLE_UART_TASK_PRIORITY);
 
     ESP_LOGI(TAG, "Releasing Classic BT memory...");
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
