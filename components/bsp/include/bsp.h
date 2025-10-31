@@ -45,6 +45,22 @@ esp_err_t bsp_init(void);
 esp_err_t bsp_deinit(void);
 
 /**
+ * @brief Lock u8g2 mutex for thread-safe access
+ * 
+ * Must be called before any u8g2 operations.
+ * Always pair with bsp_u8g2_unlock().
+ * 
+ * @param timeout_ms Timeout in milliseconds (portMAX_DELAY for infinite)
+ * @return true if lock acquired, false on timeout
+ */
+bool bsp_u8g2_lock(uint32_t timeout_ms);
+
+/**
+ * @brief Unlock u8g2 mutex after operations complete
+ */
+void bsp_u8g2_unlock(void);
+
+/**
  * @brief Initialize button GPIO pins
  *
  * Configures button pins as inputs with internal pull-ups enabled.
@@ -213,6 +229,13 @@ esp_err_t bsp_display_wake(void);
  * @return ESP_OK on success
  */
 esp_err_t bsp_i2c_init(gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz);
+
+/**
+ * @brief Deinitialize I2C bus
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_i2c_deinit(void);
 
 /**
  * @brief Get I2C bus handle for adding devices

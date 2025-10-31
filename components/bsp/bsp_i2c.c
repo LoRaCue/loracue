@@ -52,3 +52,16 @@ esp_err_t bsp_i2c_add_device(uint8_t addr, uint32_t freq_hz, i2c_master_dev_hand
     ESP_LOGI(TAG, "Adding I2C device: addr=0x%02X, freq=%lu Hz", addr, freq_hz);
     return i2c_master_bus_add_device(i2c_bus_handle, &dev_config, dev_handle);
 }
+
+esp_err_t bsp_i2c_deinit(void)
+{
+    if (i2c_bus_handle) {
+        esp_err_t ret = i2c_del_master_bus(i2c_bus_handle);
+        if (ret == ESP_OK) {
+            i2c_bus_handle = NULL;
+            ESP_LOGI(TAG, "I2C bus deinitialized");
+        }
+        return ret;
+    }
+    return ESP_OK;
+}

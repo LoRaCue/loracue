@@ -44,13 +44,22 @@ u8g2_t u8g2;
 #define OLED_SCL_PIN GPIO_NUM_18
 #define OLED_RST_PIN GPIO_NUM_21
 
+// BSP Configuration
+#define SPI_CLOCK_SPEED_HZ      1000000     // 1MHz for SX1262
+#define SPI_QUEUE_SIZE          1           // Single transaction queue
+#define I2C_CLOCK_SPEED_HZ      400000      // 400kHz fast mode
+#define ADC_BITWIDTH            ADC_BITWIDTH_12
+#define ADC_ATTENUATION         ADC_ATTEN_DB_12
+
 // Static handles
 static adc_oneshot_unit_handle_t adc_handle = NULL;
 static spi_device_handle_t spi_handle       = NULL;
+static SemaphoreHandle_t u8g2_mutex         = NULL;
 
 esp_err_t bsp_init_spi(void)
 {
-    ESP_LOGI(TAG, "Initializing SPI bus for SX1262 LoRa");
+    ESP_LOGD(TAG, "Initializing SPI bus for SX1262 LoRa (MOSI=%d, MISO=%d, SCK=%d, CS=%d)",
+             LORA_MOSI_PIN, LORA_MISO_PIN, LORA_SCK_PIN, LORA_CS_PIN);
 
     // Configure SPI bus
     spi_bus_config_t buscfg = {
@@ -70,15 +79,16 @@ esp_err_t bsp_init_spi(void)
 
     // Configure SPI device (SX1262)
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 1000000, // 1MHz
-        .mode           = 0,       // SPI mode 0
+        .clock_speed_hz = SPI_CLOCK_SPEED_HZ,
+        .mode           = 0,
         .spics_io_num   = LORA_CS_PIN,
-        .queue_size     = 1,
+        .queue_size     = SPI_QUEUE_SIZE,
     };
 
     ret = spi_bus_add_device(SPI2_HOST, &devcfg, &spi_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to add SPI device: %s", esp_err_to_name(ret));
+        spi_bus_free(SPI2_HOST);
         return ret;
     }
 
@@ -119,6 +129,11 @@ uint8_t bsp_sx1262_read_register(uint16_t reg)
         return 0;
     }
 
+    if (!spi_handle) {
+        ESP_LOGE(TAG, "SPI not initialized - spi_handle is NULL");
+        return 0;
+    }
+
     // Wait for BUSY to go low
     while (gpio_get_level(LORA_BUSY_PIN)) {
         vTaskDelay(pdMS_TO_TICKS(1));
@@ -148,15 +163,23 @@ esp_err_t bsp_init(void)
 
     esp_err_t ret = ESP_OK;
 
+    // Create u8g2 mutex for thread safety
+    ESP_LOGD(TAG, "Creating u8g2 mutex");
+    u8g2_mutex = xSemaphoreCreateMutex();
+    if (!u8g2_mutex) {
+        ESP_LOGE(TAG, "Failed to create u8g2 mutex - out of memory");
+        return ESP_ERR_NO_MEM;
+    }
+
     // Initialize GPIO for buttons
     ret = bsp_init_buttons();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize buttons: %s", esp_err_to_name(ret));
-        return ret;
+        goto cleanup;
     }
 
     // Initialize status LED
-    ESP_LOGI(TAG, "Configuring status LED on GPIO%d", STATUS_LED_PIN);
+    ESP_LOGD(TAG, "Configuring status LED on GPIO%d", STATUS_LED_PIN);
     gpio_config_t led_config = {
         .pin_bit_mask = (1ULL << STATUS_LED_PIN),
         .mode         = GPIO_MODE_OUTPUT,
@@ -167,7 +190,7 @@ esp_err_t bsp_init(void)
     ret = gpio_config(&led_config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to configure LED GPIO: %s", esp_err_to_name(ret));
-        return ret;
+        goto cleanup;
     }
     bsp_set_led(false); // Turn off LED initially
 
@@ -175,21 +198,21 @@ esp_err_t bsp_init(void)
     ret = bsp_init_battery();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize battery monitoring: %s", esp_err_to_name(ret));
-        return ret;
+        goto cleanup;
     }
 
     // Initialize SPI for LoRa
     ret = bsp_init_spi();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI: %s", esp_err_to_name(ret));
-        return ret;
+        goto cleanup;
     }
 
     // Initialize I2C bus for OLED and future I2C devices
-    ret = bsp_i2c_init(OLED_SDA_PIN, OLED_SCL_PIN, 400000);
+    ret = bsp_i2c_init(OLED_SDA_PIN, OLED_SCL_PIN, I2C_CLOCK_SPEED_HZ);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize I2C: %s", esp_err_to_name(ret));
-        return ret;
+        goto cleanup;
     }
 
     // Set OLED reset pin
@@ -199,11 +222,62 @@ esp_err_t bsp_init(void)
     ret = bsp_u8g2_init(&u8g2);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize u8g2: %s", esp_err_to_name(ret));
-        return ret;
+        goto cleanup;
     }
 
     ESP_LOGI(TAG, "BSP initialization complete");
     return ESP_OK;
+
+cleanup:
+    ESP_LOGW(TAG, "Cleaning up after initialization failure");
+    bsp_deinit();
+    return ret;
+}
+
+esp_err_t bsp_deinit(void)
+{
+    ESP_LOGI(TAG, "Deinitializing BSP");
+    
+    // Clean up SPI
+    if (spi_handle) {
+        spi_bus_remove_device(spi_handle);
+        spi_handle = NULL;
+    }
+    spi_bus_free(SPI2_HOST);
+    
+    // Clean up ADC
+    if (adc_handle) {
+        adc_oneshot_del_unit(adc_handle);
+        adc_handle = NULL;
+    }
+    
+    // Clean up I2C
+    bsp_i2c_deinit();
+    
+    // Delete mutex
+    if (u8g2_mutex) {
+        vSemaphoreDelete(u8g2_mutex);
+        u8g2_mutex = NULL;
+    }
+    
+    ESP_LOGI(TAG, "BSP deinitialized");
+    return ESP_OK;
+}
+
+bool bsp_u8g2_lock(uint32_t timeout_ms)
+{
+    if (!u8g2_mutex) {
+        ESP_LOGW(TAG, "u8g2 mutex not initialized");
+        return false;
+    }
+    return xSemaphoreTake(u8g2_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
+}
+
+void bsp_u8g2_unlock(void)
+{
+    if (u8g2_mutex) {
+        xSemaphoreGive(u8g2_mutex);
+    }
 }
 
 esp_err_t bsp_init_buttons(void)
@@ -253,16 +327,27 @@ esp_err_t bsp_init_battery(void)
 
     // Initialize ADC
     if (adc_handle == NULL) {
+        ESP_LOGD(TAG, "Configuring ADC unit 1, channel 0");
         adc_oneshot_unit_init_cfg_t init_config = {
             .unit_id = ADC_UNIT_1,
         };
-        ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &adc_handle));
+        esp_err_t ret = adc_oneshot_new_unit(&init_config, &adc_handle);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize ADC unit: %s", esp_err_to_name(ret));
+            return ret;
+        }
 
         adc_oneshot_chan_cfg_t config = {
-            .bitwidth = ADC_BITWIDTH_12,
-            .atten    = ADC_ATTEN_DB_12,
+            .bitwidth = ADC_BITWIDTH,
+            .atten    = ADC_ATTENUATION,
         };
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, ADC_CHANNEL_0, &config));
+        ret = adc_oneshot_config_channel(adc_handle, ADC_CHANNEL_0, &config);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to configure ADC channel: %s", esp_err_to_name(ret));
+            adc_oneshot_del_unit(adc_handle);
+            adc_handle = NULL;
+            return ret;
+        }
     }
 
     ESP_LOGI(TAG, "Battery monitoring initialized");
@@ -288,8 +373,8 @@ bool bsp_read_button(bsp_button_t button)
 
 float bsp_read_battery(void)
 {
-    if (adc_handle == NULL) {
-        ESP_LOGE(TAG, "Battery monitoring not initialized");
+    if (!adc_handle) {
+        ESP_LOGE(TAG, "Battery monitoring not initialized - adc_handle is NULL");
         return -1.0f;
     }
 
