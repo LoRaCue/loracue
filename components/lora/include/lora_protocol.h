@@ -37,6 +37,12 @@ extern "C" {
 #define LORA_FLAGS(tf) ((tf) & 0x0F)
 #define LORA_MAKE_TF(t, f) ((((t) & 0x0F) << 4) | ((f) & 0x0F))
 
+// Flag bits (Byte 1, bits [3:0])
+#define LORA_FLAG_ACK_REQUEST 0x01 // Bit 0: Request ACK from receiver
+#define LORA_FLAG_RESERVED_1  0x02 // Bit 1: Reserved
+#define LORA_FLAG_RESERVED_2  0x04 // Bit 2: Reserved
+#define LORA_FLAG_RESERVED_3  0x08 // Bit 3: Reserved
+
 /**
  * @brief LoRa command types
  */

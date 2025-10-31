@@ -170,7 +170,7 @@ esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_
 
     lora_payload_t payload;
     payload.version_slot                   = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
-    payload.type_flags                     = LORA_MAKE_TF(HID_TYPE_KEYBOARD, 0);
+    payload.type_flags                     = LORA_MAKE_TF(HID_TYPE_KEYBOARD, 0); // flags=0: no ACK requested
     payload.hid_report.keyboard.modifiers  = modifiers;
     payload.hid_report.keyboard.keycode[0] = keycode;
     payload.hid_report.keyboard.keycode[1] = 0;
@@ -193,7 +193,7 @@ esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifier
 
     lora_payload_t payload;
     payload.version_slot                   = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
-    payload.type_flags                     = LORA_MAKE_TF(HID_TYPE_KEYBOARD, 0);
+    payload.type_flags                     = LORA_MAKE_TF(HID_TYPE_KEYBOARD, LORA_FLAG_ACK_REQUEST);
     payload.hid_report.keyboard.modifiers  = modifiers;
     payload.hid_report.keyboard.keycode[0] = keycode;
     payload.hid_report.keyboard.keycode[1] = 0;
@@ -406,11 +406,15 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
     // Track received packets
     connection_stats.packets_received++;
 
-    // Send ACK for non-ACK packets
-    if (packet_data->command != CMD_ACK) {
-        esp_err_t ack_ret = lora_protocol_send_ack(packet_data->device_id, packet_data->sequence_num);
-        if (ack_ret != ESP_OK) {
-            ESP_LOGW(TAG, "Failed to send ACK: %s", esp_err_to_name(ack_ret));
+    // Send ACK only if requested (for non-ACK packets with ACK_REQUEST flag)
+    if (packet_data->command != CMD_ACK && packet_data->command == CMD_HID_REPORT && packet_data->payload_length >= 2) {
+        // Check ACK_REQUEST flag in type_flags byte
+        uint8_t flags = LORA_FLAGS(packet_data->payload[1]);
+        if (flags & LORA_FLAG_ACK_REQUEST) {
+            esp_err_t ack_ret = lora_protocol_send_ack(packet_data->device_id, packet_data->sequence_num);
+            if (ack_ret != ESP_OK) {
+                ESP_LOGW(TAG, "Failed to send ACK: %s", esp_err_to_name(ack_ret));
+            }
         }
     }
 
@@ -552,6 +556,8 @@ static void protocol_rx_task(void *arg)
         esp_err_t ret = lora_protocol_receive_packet(&packet_data, 1000);
         
         if (ret == ESP_OK) {
+            ESP_LOGD(TAG, "RX task: packet received, processing");
+            
             // Handle ACK packets - signal waiting send_reliable()
             if (packet_data.command == CMD_ACK && packet_data.payload_length == 2) {
                 uint16_t ack_seq = (packet_data.payload[0] << 8) | packet_data.payload[1];
@@ -561,6 +567,7 @@ static void protocol_rx_task(void *arg)
                     xEventGroupSetBits(ack_event_group, ACK_RECEIVED_BIT);
                     xSemaphoreGive(ack_mutex);
                 }
+                ESP_LOGD(TAG, "RX task: ACK processed, continuing");
                 continue;
             }
             
@@ -572,8 +579,10 @@ static void protocol_rx_task(void *arg)
             
             // Invoke RX callback
             if (rx_callback) {
+                ESP_LOGD(TAG, "RX task: invoking callback");
                 rx_callback(packet_data.device_id, packet_data.sequence_num, packet_data.command,
                            packet_data.payload, packet_data.payload_length, last_rssi, rx_callback_ctx);
+                ESP_LOGD(TAG, "RX task: callback completed");
             }
             
             // Check for state change
@@ -584,6 +593,8 @@ static void protocol_rx_task(void *arg)
                     state_callback(state, state_callback_ctx);
                 }
             }
+        } else if (ret != ESP_ERR_TIMEOUT) {
+            ESP_LOGD(TAG, "RX task: receive error: %s", esp_err_to_name(ret));
         }
         
         vTaskDelay(pdMS_TO_TICKS(5));
