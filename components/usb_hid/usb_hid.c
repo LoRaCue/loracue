@@ -116,15 +116,14 @@ esp_err_t usb_hid_init(void)
 {
     ESP_LOGI(TAG, "Initializing USB composite device (HID + CDC)");
 
-    tinyusb_config_t tusb_cfg = {.port       = TINYUSB_PORT_FULL_SPEED_0,
-                                 .phy        = {.skip_setup = false, .self_powered = false},
-                                 .task       = {.size = 4096, .priority = 5, .xCoreID = 0},
-                                 .descriptor = {.device            = usb_get_device_descriptor(),
-                                                .full_speed_config = usb_get_config_descriptor(),
-                                                .string            = usb_get_string_descriptors(),
-                                                .string_count      = 6},
-                                 .event_cb   = NULL,
-                                 .event_arg  = NULL};
+    // esp_tinyusb 1.7.6+ API
+    tinyusb_config_t tusb_cfg = {
+        .device_descriptor = usb_get_device_descriptor(),
+        .string_descriptor = usb_get_string_descriptors(),
+        .string_descriptor_count = 6,
+        .external_phy = false,
+        .configuration_descriptor = usb_get_config_descriptor()
+    };
 
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 

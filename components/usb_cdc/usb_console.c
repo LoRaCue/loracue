@@ -6,7 +6,7 @@
 #include "usb_console.h"
 #include "esp_log.h"
 #include "tinyusb.h"
-#include "tinyusb_cdc_acm.h"
+#include "tusb_cdc_acm.h"  // Renamed in esp_tinyusb 1.7.6+
 #include "driver/gpio.h"
 #include <stdarg.h>
 #include <stdio.h>

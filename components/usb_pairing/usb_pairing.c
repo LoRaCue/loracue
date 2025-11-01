@@ -166,12 +166,14 @@ static esp_err_t switch_to_device_mode(void)
 
     usb_host_uninstall();
 
-    tinyusb_config_t tusb_cfg = {.port       = TINYUSB_PORT_FULL_SPEED_0,
-                                 .phy        = {.skip_setup = false, .self_powered = false},
-                                 .task       = {.size = 4096, .priority = 5, .xCoreID = 0},
-                                 .descriptor = {0},
-                                 .event_cb   = NULL,
-                                 .event_arg  = NULL};
+    // esp_tinyusb 1.7.6+ API
+    tinyusb_config_t tusb_cfg = {
+        .device_descriptor = NULL,  // Use default
+        .string_descriptor = NULL,  // Use default
+        .string_descriptor_count = 0,
+        .external_phy = false,
+        .configuration_descriptor = NULL  // Use default
+    };
 
     return tinyusb_driver_install(&tusb_cfg);
 }
