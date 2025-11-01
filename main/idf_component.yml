@@ -1,4 +1,5 @@
 dependencies:
   espressif/ble_ota: "^0.1.12"
-  lvgl/lvgl: "^9.2.0"
+  espressif/esp_tinyusb: "^1.4.4"
   joltwallet/littlefs: "^1.14.8"
+  lvgl/lvgl: "^9.2.0"
