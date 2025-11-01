@@ -202,3 +202,11 @@ void ui_rich_update_status(const ui_rich_status_t *status)
         lv_obj_add_flag(icon_lora, LV_OBJ_FLAG_HIDDEN);
     }
 }
+
+void ui_rich_show_ota_update(void)
+{
+    // E-paper is too slow for progress updates
+    // Just show static "Updating..." message
+    // Implementation depends on LVGL setup
+    // TODO: Add LVGL label with "Firmware Update in Progress"
+}

@@ -1,4 +1,5 @@
 #include "ui_screen_controller.h"
+extern void ui_screen_ota_update(void);
 #include "bluetooth_screen.h"
 #include "boot_screen.h"
 #include "brightness_screen.h"
@@ -116,6 +117,10 @@ void ui_screen_controller_set(ui_mini_screen_t screen, const ui_status_t *status
 
         case OLED_SCREEN_FACTORY_RESET:
             factory_reset_screen_draw();
+            break;
+
+        case OLED_SCREEN_OTA_UPDATE:
+            ui_screen_ota_update();
             break;
 
         case OLED_SCREEN_DEVICE_INFO:
