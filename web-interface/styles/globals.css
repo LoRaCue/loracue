@@ -1,6 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@variant dark (&:is(.dark *));
+
+@theme {
+  --color-primary-50: #f0f9ff;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-900: #1e3a8a;
+}
 
 @layer base {
   html {
@@ -8,24 +16,82 @@
   }
   
   body {
-    @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300;
+    @apply bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300;
   }
 }
 
-@layer components {
-  .card {
-    @apply bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-300;
+@utility card {
+  background-color: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  border: 1px solid rgb(229 231 235);
+  transition: all 0.3s;
+  
+  &:is(.dark *) {
+    background-color: rgb(31 41 55);
+    border-color: rgb(55 65 81);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+}
+
+@utility btn-primary {
+  background-color: var(--color-primary-600);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  
+  &:hover {
+    background-color: var(--color-primary-700);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  }
+}
+
+@utility btn-secondary {
+  background-color: white;
+  color: rgb(55 65 81);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  border: 1px solid rgb(209 213 219);
+  transition: all 0.2s;
+  
+  &:hover {
+    background-color: rgb(249 250 251);
+    border-color: rgb(156 163 175);
   }
   
-  .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg;
+  &:is(.dark *) {
+    background-color: rgb(55 65 81);
+    color: rgb(243 244 246);
+    border-color: rgb(75 85 99);
+    
+    &:hover {
+      background-color: rgb(75 85 99);
+    }
+  }
+}
+
+@utility input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(209 213 219);
+  background-color: white;
+  color: rgb(17 24 39);
+  transition: all 0.2s;
+  
+  &:focus {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+    border-color: transparent;
   }
   
-  .btn-secondary {
-    @apply bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 px-6 py-3 rounded-lg font-medium transition-all duration-200;
-  }
-  
-  .input {
-    @apply w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
+  &:is(.dark *) {
+    border-color: rgb(75 85 99);
+    background-color: rgb(31 41 55);
+    color: rgb(243 244 246);
   }
 }

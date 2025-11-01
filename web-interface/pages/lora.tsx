@@ -68,11 +68,10 @@ export default function LoRaPage() {
     fetch('/api/lora/bands')
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => {
-        console.log('Bands loaded:', data)
+
         setBands(data)
       })
       .catch((err) => {
-        console.error('Failed to load bands:', err)
         // Fallback to default bands if API not available
         setBands([
           { id: 'HW_433', name: '433 MHz Band', center_khz: 433000, min_khz: 430000, max_khz: 440000, max_power_dbm: 10 },
