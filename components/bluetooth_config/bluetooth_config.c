@@ -7,7 +7,8 @@
  * - Nordic UART Service (NUS) for command/response communication
  * - Device Information Service (DIS) for device metadata
  * - Custom OTA Service for secure firmware updates
- * - BLE 4.2+ security with passkey pairing
+ * - BLE 5.0 with 2M PHY for faster OTA transfers
+ * - LE Secure Connections (BLE 4.2+) with passkey pairing
  *
  * Architecture:
  * - Thread-safe operation with FreeRTOS primitives
@@ -76,7 +77,8 @@ bool bluetooth_config_get_passkey(uint32_t *passkey)
 #include "services/gatt/ble_svc_gatt.h"
 
 // Application Headers
-#include "ble_ota.h"
+#include "esp_ble_ota.h"
+#include "ble_ota_handler.h"
 #include "commands.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -677,7 +679,7 @@ static int ble_dis_access(uint16_t conn_handle, uint16_t attr_handle,
  * Defines all GATT services and characteristics for the device:
  * - Nordic UART Service (NUS) for command/response
  * - Device Information Service (DIS) for device metadata
- * - OTA Service (handled separately in ble_ota.c)
+ * - OTA Service (provided by espressif/ble_ota component)
  */
 static const struct ble_gatt_svc_def gatt_services[] = {
     {
@@ -802,6 +804,19 @@ static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
                     ESP_LOGW(TAG, "Failed to update connection parameters: rc=%d", rc);
                 }
                 
+#if CONFIG_BT_NIMBLE_PHY_2M
+                // Request 2M PHY for faster OTA transfers (BLE 5.0)
+                rc = ble_gap_set_prefered_le_phy(event->connect.conn_handle,
+                                                  BLE_GAP_LE_PHY_2M_MASK,
+                                                  BLE_GAP_LE_PHY_2M_MASK,
+                                                  BLE_GAP_LE_PHY_CODED_ANY);
+                if (rc == 0) {
+                    ESP_LOGI(TAG, "Requested 2M PHY for faster transfers");
+                } else {
+                    ESP_LOGD(TAG, "2M PHY request failed (peer may not support BLE 5.0): rc=%d", rc);
+                }
+#endif
+                
             } else {
                 // Connection failed
                 ESP_LOGW(TAG, "Connection failed: status=%d", event->connect.status);
@@ -827,9 +842,6 @@ static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
             
             // Clear RX buffer
             g_uart_rx_buffer_len = 0;
-            
-            // Notify OTA service
-            ble_ota_handle_disconnect();
             
             // Restart advertising
             ESP_LOGI(TAG, "Restarting advertising...");
@@ -1041,10 +1053,6 @@ static esp_err_t ble_services_init(void)
     ESP_LOGI(TAG, "GATT services registered successfully");
     ESP_LOGI(TAG, "  NUS TX handle: %d", g_nus_tx_handle);
     ESP_LOGI(TAG, "  NUS RX handle: %d", g_nus_rx_handle);
-    
-    // Initialize OTA service
-    ESP_LOGI(TAG, "Initializing OTA service...");
-    ble_ota_service_init(0);  // Connection handle set on connect
     
     return ESP_OK;
 }
@@ -1303,6 +1311,13 @@ esp_err_t bluetooth_config_init(void)
     ESP_LOGI(TAG, "  Bluetooth Initialization Complete");
     ESP_LOGI(TAG, "========================================");
     ESP_LOGI(TAG, "Waiting for NimBLE stack synchronization...");
+    
+    // Initialize OTA handler
+    ESP_LOGI(TAG, "Initializing BLE OTA handler...");
+    if (ble_ota_handler_init() != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize OTA handler");
+        return ESP_FAIL;
+    }
     
     return ESP_OK;
 }
