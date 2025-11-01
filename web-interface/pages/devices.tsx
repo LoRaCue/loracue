@@ -87,7 +87,6 @@ export default function DevicesPage() {
       loadDevices()
     } catch (error) {
       toast.error('Failed to delete device')
-      console.error('Failed to delete device:', error)
     }
   }
 
@@ -114,7 +113,6 @@ export default function DevicesPage() {
       loadDevices()
     } catch (error) {
       toast.error('Failed to save device')
-      console.error('Failed to save device:', error)
     }
   }
 

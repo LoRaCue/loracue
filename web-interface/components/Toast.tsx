@@ -36,20 +36,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       error: (msg) => addToast('error', msg)
     }}>
       {children}
-      <div className="fixed bottom-4 right-4 space-y-2 z-50">
+      <div className="fixed bottom-4 right-4 space-y-2 z-50" aria-live="polite" aria-atomic="true">
         {toasts.map(toast => (
           <div
             key={toast.id}
+            role="alert"
             className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg ${
               toast.type === 'success' 
                 ? 'bg-green-500 text-white' 
                 : 'bg-red-500 text-white'
             }`}
           >
-            {toast.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+            {toast.type === 'success' ? <CheckCircle size={20} aria-hidden="true" /> : <AlertCircle size={20} aria-hidden="true" />}
             <span>{toast.message}</span>
-            <button onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}>
-              <X size={16} />
+            <button 
+              onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+              aria-label="Dismiss notification"
+              className="hover:opacity-80 transition-opacity"
+            >
+              <X size={16} aria-hidden="true" />
             </button>
           </div>
         ))}
