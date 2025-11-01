@@ -166,9 +166,6 @@ esp_err_t ui_mini_update_ota_progress(uint8_t progress)
 {
     if (progress > 100) progress = 100;
     g_ota_progress = progress;
-    
-    // Force immediate redraw
-    xSemaphoreGive(g_ui_update_sem);
     return ESP_OK;
 }
 
