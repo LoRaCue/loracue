@@ -1,3 +1,24 @@
+/**
+ * @file bluetooth_config.c
+ * @brief Enterprise-grade Bluetooth LE configuration service using NimBLE stack
+ *
+ * This module provides a comprehensive BLE interface for device configuration,
+ * firmware updates, and command execution. It implements:
+ * - Nordic UART Service (NUS) for command/response communication
+ * - Device Information Service (DIS) for device metadata
+ * - Custom OTA Service for secure firmware updates
+ * - BLE 4.2+ security with passkey pairing
+ *
+ * Architecture:
+ * - Thread-safe operation with FreeRTOS primitives
+ * - Queue-based command processing for non-blocking operation
+ * - Comprehensive error handling and recovery
+ * - Extensive logging for debugging and monitoring
+ *
+ * @copyright Copyright (c) 2025 LoRaCue Project
+ * @license GPL-3.0
+ */
+
 #include "bluetooth_config.h"
 #include "bsp.h"
 #include "esp_log.h"
@@ -6,8 +27,10 @@
 #include <string.h>
 
 #ifdef SIMULATOR_BUILD
-// Simulator stubs - Bluetooth not available
-static const char *TAG = "BT_CONFIG";
+//==============================================================================
+// SIMULATOR STUB IMPLEMENTATION
+//==============================================================================
+static const char *TAG = "bluetooth_config";
 
 esp_err_t bluetooth_config_init(void)
 {
@@ -17,6 +40,7 @@ esp_err_t bluetooth_config_init(void)
 
 esp_err_t bluetooth_config_set_enabled(bool enabled)
 {
+    (void)enabled;
     return ESP_OK;
 }
 
@@ -37,707 +61,1262 @@ bool bluetooth_config_get_passkey(uint32_t *passkey)
 }
 
 #else
-// Hardware implementation
+//==============================================================================
+// NIMBLE HARDWARE IMPLEMENTATION
+//==============================================================================
+
+// NimBLE Stack Headers
+#include "host/ble_gap.h"
+#include "host/ble_gatt.h"
+#include "host/ble_hs.h"
+#include "host/ble_uuid.h"
+#include "nimble/nimble_port.h"
+#include "nimble/nimble_port_freertos.h"
+#include "services/gap/ble_svc_gap.h"
+#include "services/gatt/ble_svc_gatt.h"
+
+// Application Headers
 #include "ble_ota.h"
 #include "commands.h"
-#include "esp_bt.h"
-#include "esp_bt_main.h"
-#include "esp_gap_ble_api.h"
-#include "esp_gatt_common_api.h"
-#include "esp_gatts_api.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "nvs_flash.h"
-#include <string.h>
 
-static const char *TAG = "BT_CONFIG";
+//==============================================================================
+// CONSTANTS AND CONFIGURATION
+//==============================================================================
 
-// Nordic UART Service UUIDs (128-bit)
-// Base UUID: 6E400001-B5A3-F393-E0A9-E50E24DCCA9E
-static const uint8_t UART_SERVICE_UUID[16] = {0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
-                                              0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E};
-static const uint8_t UART_TX_CHAR_UUID[16] = {0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
-                                              0x93, 0xF3, 0xA3, 0xB5, 0x03, 0x00, 0x40, 0x6E};
-static const uint8_t UART_RX_CHAR_UUID[16] = {0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
-                                              0x93, 0xF3, 0xA3, 0xB5, 0x02, 0x00, 0x40, 0x6E};
+static const char *TAG = "bluetooth_config";
+
+// Nordic UART Service (NUS) UUIDs - 128-bit custom UUIDs
+// Base: 6E400001-B5A3-F393-E0A9-E50E24DCCA9E
+static const ble_uuid128_t BLE_UUID_NUS_SERVICE = 
+    BLE_UUID128_INIT(0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
+                     0x93, 0xF3, 0xA3, 0xB5, 0x01, 0x00, 0x40, 0x6E);
+
+static const ble_uuid128_t BLE_UUID_NUS_TX_CHAR = 
+    BLE_UUID128_INIT(0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
+                     0x93, 0xF3, 0xA3, 0xB5, 0x03, 0x00, 0x40, 0x6E);
+
+static const ble_uuid128_t BLE_UUID_NUS_RX_CHAR = 
+    BLE_UUID128_INIT(0x9E, 0xCA, 0xDC, 0x24, 0x0E, 0xE5, 0xA9, 0xE0,
+                     0x93, 0xF3, 0xA3, 0xB5, 0x02, 0x00, 0x40, 0x6E);
 
 // Device Information Service (DIS) - Standard 16-bit UUIDs
-#define DIS_SERVICE_UUID 0x180A
-#define DIS_MANUFACTURER_UUID 0x2A29
-#define DIS_MODEL_NUMBER_UUID 0x2A24
-#define DIS_FIRMWARE_REVISION_UUID 0x2A26
-#define DIS_HARDWARE_REVISION_UUID 0x2A27
+#define BLE_UUID_DIS_SERVICE                0x180A
+#define BLE_UUID_DIS_MANUFACTURER_NAME      0x2A29
+#define BLE_UUID_DIS_MODEL_NUMBER           0x2A24
+#define BLE_UUID_DIS_FIRMWARE_REVISION      0x2A26
+#define BLE_UUID_DIS_HARDWARE_REVISION      0x2A27
 
-#define GATTS_APP_ID 0
-#define GATTS_DIS_APP_ID 1
-#define GATTS_OTA_APP_ID 2
-#define GATTS_NUM_HANDLE 8
-#define GATTS_DIS_NUM_HANDLE 12
-#define GATTS_OTA_NUM_HANDLE 10
+// BLE Configuration
+#define BLE_DEVICE_NAME_PREFIX              "LoRaCue"
+#define BLE_DEVICE_NAME_MAX_LEN             31  // BLE name limit
+#define BLE_ADV_INTERVAL_MIN                0x0020  // 20ms
+#define BLE_ADV_INTERVAL_MAX                0x0040  // 40ms
+#define BLE_CONN_INTERVAL_MIN               0x0006  // 7.5ms
+#define BLE_CONN_INTERVAL_MAX               0x0010  // 20ms
+#define BLE_CONN_LATENCY                    0
+#define BLE_CONN_SUPERVISION_TIMEOUT        0x0100  // 1.6s
+#define BLE_MTU_SIZE                        512     // Preferred MTU
 
-// BLE UART Configuration
-#define BLE_UART_RX_QUEUE_SIZE 10
-#define BLE_UART_TASK_STACK_SIZE 4096
-#define BLE_UART_TASK_PRIORITY 5
-#define BLE_UART_CMD_MAX_LENGTH 2048
-#define BLE_UART_MTU_SIZE 512  // Default MTU, updated on MTU exchange
+// UART Service Configuration
+#define BLE_UART_RX_QUEUE_SIZE              10
+#define BLE_UART_TASK_STACK_SIZE            4096
+#define BLE_UART_TASK_PRIORITY              5
+#define BLE_UART_CMD_MAX_LENGTH             2048
+#define BLE_UART_RX_BUFFER_SIZE             2048
 
+// Security Configuration
+#define BLE_SM_IO_CAP                       BLE_HS_IO_DISPLAY_ONLY
+#define BLE_SM_BONDING                      1
+#define BLE_SM_MITM                         1
+#define BLE_SM_SC                           1  // Secure Connections
+#define BLE_SM_KEYPRESS                     0
+#define BLE_SM_OOB_FLAG                     0
+
+// Timeouts and Retries
+#define BLE_STATE_MUTEX_TIMEOUT_MS          100
+#define BLE_NOTIFICATION_TIMEOUT_MS         1000
+#define BLE_MAX_NOTIFICATION_RETRIES        3
+
+//==============================================================================
+// TYPE DEFINITIONS
+//==============================================================================
+
+/**
+ * @brief BLE UART message structure for queue-based command processing
+ */
 typedef struct {
-    char data[BLE_UART_CMD_MAX_LENGTH];
-    size_t len;
+    char data[BLE_UART_CMD_MAX_LENGTH];  ///< Command data
+    size_t len;                           ///< Command length
 } ble_uart_msg_t;
 
-static bool ble_enabled         = false;
-static bool ble_connected       = false;
-static bool notifications_enabled = false;
-static uint16_t conn_id         = 0;
-static uint16_t gatts_if_global = 0;
-static uint16_t tx_char_handle  = 0;
-static uint16_t rx_char_handle  = 0;
-static uint16_t current_mtu     = 23;  // Default BLE MTU
+/**
+ * @brief BLE connection state structure
+ */
+typedef struct {
+    bool connected;                       ///< Connection active
+    bool notifications_enabled;           ///< TX notifications enabled
+    uint16_t conn_handle;                 ///< Connection handle
+    uint16_t mtu;                         ///< Negotiated MTU size
+    uint8_t addr[6];                      ///< Peer address
+    uint8_t addr_type;                    ///< Peer address type
+} ble_conn_state_t;
 
-static QueueHandle_t ble_uart_queue = NULL;
-static TaskHandle_t ble_uart_task_handle = NULL;
-static SemaphoreHandle_t ble_state_mutex = NULL;
+/**
+ * @brief BLE pairing state structure
+ */
+typedef struct {
+    bool in_progress;                     ///< Pairing active
+    uint32_t passkey;                     ///< 6-digit passkey
+    uint16_t conn_handle;                 ///< Connection being paired
+} ble_pairing_state_t;
 
-// DIS service handles
-static esp_gatt_if_t dis_gatts_if       = 0;
-static uint16_t dis_service_handle      = 0;
-static uint16_t dis_manufacturer_handle = 0;
-static uint16_t dis_model_handle        = 0;
-static uint16_t dis_firmware_handle     = 0;
-static uint16_t dis_hardware_handle     = 0;
+//==============================================================================
+// GLOBAL STATE
+//==============================================================================
 
-// OTA service handles (non-static for ble_ota.c access)
-uint16_t ota_service_handle  = 0;
-uint16_t ota_control_handle  = 0;
-uint16_t ota_data_handle     = 0;
-uint16_t ota_progress_handle = 0;
-esp_gatt_if_t ota_gatts_if   = 0;
+// Module state
+static bool g_ble_initialized = false;
+static bool g_ble_enabled = false;
+
+// Connection state
+static ble_conn_state_t g_conn_state = {0};
+static SemaphoreHandle_t g_conn_state_mutex = NULL;
 
 // Pairing state
-static bool pairing_in_progress = false;
-static uint32_t pairing_passkey = 0;
+static ble_pairing_state_t g_pairing_state = {0};
+static SemaphoreHandle_t g_pairing_state_mutex = NULL;
+
+// UART service state
+static QueueHandle_t g_uart_rx_queue = NULL;
+static TaskHandle_t g_uart_task_handle = NULL;
+static char g_uart_rx_buffer[BLE_UART_RX_BUFFER_SIZE];
+static size_t g_uart_rx_buffer_len = 0;
 
 // Service handles
-static uint16_t service_handle = 0;
+static uint16_t g_nus_tx_handle = 0;
+static uint16_t g_nus_rx_handle = 0;
 
-static void send_response(const char *response);
+//==============================================================================
+// FORWARD DECLARATIONS
+//==============================================================================
 
+// Core BLE callbacks
+static int ble_gap_event_handler(struct ble_gap_event *event, void *arg);
+static int ble_gatt_access_handler(uint16_t conn_handle, uint16_t attr_handle,
+                                   struct ble_gatt_access_ctxt *ctxt, void *arg);
+
+// Service initialization
+static esp_err_t ble_services_init(void);
+static esp_err_t ble_advertising_start(void);
+
+// UART service
+static void ble_uart_task(void *arg);
+static void ble_uart_send_response(const char *response);
+static esp_err_t ble_uart_send_notification(const uint8_t *data, size_t len);
+
+// Utility functions
+static void ble_print_addr(const uint8_t *addr);
+static const char *ble_gap_event_name(int event_type);
+static const char *ble_sm_io_cap_name(uint8_t io_cap);
+
+//==============================================================================
+// UTILITY FUNCTIONS
+//==============================================================================
+
+/**
+ * @brief Print BLE address in human-readable format
+ * @param addr 6-byte BLE address
+ */
+static void ble_print_addr(const uint8_t *addr)
+{
+    if (!addr) {
+        ESP_LOGW(TAG, "NULL address");
+        return;
+    }
+    ESP_LOGI(TAG, "Address: %02X:%02X:%02X:%02X:%02X:%02X",
+             addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
+}
+
+/**
+ * @brief Get human-readable name for GAP event type
+ * @param event_type GAP event type
+ * @return Event name string
+ */
+static const char *ble_gap_event_name(int event_type)
+{
+    switch (event_type) {
+        case BLE_GAP_EVENT_CONNECT:             return "CONNECT";
+        case BLE_GAP_EVENT_DISCONNECT:          return "DISCONNECT";
+        case BLE_GAP_EVENT_CONN_UPDATE:         return "CONN_UPDATE";
+        case BLE_GAP_EVENT_CONN_UPDATE_REQ:     return "CONN_UPDATE_REQ";
+        case BLE_GAP_EVENT_L2CAP_UPDATE_REQ:    return "L2CAP_UPDATE_REQ";
+        case BLE_GAP_EVENT_TERM_FAILURE:        return "TERM_FAILURE";
+        case BLE_GAP_EVENT_DISC:                return "DISC";
+        case BLE_GAP_EVENT_DISC_COMPLETE:       return "DISC_COMPLETE";
+        case BLE_GAP_EVENT_ADV_COMPLETE:        return "ADV_COMPLETE";
+        case BLE_GAP_EVENT_ENC_CHANGE:          return "ENC_CHANGE";
+        case BLE_GAP_EVENT_PASSKEY_ACTION:      return "PASSKEY_ACTION";
+        case BLE_GAP_EVENT_NOTIFY_RX:           return "NOTIFY_RX";
+        case BLE_GAP_EVENT_NOTIFY_TX:           return "NOTIFY_TX";
+        case BLE_GAP_EVENT_SUBSCRIBE:           return "SUBSCRIBE";
+        case BLE_GAP_EVENT_MTU:                 return "MTU";
+        case BLE_GAP_EVENT_IDENTITY_RESOLVED:   return "IDENTITY_RESOLVED";
+        case BLE_GAP_EVENT_REPEAT_PAIRING:      return "REPEAT_PAIRING";
+        case BLE_GAP_EVENT_PHY_UPDATE_COMPLETE: return "PHY_UPDATE_COMPLETE";
+        default:                                 return "UNKNOWN";
+    }
+}
+
+/**
+ * @brief Get human-readable name for SM I/O capability
+ * @param io_cap I/O capability value
+ * @return Capability name string
+ */
+static const char *ble_sm_io_cap_name(uint8_t io_cap)
+{
+    switch (io_cap) {
+        case BLE_HS_IO_DISPLAY_ONLY:      return "DISPLAY_ONLY";
+        case BLE_HS_IO_DISPLAY_YESNO:     return "DISPLAY_YESNO";
+        case BLE_HS_IO_KEYBOARD_ONLY:     return "KEYBOARD_ONLY";
+        case BLE_HS_IO_NO_INPUT_OUTPUT:   return "NO_INPUT_OUTPUT";
+        case BLE_HS_IO_KEYBOARD_DISPLAY:  return "KEYBOARD_DISPLAY";
+        default:                          return "UNKNOWN";
+    }
+}
+
+/**
+ * @brief Safely acquire connection state mutex
+ * @return true if mutex acquired, false on timeout
+ */
+static bool ble_conn_state_lock(void)
+{
+    if (!g_conn_state_mutex) {
+        ESP_LOGE(TAG, "Connection state mutex not initialized");
+        return false;
+    }
+    
+    if (xSemaphoreTake(g_conn_state_mutex, pdMS_TO_TICKS(BLE_STATE_MUTEX_TIMEOUT_MS)) != pdTRUE) {
+        ESP_LOGW(TAG, "Failed to acquire connection state mutex (timeout)");
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * @brief Release connection state mutex
+ */
+static void ble_conn_state_unlock(void)
+{
+    if (g_conn_state_mutex) {
+        xSemaphoreGive(g_conn_state_mutex);
+    }
+}
+
+/**
+ * @brief Safely acquire pairing state mutex
+ * @return true if mutex acquired, false on timeout
+ */
+static bool ble_pairing_state_lock(void)
+{
+    if (!g_pairing_state_mutex) {
+        ESP_LOGE(TAG, "Pairing state mutex not initialized");
+        return false;
+    }
+    
+    if (xSemaphoreTake(g_pairing_state_mutex, pdMS_TO_TICKS(BLE_STATE_MUTEX_TIMEOUT_MS)) != pdTRUE) {
+        ESP_LOGW(TAG, "Failed to acquire pairing state mutex (timeout)");
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * @brief Release pairing state mutex
+ */
+static void ble_pairing_state_unlock(void)
+{
+    if (g_pairing_state_mutex) {
+        xSemaphoreGive(g_pairing_state_mutex);
+    }
+}
+
+
+//==============================================================================
+// UART SERVICE IMPLEMENTATION
+//==============================================================================
+
+/**
+ * @brief UART RX task - processes commands from BLE queue
+ * 
+ * This task runs continuously, waiting for commands from the BLE UART RX queue.
+ * Commands are executed via the commands module, with responses sent back over BLE.
+ * 
+ * @param arg Unused task parameter
+ */
 static void ble_uart_task(void *arg)
 {
-    ESP_LOGI(TAG, "BLE UART task started");
+    (void)arg;
+    
+    ESP_LOGI(TAG, "BLE UART task started (stack=%d, priority=%d)",
+             BLE_UART_TASK_STACK_SIZE, BLE_UART_TASK_PRIORITY);
+    
     ble_uart_msg_t msg;
     
     while (1) {
-        if (xQueueReceive(ble_uart_queue, &msg, portMAX_DELAY) == pdTRUE) {
+        // Block waiting for commands
+        if (xQueueReceive(g_uart_rx_queue, &msg, portMAX_DELAY) == pdTRUE) {
+            // Null-terminate for safety
             msg.data[msg.len] = '\0';
-            ESP_LOGD(TAG, "Processing BLE command: %s", msg.data);
-            commands_execute(msg.data, send_response);
+            
+            ESP_LOGD(TAG, "Processing BLE command: '%s' (len=%zu)", msg.data, msg.len);
+            
+            // Execute command with BLE response callback
+            commands_execute(msg.data, ble_uart_send_response);
         }
     }
 }
 
-static void send_response(const char *response)
+/**
+ * @brief Send response string over BLE UART TX characteristic
+ * 
+ * This function is called by the commands module to send responses back to the
+ * BLE client. It automatically appends a newline and handles MTU fragmentation.
+ * 
+ * @param response Response string (null-terminated)
+ */
+static void ble_uart_send_response(const char *response)
 {
     if (!response) {
+        ESP_LOGW(TAG, "Attempted to send NULL response");
         return;
     }
-
-    // Take mutex to protect global state
-    if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
-        ESP_LOGW(TAG, "Failed to acquire mutex for send_response");
-        return;
-    }
-
-    if (!ble_connected || !notifications_enabled || tx_char_handle == 0) {
-        ESP_LOGD(TAG, "Cannot send response - not ready (connected=%d, notif=%d, handle=%d)",
-                 ble_connected, notifications_enabled, tx_char_handle);
-        xSemaphoreGive(ble_state_mutex);
-        return;
-    }
-
-    // Combine response + newline in single packet
-    size_t resp_len = strlen(response);
-    size_t total_len = resp_len + 1;  // +1 for newline
     
-    // Respect MTU size
-    if (total_len > current_mtu - 3) {  // -3 for ATT header
-        total_len = current_mtu - 3;
+    size_t resp_len = strlen(response);
+    if (resp_len == 0) {
+        ESP_LOGD(TAG, "Empty response, skipping");
+        return;
+    }
+    
+    // Check connection state
+    if (!ble_conn_state_lock()) {
+        ESP_LOGW(TAG, "Cannot send response - failed to acquire state lock");
+        return;
+    }
+    
+    bool can_send = g_conn_state.connected && g_conn_state.notifications_enabled;
+    uint16_t mtu = g_conn_state.mtu;
+    
+    ble_conn_state_unlock();
+    
+    if (!can_send) {
+        ESP_LOGD(TAG, "Cannot send response - not ready (connected=%d, notif=%d)",
+                 g_conn_state.connected, g_conn_state.notifications_enabled);
+        return;
+    }
+    
+    // Allocate buffer for response + newline
+    size_t total_len = resp_len + 1;  // +1 for '\n'
+    size_t max_payload = mtu - 3;     // -3 for ATT header
+    
+    if (total_len > max_payload) {
+        ESP_LOGW(TAG, "Response too large (%zu bytes), truncating to %zu bytes",
+                 total_len, max_payload);
+        total_len = max_payload;
         resp_len = total_len - 1;
     }
     
-    char *buffer = malloc(total_len);
-    if (buffer) {
-        memcpy(buffer, response, resp_len);
-        buffer[resp_len] = '\n';
-        
-        esp_err_t ret = esp_ble_gatts_send_indicate(gatts_if_global, conn_id, tx_char_handle, 
-                                                     total_len, (uint8_t *)buffer, false);
-        if (ret != ESP_OK) {
-            ESP_LOGW(TAG, "Failed to send notification: %s", esp_err_to_name(ret));
-        }
-        
-        free(buffer);
+    uint8_t *buffer = malloc(total_len);
+    if (!buffer) {
+        ESP_LOGE(TAG, "Failed to allocate %zu bytes for response", total_len);
+        return;
     }
     
-    xSemaphoreGive(ble_state_mutex);
-}
-
-static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
-{
-    switch (event) {
-        case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
-            esp_ble_gap_start_advertising(&(esp_ble_adv_params_t){
-                .adv_int_min       = 0x20,
-                .adv_int_max       = 0x40,
-                .adv_type          = ADV_TYPE_IND,
-                .own_addr_type     = BLE_ADDR_TYPE_PUBLIC,
-                .channel_map       = ADV_CHNL_ALL,
-                .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
-            });
-            break;
-
-        case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
-            if (param->adv_start_cmpl.status == ESP_BT_STATUS_SUCCESS) {
-                ESP_LOGI(TAG, "Advertising started");
-            } else {
-                ESP_LOGE(TAG, "Advertising start failed: status %d", param->adv_start_cmpl.status);
-            }
-            break;
-
-        case ESP_GAP_BLE_ADV_STOP_COMPLETE_EVT:
-            if (param->adv_stop_cmpl.status == ESP_BT_STATUS_SUCCESS) {
-                ESP_LOGI(TAG, "Advertising stopped");
-            } else {
-                ESP_LOGE(TAG, "Advertising stop failed: status %d", param->adv_stop_cmpl.status);
-            }
-            break;
-
-        case ESP_GAP_BLE_PASSKEY_NOTIF_EVT:
-            pairing_passkey     = param->ble_security.key_notif.passkey;
-            pairing_in_progress = true;
-            ESP_LOGI(TAG, "Pairing passkey: %06" PRIu32, pairing_passkey);
-            break;
-
-        case ESP_GAP_BLE_AUTH_CMPL_EVT:
-            pairing_in_progress = false;
-            if (param->ble_security.auth_cmpl.success) {
-                ESP_LOGI(TAG, "Pairing successful");
-            } else {
-                ESP_LOGW(TAG, "Pairing failed");
-            }
-            break;
-
-        default:
-            break;
+    memcpy(buffer, response, resp_len);
+    buffer[resp_len] = '\n';
+    
+    esp_err_t ret = ble_uart_send_notification(buffer, total_len);
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to send response notification: %s", esp_err_to_name(ret));
     }
+    
+    free(buffer);
 }
 
-static void ota_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
+/**
+ * @brief Send notification over BLE UART TX characteristic
+ * 
+ * Low-level function to send data via BLE notification. Handles retries and
+ * error recovery.
+ * 
+ * @param data Data buffer to send
+ * @param len Data length
+ * @return ESP_OK on success, error code otherwise
+ */
+static esp_err_t ble_uart_send_notification(const uint8_t *data, size_t len)
 {
-    switch (event) {
-        case ESP_GATTS_REG_EVT:
-            ota_gatts_if = gatts_if;
-
-            // Create OTA service (128-bit UUID)
-            esp_gatt_srvc_id_t ota_service_id = {
-                .is_primary  = true,
-                .id.inst_id  = 0x00,
-                .id.uuid.len = ESP_UUID_LEN_128,
-            };
-            memcpy(ota_service_id.id.uuid.uuid.uuid128, OTA_SERVICE_UUID, 16);
-            esp_ble_gatts_create_service(gatts_if, &ota_service_id, GATTS_OTA_NUM_HANDLE);
-            break;
-
-        case ESP_GATTS_CREATE_EVT:
-            ota_service_handle = param->create.service_handle;
-            esp_ble_gatts_start_service(ota_service_handle);
-
-            // Add Control characteristic (Write + Indicate)
-            esp_bt_uuid_t control_uuid = {
-                .len = ESP_UUID_LEN_128,
-            };
-            memcpy(control_uuid.uuid.uuid128, OTA_CONTROL_CHAR_UUID, 16);
-            esp_ble_gatts_add_char(ota_service_handle, &control_uuid,
-                                   ESP_GATT_PERM_READ_ENCRYPTED | ESP_GATT_PERM_WRITE_ENCRYPTED,
-                                   ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_INDICATE, NULL, NULL);
-            break;
-
-        case ESP_GATTS_ADD_CHAR_EVT:
-            if (memcmp(param->add_char.char_uuid.uuid.uuid128, OTA_CONTROL_CHAR_UUID, 16) == 0) {
-                ota_control_handle = param->add_char.attr_handle;
-
-                // Add Data characteristic (Write without response)
-                esp_bt_uuid_t data_uuid = {
-                    .len = ESP_UUID_LEN_128,
-                };
-                memcpy(data_uuid.uuid.uuid128, OTA_DATA_CHAR_UUID, 16);
-                esp_ble_gatts_add_char(ota_service_handle, &data_uuid, ESP_GATT_PERM_WRITE_ENCRYPTED,
-                                       ESP_GATT_CHAR_PROP_BIT_WRITE_NR, NULL, NULL);
-            } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, OTA_DATA_CHAR_UUID, 16) == 0) {
-                ota_data_handle = param->add_char.attr_handle;
-
-                // Add Progress characteristic (Read + Notify)
-                esp_bt_uuid_t progress_uuid = {
-                    .len = ESP_UUID_LEN_128,
-                };
-                memcpy(progress_uuid.uuid.uuid128, OTA_PROGRESS_CHAR_UUID, 16);
-                esp_ble_gatts_add_char(ota_service_handle, &progress_uuid, ESP_GATT_PERM_READ_ENCRYPTED,
-                                       ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY, NULL, NULL);
-            } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, OTA_PROGRESS_CHAR_UUID, 16) == 0) {
-                ota_progress_handle = param->add_char.attr_handle;
-                ESP_LOGI(TAG, "OTA service ready (UUID: 49589A79-7CC5-465D-BFF1-FE37C5065000)");
-            }
-            break;
-
-        case ESP_GATTS_WRITE_EVT:
-            if (param->write.handle == ota_control_handle) {
-                ble_ota_handle_control_write(param->write.value, param->write.len);
-            } else if (param->write.handle == ota_data_handle) {
-                ble_ota_handle_data_write(param->write.value, param->write.len);
-            }
-            break;
-
-        default:
-            break;
+    if (!data || len == 0) {
+        return ESP_ERR_INVALID_ARG;
     }
+    
+    if (!ble_conn_state_lock()) {
+        return ESP_ERR_TIMEOUT;
+    }
+    
+    uint16_t conn_handle = g_conn_state.conn_handle;
+    bool connected = g_conn_state.connected;
+    
+    ble_conn_state_unlock();
+    
+    if (!connected) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    
+    // Prepare notification
+    struct os_mbuf *om = ble_hs_mbuf_from_flat(data, len);
+    if (!om) {
+        ESP_LOGE(TAG, "Failed to allocate mbuf for notification");
+        return ESP_ERR_NO_MEM;
+    }
+    
+    // Send notification with retries
+    int rc;
+    for (int retry = 0; retry < BLE_MAX_NOTIFICATION_RETRIES; retry++) {
+        rc = ble_gattc_notify_custom(conn_handle, g_nus_tx_handle, om);
+        
+        if (rc == 0) {
+            ESP_LOGD(TAG, "Notification sent successfully (len=%zu)", len);
+            return ESP_OK;
+        }
+        
+        if (rc == BLE_HS_ENOTCONN) {
+            ESP_LOGW(TAG, "Connection lost during notification");
+            os_mbuf_free_chain(om);
+            return ESP_ERR_INVALID_STATE;
+        }
+        
+        if (rc == BLE_HS_ENOMEM) {
+            ESP_LOGW(TAG, "Out of memory for notification, retry %d/%d",
+                     retry + 1, BLE_MAX_NOTIFICATION_RETRIES);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
+        
+        ESP_LOGW(TAG, "Notification failed: rc=%d, retry %d/%d",
+                 rc, retry + 1, BLE_MAX_NOTIFICATION_RETRIES);
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+    
+    os_mbuf_free_chain(om);
+    ESP_LOGE(TAG, "Notification failed after %d retries: rc=%d",
+             BLE_MAX_NOTIFICATION_RETRIES, rc);
+    return ESP_FAIL;
 }
 
-static void dis_gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
+
+//==============================================================================
+// GATT SERVICE DEFINITIONS
+//==============================================================================
+
+/**
+ * @brief GATT characteristic access callback for NUS RX characteristic
+ * 
+ * Handles write operations to the RX characteristic (data from client to device).
+ * Implements command buffering and newline-delimited command parsing.
+ * 
+ * @param conn_handle Connection handle
+ * @param attr_handle Attribute handle
+ * @param ctxt GATT access context
+ * @param arg User argument (unused)
+ * @return 0 on success, BLE_ATT_ERR_* on error
+ */
+static int ble_nus_rx_access(uint16_t conn_handle, uint16_t attr_handle,
+                             struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
-    switch (event) {
-        case ESP_GATTS_REG_EVT:
-            ESP_LOGI(TAG, "DIS GATT app registered (app_id=%d, gatts_if=%d)", param->reg.app_id, gatts_if);
-            dis_gatts_if = gatts_if;
+    (void)conn_handle;
+    (void)attr_handle;
+    (void)arg;
+    
+    if (ctxt->op != BLE_GATT_ACCESS_OP_WRITE_CHR) {
+        ESP_LOGW(TAG, "Unexpected GATT operation on RX characteristic: %d", ctxt->op);
+        return BLE_ATT_ERR_UNLIKELY;
+    }
+    
+    // Get write data
+    uint16_t om_len = OS_MBUF_PKTLEN(ctxt->om);
+    if (om_len == 0) {
+        return 0;  // Empty write, ignore
+    }
+    
+    ESP_LOGD(TAG, "RX characteristic write: len=%d", om_len);
+    
+    // Copy data from mbuf chain
+    uint8_t temp_buf[BLE_UART_CMD_MAX_LENGTH];
+    int rc = ble_hs_mbuf_to_flat(ctxt->om, temp_buf, sizeof(temp_buf), NULL);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Failed to copy mbuf data: rc=%d", rc);
+        return BLE_ATT_ERR_UNLIKELY;
+    }
+    
+    // Check for OTA commands - reject and direct to OTA service
+    if (om_len >= 17 && strncmp((char *)temp_buf, "FIRMWARE_UPGRADE ", 17) == 0) {
+        const char *error_msg = "ERROR Use dedicated OTA GATT service (UUID "
+                                "49589A79-7CC5-465D-BFF1-FE37C5065000) for firmware upgrades\n";
+        ble_uart_send_notification((const uint8_t *)error_msg, strlen(error_msg));
+        return 0;
+    }
+    
+    // Process received data byte by byte, looking for newlines
+    for (uint16_t i = 0; i < om_len; i++) {
+        char c = temp_buf[i];
+        
+        if (c == '\n' || c == '\r') {
+            // Command complete
+            if (g_uart_rx_buffer_len > 0) {
+                ble_uart_msg_t msg;
+                msg.len = g_uart_rx_buffer_len;
+                memcpy(msg.data, g_uart_rx_buffer, g_uart_rx_buffer_len);
+                
+                if (xQueueSend(g_uart_rx_queue, &msg, 0) != pdTRUE) {
+                    ESP_LOGW(TAG, "BLE UART queue full, dropping command");
+                }
+                
+                g_uart_rx_buffer_len = 0;
+            }
+        } else if (g_uart_rx_buffer_len < sizeof(g_uart_rx_buffer) - 1) {
+            g_uart_rx_buffer[g_uart_rx_buffer_len++] = c;
+        } else {
+            ESP_LOGW(TAG, "Command buffer overflow, dropping data");
+            g_uart_rx_buffer_len = 0;
+        }
+    }
+    
+    return 0;
+}
 
-            // Create DIS service
-            esp_gatt_srvc_id_t service_id = {
-                .is_primary          = true,
-                .id.inst_id          = 0,
-                .id.uuid.len         = ESP_UUID_LEN_16,
-                .id.uuid.uuid.uuid16 = DIS_SERVICE_UUID,
-            };
-            esp_ble_gatts_create_service(gatts_if, &service_id, GATTS_DIS_NUM_HANDLE);
+/**
+ * @brief GATT characteristic access callback for DIS characteristics
+ * 
+ * Handles read operations for Device Information Service characteristics.
+ * 
+ * @param conn_handle Connection handle
+ * @param attr_handle Attribute handle
+ * @param ctxt GATT access context
+ * @param arg User argument (characteristic type)
+ * @return 0 on success, BLE_ATT_ERR_* on error
+ */
+static int ble_dis_access(uint16_t conn_handle, uint16_t attr_handle,
+                          struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    (void)conn_handle;
+    (void)attr_handle;
+    
+    uint16_t uuid16 = (uint16_t)(uintptr_t)arg;
+    
+    if (ctxt->op != BLE_GATT_ACCESS_OP_READ_CHR) {
+        ESP_LOGW(TAG, "Unexpected GATT operation on DIS characteristic: %d", ctxt->op);
+        return BLE_ATT_ERR_UNLIKELY;
+    }
+    
+    const char *value = NULL;
+    char hw_name_buf[32];
+    
+    switch (uuid16) {
+        case BLE_UUID_DIS_MANUFACTURER_NAME:
+            value = "LoRaCue";
             break;
-
-        case ESP_GATTS_CREATE_EVT:
-            dis_service_handle = param->create.service_handle;
-            esp_ble_gatts_start_service(dis_service_handle);
-
-            // Add Manufacturer Name characteristic
-            esp_bt_uuid_t mfr_uuid = {
-                .len         = ESP_UUID_LEN_16,
-                .uuid.uuid16 = DIS_MANUFACTURER_UUID,
-            };
-            esp_ble_gatts_add_char(dis_service_handle, &mfr_uuid, ESP_GATT_PERM_READ, ESP_GATT_CHAR_PROP_BIT_READ,
-                                   &(esp_attr_value_t){.attr_max_len = 32,
-                                                       .attr_len     = strlen("LoRaCue"),
-                                                       .attr_value   = (uint8_t *)"LoRaCue"},
-                                   NULL);
+            
+        case BLE_UUID_DIS_MODEL_NUMBER: {
+            const bsp_usb_config_t *usb_config = bsp_get_usb_config();
+            value = usb_config->usb_product;
             break;
-
-        case ESP_GATTS_ADD_CHAR_EVT: {
-            if (param->add_char.char_uuid.uuid.uuid16 == DIS_MANUFACTURER_UUID) {
-                dis_manufacturer_handle = param->add_char.attr_handle;
-
-                // Add Model Number
-                const bsp_usb_config_t *usb_config = bsp_get_usb_config();
-                esp_bt_uuid_t model_uuid           = {
-                              .len         = ESP_UUID_LEN_16,
-                              .uuid.uuid16 = DIS_MODEL_NUMBER_UUID,
-                };
-                esp_ble_gatts_add_char(dis_service_handle, &model_uuid, ESP_GATT_PERM_READ, ESP_GATT_CHAR_PROP_BIT_READ,
-                                       &(esp_attr_value_t){.attr_max_len = 32,
-                                                           .attr_len     = strlen(usb_config->usb_product),
-                                                           .attr_value   = (uint8_t *)usb_config->usb_product},
-                                       NULL);
-            } else if (param->add_char.char_uuid.uuid.uuid16 == DIS_MODEL_NUMBER_UUID) {
-                dis_model_handle = param->add_char.attr_handle;
-
-                // Add Firmware Revision
-                esp_bt_uuid_t fw_uuid = {
-                    .len         = ESP_UUID_LEN_16,
-                    .uuid.uuid16 = DIS_FIRMWARE_REVISION_UUID,
-                };
-                esp_ble_gatts_add_char(dis_service_handle, &fw_uuid, ESP_GATT_PERM_READ, ESP_GATT_CHAR_PROP_BIT_READ,
-                                       &(esp_attr_value_t){.attr_max_len = 64,
-                                                           .attr_len     = strlen(LORACUE_VERSION_STRING),
-                                                           .attr_value   = (uint8_t *)LORACUE_VERSION_STRING},
-                                       NULL);
-            } else if (param->add_char.char_uuid.uuid.uuid16 == DIS_FIRMWARE_REVISION_UUID) {
-                dis_firmware_handle = param->add_char.attr_handle;
-
-                // Add Hardware Revision
-                const char *board_id  = bsp_get_board_id();
-                const char *hw_name   = strcmp(board_id, "heltec_v3") == 0 ? "Heltec LoRa V3"
-                                        : strcmp(board_id, "wokwi") == 0   ? "Wokwi Simulator"
-                                                                           : board_id;
-                esp_bt_uuid_t hw_uuid = {
-                    .len         = ESP_UUID_LEN_16,
-                    .uuid.uuid16 = DIS_HARDWARE_REVISION_UUID,
-                };
-                esp_ble_gatts_add_char(dis_service_handle, &hw_uuid, ESP_GATT_PERM_READ, ESP_GATT_CHAR_PROP_BIT_READ,
-                                       &(esp_attr_value_t){.attr_max_len = 32,
-                                                           .attr_len     = strlen(hw_name),
-                                                           .attr_value   = (uint8_t *)hw_name},
-                                       NULL);
-            } else if (param->add_char.char_uuid.uuid.uuid16 == DIS_HARDWARE_REVISION_UUID) {
-                dis_hardware_handle = param->add_char.attr_handle;
-                ESP_LOGI(TAG, "Device Information Service ready");
+        }
+        
+        case BLE_UUID_DIS_FIRMWARE_REVISION:
+            value = LORACUE_VERSION_STRING;
+            break;
+            
+        case BLE_UUID_DIS_HARDWARE_REVISION: {
+            const char *board_id = bsp_get_board_id();
+            if (strcmp(board_id, "heltec_v3") == 0) {
+                value = "Heltec LoRa V3";
+            } else if (strcmp(board_id, "wokwi") == 0) {
+                value = "Wokwi Simulator";
+            } else {
+                snprintf(hw_name_buf, sizeof(hw_name_buf), "%.31s", board_id);
+                value = hw_name_buf;
             }
             break;
         }
-
-        case ESP_GATTS_READ_EVT: {
-            esp_gatt_rsp_t rsp;
-            memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
-            rsp.attr_value.handle = param->read.handle;
-
-            if (param->read.handle == dis_manufacturer_handle) {
-                const char *value  = "LoRaCue";
-                rsp.attr_value.len = strlen(value);
-                memcpy(rsp.attr_value.value, value, rsp.attr_value.len);
-            } else if (param->read.handle == dis_model_handle) {
-                const bsp_usb_config_t *usb_config = bsp_get_usb_config();
-                rsp.attr_value.len                 = strlen(usb_config->usb_product);
-                memcpy(rsp.attr_value.value, usb_config->usb_product, rsp.attr_value.len);
-            } else if (param->read.handle == dis_firmware_handle) {
-                rsp.attr_value.len = strlen(LORACUE_VERSION_STRING);
-                memcpy(rsp.attr_value.value, LORACUE_VERSION_STRING, rsp.attr_value.len);
-            } else if (param->read.handle == dis_hardware_handle) {
-                const char *board_id = bsp_get_board_id();
-                const char *hw_name  = strcmp(board_id, "heltec_v3") == 0 ? "Heltec LoRa V3"
-                                       : strcmp(board_id, "wokwi") == 0   ? "Wokwi Simulator"
-                                                                          : board_id;
-                rsp.attr_value.len   = strlen(hw_name);
-                memcpy(rsp.attr_value.value, hw_name, rsp.attr_value.len);
-            }
-
-            esp_ble_gatts_send_response(gatts_if, param->read.conn_id, param->read.trans_id, ESP_GATT_OK, &rsp);
-            break;
-        }
-
+        
         default:
-            break;
+            ESP_LOGW(TAG, "Unknown DIS characteristic UUID: 0x%04X", uuid16);
+            return BLE_ATT_ERR_UNLIKELY;
     }
+    
+    if (value) {
+        int rc = os_mbuf_append(ctxt->om, value, strlen(value));
+        if (rc != 0) {
+            ESP_LOGE(TAG, "Failed to append DIS value: rc=%d", rc);
+            return BLE_ATT_ERR_INSUFFICIENT_RES;
+        }
+    }
+    
+    return 0;
 }
 
-static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
+/**
+ * @brief GATT service definitions
+ * 
+ * Defines all GATT services and characteristics for the device:
+ * - Nordic UART Service (NUS) for command/response
+ * - Device Information Service (DIS) for device metadata
+ * - OTA Service (handled separately in ble_ota.c)
+ */
+static const struct ble_gatt_svc_def gatt_services[] = {
+    {
+        // Nordic UART Service (NUS)
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = &BLE_UUID_NUS_SERVICE.u,
+        .characteristics = (struct ble_gatt_chr_def[]) {
+            {
+                // TX Characteristic (device to client, notify)
+                .uuid = &BLE_UUID_NUS_TX_CHAR.u,
+                .access_cb = NULL,  // Notify-only, no access callback needed
+                .flags = BLE_GATT_CHR_F_NOTIFY,
+                .val_handle = &g_nus_tx_handle,
+            },
+            {
+                // RX Characteristic (client to device, write)
+                .uuid = &BLE_UUID_NUS_RX_CHAR.u,
+                .access_cb = ble_nus_rx_access,
+                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
+                .val_handle = &g_nus_rx_handle,
+            },
+            {
+                0,  // End of characteristics
+            }
+        },
+    },
+    {
+        // Device Information Service (DIS)
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = BLE_UUID16_DECLARE(BLE_UUID_DIS_SERVICE),
+        .characteristics = (struct ble_gatt_chr_def[]) {
+            {
+                // Manufacturer Name
+                .uuid = BLE_UUID16_DECLARE(BLE_UUID_DIS_MANUFACTURER_NAME),
+                .access_cb = ble_dis_access,
+                .arg = (void *)(uintptr_t)BLE_UUID_DIS_MANUFACTURER_NAME,
+                .flags = BLE_GATT_CHR_F_READ,
+            },
+            {
+                // Model Number
+                .uuid = BLE_UUID16_DECLARE(BLE_UUID_DIS_MODEL_NUMBER),
+                .access_cb = ble_dis_access,
+                .arg = (void *)(uintptr_t)BLE_UUID_DIS_MODEL_NUMBER,
+                .flags = BLE_GATT_CHR_F_READ,
+            },
+            {
+                // Firmware Revision
+                .uuid = BLE_UUID16_DECLARE(BLE_UUID_DIS_FIRMWARE_REVISION),
+                .access_cb = ble_dis_access,
+                .arg = (void *)(uintptr_t)BLE_UUID_DIS_FIRMWARE_REVISION,
+                .flags = BLE_GATT_CHR_F_READ,
+            },
+            {
+                // Hardware Revision
+                .uuid = BLE_UUID16_DECLARE(BLE_UUID_DIS_HARDWARE_REVISION),
+                .access_cb = ble_dis_access,
+                .arg = (void *)(uintptr_t)BLE_UUID_DIS_HARDWARE_REVISION,
+                .flags = BLE_GATT_CHR_F_READ,
+            },
+            {
+                0,  // End of characteristics
+            }
+        },
+    },
+    {
+        0,  // End of services
+    },
+};
+
+
+//==============================================================================
+// GAP EVENT HANDLER
+//==============================================================================
+
+/**
+ * @brief GAP event handler - handles all BLE connection and security events
+ * 
+ * This is the central event handler for all GAP (Generic Access Profile) events.
+ * It manages connection lifecycle, security/pairing, MTU negotiation, and more.
+ * 
+ * @param event GAP event structure
+ * @param arg User argument (unused)
+ * @return 0 on success, non-zero on error
+ */
+static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
 {
-    // Route DIS service events to DIS handler
-    if (gatts_if == dis_gatts_if || (event == ESP_GATTS_REG_EVT && param->reg.app_id == GATTS_DIS_APP_ID)) {
-        dis_gatts_event_handler(event, gatts_if, param);
-        return;
-    }
-
-    // Route OTA service events to OTA handler
-    if (gatts_if == ota_gatts_if || (event == ESP_GATTS_REG_EVT && param->reg.app_id == GATTS_OTA_APP_ID)) {
-        ota_gatts_event_handler(event, gatts_if, param);
-        return;
-    }
-
-    // Handle UART service events
-    switch (event) {
-        case ESP_GATTS_REG_EVT:
-            ESP_LOGI(TAG, "UART GATT app registered (app_id=%d, status=%d, gatts_if=%d)", param->reg.app_id,
-                     param->reg.status, gatts_if);
-            gatts_if_global = gatts_if;
-
-            // Set device name
-            general_config_t config;
-            general_config_get(&config);
-            char ble_name[32]; // BLE name max 31 bytes + null
-            // "LoRaCue " = 8 bytes, leaving 23 bytes for device name
-            snprintf(ble_name, sizeof(ble_name), "LoRaCue %.23s", config.device_name);
-            esp_ble_gap_set_device_name(ble_name);
-
-            // Configure advertising data
-            esp_ble_adv_data_t adv_data = {
-                .set_scan_rsp        = false,
-                .include_name        = true,
-                .include_txpower     = true,
-                .min_interval        = 0x0006,
-                .max_interval        = 0x0010,
-                .appearance          = 0x00,
-                .manufacturer_len    = 0,
-                .p_manufacturer_data = NULL,
-                .service_data_len    = 0,
-                .p_service_data      = NULL,
-                .service_uuid_len    = 0,
-                .p_service_uuid      = NULL,
-                .flag                = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
-            };
-            esp_ble_gap_config_adv_data(&adv_data);
-
-            ESP_LOGI(TAG, "Creating Nordic UART service (UUID: 6E400001-B5A3-F393-E0A9-E50E24DCCA9E)...");
-            // Create UART service
-            esp_gatt_srvc_id_t service_id = {
-                .is_primary  = true,
-                .id.inst_id  = 0x00,
-                .id.uuid.len = ESP_UUID_LEN_128,
-            };
-            memcpy(service_id.id.uuid.uuid.uuid128, UART_SERVICE_UUID, 16);
-            esp_ble_gatts_create_service(gatts_if, &service_id, GATTS_NUM_HANDLE);
-            break;
-
-        case ESP_GATTS_CREATE_EVT:
-            ESP_LOGI(TAG, "UART service created (handle=%d, status=%d)", param->create.service_handle,
-                     param->create.status);
-            service_handle = param->create.service_handle;
-            esp_ble_gatts_start_service(service_handle);
-
-            // Add TX characteristic (notify)
-            esp_bt_uuid_t tx_uuid = {
-                .len = ESP_UUID_LEN_128,
-            };
-            memcpy(tx_uuid.uuid.uuid128, UART_TX_CHAR_UUID, 16);
-            esp_ble_gatts_add_char(service_handle, &tx_uuid, ESP_GATT_PERM_READ, ESP_GATT_CHAR_PROP_BIT_NOTIFY, NULL,
-                                   NULL);
-            break;
-
-        case ESP_GATTS_ADD_CHAR_EVT:
-            if (memcmp(param->add_char.char_uuid.uuid.uuid128, UART_TX_CHAR_UUID, 16) == 0) {
-                tx_char_handle = param->add_char.attr_handle;
-
-                // Add CCCD descriptor for TX notifications
-                esp_bt_uuid_t cccd_uuid = {
-                    .len         = ESP_UUID_LEN_16,
-                    .uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG,
+    (void)arg;
+    
+    ESP_LOGD(TAG, "GAP event: %s (%d)", ble_gap_event_name(event->type), event->type);
+    
+    switch (event->type) {
+        case BLE_GAP_EVENT_CONNECT:
+            ESP_LOGI(TAG, "=== BLE Connection Event ===");
+            
+            if (event->connect.status == 0) {
+                // Connection successful
+                ESP_LOGI(TAG, "Connection established successfully");
+                ESP_LOGI(TAG, "  Handle: %d", event->connect.conn_handle);
+                ESP_LOGI(TAG, "  Peer address type: %d", event->connect.peer_addr.type);
+                ESP_LOG_BUFFER_HEX_LEVEL(TAG, event->connect.peer_addr.val, 6, ESP_LOG_INFO);
+                
+                if (ble_conn_state_lock()) {
+                    g_conn_state.connected = true;
+                    g_conn_state.conn_handle = event->connect.conn_handle;
+                    g_conn_state.mtu = 23;  // Default ATT MTU
+                    g_conn_state.notifications_enabled = false;
+                    g_conn_state.addr_type = event->connect.peer_addr.type;
+                    memcpy(g_conn_state.addr, event->connect.peer_addr.val, 6);
+                    ble_conn_state_unlock();
+                }
+                
+                // Update connection parameters for low latency
+                struct ble_gap_upd_params params = {
+                    .itvl_min = BLE_CONN_INTERVAL_MIN,
+                    .itvl_max = BLE_CONN_INTERVAL_MAX,
+                    .latency = BLE_CONN_LATENCY,
+                    .supervision_timeout = BLE_CONN_SUPERVISION_TIMEOUT,
                 };
-                esp_ble_gatts_add_char_descr(service_handle, &cccd_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, NULL,
-                                             NULL);
-            } else if (memcmp(param->add_char.char_uuid.uuid.uuid128, UART_RX_CHAR_UUID, 16) == 0) {
-                rx_char_handle = param->add_char.attr_handle;
-                ESP_LOGI(TAG, "UART service ready");
+                
+                int rc = ble_gap_update_params(event->connect.conn_handle, &params);
+                if (rc != 0) {
+                    ESP_LOGW(TAG, "Failed to update connection parameters: rc=%d", rc);
+                }
+                
+            } else {
+                // Connection failed
+                ESP_LOGW(TAG, "Connection failed: status=%d", event->connect.status);
+                
+                // Restart advertising
+                ble_advertising_start();
             }
             break;
-
-        case ESP_GATTS_ADD_CHAR_DESCR_EVT:
-            // CCCD added, now add RX characteristic
-            if (param->add_char_descr.status == ESP_GATT_OK) {
-                // Add RX characteristic (write + write without response)
-                esp_bt_uuid_t rx_uuid = {
-                    .len = ESP_UUID_LEN_128,
-                };
-                memcpy(rx_uuid.uuid.uuid128, UART_RX_CHAR_UUID, 16);
-                esp_ble_gatts_add_char(service_handle, &rx_uuid, ESP_GATT_PERM_WRITE,
-                                       ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_WRITE_NR, NULL, NULL);
+            
+        case BLE_GAP_EVENT_DISCONNECT:
+            ESP_LOGI(TAG, "=== BLE Disconnection Event ===");
+            ESP_LOGI(TAG, "  Reason: %d", event->disconnect.reason);
+            ESP_LOGI(TAG, "  Handle: %d", event->disconnect.conn.conn_handle);
+            
+            if (ble_conn_state_lock()) {
+                g_conn_state.connected = false;
+                g_conn_state.notifications_enabled = false;
+                g_conn_state.conn_handle = 0;
+                g_conn_state.mtu = 23;
+                memset(g_conn_state.addr, 0, 6);
+                ble_conn_state_unlock();
             }
-            break;
-
-        case ESP_GATTS_CONNECT_EVT:
-            if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-                conn_id       = param->connect.conn_id;
-                ble_connected = true;
-                notifications_enabled = false;  // Reset until client enables
-                xSemaphoreGive(ble_state_mutex);
-            }
-            ble_ota_set_connection(conn_id);
-            ESP_LOGI(TAG, "Client connected (conn_id=%d)", conn_id);
-            break;
-
-        case ESP_GATTS_DISCONNECT_EVT:
-            if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-                ble_connected = false;
-                notifications_enabled = false;
-                conn_id       = 0;
-                current_mtu   = 23;  // Reset to default
-                xSemaphoreGive(ble_state_mutex);
-            }
+            
+            // Clear RX buffer
+            g_uart_rx_buffer_len = 0;
+            
+            // Notify OTA service
             ble_ota_handle_disconnect();
-            ESP_LOGI(TAG, "Client disconnected, restarting advertising");
-            esp_ble_gap_start_advertising(&(esp_ble_adv_params_t){
-                .adv_int_min       = 0x20,
-                .adv_int_max       = 0x40,
-                .adv_type          = ADV_TYPE_IND,
-                .own_addr_type     = BLE_ADDR_TYPE_PUBLIC,
-                .channel_map       = ADV_CHNL_ALL,
-                .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
-            });
+            
+            // Restart advertising
+            ESP_LOGI(TAG, "Restarting advertising...");
+            ble_advertising_start();
             break;
-
-        case ESP_GATTS_MTU_EVT:
-            if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-                current_mtu = param->mtu.mtu;
-                xSemaphoreGive(ble_state_mutex);
-            }
-            ESP_LOGI(TAG, "MTU exchanged: %d", param->mtu.mtu);
+            
+        case BLE_GAP_EVENT_CONN_UPDATE:
+            ESP_LOGI(TAG, "Connection parameters updated");
+            ESP_LOGI(TAG, "  Interval: %d", event->conn_update.conn_itvl);
+            ESP_LOGI(TAG, "  Latency: %d", event->conn_update.conn_latency);
+            ESP_LOGI(TAG, "  Timeout: %d", event->conn_update.supervision_timeout);
             break;
-
-        case ESP_GATTS_WRITE_EVT:
-            // Check if this is CCCD write (notification enable/disable)
-            if (param->write.handle == tx_char_handle + 1 && param->write.len == 2) {
-                uint16_t descr_value = param->write.value[1] << 8 | param->write.value[0];
-                if (xSemaphoreTake(ble_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-                    notifications_enabled = (descr_value == 0x0001);
-                    xSemaphoreGive(ble_state_mutex);
-                }
-                ESP_LOGI(TAG, "Notifications %s", notifications_enabled ? "enabled" : "disabled");
+            
+        case BLE_GAP_EVENT_MTU:
+            ESP_LOGI(TAG, "MTU update: channel_id=%d, mtu=%d",
+                     event->mtu.channel_id, event->mtu.value);
+            
+            if (ble_conn_state_lock()) {
+                g_conn_state.mtu = event->mtu.value;
+                ble_conn_state_unlock();
             }
-            // Check if this is RX characteristic write (command data)
-            else if (param->write.handle == rx_char_handle) {
-                ESP_LOGD(TAG, "RX data received: len=%d", param->write.len);
-                
-                // Check for OTA commands - reject and direct to OTA service
-                if (param->write.len >= 17 && strncmp((char *)param->write.value, "FIRMWARE_UPGRADE ", 17) == 0) {
-                    const char *error_msg = "ERROR Use dedicated OTA GATT service (UUID "
-                                            "49589A79-7CC5-465D-BFF1-FE37C5065000) for firmware upgrades\n";
-                    esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, tx_char_handle, strlen(error_msg),
-                                                (uint8_t *)error_msg, false);
-                    break;
+            break;
+            
+        case BLE_GAP_EVENT_SUBSCRIBE:
+            ESP_LOGI(TAG, "Subscribe event: conn_handle=%d, attr_handle=%d, reason=%d, "
+                     "prevn=%d, curn=%d, previ=%d, curi=%d",
+                     event->subscribe.conn_handle,
+                     event->subscribe.attr_handle,
+                     event->subscribe.reason,
+                     event->subscribe.prev_notify,
+                     event->subscribe.cur_notify,
+                     event->subscribe.prev_indicate,
+                     event->subscribe.cur_indicate);
+            
+            // Check if this is for our TX characteristic
+            if (event->subscribe.attr_handle == g_nus_tx_handle) {
+                if (ble_conn_state_lock()) {
+                    g_conn_state.notifications_enabled = event->subscribe.cur_notify;
+                    ble_conn_state_unlock();
                 }
                 
-                // Non-blocking: parse and queue commands
-                static char rx_buffer[BLE_UART_CMD_MAX_LENGTH];
-                static size_t rx_len = 0;
-                
-                for (int i = 0; i < param->write.len; i++) {
-                    char c = param->write.value[i];
-
-                    if (c == '\n' || c == '\r') {
-                        if (rx_len > 0) {
-                            ble_uart_msg_t msg;
-                            msg.len = rx_len;
-                            memcpy(msg.data, rx_buffer, rx_len);
-                            
-                            if (xQueueSend(ble_uart_queue, &msg, 0) != pdTRUE) {
-                                ESP_LOGW(TAG, "BLE UART queue full, dropping command");
-                            }
-                            rx_len = 0;
-                        }
-                    } else if (rx_len < sizeof(rx_buffer) - 1) {
-                        rx_buffer[rx_len++] = c;
-                    } else {
-                        ESP_LOGW(TAG, "Command too long, dropping");
-                        rx_len = 0;
-                    }
+                ESP_LOGI(TAG, "TX notifications %s",
+                         event->subscribe.cur_notify ? "ENABLED" : "DISABLED");
+            }
+            break;
+            
+        case BLE_GAP_EVENT_ENC_CHANGE:
+            ESP_LOGI(TAG, "Encryption change: status=%d", event->enc_change.status);
+            
+            if (event->enc_change.status == 0) {
+                struct ble_gap_conn_desc desc;
+                int rc = ble_gap_conn_find(event->enc_change.conn_handle, &desc);
+                if (rc == 0) {
+                    ESP_LOGI(TAG, "Connection encrypted: sec_state.encrypted=%d, "
+                             "sec_state.authenticated=%d, sec_state.bonded=%d",
+                             desc.sec_state.encrypted,
+                             desc.sec_state.authenticated,
+                             desc.sec_state.bonded);
                 }
             }
             break;
-
+            
+        case BLE_GAP_EVENT_PASSKEY_ACTION:
+            ESP_LOGI(TAG, "=== Passkey Action Event ===");
+            ESP_LOGI(TAG, "  Action: %d", event->passkey.params.action);
+            
+            if (event->passkey.params.action == BLE_SM_IOACT_DISP) {
+                // Display passkey to user
+                struct ble_sm_io pkey = {0};
+                pkey.action = event->passkey.params.action;
+                pkey.passkey = esp_random() % 1000000;  // 6-digit passkey
+                
+                ESP_LOGI(TAG, "===========================================");
+                ESP_LOGI(TAG, "  PAIRING PASSKEY: %06" PRIu32, pkey.passkey);
+                ESP_LOGI(TAG, "===========================================");
+                
+                // Store passkey for UI display
+                if (ble_pairing_state_lock()) {
+                    g_pairing_state.in_progress = true;
+                    g_pairing_state.passkey = pkey.passkey;
+                    g_pairing_state.conn_handle = event->passkey.conn_handle;
+                    ble_pairing_state_unlock();
+                }
+                
+                int rc = ble_sm_inject_io(event->passkey.conn_handle, &pkey);
+                if (rc != 0) {
+                    ESP_LOGE(TAG, "Failed to inject passkey: rc=%d", rc);
+                }
+            }
+            break;
+            
+        case BLE_GAP_EVENT_REPEAT_PAIRING:
+            ESP_LOGI(TAG, "Repeat pairing detected");
+            
+            // Delete old bond and allow re-pairing
+            int rc = ble_gap_conn_find(event->repeat_pairing.conn_handle, 
+                                       &(struct ble_gap_conn_desc){0});
+            if (rc == 0) {
+                ESP_LOGI(TAG, "Allowing re-pairing");
+                return BLE_GAP_REPEAT_PAIRING_RETRY;
+            }
+            break;
+            
+        case BLE_GAP_EVENT_NOTIFY_TX:
+            ESP_LOGD(TAG, "Notification TX complete: status=%d, attr_handle=%d",
+                     event->notify_tx.status, event->notify_tx.attr_handle);
+            break;
+            
+        case BLE_GAP_EVENT_ADV_COMPLETE:
+            ESP_LOGI(TAG, "Advertising complete: reason=%d", event->adv_complete.reason);
+            
+            // Restart advertising if it stopped unexpectedly
+            if (event->adv_complete.reason != 0) {
+                ESP_LOGW(TAG, "Advertising stopped unexpectedly, restarting...");
+                ble_advertising_start();
+            }
+            break;
+            
         default:
-            ESP_LOGD(TAG, "UART GATTS event: %d (gatts_if=%d)", event, gatts_if);
+            ESP_LOGD(TAG, "Unhandled GAP event: %d", event->type);
             break;
     }
+    
+    return 0;
 }
 
-esp_err_t bluetooth_config_init(void)
+
+//==============================================================================
+// ADVERTISING AND SERVICE INITIALIZATION
+//==============================================================================
+
+/**
+ * @brief Start BLE advertising
+ * 
+ * Configures and starts BLE advertising with device name and service UUIDs.
+ * Uses connectable undirected advertising.
+ * 
+ * @return ESP_OK on success, error code otherwise
+ */
+static esp_err_t ble_advertising_start(void)
 {
-    // TODO: Migrate to BLE 5.0 Extended Advertising API
-    // Currently using BLE 4.2 legacy advertising (CONFIG_BT_BLE_42_ADV_EN)
-    // See: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/bluetooth/esp_gap_ble.html
-
-    ESP_LOGI(TAG, "=== Bluetooth Initialization Starting ===");
-
-    // Check if Bluetooth should be enabled
+    ESP_LOGI(TAG, "Starting BLE advertising...");
+    
+    // Get device name from configuration
     general_config_t config;
     general_config_get(&config);
-
-    if (!config.bluetooth_enabled) {
-        ESP_LOGI(TAG, "Bluetooth disabled in config");
-        return ESP_OK;
-    }
-
-    // Create BLE UART infrastructure
-    ESP_LOGI(TAG, "Creating BLE UART queue and task...");
     
-    ble_state_mutex = xSemaphoreCreateMutex();
-    if (!ble_state_mutex) {
-        ESP_LOGE(TAG, "Failed to create BLE state mutex");
-        return ESP_ERR_NO_MEM;
-    }
+    char ble_name[BLE_DEVICE_NAME_MAX_LEN + 1];
+    snprintf(ble_name, sizeof(ble_name), "%s %.23s", 
+             BLE_DEVICE_NAME_PREFIX, config.device_name);
     
-    ble_uart_queue = xQueueCreate(BLE_UART_RX_QUEUE_SIZE, sizeof(ble_uart_msg_t));
-    if (!ble_uart_queue) {
-        ESP_LOGE(TAG, "Failed to create BLE UART queue");
-        vSemaphoreDelete(ble_state_mutex);
-        return ESP_ERR_NO_MEM;
-    }
-    
-    BaseType_t task_ret = xTaskCreate(ble_uart_task, "ble_uart", BLE_UART_TASK_STACK_SIZE, 
-                                       NULL, BLE_UART_TASK_PRIORITY, &ble_uart_task_handle);
-    if (task_ret != pdPASS) {
-        ESP_LOGE(TAG, "Failed to create BLE UART task");
-        vQueueDelete(ble_uart_queue);
-        vSemaphoreDelete(ble_state_mutex);
+    // Set device name
+    int rc = ble_svc_gap_device_name_set(ble_name);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Failed to set device name: rc=%d", rc);
         return ESP_FAIL;
     }
     
-    ESP_LOGI(TAG, "BLE UART initialized (queue=%d, stack=%d, priority=%d)",
-             BLE_UART_RX_QUEUE_SIZE, BLE_UART_TASK_STACK_SIZE, BLE_UART_TASK_PRIORITY);
-
-    ESP_LOGI(TAG, "Releasing Classic BT memory...");
-    ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
-
-    ESP_LOGI(TAG, "Initializing BT controller...");
-    esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-    esp_err_t ret                     = esp_bt_controller_init(&bt_cfg);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Bluetooth controller init failed: %s", esp_err_to_name(ret));
-        return ret;
+    ESP_LOGI(TAG, "Device name: %s", ble_name);
+    
+    // Configure advertising parameters
+    struct ble_gap_adv_params adv_params = {
+        .conn_mode = BLE_GAP_CONN_MODE_UND,  // Undirected connectable
+        .disc_mode = BLE_GAP_DISC_MODE_GEN,  // General discoverable
+        .itvl_min = BLE_ADV_INTERVAL_MIN,
+        .itvl_max = BLE_ADV_INTERVAL_MAX,
+        .channel_map = 0,                     // All channels
+        .filter_policy = 0,                   // No filter
+        .high_duty_cycle = 0,
+    };
+    
+    // Start advertising
+    rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER,
+                           &adv_params, ble_gap_event_handler, NULL);
+    
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Failed to start advertising: rc=%d", rc);
+        return ESP_FAIL;
     }
-
-    ESP_LOGI(TAG, "Enabling BLE mode...");
-    ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Bluetooth controller enable failed: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    ESP_LOGI(TAG, "Initializing Bluedroid stack...");
-    ret = esp_bluedroid_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Bluedroid init failed: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    ESP_LOGI(TAG, "Enabling Bluedroid stack...");
-    ret = esp_bluedroid_enable();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Bluedroid enable failed: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    ESP_LOGI(TAG, "Configuring BLE security (passkey display)...");
-    // Set security with passkey display
-    esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_MITM_BOND;
-    esp_ble_io_cap_t iocap      = ESP_IO_CAP_OUT;
-    uint8_t key_size            = 16;
-    uint8_t init_key            = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
-    uint8_t rsp_key             = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
-    esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
-    esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
-    esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
-    esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
-    esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
-
-    ESP_LOGI(TAG, "Registering GAP and GATTS callbacks...");
-    esp_ble_gap_register_callback(gap_event_handler);
-    esp_ble_gatts_register_callback(gatts_event_handler);
-
-    ESP_LOGI(TAG, "Registering UART GATT app (ID=%d)...", GATTS_APP_ID);
-    esp_ble_gatts_app_register(GATTS_APP_ID);
-
-    ESP_LOGI(TAG, "Registering DIS GATT app (ID=%d)...", GATTS_DIS_APP_ID);
-    esp_ble_gatts_app_register(GATTS_DIS_APP_ID);
-
-    ESP_LOGI(TAG, "Registering OTA GATT app (ID=%d)...", GATTS_OTA_APP_ID);
-    esp_ble_gatts_app_register(GATTS_OTA_APP_ID);
-
-    ESP_LOGI(TAG, "Setting local MTU to 500 bytes...");
-    esp_ble_gatt_set_local_mtu(500);
-
-    ESP_LOGI(TAG, "Initializing OTA service...");
-    ble_ota_service_init(0); // Will be set in OTA event handler
-    ble_enabled = true;
-
-    ESP_LOGI(TAG, "=== Bluetooth Initialization Complete ===");
-    ESP_LOGI(TAG, "Waiting for GATT app registration callbacks...");
-
+    
+    ESP_LOGI(TAG, "Advertising started successfully");
     return ESP_OK;
 }
 
+/**
+ * @brief Initialize GATT services
+ * 
+ * Registers all GATT services and characteristics with the NimBLE stack.
+ * 
+ * @return ESP_OK on success, error code otherwise
+ */
+static esp_err_t ble_services_init(void)
+{
+    ESP_LOGI(TAG, "Initializing GATT services...");
+    
+    // Register GATT services
+    int rc = ble_gatts_count_cfg(gatt_services);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Failed to count GATT services: rc=%d", rc);
+        return ESP_FAIL;
+    }
+    
+    rc = ble_gatts_add_svcs(gatt_services);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Failed to add GATT services: rc=%d", rc);
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "GATT services registered successfully");
+    ESP_LOGI(TAG, "  NUS TX handle: %d", g_nus_tx_handle);
+    ESP_LOGI(TAG, "  NUS RX handle: %d", g_nus_rx_handle);
+    
+    // Initialize OTA service
+    ESP_LOGI(TAG, "Initializing OTA service...");
+    ble_ota_service_init(0);  // Connection handle set on connect
+    
+    return ESP_OK;
+}
+
+/**
+ * @brief NimBLE host task
+ * 
+ * This task runs the NimBLE host stack. It must run continuously for BLE
+ * to function properly.
+ * 
+ * @param param Unused parameter
+ */
+static void ble_host_task(void *param)
+{
+    (void)param;
+    
+    ESP_LOGI(TAG, "NimBLE host task started");
+    
+    // This function blocks until nimble_port_stop() is called
+    nimble_port_run();
+    
+    ESP_LOGI(TAG, "NimBLE host task exiting");
+    nimble_port_freertos_deinit();
+}
+
+/**
+ * @brief NimBLE stack synchronization callback
+ * 
+ * Called when the NimBLE host and controller are synchronized and ready.
+ * This is where we start advertising and enable services.
+ */
+static void ble_on_sync(void)
+{
+    ESP_LOGI(TAG, "=== NimBLE Stack Synchronized ===");
+    
+    // Ensure we have a public address
+    int rc = ble_hs_id_infer_auto(0, NULL);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Failed to determine address type: rc=%d", rc);
+        return;
+    }
+    
+    // Get and log our address
+    uint8_t addr[6] = {0};
+    rc = ble_hs_id_copy_addr(BLE_ADDR_PUBLIC, addr, NULL);
+    if (rc == 0) {
+        ESP_LOGI(TAG, "Device address: %02X:%02X:%02X:%02X:%02X:%02X",
+                 addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
+    }
+    
+    // Start advertising
+    ble_advertising_start();
+}
+
+/**
+ * @brief NimBLE stack reset callback
+ * 
+ * Called when the NimBLE stack resets (usually due to an error).
+ * We log the reason and attempt recovery.
+ * 
+ * @param reason Reset reason code
+ */
+static void ble_on_reset(int reason)
+{
+    ESP_LOGW(TAG, "=== NimBLE Stack Reset ===");
+    ESP_LOGW(TAG, "  Reason: %d", reason);
+    
+    // Clear connection state
+    if (ble_conn_state_lock()) {
+        memset(&g_conn_state, 0, sizeof(g_conn_state));
+        ble_conn_state_unlock();
+    }
+    
+    // Clear pairing state
+    if (ble_pairing_state_lock()) {
+        memset(&g_pairing_state, 0, sizeof(g_pairing_state));
+        ble_pairing_state_unlock();
+    }
+}
+
+
+//==============================================================================
+// PUBLIC API IMPLEMENTATION
+//==============================================================================
+
+/**
+ * @brief Initialize Bluetooth configuration service
+ * 
+ * This is the main initialization function that sets up the entire BLE stack:
+ * - Initializes NimBLE controller and host
+ * - Configures security (pairing, bonding, encryption)
+ * - Registers GATT services
+ * - Creates UART processing task
+ * - Starts advertising
+ * 
+ * @return ESP_OK on success, error code otherwise
+ */
+esp_err_t bluetooth_config_init(void)
+{
+    ESP_LOGI(TAG, "========================================");
+    ESP_LOGI(TAG, "  Bluetooth Initialization (NimBLE)");
+    ESP_LOGI(TAG, "========================================");
+    
+    // Check if already initialized
+    if (g_ble_initialized) {
+        ESP_LOGW(TAG, "Bluetooth already initialized");
+        return ESP_OK;
+    }
+    
+    // Check if Bluetooth should be enabled
+    general_config_t config;
+    general_config_get(&config);
+    
+    if (!config.bluetooth_enabled) {
+        ESP_LOGI(TAG, "Bluetooth disabled in configuration");
+        return ESP_OK;
+    }
+    
+    //--------------------------------------------------------------------------
+    // Step 1: Create synchronization primitives
+    //--------------------------------------------------------------------------
+    ESP_LOGI(TAG, "[1/8] Creating synchronization primitives...");
+    
+    g_conn_state_mutex = xSemaphoreCreateMutex();
+    if (!g_conn_state_mutex) {
+        ESP_LOGE(TAG, "Failed to create connection state mutex");
+        return ESP_ERR_NO_MEM;
+    }
+    
+    g_pairing_state_mutex = xSemaphoreCreateMutex();
+    if (!g_pairing_state_mutex) {
+        ESP_LOGE(TAG, "Failed to create pairing state mutex");
+        vSemaphoreDelete(g_conn_state_mutex);
+        return ESP_ERR_NO_MEM;
+    }
+    
+    //--------------------------------------------------------------------------
+    // Step 2: Create UART RX queue and task
+    //--------------------------------------------------------------------------
+    ESP_LOGI(TAG, "[2/8] Creating BLE UART infrastructure...");
+    
+    g_uart_rx_queue = xQueueCreate(BLE_UART_RX_QUEUE_SIZE, sizeof(ble_uart_msg_t));
+    if (!g_uart_rx_queue) {
+        ESP_LOGE(TAG, "Failed to create UART RX queue");
+        vSemaphoreDelete(g_conn_state_mutex);
+        vSemaphoreDelete(g_pairing_state_mutex);
+        return ESP_ERR_NO_MEM;
+    }
+    
+    BaseType_t task_ret = xTaskCreate(ble_uart_task, "ble_uart",
+                                       BLE_UART_TASK_STACK_SIZE, NULL,
+                                       BLE_UART_TASK_PRIORITY, &g_uart_task_handle);
+    if (task_ret != pdPASS) {
+        ESP_LOGE(TAG, "Failed to create UART task");
+        vQueueDelete(g_uart_rx_queue);
+        vSemaphoreDelete(g_conn_state_mutex);
+        vSemaphoreDelete(g_pairing_state_mutex);
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "  Queue size: %d messages", BLE_UART_RX_QUEUE_SIZE);
+    ESP_LOGI(TAG, "  Task stack: %d bytes", BLE_UART_TASK_STACK_SIZE);
+    ESP_LOGI(TAG, "  Task priority: %d", BLE_UART_TASK_PRIORITY);
+    
+    //--------------------------------------------------------------------------
+    // Step 3: Initialize NVS (required for bonding)
+    //--------------------------------------------------------------------------
+    ESP_LOGI(TAG, "[3/8] Initializing NVS for bonding...");
+    
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_LOGW(TAG, "NVS partition needs erasing, erasing...");
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "NVS initialization failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    //--------------------------------------------------------------------------
+    // Step 4: Initialize NimBLE controller
+    //--------------------------------------------------------------------------
+    ESP_LOGI(TAG, "[4/8] Initializing NimBLE controller...");
+    
+    ret = nimble_port_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "NimBLE port init failed: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    //--------------------------------------------------------------------------
+    // Step 5: Configure NimBLE host
+    //--------------------------------------------------------------------------
+    ESP_LOGI(TAG, "[5/8] Configuring NimBLE host...");
+    
+    // Set sync and reset callbacks
+    ble_hs_cfg.sync_cb = ble_on_sync;
+    ble_hs_cfg.reset_cb = ble_on_reset;
+    ble_hs_cfg.gatts_register_cb = NULL;
+    ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+    
+    // Configure security manager
+    ble_hs_cfg.sm_io_cap = BLE_SM_IO_CAP;
+    ble_hs_cfg.sm_bonding = BLE_SM_BONDING;
+    ble_hs_cfg.sm_mitm = BLE_SM_MITM;
+    ble_hs_cfg.sm_sc = BLE_SM_SC;
+    ble_hs_cfg.sm_our_key_dist = BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
+    ble_hs_cfg.sm_their_key_dist = BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
+    
+    ESP_LOGI(TAG, "  Security configuration:");
+    ESP_LOGI(TAG, "    I/O Capability: %s", ble_sm_io_cap_name(BLE_SM_IO_CAP));
+    ESP_LOGI(TAG, "    Bonding: %s", BLE_SM_BONDING ? "enabled" : "disabled");
+    ESP_LOGI(TAG, "    MITM: %s", BLE_SM_MITM ? "enabled" : "disabled");
+    ESP_LOGI(TAG, "    Secure Connections: %s", BLE_SM_SC ? "enabled" : "disabled");
+    
+    //--------------------------------------------------------------------------
+    // Step 6: Initialize GATT services
+    //--------------------------------------------------------------------------
+    ESP_LOGI(TAG, "[6/8] Initializing GATT services...");
+    
+    // Initialize default GAP and GATT services
+    ble_svc_gap_init();
+    ble_svc_gatt_init();
+    
+    // Initialize our custom services
+    ret = ble_services_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize services: %s", esp_err_to_name(ret));
+        return ret;
+    }
+    
+    //--------------------------------------------------------------------------
+    // Step 7: Set preferred MTU
+    //--------------------------------------------------------------------------
+    ESP_LOGI(TAG, "[7/8] Setting preferred MTU to %d bytes...", BLE_MTU_SIZE);
+    
+    int rc = ble_att_set_preferred_mtu(BLE_MTU_SIZE);
+    if (rc != 0) {
+        ESP_LOGW(TAG, "Failed to set preferred MTU: rc=%d", rc);
+    }
+    
+    //--------------------------------------------------------------------------
+    // Step 8: Start NimBLE host task
+    //--------------------------------------------------------------------------
+    ESP_LOGI(TAG, "[8/8] Starting NimBLE host task...");
+    
+    nimble_port_freertos_init(ble_host_task);
+    
+    // Mark as initialized
+    g_ble_initialized = true;
+    g_ble_enabled = true;
+    
+    ESP_LOGI(TAG, "========================================");
+    ESP_LOGI(TAG, "  Bluetooth Initialization Complete");
+    ESP_LOGI(TAG, "========================================");
+    ESP_LOGI(TAG, "Waiting for NimBLE stack synchronization...");
+    
+    return ESP_OK;
+}
+
+/**
+ * @brief Enable or disable Bluetooth
+ * 
+ * Updates the configuration setting for Bluetooth enable/disable.
+ * Note: This does not dynamically start/stop the BLE stack, only updates
+ * the configuration for the next boot.
+ * 
+ * @param enabled true to enable, false to disable
+ * @return ESP_OK on success, error code otherwise
+ */
 esp_err_t bluetooth_config_set_enabled(bool enabled)
 {
     general_config_t config;
@@ -746,23 +1325,59 @@ esp_err_t bluetooth_config_set_enabled(bool enabled)
     return general_config_set(&config);
 }
 
+/**
+ * @brief Check if Bluetooth is enabled
+ * 
+ * @return true if Bluetooth is initialized and enabled, false otherwise
+ */
 bool bluetooth_config_is_enabled(void)
 {
-    return ble_enabled;
+    return g_ble_enabled;
 }
 
+/**
+ * @brief Check if a BLE client is connected
+ * 
+ * @return true if connected, false otherwise
+ */
 bool bluetooth_config_is_connected(void)
 {
-    return ble_connected;
+    bool connected = false;
+    
+    if (ble_conn_state_lock()) {
+        connected = g_conn_state.connected;
+        ble_conn_state_unlock();
+    }
+    
+    return connected;
 }
 
+/**
+ * @brief Get current pairing passkey
+ * 
+ * If pairing is in progress, returns the 6-digit passkey that should be
+ * displayed to the user for verification.
+ * 
+ * @param passkey Output buffer for passkey (6 digits)
+ * @return true if pairing in progress and passkey available, false otherwise
+ */
 bool bluetooth_config_get_passkey(uint32_t *passkey)
 {
-    if (pairing_in_progress && passkey) {
-        *passkey = pairing_passkey;
-        return true;
+    if (!passkey) {
+        return false;
     }
-    return false;
+    
+    bool has_passkey = false;
+    
+    if (ble_pairing_state_lock()) {
+        if (g_pairing_state.in_progress) {
+            *passkey = g_pairing_state.passkey;
+            has_passkey = true;
+        }
+        ble_pairing_state_unlock();
+    }
+    
+    return has_passkey;
 }
 
 #endif // SIMULATOR_BUILD
