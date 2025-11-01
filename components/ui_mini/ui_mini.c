@@ -153,3 +153,23 @@ esp_err_t ui_mini_update_status(const ui_mini_status_t *status)
     // No need to redraw here to avoid conflicts
     return ESP_OK;
 }
+
+static uint8_t g_ota_progress = 0;
+
+esp_err_t ui_mini_show_ota_update(void)
+{
+    g_ota_progress = 0;
+    return ui_mini_set_screen(OLED_SCREEN_OTA_UPDATE);
+}
+
+esp_err_t ui_mini_update_ota_progress(uint8_t progress)
+{
+    if (progress > 100) progress = 100;
+    g_ota_progress = progress;
+    return ESP_OK;
+}
+
+uint8_t ui_mini_get_ota_progress(void)
+{
+    return g_ota_progress;
+}

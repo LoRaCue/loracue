@@ -16241,9 +16241,7 @@ const LV_ATTRIBUTE_MEM_ALIGN LV_ATTRIBUTE_LARGE_CONST LV_ATTRIBUTE_IMG_BOOTSCREE
 };
 
 const lv_img_dsc_t bootscreen = {
-  .header.cf = LV_IMG_CF_INDEXED_4BIT,
-  .header.always_zero = 0,
-  .header.reserved = 0,
+  .header.cf = LV_COLOR_FORMAT_I4,
   .header.w = 540,
   .header.h = 960,
   .data_size = 259200,

@@ -73,18 +73,6 @@ static void button_event_handler(button_event_type_t event, void *arg)
     send_key(mapping.keycode, mapping.modifier);
 }
 
-// TinyUSB CDC callbacks
-void tud_cdc_rx_cb(uint8_t itf)
-{
-    ESP_LOGI(TAG, "CDC RX callback triggered on interface %d", itf);
-    usb_cdc_process_commands();
-}
-
-void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
-{
-    ESP_LOGI(TAG, "CDC line state changed: itf=%d, dtr=%d, rts=%d", itf, dtr, rts);
-}
-
 // TinyUSB HID Callbacks
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 {
@@ -115,7 +103,7 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
 
 bool usb_hid_is_connected(void)
 {
-    return tud_hid_ready() && tud_cdc_connected();
+    return tud_hid_ready();
 }
 
 esp_err_t usb_hid_send_key(usb_hid_keycode_t keycode)
@@ -128,15 +116,14 @@ esp_err_t usb_hid_init(void)
 {
     ESP_LOGI(TAG, "Initializing USB composite device (HID + CDC)");
 
-    tinyusb_config_t tusb_cfg = {.port       = TINYUSB_PORT_FULL_SPEED_0,
-                                 .phy        = {.skip_setup = false, .self_powered = false},
-                                 .task       = {.size = 4096, .priority = 5, .xCoreID = 0},
-                                 .descriptor = {.device            = usb_get_device_descriptor(),
-                                                .full_speed_config = usb_get_config_descriptor(),
-                                                .string            = usb_get_string_descriptors(),
-                                                .string_count      = 6},
-                                 .event_cb   = NULL,
-                                 .event_arg  = NULL};
+    // esp_tinyusb 1.7.6+ API
+    tinyusb_config_t tusb_cfg = {
+        .device_descriptor = usb_get_device_descriptor(),
+        .string_descriptor = usb_get_string_descriptors(),
+        .string_descriptor_count = 6,
+        .external_phy = false,
+        .configuration_descriptor = usb_get_config_descriptor()
+    };
 
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 

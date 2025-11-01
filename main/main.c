@@ -30,6 +30,7 @@
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "uart_commands.h"
+#include "usb_cdc.h"
 #include "usb_console.h"
 #include "usb_hid.h"
 #include "version.h"
@@ -358,7 +359,7 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
         ESP_LOGI(TAG, "PC mode: forwarding to USB slot %d", slot_id);
         usb_hid_send_key(keycode);
     } else {
-        ESP_LOGW(TAG, "USB not connected, skipping HID forwarding (ACK sent by protocol layer)");
+        ESP_LOGW(TAG, "USB not connected, skipping HID forwarding (ACK sent only if requested)");
     }
 
     // Note: ACK is automatically sent by lora_protocol layer for successfully decrypted packets
@@ -637,6 +638,14 @@ void app_main(void)
         return;
     }
 
+    // Initialize USB CDC command interface
+    ESP_LOGI(TAG, "Initializing USB CDC command interface...");
+    ret = usb_cdc_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "USB CDC initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+
 #if 0  // USB CDC is only for command parser, not console
     // Wait for USB enumeration before redirecting console
     ESP_LOGI(TAG, "Waiting for USB enumeration...");
@@ -691,6 +700,7 @@ void app_main(void)
         g_oled_status.lora_connected = false;
         g_oled_status.lora_signal    = 0;
         g_oled_status.usb_connected  = false;
+        g_oled_status.bluetooth_connected = bluetooth_config_is_connected();
         g_oled_status.device_id      = 0x1234;
 
         // Load device name from config

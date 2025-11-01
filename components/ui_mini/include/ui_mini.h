@@ -47,7 +47,8 @@ typedef enum {
     OLED_SCREEN_SYSTEM_INFO,     ///< System information
     OLED_SCREEN_FACTORY_RESET,   ///< Factory reset
     OLED_SCREEN_LOW_BATTERY,     ///< Low battery warning
-    OLED_SCREEN_CONNECTION_LOST  ///< Connection lost
+    OLED_SCREEN_CONNECTION_LOST, ///< Connection lost
+    OLED_SCREEN_OTA_UPDATE       ///< OTA firmware update
 } ui_mini_screen_t;
 
 /**
@@ -89,6 +90,7 @@ typedef struct {
     bool lora_connected;   ///< LoRa connection status
     uint8_t lora_signal;   ///< LoRa signal strength (0-100)
     bool usb_connected;    ///< USB connection status
+    bool bluetooth_connected; ///< Bluetooth connection status
     uint16_t device_id;    ///< Device ID
     char device_name[32];  ///< Device name
     char last_command[16]; ///< Last received command (PC mode)
@@ -176,6 +178,19 @@ esp_err_t ui_mini_display_off(void);
  * @return ESP_OK on success
  */
 esp_err_t ui_mini_display_on(void);
+
+/**
+ * @brief Show OTA update screen
+ * @return ESP_OK on success
+ */
+esp_err_t ui_mini_show_ota_update(void);
+
+/**
+ * @brief Update OTA progress
+ * @param progress Progress percentage (0-100)
+ * @return ESP_OK on success
+ */
+esp_err_t ui_mini_update_ota_progress(uint8_t progress);
 
 #ifdef __cplusplus
 }

@@ -18,10 +18,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include <string.h>
-
-#ifndef SIMULATOR_BUILD
-#include "sx126x.h" // Include SX126x library for hardware
-#endif
+#include "sx126x.h"
 
 static const char *TAG = "LORA_DRIVER";
 
@@ -57,29 +54,6 @@ static lora_config_t current_config = {
     .band_id          = "HW_868"   // Default to 868 MHz band
 };
 
-#ifdef SIMULATOR_BUILD
-// Simple simulation state (no WiFi)
-static bool lora_sim_initialized = false;
-
-// Simple simulation methods (no WiFi)
-static esp_err_t lora_sim_send_packet(const uint8_t *data, size_t length)
-{
-    ESP_LOGD(TAG, "📡 Simulated send: %d bytes", length);
-    return ESP_OK;
-}
-
-static esp_err_t lora_sim_receive_packet(uint8_t *data, size_t max_length, size_t *received_length, uint32_t timeout_ms)
-{
-    (void)data;
-    (void)max_length;
-    (void)received_length;
-    (void)timeout_ms;
-    // No receiving in simulation
-    return ESP_ERR_TIMEOUT;
-}
-#endif
-
-#ifndef SIMULATOR_BUILD
 // TX task - processes queue and transmits packets
 static void lora_tx_task(void *arg)
 {
@@ -129,11 +103,9 @@ static void lora_rx_task(void *arg)
         vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
-#endif
 
 esp_err_t lora_driver_init(void)
 {
-#ifndef SIMULATOR_BUILD
     // Create TX queue
     tx_queue = xQueueCreate(TX_QUEUE_SIZE, sizeof(lora_tx_packet_t));
     if (tx_queue == NULL) {
@@ -148,7 +120,6 @@ esp_err_t lora_driver_init(void)
         vQueueDelete(tx_queue);
         return ESP_ERR_NO_MEM;
     }
-#endif
 
     // Initialize band profiles from JSON
     esp_err_t ret = lora_bands_init();
@@ -163,12 +134,7 @@ esp_err_t lora_driver_init(void)
     ESP_LOGI(TAG, "LoRa config: %lu Hz, SF%d, %d kHz, %d dBm", current_config.frequency,
              current_config.spreading_factor, current_config.bandwidth, current_config.tx_power);
 
-#ifdef SIMULATOR_BUILD
-    ESP_LOGI(TAG, "🌐 Skipping SX1262 hardware initialization (simulated)");
-    lora_sim_initialized = true;
-    return ESP_OK;
-#else
-    ESP_LOGI(TAG, "📻 Hardware mode: Initializing SX1262 LoRa");
+    ESP_LOGI(TAG, "📻 Initializing SX1262 LoRa");
 
     // Initialize SX126x library
     ret = sx126x_init();
@@ -229,7 +195,6 @@ esp_err_t lora_driver_init(void)
 
     ESP_LOGI(TAG, "SX1262 initialized successfully with TX/RX tasks");
     return ESP_OK;
-#endif
 }
 
 esp_err_t lora_send_packet(const uint8_t *data, size_t length)
@@ -243,9 +208,6 @@ esp_err_t lora_send_packet(const uint8_t *data, size_t length)
         return ESP_ERR_INVALID_SIZE;
     }
 
-#ifdef SIMULATOR_BUILD
-    return lora_sim_send_packet(data, length);
-#else
     // Enqueue packet for TX task
     lora_tx_packet_t packet;
     memcpy(packet.data, data, length);
@@ -257,7 +219,6 @@ esp_err_t lora_send_packet(const uint8_t *data, size_t length)
     }
 
     return ESP_OK;
-#endif
 }
 
 esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received_length, uint32_t timeout_ms)
@@ -266,9 +227,6 @@ esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received
         return ESP_ERR_INVALID_ARG;
     }
 
-#ifdef SIMULATOR_BUILD
-    return lora_sim_receive_packet(data, max_length, received_length, timeout_ms);
-#else
     // Dequeue packet from RX queue (populated by RX task)
     *received_length = 0;
 
@@ -286,21 +244,15 @@ esp_err_t lora_receive_packet(uint8_t *data, size_t max_length, size_t *received
     }
 
     return ESP_ERR_TIMEOUT;
-#endif
 }
 
 int16_t lora_get_rssi(void)
 {
-#ifdef SIMULATOR_BUILD
-    // Simulate RSSI for WiFi (always good signal in simulator)
-    return -50; // dBm
-#else
     // Read actual RSSI from SX126x chip
     int8_t rssi_packet = 0;
     int8_t snr_packet = 0;
     GetPacketStatus(&rssi_packet, &snr_packet);
     return (int16_t)rssi_packet;
-#endif
 }
 
 uint32_t lora_get_frequency(void)
@@ -378,7 +330,6 @@ esp_err_t lora_set_config(const lora_config_t *config)
     ESP_LOGI(TAG, "LoRa config updated: %lu Hz, SF%d, %d kHz, %d dBm", config->frequency, config->spreading_factor,
              config->bandwidth, config->tx_power);
 
-#ifndef SIMULATOR_BUILD
     // Reconfigure hardware with new settings
     ESP_LOGI(TAG, "Reconfiguring LoRa hardware with new settings");
 
@@ -416,17 +367,12 @@ esp_err_t lora_set_config(const lora_config_t *config)
     SetRx(0);
 
     ESP_LOGI(TAG, "LoRa hardware reconfigured successfully");
-#endif
 
     return ESP_OK;
 }
 
 esp_err_t lora_set_receive_mode(void)
 {
-#ifdef SIMULATOR_BUILD
-    // UDP is always in receive mode
-    return ESP_OK;
-#else
     // Hardware receive mode using SX126x
     ESP_LOGI(TAG, "📻 LoRa RX mode");
 
@@ -434,5 +380,4 @@ esp_err_t lora_set_receive_mode(void)
     SetRx(0); // 0 = continuous receive mode
 
     return ESP_OK;
-#endif
 }

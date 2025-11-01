@@ -18,7 +18,9 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#ifdef CONFIG_UI_MINI
 #include "ui_mini.h"
+#endif
 #include "soc/rtc.h"
 
 static const char *TAG = "POWER_MGMT";
@@ -127,7 +129,9 @@ esp_err_t power_mgmt_display_sleep(void)
 
     if (!display_sleeping) {
         ESP_LOGD(TAG, "Entering display sleep");
+#ifdef CONFIG_UI_MINI
         ui_mini_display_off();
+#endif
         display_sleeping = true;
 
         uint64_t current_time = esp_timer_get_time();
@@ -146,7 +150,9 @@ esp_err_t power_mgmt_light_sleep(uint32_t timeout_ms)
     ESP_LOGI(TAG, "Entering light sleep for %dms", timeout_ms);
 
     if (!display_sleeping) {
+#ifdef CONFIG_UI_MINI
         ui_mini_display_off();
+#endif
     }
 
     uint64_t sleep_start = esp_timer_get_time();
@@ -171,7 +177,9 @@ esp_err_t power_mgmt_light_sleep(uint32_t timeout_ms)
     power_mgmt_update_activity();
 
     // Reinitialize display properly
+#ifdef CONFIG_UI_MINI
     ui_mini_display_on();
+#endif
     display_sleeping = false;
 
     ESP_LOGI(TAG, "Woke from light sleep after %dms", sleep_duration);
@@ -217,7 +225,9 @@ esp_err_t power_mgmt_update_activity(void)
     last_activity_time = esp_timer_get_time();
 
     if (display_sleeping) {
+#ifdef CONFIG_UI_MINI
         ui_mini_display_on();
+#endif
         display_sleeping = false;
     }
 
@@ -305,7 +315,9 @@ esp_err_t power_mgmt_prepare_sleep(void)
 {
     ESP_LOGD(TAG, "Preparing system for deep sleep");
 
+#ifdef CONFIG_UI_MINI
     ui_mini_display_off();
+#endif
 
     // Note: Peripherals will be powered down by deep sleep
     // No need to manually free buses - device will reboot on wake

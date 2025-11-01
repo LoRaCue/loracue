@@ -61,6 +61,16 @@ bool bsp_u8g2_lock(uint32_t timeout_ms);
 void bsp_u8g2_unlock(void);
 
 /**
+ * @brief Get UART pins for specified port
+ * 
+ * @param uart_num UART port number (0, 1, or 2)
+ * @param tx_pin Output parameter for TX pin
+ * @param rx_pin Output parameter for RX pin
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG if port not supported
+ */
+esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin);
+
+/**
  * @brief Initialize button GPIO pins
  *
  * Configures button pins as inputs with internal pull-ups enabled.
@@ -179,7 +189,7 @@ typedef struct {
 } bsp_usb_config_t;          // cppcheck-suppress unusedStructMember
 
 /**
- * @brief LoRa SX126X pin configuration
+ * @brief LoRa SX126X pin configuration (all fields used in sx126x.c)
  */
 typedef struct {
     int miso;
@@ -189,7 +199,7 @@ typedef struct {
     int rst;
     int busy;
     int dio1;
-} bsp_lora_pins_t;
+} bsp_lora_pins_t; // cppcheck-suppress unusedStructMember
 
 /**
  * @brief Get USB configuration for this board

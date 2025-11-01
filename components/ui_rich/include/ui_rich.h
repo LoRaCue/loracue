@@ -23,6 +23,7 @@ typedef struct {
 
 esp_err_t ui_rich_init(void);
 void ui_rich_update_status(const ui_rich_status_t *status);
+void ui_rich_show_ota_update(void);
 
 #ifdef __cplusplus
 }

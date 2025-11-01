@@ -473,3 +473,23 @@ lv_disp_t *bsp_display_get_lvgl_disp(void)
 {
     return disp;
 }
+
+esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin)
+{
+    if (!tx_pin || !rx_pin) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    switch (uart_num) {
+        case 0:
+            *tx_pin = 43;  // ESP32-S3 UART0 (USB-JTAG-Serial)
+            *rx_pin = 44;
+            return ESP_OK;
+        case 1:
+            *tx_pin = 2;   // LilyGO T5 available pins
+            *rx_pin = 3;
+            return ESP_OK;
+        default:
+            return ESP_ERR_INVALID_ARG;
+    }
+}

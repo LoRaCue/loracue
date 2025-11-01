@@ -1,0 +1,17 @@
+menu "LoRaCue Configuration"
+
+    config BOARD_WOKWI
+        bool "Build for Wokwi Simulator"
+        default n
+        help
+            Enable this option when building for Wokwi simulation.
+            This will use the Wokwi BSP instead of real hardware BSP.
+
+    config UI_RICH
+        bool "Enable Rich UI (LVGL)"
+        default n
+        help
+            Enable rich UI with LVGL graphics library.
+            Disable for minimal UI with basic OLED display.
+
+endmenu

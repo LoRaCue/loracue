@@ -1,4 +1,5 @@
 #include "ui_screen_controller.h"
+extern void ui_screen_ota_update(void);
 #include "bluetooth_screen.h"
 #include "boot_screen.h"
 #include "brightness_screen.h"
@@ -116,6 +117,10 @@ void ui_screen_controller_set(ui_mini_screen_t screen, const ui_status_t *status
 
         case OLED_SCREEN_FACTORY_RESET:
             factory_reset_screen_draw();
+            break;
+
+        case OLED_SCREEN_OTA_UPDATE:
+            ui_screen_ota_update();
             break;
 
         case OLED_SCREEN_DEVICE_INFO:
@@ -271,28 +276,46 @@ void ui_screen_controller_handle_button(button_event_type_t event)
         case OLED_SCREEN_BOOT:
             break;
 
-        case OLED_SCREEN_MAIN:
-            if (event == BUTTON_EVENT_SHORT) {
-                general_config_t config;
-                general_config_get(&config);
+        case OLED_SCREEN_MAIN: {
+            extern device_mode_t current_device_mode;
+            
+            if (current_device_mode == DEVICE_MODE_PC) {
+                // PC mode: send HID directly via USB
+                if (event == BUTTON_EVENT_SHORT) {
+                    extern esp_err_t usb_hid_send_key(uint8_t keycode);
+                    usb_hid_send_key(0x4E); // Page Down
+                } else if (event == BUTTON_EVENT_DOUBLE) {
+                    extern esp_err_t usb_hid_send_key(uint8_t keycode);
+                    usb_hid_send_key(0x4B); // Page Up
+                } else if (event == BUTTON_EVENT_LONG) {
+                    menu_screen_reset();
+                    ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+                }
+            } else {
+                // Presenter mode: send via LoRa
+                if (event == BUTTON_EVENT_SHORT) {
+                    general_config_t config;
+                    general_config_get(&config);
 #ifdef CONFIG_LORA_SEND_RELIABLE
-                lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4E, 2000, 3); // Page Down
+                    lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4E, 2000, 3); // Page Down
 #else
-                lora_protocol_send_keyboard(config.slot_id, 0, 0x4E); // Page Down (unreliable)
+                    lora_protocol_send_keyboard(config.slot_id, 0, 0x4E); // Page Down (unreliable)
 #endif
-            } else if (event == BUTTON_EVENT_DOUBLE) {
-                general_config_t config;
-                general_config_get(&config);
+                } else if (event == BUTTON_EVENT_DOUBLE) {
+                    general_config_t config;
+                    general_config_get(&config);
 #ifdef CONFIG_LORA_SEND_RELIABLE
-                lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4B, 2000, 3); // Page Up
+                    lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4B, 2000, 3); // Page Up
 #else
-                lora_protocol_send_keyboard(config.slot_id, 0, 0x4B); // Page Up (unreliable)
+                    lora_protocol_send_keyboard(config.slot_id, 0, 0x4B); // Page Up (unreliable)
 #endif
-            } else if (event == BUTTON_EVENT_LONG) {
-                menu_screen_reset();
-                ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+                } else if (event == BUTTON_EVENT_LONG) {
+                    menu_screen_reset();
+                    ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
+                }
             }
             break;
+        }
 
         case OLED_SCREEN_PC_MODE:
             if (event == BUTTON_EVENT_LONG) {
