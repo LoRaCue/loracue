@@ -352,7 +352,7 @@ jobs:
     - name: Upload manifest
       uses: actions/upload-artifact@v5
       with:
-        name: manifest-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}
+        name: ${{ matrix.board.name }}-manifest-v${{ needs.version.outputs.version }}
         path: release/${{ matrix.board.name }}/manifest.json
         retention-days: 90
 
@@ -465,11 +465,24 @@ jobs:
         mkdir -p release-assets
         find firmware-packages -name "*.zip" -exec cp {} release-assets/ \;
         
-        # Copy manifests with board-specific names
-        for manifest in firmware-packages/*/manifest.json; do
-          board=$(basename $(dirname "$manifest"))
-          cp "$manifest" "release-assets/manifest-${board}.json"
-        done
+        # Create combined manifests.json with proper JSON formatting
+        python3 <<'EOF'
+        import json
+        import glob
+        
+        manifests = []
+        for manifest_file in sorted(glob.glob("firmware-packages/*-manifest-*/manifest.json")):
+            with open(manifest_file, 'r') as f:
+                manifests.append(json.load(f))
+        
+        with open("release-assets/manifests.json", 'w') as f:
+            json.dump(manifests, f, indent=2)
+        
+        print(f"Created combined manifests.json with {len(manifests)} boards")
+        EOF
+        
+        echo "Combined manifests.json:"
+        cat release-assets/manifests.json
         
         ls -lah release-assets/
     
