@@ -1,11 +1,11 @@
 if(CONFIG_BT_ENABLED)
     if(CONFIG_BT_NIMBLE_ENABLED)
-        # NimBLE implementation
-        set(SRCS "bluetooth_config.c" "ble_ota.c")
-        set(REQUIRES commands general_config nvs_flash ota_engine bsp bt nimble)
+        # NimBLE implementation with OTA handler
+        set(SRCS "bluetooth_config.c" "ble_ota_handler.c")
+        set(REQUIRES commands general_config nvs_flash ota_engine bsp bt nimble espressif__ble_ota app_update)
     else()
         # Bluedroid implementation (legacy, kept for reference)
-        set(SRCS "bluetooth_config_bluedroid.c.bak" "ble_ota.c")
+        set(SRCS "bluetooth_config_bluedroid.c.bak")
         set(REQUIRES commands general_config nvs_flash ota_engine bsp bt)
     endif()
 else()
