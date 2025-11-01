@@ -9,9 +9,6 @@
 #pragma once
 
 #include "esp_err.h"
-#ifdef CONFIG_UI_MINI
-#include "ui_mini.h"
-#endif
 
 #ifdef __cplusplus
 extern "C" {

@@ -2,6 +2,7 @@ if(CONFIG_UI_RICH)
     idf_component_register(
         SRCS 
             "ui_rich.c"
+            "ui_rich_impl.c"
             "images/bootscreen.c"
         INCLUDE_DIRS 
             "include"
@@ -10,6 +11,8 @@ if(CONFIG_UI_RICH)
             bsp
             power_mgmt
             esp_timer
+            ui_interface
+            system_events
         PRIV_REQUIRES
             lvgl__lvgl
     )
