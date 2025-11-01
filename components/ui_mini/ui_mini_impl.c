@@ -25,7 +25,7 @@ static struct {
 
 static void battery_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    system_event_battery_t *evt = (system_event_battery_t *)data;
+    const system_event_battery_t *evt = (const system_event_battery_t *)data;
     ui_state.battery_level = evt->level;
     ui_state.battery_charging = evt->charging;
     
@@ -41,7 +41,7 @@ static void battery_event_handler(void *arg, esp_event_base_t base, int32_t id, 
 
 static void usb_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    system_event_usb_t *evt = (system_event_usb_t *)data;
+    const system_event_usb_t *evt = (const system_event_usb_t *)data;
     ui_state.usb_connected = evt->connected;
     
     if (ui_state.current_mode == DEVICE_MODE_PC && !evt->connected) {
@@ -59,7 +59,7 @@ static void usb_event_handler(void *arg, esp_event_base_t base, int32_t id, void
 
 static void lora_state_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    system_event_lora_t *evt = (system_event_lora_t *)data;
+    const system_event_lora_t *evt = (const system_event_lora_t *)data;
     ui_state.lora_connected = evt->connected;
     ui_state.lora_rssi = evt->rssi;
     
@@ -74,7 +74,7 @@ static void lora_state_event_handler(void *arg, esp_event_base_t base, int32_t i
 
 static void lora_command_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    system_event_lora_cmd_t *evt = (system_event_lora_cmd_t *)data;
+    const system_event_lora_cmd_t *evt = (const system_event_lora_cmd_t *)data;
     strncpy(ui_state.last_command, evt->command, sizeof(ui_state.last_command) - 1);
     ui_state.lora_rssi = evt->rssi;
     
@@ -90,7 +90,7 @@ static void lora_command_event_handler(void *arg, esp_event_base_t base, int32_t
 
 static void button_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    system_event_button_t *evt = (system_event_button_t *)data;
+    const system_event_button_t *evt = (const system_event_button_t *)data;
     
     button_event_t ui_event;
     switch (evt->type) {
@@ -112,7 +112,7 @@ static void button_event_handler(void *arg, esp_event_base_t base, int32_t id, v
 
 static void ota_progress_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    system_event_ota_t *evt = (system_event_ota_t *)data;
+    const system_event_ota_t *evt = (const system_event_ota_t *)data;
     
     // Switch to OTA screen if not already there
     if (ui_mini_get_screen() != OLED_SCREEN_OTA_UPDATE) {
@@ -126,7 +126,7 @@ static void ota_progress_event_handler(void *arg, esp_event_base_t base, int32_t
 
 static void mode_changed_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    system_event_mode_t *evt = (system_event_mode_t *)data;
+    const system_event_mode_t *evt = (const system_event_mode_t *)data;
     ui_state.current_mode = evt->mode;
     
     // Update screen based on mode
