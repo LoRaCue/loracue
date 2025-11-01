@@ -343,14 +343,14 @@ jobs:
         zip -r loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}.zip ${{ matrix.board.name }}/
     
     - name: Upload firmware package
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}
         path: release/loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}.zip
         retention-days: 90
     
     - name: Upload manifest
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: manifest-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}
         path: release/${{ matrix.board.name }}/manifest.json
@@ -456,7 +456,7 @@ jobs:
     
     steps:
     - name: Download all firmware packages
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         path: firmware-packages/
         

@@ -13,8 +13,5 @@
     "@commitlint/config-conventional": "^17.0.0",
     "husky": "^9.1.7",
     "lv_img_conv": "^0.4.0"
-  },
-  "dependencies": {
-    "next": "^15.5.6"
   }
 }

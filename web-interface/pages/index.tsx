@@ -65,8 +65,9 @@ export default function DevicePage() {
         <div className="card p-8">
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium mb-2">Device Name</label>
+              <label htmlFor="device-name" className="block text-sm font-medium mb-2">Device Name</label>
               <input
+                id="device-name"
                 type="text"
                 value={settings.name}
                 onChange={(e) => setSettings({ ...settings, name: e.target.value })}
@@ -110,8 +111,9 @@ export default function DevicePage() {
 
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium mb-2">Slot ID (Multi-PC Routing)</label>
+                <label htmlFor="slot-id" className="block text-sm font-medium mb-2">Slot ID (Multi-PC Routing)</label>
                 <select
+                  id="slot-id"
                   value={settings.slot_id}
                   onChange={(e) => setSettings({ ...settings, slot_id: parseInt(e.target.value) })}
                   className="input"
@@ -120,7 +122,7 @@ export default function DevicePage() {
                     <option key={slot} value={slot}>Slot {slot}</option>
                   ))}
                 </select>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Select which PC is controlled or events are received for
                 </p>
               </div>
@@ -135,10 +137,10 @@ export default function DevicePage() {
                       onChange={(e) => setSettings({...settings, bluetooth: e.target.checked})}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-hidden peer-focus:ring peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                   </label>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Enable Bluetooth for wireless configuration
                 </p>
               </div>
