@@ -2,6 +2,8 @@
 
 #include "esp_err.h"
 #include "esp_event.h"
+#include "common_types.h"
+#include "general_config.h"  // For device_mode_t
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -40,12 +42,6 @@ typedef struct {
     int8_t rssi;
 } system_event_lora_cmd_t;
 
-typedef enum {
-    BUTTON_EVENT_SHORT,
-    BUTTON_EVENT_LONG,
-    BUTTON_EVENT_DOUBLE,
-} button_event_type_t;
-
 typedef struct {
     button_event_type_t type;
 } system_event_button_t;
@@ -54,11 +50,6 @@ typedef struct {
     uint8_t percent;
     char status[32];
 } system_event_ota_t;
-
-typedef enum {
-    DEVICE_MODE_REMOTE,
-    DEVICE_MODE_PC,
-} device_mode_t;
 
 typedef struct {
     device_mode_t mode;

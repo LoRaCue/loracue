@@ -1,5 +1,6 @@
 #include "ui_interface.h"
 #include "system_events.h"
+#include "button_manager.h"
 #include "ui_mini.h"
 #include "ui_screen_controller.h"
 #include "esp_log.h"
@@ -92,7 +93,7 @@ static void button_event_handler(void *arg, esp_event_base_t base, int32_t id, v
 {
     const system_event_button_t *evt = (const system_event_button_t *)data;
     
-    button_event_t ui_event;
+    button_event_type_t ui_event;
     switch (evt->type) {
         case BUTTON_EVENT_SHORT:
             ui_event = BUTTON_EVENT_SHORT;
