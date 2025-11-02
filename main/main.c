@@ -160,7 +160,7 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
     pc_mode_manager_process_command(device_id, sequence_num, command, payload, payload_length, rssi);
 }
 
-static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
+static void lora_state_handler(lora_connection_state_t state, const void *user_ctx)
 {
     bool connected = (state != LORA_CONNECTION_LOST);
     int8_t signal = (state == LORA_CONNECTION_EXCELLENT) ? 100
@@ -481,7 +481,7 @@ void app_main(void)
 
     // Register application callbacks
     lora_protocol_register_rx_callback(lora_rx_handler, NULL);
-    lora_protocol_register_state_callback(lora_state_handler, NULL);
+    lora_protocol_register_state_callback((lora_protocol_state_callback_t)lora_state_handler, NULL);
 
     // Start monitoring tasks
     xTaskCreate(battery_monitor_task, "battery_monitor", 4096, NULL, 5, NULL);
