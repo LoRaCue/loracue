@@ -21,6 +21,8 @@ typedef enum {
     SYSTEM_EVENT_BUTTON_PRESSED,
     SYSTEM_EVENT_OTA_PROGRESS,
     SYSTEM_EVENT_MODE_CHANGED,
+    SYSTEM_EVENT_PC_COMMAND_RECEIVED,
+    SYSTEM_EVENT_DEVICE_CONFIG_CHANGED,
 } system_event_id_t;
 
 typedef struct {
@@ -54,6 +56,19 @@ typedef struct {
 typedef struct {
     device_mode_t mode;
 } system_event_mode_t;
+
+typedef struct {
+    uint16_t device_id;
+    char command[16];
+    uint8_t keycode;
+    uint8_t modifiers;
+    int8_t rssi;
+} system_event_pc_command_t;
+
+typedef struct {
+    uint16_t device_id;
+    char device_name[32];
+} system_event_device_config_t;
 
 /**
  * @brief Initialize system event loop
@@ -99,6 +114,17 @@ esp_err_t system_events_post_ota_progress(uint8_t percent, const char *status);
  * @brief Post mode change event
  */
 esp_err_t system_events_post_mode_changed(device_mode_t mode);
+
+/**
+ * @brief Post PC command received event
+ */
+esp_err_t system_events_post_pc_command(uint16_t device_id, const char *command,
+                                        uint8_t keycode, uint8_t modifiers, int8_t rssi);
+
+/**
+ * @brief Post device config changed event
+ */
+esp_err_t system_events_post_device_config_changed(uint16_t device_id, const char *device_name);
 
 #ifdef __cplusplus
 }
