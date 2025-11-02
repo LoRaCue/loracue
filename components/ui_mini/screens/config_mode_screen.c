@@ -26,7 +26,8 @@ static void generate_credentials(void)
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
 
     // Generate SSID: LoRaCue-XXXX (last 4 hex digits of MAC)
-    snprintf(device_ssid, sizeof(device_ssid), "LoRaCue-%02X%02X", mac[4], mac[5]);
+    uint16_t device_id = general_config_get_device_id();
+    snprintf(device_ssid, sizeof(device_ssid), "LoRaCue-%04X", device_id);
 
     // Generate password from MAC CRC32
     uint32_t crc        = esp_crc32_le(0, mac, 6);

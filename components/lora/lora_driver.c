@@ -62,7 +62,7 @@ static void lora_tx_task(void *arg)
     while (1) {
         // Wait for packet in queue
         if (xQueueReceive(tx_queue, &packet, portMAX_DELAY) == pdTRUE) {
-            ESP_LOGI(TAG, "📻 LoRa TX: %d bytes", packet.length);
+            ESP_LOGI(TAG, "LoRa TX: %d bytes", packet.length);
 
             esp_err_t ret = sx126x_send(packet.data, packet.length, SX126x_TXMODE_SYNC);
             if (ret != ESP_OK) {
@@ -87,7 +87,7 @@ static void lora_rx_task(void *arg)
         esp_err_t ret = sx126x_receive(rx_buffer, MAX_PACKET_SIZE, &bytes_received);
 
         if (ret == ESP_OK && bytes_received > 0) {
-            ESP_LOGI(TAG, "📻 LoRa RX: %d bytes", bytes_received);
+            ESP_LOGI(TAG, "LoRa RX: %d bytes", bytes_received);
 
             // Enqueue received packet
             lora_rx_packet_t rx_packet;
@@ -134,7 +134,7 @@ esp_err_t lora_driver_init(void)
     ESP_LOGI(TAG, "LoRa config: %lu Hz, SF%d, %d kHz, %d dBm", current_config.frequency,
              current_config.spreading_factor, current_config.bandwidth, current_config.tx_power);
 
-    ESP_LOGI(TAG, "📻 Initializing SX1262 LoRa");
+    ESP_LOGI(TAG, "Initializing SX1262 LoRa");
 
     // Initialize SX126x library
     ret = sx126x_init();
@@ -374,7 +374,7 @@ esp_err_t lora_set_config(const lora_config_t *config)
 esp_err_t lora_set_receive_mode(void)
 {
     // Hardware receive mode using SX126x
-    ESP_LOGI(TAG, "📻 LoRa RX mode");
+    ESP_LOGI(TAG, "LoRa RX mode");
 
     // Set LoRa to continuous receive mode
     SetRx(0); // 0 = continuous receive mode

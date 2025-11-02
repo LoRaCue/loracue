@@ -75,9 +75,8 @@ esp_err_t general_config_get(general_config_t *config)
     *config = default_config;
 
     // Generate device name from MAC address (LC-XXXX)
-    uint8_t mac[6];
-    esp_efuse_mac_get_default(mac);
-    snprintf(config->device_name, sizeof(config->device_name), "LC-%02X%02X", mac[4], mac[5]);
+    uint16_t device_id = general_config_get_device_id();
+    snprintf(config->device_name, sizeof(config->device_name), "LC-%04X", device_id);
 
     ESP_LOGI(TAG, "Using default device configuration - name: %s, mode: %s", config->device_name,
              device_mode_to_string(config->device_mode));
@@ -154,4 +153,11 @@ esp_err_t general_config_factory_reset(void)
     esp_restart();
 
     return ESP_OK; // Will never reach here
+}
+
+uint16_t general_config_get_device_id(void)
+{
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    return (mac[4] << 8) | mac[5];
 }

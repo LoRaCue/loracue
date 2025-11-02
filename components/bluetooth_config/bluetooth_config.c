@@ -19,6 +19,7 @@
 #include "bsp.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "esp_efuse.h"
 #include "general_config.h"
 #include "version.h"
 #include "commands.h"
@@ -338,6 +339,9 @@ static void ble_advertise(void)
 {
     int rc;
     
+    // Stop any existing advertising
+    ble_gap_adv_stop();
+    
     // Set advertising data
     struct ble_hs_adv_fields fields = {0};
     const char *name = "LoRaCue";
@@ -490,9 +494,13 @@ esp_err_t bluetooth_config_init(void)
     ble_svc_gap_device_name_set("LoRaCue");
     
     // Set DIS information
-    ble_svc_dis_manufacturer_name_set("LoRaCue Project");
-    ble_svc_dis_model_number_set("LC-1");
-    ble_svc_dis_serial_number_set(LORACUE_VERSION_STRING);
+    const bsp_usb_config_t *usb_config = bsp_get_usb_config();
+    char serial_number[32];
+    bsp_get_serial_number(serial_number, sizeof(serial_number));
+    
+    ble_svc_dis_manufacturer_name_set("LoRaCue");
+    ble_svc_dis_model_number_set(usb_config->usb_product);
+    ble_svc_dis_serial_number_set(serial_number);
     ble_svc_dis_firmware_revision_set(LORACUE_VERSION_STRING);
     
     // Start NimBLE host task

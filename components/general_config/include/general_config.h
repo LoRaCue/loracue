@@ -65,6 +65,12 @@ esp_err_t general_config_get(general_config_t *config);
 esp_err_t general_config_set(const general_config_t *config);
 
 /**
+ * @brief Get device ID derived from MAC address
+ * @return 16-bit device ID (last 2 bytes of MAC)
+ */
+uint16_t general_config_get_device_id(void);
+
+/**
  * @brief Factory reset - erase all NVS and reboot
  * @return ESP_OK on success (will not return if successful)
  */

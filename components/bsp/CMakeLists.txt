@@ -21,6 +21,6 @@ endif()
 idf_component_register(
     SRCS ${BSP_SRCS}
     INCLUDE_DIRS "include"
-    REQUIRES driver esp_adc esp_driver_spi esp_driver_i2c spi_flash esp_timer
+    REQUIRES driver esp_adc esp_driver_spi esp_driver_i2c spi_flash esp_timer efuse
              u8g2 lvgl pca9535 tps65185 gt911 bq25896 bq27220 pcf85063
 )

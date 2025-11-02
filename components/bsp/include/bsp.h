@@ -209,6 +209,21 @@ typedef struct {
 const bsp_usb_config_t *bsp_get_usb_config(void);
 
 /**
+ * @brief Check if USB is connected
+ *
+ * @return true if USB is connected, false otherwise
+ */
+bool bsp_is_usb_connected(void);
+
+/**
+ * @brief Get device serial number (derived from MAC address)
+ * @param serial_number Buffer to store serial number (min 13 bytes)
+ * @param max_len Maximum length of buffer
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len);
+
+/**
  * @brief Get LoRa pin configuration
  * @return Pointer to LoRa pin configuration structure
  */

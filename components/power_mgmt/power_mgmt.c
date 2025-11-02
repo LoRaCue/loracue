@@ -7,6 +7,7 @@
  */
 
 #include "power_mgmt.h"
+#include "usb_hid.h"
 #include "bsp.h"
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
@@ -230,6 +231,11 @@ power_mode_t power_mgmt_get_recommended_mode(void)
 
     uint64_t current_time     = esp_timer_get_time();
     uint32_t inactive_time_ms = (current_time - last_activity_time) / 1000;
+
+    // Don't sleep when USB HID is connected (PC mode)
+    if (usb_hid_is_connected()) {
+        return POWER_MODE_ACTIVE;
+    }
 
     if (current_config.enable_auto_deep_sleep && inactive_time_ms >= current_config.deep_sleep_timeout_ms) {
         return POWER_MODE_DEEP_SLEEP;

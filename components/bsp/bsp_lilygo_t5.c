@@ -12,6 +12,7 @@
 #include "pcf85063.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "esp_mac.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "driver/i2c.h"
@@ -410,12 +411,26 @@ const char *bsp_get_board_id(void)
 // USB configuration for LilyGO T5
 static const bsp_usb_config_t usb_config = {
     .usb_pid = 0x4004,
-    .usb_product = "LilyGO T5 E-Paper"
+    .usb_product = "LC-gamma"
 };
 
 const bsp_usb_config_t *bsp_get_usb_config(void)
 {
     return &usb_config;
+}
+
+esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len)
+{
+    if (!serial_number || max_len < 13) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    uint8_t mac[6];
+    esp_efuse_mac_get_default(mac);
+    snprintf(serial_number, max_len, "%02X%02X%02X%02X%02X%02X",
+             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    
+    return ESP_OK;
 }
 
 const bsp_lora_pins_t *bsp_get_lora_pins(void)

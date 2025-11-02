@@ -74,7 +74,8 @@ static void generate_wifi_credentials(char *ssid, size_t ssid_len, char *passwor
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
 
     // Generate SSID: LoRaCue-XXXX
-    snprintf(ssid, ssid_len, "LoRaCue-%02X%02X", mac[4], mac[5]);
+    uint16_t device_id = general_config_get_device_id();
+    snprintf(ssid, ssid_len, "LoRaCue-%04X", device_id);
 
     // Generate password from MAC CRC32
     uint32_t crc        = esp_crc32_le(0, mac, 6);
@@ -218,7 +219,7 @@ static esp_err_t api_devices_post_handler(httpd_req_t *req)
         uint8_t mac_bytes[6];
         if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
                    &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) == 6) {
-            uint16_t device_id = (mac_bytes[4] << 8) | mac_bytes[5];
+            uint16_t device_id = general_config_get_device_id();
             paired_device_t existing;
             is_update = (device_registry_get(device_id, &existing) == ESP_OK);
         }

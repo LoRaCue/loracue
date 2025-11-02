@@ -41,7 +41,6 @@
 #include <string.h>
 
 static const char *TAG            = "LORACUE_MAIN";
-device_mode_t current_device_mode = DEVICE_MODE_PRESENTER;
 static const esp_partition_t *running_partition = NULL;
 static TimerHandle_t ota_validation_timer       = NULL;
 
@@ -143,8 +142,11 @@ static void usb_monitor_task(void *pvParameters)
 static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_command_t command, const uint8_t *payload,
                             uint8_t payload_length, int16_t rssi, void *user_ctx)
 {
+    general_config_t config;
+    general_config_get(&config);
+
     // In presenter mode, only accept ACKs
-    if (current_device_mode == DEVICE_MODE_PRESENTER) {
+    if (config.device_mode == DEVICE_MODE_PRESENTER) {
         if (command == CMD_ACK) {
             ESP_LOGI(TAG, "Presenter mode: ACK received from 0x%04X (seq=%u)", device_id, sequence_num);
             // ACK handling is done in lora_protocol layer
@@ -366,14 +368,14 @@ void app_main(void)
 
     // Get device mode from NVS (reuse config from brightness setting)
     general_config_get(&config);
-    current_device_mode = config.device_mode;
 
-    // Generate device ID from MAC address (static identity)
-    uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    uint16_t device_id = (mac[4] << 8) | mac[5]; // Use last 2 bytes of MAC
+    // Get device ID from MAC address (static identity)
+    uint16_t device_id = general_config_get_device_id();
 
     ESP_LOGI(TAG, "Device mode: %s, Static ID: 0x%04X", device_mode_to_string(config.device_mode), device_id);
+
+    // Notify UI of initial device mode
+    system_events_post_mode_changed(config.device_mode);
 
     // Get AES key from LoRa config
     lora_config_t lora_cfg;
