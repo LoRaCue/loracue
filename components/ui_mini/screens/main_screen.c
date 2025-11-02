@@ -11,9 +11,9 @@ void main_screen_draw(const ui_status_t *status)
 
     if (current_device_mode == DEVICE_MODE_PC) {
         // Draw PC mode layout
-        extern ui_mini_status_t g_oled_status;
-        if (g_oled_status.device_name[0] != '\0') {
-            pc_mode_screen_draw(&g_oled_status);
+        ui_mini_status_t *ui_status = ui_mini_get_status();
+        if (ui_status && ui_status->device_name[0] != '\0') {
+            pc_mode_screen_draw(ui_status);
         } else {
             // Not initialized yet, draw empty PC mode
             ui_mini_status_t temp  = {0};

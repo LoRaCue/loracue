@@ -120,9 +120,8 @@ static void ota_progress_event_handler(void *arg, esp_event_base_t base, int32_t
         ui_mini_set_screen(OLED_SCREEN_OTA_UPDATE);
     }
     
-    // Update progress
-    extern void ota_update_screen_set_progress(uint8_t percent, const char *status);
-    ota_update_screen_set_progress(evt->percent, evt->status);
+    // Update OTA progress
+    ui_mini_update_ota_progress(evt->percent);
 }
 
 static void mode_changed_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)

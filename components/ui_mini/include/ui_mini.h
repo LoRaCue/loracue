@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include "common_types.h"
 #include "esp_err.h"
 #include "u8g2.h"
 #include <stdbool.h>
@@ -72,15 +73,6 @@ typedef struct {
 /**
  * @brief Command history entry for PC mode
  */
-typedef struct {
-    uint32_t timestamp_ms;
-    uint16_t device_id;
-    char device_name[16];
-    char command[8];
-    uint8_t keycode;
-    uint8_t modifiers;
-} command_history_entry_t;
-
 /**
  * @brief Device status for display
  */
@@ -191,6 +183,12 @@ esp_err_t ui_mini_show_ota_update(void);
  * @return ESP_OK on success
  */
 esp_err_t ui_mini_update_ota_progress(uint8_t progress);
+
+/**
+ * @brief Get UI status (thread-safe accessor)
+ * @return Pointer to internal status structure (read-only)
+ */
+ui_mini_status_t* ui_mini_get_status(void);
 
 #ifdef __cplusplus
 }
