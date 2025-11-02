@@ -338,6 +338,9 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg)
 
 static void ble_advertise(void)
 {
+    int rc;
+    
+    // Set advertising data
     struct ble_hs_adv_fields fields = {0};
     const char *name = "LoRaCue";
     
@@ -346,14 +349,21 @@ static void ble_advertise(void)
     fields.name_len = strlen(name);
     fields.name_is_complete = 1;
     
-    ble_gap_adv_set_fields(&fields);
+    rc = ble_gap_adv_set_fields(&fields);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Failed to set adv fields: %d", rc);
+        return;
+    }
     
+    // Start advertising
     struct ble_gap_adv_params adv_params = {0};
     adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+    adv_params.itvl_min = 0;
+    adv_params.itvl_max = 0;
     
-    int rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER,
-                               &adv_params, gap_event_handler, NULL);
+    rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER,
+                           &adv_params, gap_event_handler, NULL);
     if (rc != 0) {
         ESP_LOGE(TAG, "Failed to start advertising: %d", rc);
     } else {
