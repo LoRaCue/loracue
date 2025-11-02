@@ -85,6 +85,7 @@ typedef struct {
 static bool s_ble_initialized = false;
 static bool s_ble_enabled = false;
 static uint16_t s_nus_tx_handle;
+static uint8_t s_own_addr_type;
 static ble_conn_state_t s_conn_state = {
     .conn_handle = BLE_HS_CONN_HANDLE_NONE,
     .mtu = 23,
@@ -356,10 +357,8 @@ static void ble_advertise(void)
     struct ble_gap_adv_params adv_params = {0};
     adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
     adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
-    adv_params.itvl_min = 0;
-    adv_params.itvl_max = 0;
     
-    rc = ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER,
+    rc = ble_gap_adv_start(s_own_addr_type, NULL, BLE_HS_FOREVER,
                            &adv_params, gap_event_handler, NULL);
     if (rc != 0) {
         ESP_LOGE(TAG, "Failed to start advertising: %d", rc);
@@ -383,14 +382,14 @@ static void on_sync(void)
 {
     ESP_LOGI(TAG, "NimBLE host synced");
     
-    int rc = ble_hs_id_infer_auto(0, NULL);
+    int rc = ble_hs_id_infer_auto(0, &s_own_addr_type);
     if (rc != 0) {
         ESP_LOGE(TAG, "Failed to infer address: %d", rc);
         return;
     }
     
     uint8_t addr[6];
-    rc = ble_hs_id_copy_addr(BLE_OWN_ADDR_PUBLIC, addr, NULL);
+    rc = ble_hs_id_copy_addr(s_own_addr_type, addr, NULL);
     if (rc == 0) {
         ESP_LOGI(TAG, "Device address: %02x:%02x:%02x:%02x:%02x:%02x",
                  addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
