@@ -91,7 +91,7 @@ esp_err_t ui_mini_init(void)
     }
 
     // Initialize status with defaults
-    memset(&g_status, 0, sizeof(g_status));
+    memset(&s_status, 0, sizeof(s_status));
 
     // u8g2 is already initialized by BSP
     // Just verify it's ready
@@ -151,20 +151,20 @@ static uint8_t s_ota_progress = 0;
 
 esp_err_t ui_mini_show_ota_update(void)
 {
-    g_ota_progress = 0;
+    s_ota_progress = 0;
     return ui_mini_set_screen(OLED_SCREEN_OTA_UPDATE);
 }
 
 esp_err_t ui_mini_update_ota_progress(uint8_t progress)
 {
     if (progress > 100) progress = 100;
-    g_ota_progress = progress;
+    s_ota_progress = progress;
     return ESP_OK;
 }
 
 uint8_t ui_mini_get_ota_progress(void)
 {
-    return g_ota_progress;
+    return s_ota_progress;
 }
 
 ui_mini_status_t* ui_mini_get_status(void)
@@ -182,13 +182,13 @@ ui_mini_status_t* ui_mini_get_status(void)
     // Generate device_id from MAC address
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    g_status.device_id = (mac[4] << 8) | mac[5];
+    s_status.device_id = (mac[4] << 8) | mac[5];
     
-    strncpy(g_status.device_name, config.device_name, sizeof(g_status.device_name) - 1);
+    strncpy(s_status.device_name, config.device_name, sizeof(s_status.device_name) - 1);
     
     xSemaphoreGive(status_mutex);
     
-    return &g_status;
+    return &s_status;
 }
 
 esp_err_t ui_mini_update_status(const ui_mini_status_t *status)
@@ -200,23 +200,23 @@ esp_err_t ui_mini_update_status(const ui_mini_status_t *status)
     xSemaphoreTake(status_mutex, portMAX_DELAY);
     
     // Update runtime state (don't overwrite device_id/name - they come from config)
-    g_status.battery_level = status->battery_level;
-    g_status.battery_charging = status->battery_charging;
-    g_status.lora_connected = status->lora_connected;
-    g_status.lora_signal = status->lora_signal;
-    g_status.usb_connected = status->usb_connected;
-    g_status.bluetooth_connected = status->bluetooth_connected;
-    strncpy(g_status.last_command, status->last_command, sizeof(g_status.last_command) - 1);
-    g_status.active_presenter_count = status->active_presenter_count;
+    s_status.battery_level = status->battery_level;
+    s_status.battery_charging = status->battery_charging;
+    s_status.lora_connected = status->lora_connected;
+    s_status.lora_signal = status->lora_signal;
+    s_status.usb_connected = status->usb_connected;
+    s_status.bluetooth_connected = status->bluetooth_connected;
+    strncpy(s_status.last_command, status->last_command, sizeof(s_status.last_command) - 1);
+    s_status.active_presenter_count = status->active_presenter_count;
     
     // Copy active presenters
-    memcpy(g_status.active_presenters, status->active_presenters, 
-           sizeof(g_status.active_presenters));
+    memcpy(s_status.active_presenters, status->active_presenters, 
+           sizeof(s_status.active_presenters));
     
     // Copy command history
-    memcpy(g_status.command_history, status->command_history,
-           sizeof(g_status.command_history));
-    g_status.command_history_count = status->command_history_count;
+    memcpy(s_status.command_history, status->command_history,
+           sizeof(s_status.command_history));
+    s_status.command_history_count = status->command_history_count;
     
     xSemaphoreGive(status_mutex);
     
