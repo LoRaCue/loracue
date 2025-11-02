@@ -19,12 +19,12 @@ typedef enum {
  * @brief Command history entry for PC mode
  */
 typedef struct {
-    uint32_t timestamp_ms;
-    uint16_t device_id;
-    char device_name[16];
-    char command[8];
-    uint8_t keycode;
-    uint8_t modifiers;
+    uint32_t timestamp_ms __attribute__((unused));
+    uint16_t device_id __attribute__((unused));
+    char device_name[16] __attribute__((unused));
+    char command[8] __attribute__((unused));
+    uint8_t keycode __attribute__((unused));
+    uint8_t modifiers __attribute__((unused));
 } command_history_entry_t;
 
 #ifdef __cplusplus

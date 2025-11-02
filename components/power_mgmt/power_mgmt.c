@@ -143,9 +143,7 @@ esp_err_t power_mgmt_light_sleep(uint32_t timeout_ms)
 
     ESP_LOGI(TAG, "Entering light sleep for %dms", timeout_ms);
 
-    if (!display_sleeping) {
-        display_sleeping = true;
-    }
+    display_sleeping = true;
 
     uint64_t sleep_start = esp_timer_get_time();
 
@@ -213,9 +211,7 @@ esp_err_t power_mgmt_update_activity(void)
 
     last_activity_time = esp_timer_get_time();
 
-    if (display_sleeping) {
-        display_sleeping = false;
-    }
+    display_sleeping = false;
 
     return ESP_OK;
 }
