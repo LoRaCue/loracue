@@ -182,26 +182,26 @@ typedef struct {
 //==============================================================================
 
 // Module state
-static bool g_ble_initialized = false;
-static bool g_ble_enabled = false;
+static bool s_ble_initialized = false;
+static bool s_ble_enabled = false;
 
 // Connection state
-static ble_conn_state_t g_conn_state = {0};
-static SemaphoreHandle_t g_conn_state_mutex = NULL;
+static ble_conn_state_t s_conn_state = {0};
+static SemaphoreHandle_t s_conn_state_mutex = NULL;
 
 // Pairing state
-static ble_pairing_state_t g_pairing_state = {0};
-static SemaphoreHandle_t g_pairing_state_mutex = NULL;
+static ble_pairing_state_t s_pairing_state = {0};
+static SemaphoreHandle_t s_pairing_state_mutex = NULL;
 
 // UART service state
-static QueueHandle_t g_uart_rx_queue = NULL;
-static TaskHandle_t g_uart_task_handle = NULL;
-static char g_uart_rx_buffer[BLE_UART_RX_BUFFER_SIZE];
-static size_t g_uart_rx_buffer_len = 0;
+static QueueHandle_t s_uart_rx_queue = NULL;
+static TaskHandle_t s_uart_task_handle = NULL;
+static char s_uart_rx_buffer[BLE_UART_RX_BUFFER_SIZE];
+static size_t s_uart_rx_buffer_len = 0;
 
 // Service handles
-static uint16_t g_nus_tx_handle = 0;
-static uint16_t g_nus_rx_handle = 0;
+static uint16_t s_nus_tx_handle = 0;
+static uint16_t s_nus_rx_handle = 0;
 
 //==============================================================================
 // FORWARD DECLARATIONS
@@ -297,12 +297,12 @@ static const char *ble_sm_io_cap_name(uint8_t io_cap)
  */
 static bool ble_conn_state_lock(void)
 {
-    if (!g_conn_state_mutex) {
+    if (!s_conn_state_mutex) {
         ESP_LOGE(TAG, "Connection state mutex not initialized");
         return false;
     }
     
-    if (xSemaphoreTake(g_conn_state_mutex, pdMS_TO_TICKS(BLE_STATE_MUTEX_TIMEOUT_MS)) != pdTRUE) {
+    if (xSemaphoreTake(s_conn_state_mutex, pdMS_TO_TICKS(BLE_STATE_MUTEX_TIMEOUT_MS)) != pdTRUE) {
         ESP_LOGW(TAG, "Failed to acquire connection state mutex (timeout)");
         return false;
     }
@@ -315,8 +315,8 @@ static bool ble_conn_state_lock(void)
  */
 static void ble_conn_state_unlock(void)
 {
-    if (g_conn_state_mutex) {
-        xSemaphoreGive(g_conn_state_mutex);
+    if (s_conn_state_mutex) {
+        xSemaphoreGive(s_conn_state_mutex);
     }
 }
 
@@ -326,12 +326,12 @@ static void ble_conn_state_unlock(void)
  */
 static bool ble_pairing_state_lock(void)
 {
-    if (!g_pairing_state_mutex) {
+    if (!s_pairing_state_mutex) {
         ESP_LOGE(TAG, "Pairing state mutex not initialized");
         return false;
     }
     
-    if (xSemaphoreTake(g_pairing_state_mutex, pdMS_TO_TICKS(BLE_STATE_MUTEX_TIMEOUT_MS)) != pdTRUE) {
+    if (xSemaphoreTake(s_pairing_state_mutex, pdMS_TO_TICKS(BLE_STATE_MUTEX_TIMEOUT_MS)) != pdTRUE) {
         ESP_LOGW(TAG, "Failed to acquire pairing state mutex (timeout)");
         return false;
     }
@@ -344,8 +344,8 @@ static bool ble_pairing_state_lock(void)
  */
 static void ble_pairing_state_unlock(void)
 {
-    if (g_pairing_state_mutex) {
-        xSemaphoreGive(g_pairing_state_mutex);
+    if (s_pairing_state_mutex) {
+        xSemaphoreGive(s_pairing_state_mutex);
     }
 }
 
@@ -373,7 +373,7 @@ static void ble_uart_task(void *arg)
     
     while (1) {
         // Block waiting for commands
-        if (xQueueReceive(g_uart_rx_queue, &msg, portMAX_DELAY) == pdTRUE) {
+        if (xQueueReceive(s_uart_rx_queue, &msg, portMAX_DELAY) == pdTRUE) {
             // Null-terminate for safety
             msg.data[msg.len] = '\0';
             
@@ -412,14 +412,14 @@ static void ble_uart_send_response(const char *response)
         return;
     }
     
-    bool can_send = g_conn_state.connected && g_conn_state.notifications_enabled;
-    uint16_t mtu = g_conn_state.mtu;
+    bool can_send = s_conn_state.connected && s_conn_state.notifications_enabled;
+    uint16_t mtu = s_conn_state.mtu;
     
     ble_conn_state_unlock();
     
     if (!can_send) {
         ESP_LOGD(TAG, "Cannot send response - not ready (connected=%d, notif=%d)",
-                 g_conn_state.connected, g_conn_state.notifications_enabled);
+                 s_conn_state.connected, s_conn_state.notifications_enabled);
         return;
     }
     
@@ -471,8 +471,8 @@ static esp_err_t ble_uart_send_notification(const uint8_t *data, size_t len)
         return ESP_ERR_TIMEOUT;
     }
     
-    uint16_t conn_handle = g_conn_state.conn_handle;
-    bool connected = g_conn_state.connected;
+    uint16_t conn_handle = s_conn_state.conn_handle;
+    bool connected = s_conn_state.connected;
     
     ble_conn_state_unlock();
     
@@ -490,7 +490,7 @@ static esp_err_t ble_uart_send_notification(const uint8_t *data, size_t len)
     // Send notification with retries
     int rc;
     for (int retry = 0; retry < BLE_MAX_NOTIFICATION_RETRIES; retry++) {
-        rc = ble_gattc_notify_custom(conn_handle, g_nus_tx_handle, om);
+        rc = ble_gattc_notify_custom(conn_handle, s_nus_tx_handle, om);
         
         if (rc == 0) {
             ESP_LOGD(TAG, "Notification sent successfully (len=%zu)", len);
@@ -580,22 +580,22 @@ static int ble_nus_rx_access(uint16_t conn_handle, uint16_t attr_handle,
         
         if (c == '\n' || c == '\r') {
             // Command complete
-            if (g_uart_rx_buffer_len > 0) {
+            if (s_uart_rx_buffer_len > 0) {
                 ble_uart_msg_t msg;
-                msg.len = g_uart_rx_buffer_len;
-                memcpy(msg.data, g_uart_rx_buffer, g_uart_rx_buffer_len);
+                msg.len = s_uart_rx_buffer_len;
+                memcpy(msg.data, s_uart_rx_buffer, s_uart_rx_buffer_len);
                 
-                if (xQueueSend(g_uart_rx_queue, &msg, 0) != pdTRUE) {
+                if (xQueueSend(s_uart_rx_queue, &msg, 0) != pdTRUE) {
                     ESP_LOGW(TAG, "BLE UART queue full, dropping command");
                 }
                 
-                g_uart_rx_buffer_len = 0;
+                s_uart_rx_buffer_len = 0;
             }
-        } else if (g_uart_rx_buffer_len < sizeof(g_uart_rx_buffer) - 1) {
-            g_uart_rx_buffer[g_uart_rx_buffer_len++] = c;
+        } else if (s_uart_rx_buffer_len < sizeof(s_uart_rx_buffer) - 1) {
+            s_uart_rx_buffer[s_uart_rx_buffer_len++] = c;
         } else {
             ESP_LOGW(TAG, "Command buffer overflow, dropping data");
-            g_uart_rx_buffer_len = 0;
+            s_uart_rx_buffer_len = 0;
         }
     }
     
@@ -692,14 +692,14 @@ static const struct ble_gatt_svc_def gatt_services[] = {
                 .uuid = &BLE_UUID_NUS_TX_CHAR.u,
                 .access_cb = NULL,  // Notify-only, no access callback needed
                 .flags = BLE_GATT_CHR_F_NOTIFY,
-                .val_handle = &g_nus_tx_handle,
+                .val_handle = &s_nus_tx_handle,
             },
             {
                 // RX Characteristic (client to device, write)
                 .uuid = &BLE_UUID_NUS_RX_CHAR.u,
                 .access_cb = ble_nus_rx_access,
                 .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
-                .val_handle = &g_nus_rx_handle,
+                .val_handle = &s_nus_rx_handle,
             },
             {
                 0,  // End of characteristics
@@ -782,12 +782,12 @@ static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
                 ESP_LOG_BUFFER_HEX_LEVEL(TAG, event->connect.peer_addr.val, 6, ESP_LOG_INFO);
                 
                 if (ble_conn_state_lock()) {
-                    g_conn_state.connected = true;
-                    g_conn_state.conn_handle = event->connect.conn_handle;
-                    g_conn_state.mtu = 23;  // Default ATT MTU
-                    g_conn_state.notifications_enabled = false;
-                    g_conn_state.addr_type = event->connect.peer_addr.type;
-                    memcpy(g_conn_state.addr, event->connect.peer_addr.val, 6);
+                    s_conn_state.connected = true;
+                    s_conn_state.conn_handle = event->connect.conn_handle;
+                    s_conn_state.mtu = 23;  // Default ATT MTU
+                    s_conn_state.notifications_enabled = false;
+                    s_conn_state.addr_type = event->connect.peer_addr.type;
+                    memcpy(s_conn_state.addr, event->connect.peer_addr.val, 6);
                     ble_conn_state_unlock();
                 }
                 
@@ -832,16 +832,16 @@ static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
             ESP_LOGI(TAG, "  Handle: %d", event->disconnect.conn.conn_handle);
             
             if (ble_conn_state_lock()) {
-                g_conn_state.connected = false;
-                g_conn_state.notifications_enabled = false;
-                g_conn_state.conn_handle = 0;
-                g_conn_state.mtu = 23;
-                memset(g_conn_state.addr, 0, 6);
+                s_conn_state.connected = false;
+                s_conn_state.notifications_enabled = false;
+                s_conn_state.conn_handle = 0;
+                s_conn_state.mtu = 23;
+                memset(s_conn_state.addr, 0, 6);
                 ble_conn_state_unlock();
             }
             
             // Clear RX buffer
-            g_uart_rx_buffer_len = 0;
+            s_uart_rx_buffer_len = 0;
             
             // Restart advertising
             ESP_LOGI(TAG, "Restarting advertising...");
@@ -860,7 +860,7 @@ static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
                      event->mtu.channel_id, event->mtu.value);
             
             if (ble_conn_state_lock()) {
-                g_conn_state.mtu = event->mtu.value;
+                s_conn_state.mtu = event->mtu.value;
                 ble_conn_state_unlock();
             }
             break;
@@ -877,9 +877,9 @@ static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
                      event->subscribe.cur_indicate);
             
             // Check if this is for our TX characteristic
-            if (event->subscribe.attr_handle == g_nus_tx_handle) {
+            if (event->subscribe.attr_handle == s_nus_tx_handle) {
                 if (ble_conn_state_lock()) {
-                    g_conn_state.notifications_enabled = event->subscribe.cur_notify;
+                    s_conn_state.notifications_enabled = event->subscribe.cur_notify;
                     ble_conn_state_unlock();
                 }
                 
@@ -920,9 +920,9 @@ static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
                 
                 // Store passkey for UI display
                 if (ble_pairing_state_lock()) {
-                    g_pairing_state.in_progress = true;
-                    g_pairing_state.passkey = pkey.passkey;
-                    g_pairing_state.conn_handle = event->passkey.conn_handle;
+                    s_pairing_state.in_progress = true;
+                    s_pairing_state.passkey = pkey.passkey;
+                    s_pairing_state.conn_handle = event->passkey.conn_handle;
                     ble_pairing_state_unlock();
                 }
                 
@@ -1051,8 +1051,8 @@ static esp_err_t ble_services_init(void)
     }
     
     ESP_LOGI(TAG, "GATT services registered successfully");
-    ESP_LOGI(TAG, "  NUS TX handle: %d", g_nus_tx_handle);
-    ESP_LOGI(TAG, "  NUS RX handle: %d", g_nus_rx_handle);
+    ESP_LOGI(TAG, "  NUS TX handle: %d", s_nus_tx_handle);
+    ESP_LOGI(TAG, "  NUS RX handle: %d", s_nus_rx_handle);
     
     return ESP_OK;
 }
@@ -1122,13 +1122,13 @@ static void ble_on_reset(int reason)
     
     // Clear connection state
     if (ble_conn_state_lock()) {
-        memset(&g_conn_state, 0, sizeof(g_conn_state));
+        memset(&s_conn_state, 0, sizeof(s_conn_state));
         ble_conn_state_unlock();
     }
     
     // Clear pairing state
     if (ble_pairing_state_lock()) {
-        memset(&g_pairing_state, 0, sizeof(g_pairing_state));
+        memset(&s_pairing_state, 0, sizeof(s_pairing_state));
         ble_pairing_state_unlock();
     }
 }
@@ -1157,7 +1157,7 @@ esp_err_t bluetooth_config_init(void)
     ESP_LOGI(TAG, "========================================");
     
     // Check if already initialized
-    if (g_ble_initialized) {
+    if (s_ble_initialized) {
         ESP_LOGW(TAG, "Bluetooth already initialized");
         return ESP_OK;
     }
@@ -1176,16 +1176,16 @@ esp_err_t bluetooth_config_init(void)
     //--------------------------------------------------------------------------
     ESP_LOGI(TAG, "[1/8] Creating synchronization primitives...");
     
-    g_conn_state_mutex = xSemaphoreCreateMutex();
-    if (!g_conn_state_mutex) {
+    s_conn_state_mutex = xSemaphoreCreateMutex();
+    if (!s_conn_state_mutex) {
         ESP_LOGE(TAG, "Failed to create connection state mutex");
         return ESP_ERR_NO_MEM;
     }
     
-    g_pairing_state_mutex = xSemaphoreCreateMutex();
-    if (!g_pairing_state_mutex) {
+    s_pairing_state_mutex = xSemaphoreCreateMutex();
+    if (!s_pairing_state_mutex) {
         ESP_LOGE(TAG, "Failed to create pairing state mutex");
-        vSemaphoreDelete(g_conn_state_mutex);
+        vSemaphoreDelete(s_conn_state_mutex);
         return ESP_ERR_NO_MEM;
     }
     
@@ -1194,22 +1194,22 @@ esp_err_t bluetooth_config_init(void)
     //--------------------------------------------------------------------------
     ESP_LOGI(TAG, "[2/8] Creating BLE UART infrastructure...");
     
-    g_uart_rx_queue = xQueueCreate(BLE_UART_RX_QUEUE_SIZE, sizeof(ble_uart_msg_t));
-    if (!g_uart_rx_queue) {
+    s_uart_rx_queue = xQueueCreate(BLE_UART_RX_QUEUE_SIZE, sizeof(ble_uart_msg_t));
+    if (!s_uart_rx_queue) {
         ESP_LOGE(TAG, "Failed to create UART RX queue");
-        vSemaphoreDelete(g_conn_state_mutex);
-        vSemaphoreDelete(g_pairing_state_mutex);
+        vSemaphoreDelete(s_conn_state_mutex);
+        vSemaphoreDelete(s_pairing_state_mutex);
         return ESP_ERR_NO_MEM;
     }
     
     BaseType_t task_ret = xTaskCreate(ble_uart_task, "ble_uart",
                                        BLE_UART_TASK_STACK_SIZE, NULL,
-                                       BLE_UART_TASK_PRIORITY, &g_uart_task_handle);
+                                       BLE_UART_TASK_PRIORITY, &s_uart_task_handle);
     if (task_ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create UART task");
-        vQueueDelete(g_uart_rx_queue);
-        vSemaphoreDelete(g_conn_state_mutex);
-        vSemaphoreDelete(g_pairing_state_mutex);
+        vQueueDelete(s_uart_rx_queue);
+        vSemaphoreDelete(s_conn_state_mutex);
+        vSemaphoreDelete(s_pairing_state_mutex);
         return ESP_FAIL;
     }
     
@@ -1304,8 +1304,8 @@ esp_err_t bluetooth_config_init(void)
     nimble_port_freertos_init(ble_host_task);
     
     // Mark as initialized
-    g_ble_initialized = true;
-    g_ble_enabled = true;
+    s_ble_initialized = true;
+    s_ble_enabled = true;
     
     ESP_LOGI(TAG, "========================================");
     ESP_LOGI(TAG, "  Bluetooth Initialization Complete");
@@ -1347,7 +1347,7 @@ esp_err_t bluetooth_config_set_enabled(bool enabled)
  */
 bool bluetooth_config_is_enabled(void)
 {
-    return g_ble_enabled;
+    return s_ble_enabled;
 }
 
 /**
@@ -1360,7 +1360,7 @@ bool bluetooth_config_is_connected(void)
     bool connected = false;
     
     if (ble_conn_state_lock()) {
-        connected = g_conn_state.connected;
+        connected = s_conn_state.connected;
         ble_conn_state_unlock();
     }
     
@@ -1385,8 +1385,8 @@ bool bluetooth_config_get_passkey(uint32_t *passkey)
     bool has_passkey = false;
     
     if (ble_pairing_state_lock()) {
-        if (g_pairing_state.in_progress) {
-            *passkey = g_pairing_state.passkey;
+        if (s_pairing_state.in_progress) {
+            *passkey = s_pairing_state.passkey;
             has_passkey = true;
         }
         ble_pairing_state_unlock();
