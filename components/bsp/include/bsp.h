@@ -222,6 +222,12 @@ const bsp_lora_pins_t *bsp_get_lora_pins(void);
 esp_err_t bsp_set_display_brightness(uint8_t brightness);
 
 /**
+ * @brief Put display into power save mode
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_display_sleep(void);
+
+/**
  * @brief Wake display from power save mode
  * @return ESP_OK on success
  */

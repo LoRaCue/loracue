@@ -130,6 +130,9 @@ esp_err_t power_mgmt_display_sleep(void)
 
         uint64_t current_time = esp_timer_get_time();
         power_stats.display_sleep_time_ms += (current_time - last_activity_time) / 1000;
+        
+        // Turn off display backlight
+        bsp_display_sleep();
     }
 
     return ESP_OK;
@@ -211,7 +214,10 @@ esp_err_t power_mgmt_update_activity(void)
 
     last_activity_time = esp_timer_get_time();
 
-    display_sleeping = false;
+    if (display_sleeping) {
+        display_sleeping = false;
+        bsp_display_wake();
+    }
 
     return ESP_OK;
 }

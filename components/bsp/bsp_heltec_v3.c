@@ -533,6 +533,12 @@ esp_err_t bsp_set_display_brightness(uint8_t brightness)
     return ESP_OK;
 }
 
+esp_err_t bsp_display_sleep(void)
+{
+    u8g2_SetPowerSave(&u8g2, 1);
+    return ESP_OK;
+}
+
 esp_err_t bsp_display_wake(void)
 {
     u8g2_SetPowerSave(&u8g2, 0);
