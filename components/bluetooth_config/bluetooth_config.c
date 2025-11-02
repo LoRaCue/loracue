@@ -97,6 +97,7 @@ static TaskHandle_t s_cmd_task_handle = NULL;
 
 // Forward declarations
 static void bluetooth_config_send_response(const char *response);
+static void ble_advertise(void);
 
 //==============================================================================
 // THREAD-SAFE STATE ACCESS
@@ -263,11 +264,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg)
         }
         
         // Restart advertising
-        ble_gap_adv_start(BLE_OWN_ADDR_PUBLIC, NULL, BLE_HS_FOREVER,
-                         &(struct ble_gap_adv_params){
-                             .conn_mode = BLE_GAP_CONN_MODE_UND,
-                             .disc_mode = BLE_GAP_DISC_MODE_GEN,
-                         }, gap_event_handler, NULL);
+        ble_advertise();
         break;
 
     case BLE_GAP_EVENT_CONN_UPDATE:
