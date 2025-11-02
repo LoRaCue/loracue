@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "general_config.h"
 #include "icons/ui_status_icons.h"
 #include "ui_mini.h"
 #include "u8g2.h"
@@ -12,6 +13,7 @@
 #include "ui_icons.h"
 #include "ui_pairing_overlay.h"
 #include "ui_status_bar.h"
+#include "system_events.h"
 #include <inttypes.h>
 #include <string.h>
 
@@ -19,10 +21,19 @@ static const char *TAG = "pc_mode_screen";
 
 extern u8g2_t u8g2;
 
+// Private command history (self-contained in PC mode screen)
+static struct {
+    command_history_entry_t history[4];
+    uint8_t count;
+} screen_state = {0};
+
 // Lightbar state: 0 = lines 2&4 (even), 1 = lines 1&3 (odd)
 static uint8_t lightbar_state = 0;
 static uint32_t last_timestamp = 0;
 static bool initialized = false;
+
+// Forward declarations
+static void hid_command_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data);
 
 // Keycode to display name lookup
 static const char* keycode_to_name(uint8_t keycode, uint8_t modifiers)
@@ -99,20 +110,21 @@ static const char* keycode_to_name(uint8_t keycode, uint8_t modifiers)
     return key_name;
 }
 
-void pc_mode_screen_draw(const ui_mini_status_t *status)
+void pc_mode_screen_draw(void)
 {
-    if (!status) {
-        ESP_LOGE(TAG, "NULL status pointer");
-        return;
-    }
-
     u8g2_ClearBuffer(&u8g2);
 
+    // Get device name from config
+    general_config_t config;
+    general_config_get(&config);
+
     // Convert to ui_status_t for status bar
-    ui_status_t ui_status = {.usb_connected  = status->usb_connected,
-                             .lora_connected = status->lora_connected,
-                             .battery_level  = status->battery_level};
-    strncpy(ui_status.device_name, status->device_name, sizeof(ui_status.device_name) - 1);
+    ui_status_t ui_status = {
+        .usb_connected = ui_state.usb_connected,
+        .lora_connected = (ui_state.lora_rssi != 0),  // Has received packets
+        .battery_level = ui_state.battery_level
+    };
+    strncpy(ui_status.device_name, config.device_name, sizeof(ui_status.device_name) - 1);
 
     // Draw status bar (LORACUE + icons)
     ui_status_bar_draw(&ui_status);
@@ -131,16 +143,16 @@ void pc_mode_screen_draw(const ui_mini_status_t *status)
     }
     
     // Check if newest entry (index 0) has changed
-    if (status->command_history_count > 0) {
-        uint32_t newest_timestamp = status->command_history[0].timestamp_ms;
+    if (screen_state.count > 0) {
+        uint32_t newest_timestamp = screen_state.history[0].timestamp_ms;
         if (newest_timestamp != last_timestamp) {
             lightbar_state = 1 - lightbar_state; // Toggle
             last_timestamp = newest_timestamp;
         }
     }
 
-    for (int i = 0; i < status->command_history_count && i < 4; i++) {
-        uint32_t elapsed_sec = (now_ms - status->command_history[i].timestamp_ms) / 1000;
+    for (int i = 0; i < screen_state.count && i < 4; i++) {
+        uint32_t elapsed_sec = (now_ms - screen_state.history[i].timestamp_ms) / 1000;
         
         // Determine if this line should have lightbar (only if text exists)
         bool draw_lightbar = false;
@@ -162,12 +174,12 @@ void pc_mode_screen_draw(const ui_mini_status_t *status)
         }
 
         // Get key name from keycode
-        const char *key_display = keycode_to_name(status->command_history[i].keycode, 
-                                                   status->command_history[i].modifiers);
+        const char *key_display = keycode_to_name(screen_state.history[i].keycode, 
+                                                   screen_state.history[i].modifiers);
 
         char line[32];
         snprintf(line, sizeof(line), "%04" PRIu32 " %-8s %s", elapsed_sec, 
-                 status->command_history[i].device_name, key_display);
+                 screen_state.history[i].device_name, key_display);
 
         u8g2_DrawStr(&u8g2, 2, y, line);
         u8g2_SetDrawColor(&u8g2, 1); // Reset to normal
@@ -175,7 +187,7 @@ void pc_mode_screen_draw(const ui_mini_status_t *status)
     }
 
     // If no commands yet
-    if (status->command_history_count == 0) {
+    if (screen_state.count == 0) {
         u8g2_SetFont(&u8g2, u8g2_font_helvB12_tr);
         u8g2_DrawCenterStr(&u8g2, DISPLAY_WIDTH, 28, "PC MODE"); // Moved down 1px
 
@@ -197,4 +209,47 @@ void pc_mode_screen_draw(const ui_mini_status_t *status)
     }
 
     u8g2_SendBuffer(&u8g2);
+}
+
+// HID command event handler - maintains local command history
+static void hid_command_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
+{
+    const system_event_hid_command_t *evt = (const system_event_hid_command_t *)data;
+    
+    // Extract keyboard data
+    uint8_t modifiers = 0, keycode = 0;
+    system_event_get_keyboard_data(evt, &modifiers, &keycode);
+    
+    if (keycode == 0) {
+        return; // Invalid keycode
+    }
+    
+    // Shift history down (circular buffer)
+    if (screen_state.count < 4) {
+        screen_state.count++;
+    }
+    for (int i = screen_state.count - 1; i > 0; i--) {
+        screen_state.history[i] = screen_state.history[i - 1];
+    }
+    
+    // Add new entry at index 0
+    screen_state.history[0].timestamp_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
+    screen_state.history[0].device_id = evt->device_id;
+    screen_state.history[0].keycode = keycode;
+    screen_state.history[0].modifiers = modifiers;
+    
+    // Get device name from registry (simplified - just use device_id for now)
+    snprintf(screen_state.history[0].device_name, sizeof(screen_state.history[0].device_name),
+             "0x%04X", evt->device_id);
+}
+
+// Initialize PC mode screen - subscribe to HID command events
+void pc_mode_screen_init(void)
+{
+    esp_event_loop_handle_t loop = system_events_get_loop();
+    ESP_ERROR_CHECK(esp_event_handler_register_with(
+        loop, SYSTEM_EVENTS, SYSTEM_EVENT_HID_COMMAND_RECEIVED,
+        hid_command_event_handler, NULL));
+    
+    ESP_LOGI(TAG, "PC mode screen initialized with event subscription");
 }

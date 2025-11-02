@@ -23,45 +23,11 @@
 #include "bluetooth_config.h"
 #include "bsp.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include "general_config.h"
 #include "version.h"
 #include <string.h>
 
-#ifdef SIMULATOR_BUILD
-//==============================================================================
-// SIMULATOR STUB IMPLEMENTATION
-//==============================================================================
-static const char *TAG = "bluetooth_config";
-
-esp_err_t bluetooth_config_init(void)
-{
-    ESP_LOGI(TAG, "Bluetooth not available in simulator build");
-    return ESP_ERR_NOT_SUPPORTED;
-}
-
-esp_err_t bluetooth_config_set_enabled(bool enabled)
-{
-    (void)enabled;
-    return ESP_OK;
-}
-
-bool bluetooth_config_is_enabled(void)
-{
-    return false;
-}
-
-bool bluetooth_config_is_connected(void)
-{
-    return false;
-}
-
-bool bluetooth_config_get_passkey(uint32_t *passkey)
-{
-    (void)passkey;
-    return false;
-}
-
-#else
 //==============================================================================
 // NIMBLE HARDWARE IMPLEMENTATION
 //==============================================================================
@@ -77,7 +43,7 @@ bool bluetooth_config_get_passkey(uint32_t *passkey)
 #include "services/gatt/ble_svc_gatt.h"
 
 // Application Headers
-#include "esp_ble_ota.h"
+#include "ble_ota.h"
 #include "ble_ota_handler.h"
 #include "commands.h"
 #include "freertos/FreeRTOS.h"
@@ -778,17 +744,21 @@ static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
                 // Connection successful
                 ESP_LOGI(TAG, "Connection established successfully");
                 ESP_LOGI(TAG, "  Handle: %d", event->connect.conn_handle);
-                ESP_LOGI(TAG, "  Peer address type: %d", event->connect.peer_addr.type);
-                ESP_LOG_BUFFER_HEX_LEVEL(TAG, event->connect.peer_addr.val, 6, ESP_LOG_INFO);
                 
-                if (ble_conn_state_lock()) {
-                    s_conn_state.connected = true;
-                    s_conn_state.conn_handle = event->connect.conn_handle;
-                    s_conn_state.mtu = 23;  // Default ATT MTU
-                    s_conn_state.notifications_enabled = false;
-                    s_conn_state.addr_type = event->connect.peer_addr.type;
-                    memcpy(s_conn_state.addr, event->connect.peer_addr.val, 6);
-                    ble_conn_state_unlock();
+                struct ble_gap_conn_desc desc;
+                if (ble_gap_conn_find(event->connect.conn_handle, &desc) == 0) {
+                    ESP_LOGI(TAG, "  Peer address type: %d", desc.peer_id_addr.type);
+                    ESP_LOG_BUFFER_HEX_LEVEL(TAG, desc.peer_id_addr.val, 6, ESP_LOG_INFO);
+                    
+                    if (ble_conn_state_lock()) {
+                        s_conn_state.connected = true;
+                        s_conn_state.conn_handle = event->connect.conn_handle;
+                        s_conn_state.mtu = 23;  // Default ATT MTU
+                        s_conn_state.notifications_enabled = false;
+                        s_conn_state.addr_type = desc.peer_id_addr.type;
+                        memcpy(s_conn_state.addr, desc.peer_id_addr.val, 6);
+                        ble_conn_state_unlock();
+                    }
                 }
                 
                 // Update connection parameters for low latency
@@ -850,9 +820,12 @@ static int ble_gap_event_handler(struct ble_gap_event *event, void *arg)
             
         case BLE_GAP_EVENT_CONN_UPDATE:
             ESP_LOGI(TAG, "Connection parameters updated");
-            ESP_LOGI(TAG, "  Interval: %d", event->conn_update.conn_itvl);
-            ESP_LOGI(TAG, "  Latency: %d", event->conn_update.conn_latency);
-            ESP_LOGI(TAG, "  Timeout: %d", event->conn_update.supervision_timeout);
+            struct ble_gap_conn_desc desc;
+            if (ble_gap_conn_find(event->conn_update.conn_handle, &desc) == 0) {
+                ESP_LOGI(TAG, "  Interval: %d", desc.conn_itvl);
+                ESP_LOGI(TAG, "  Latency: %d", desc.conn_latency);
+                ESP_LOGI(TAG, "  Timeout: %d", desc.supervision_timeout);
+            }
             break;
             
         case BLE_GAP_EVENT_MTU:
@@ -1394,5 +1367,3 @@ bool bluetooth_config_get_passkey(uint32_t *passkey)
     
     return has_passkey;
 }
-
-#endif // SIMULATOR_BUILD

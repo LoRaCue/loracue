@@ -498,11 +498,9 @@ esp_err_t config_wifi_server_stop(void)
     // Unmount LittleFS
     esp_vfs_littlefs_unregister("storage");
 
-#ifndef SIMULATOR_BUILD
     // Only disable WiFi on real hardware for power saving
     esp_event_loop_delete_default();
     esp_netif_deinit();
-#endif
 
     server_running = false;
     ESP_LOGI(TAG, "WiFi AP and web server stopped");

@@ -70,7 +70,7 @@ endif
 build: check-idf
 	@echo "🔨 Building for $(BOARD_NAME)..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" build
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" build
 	@echo "✅ $(BOARD_NAME) build complete"
 
 clean:
@@ -91,7 +91,7 @@ rebuild: fullclean build
 flash: check-idf
 	@echo "📡 Flashing $(BOARD_NAME) firmware..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash
 
 flash-only: check-idf
 	@echo "📡 Flashing $(BOARD_NAME) firmware (no rebuild)..."
@@ -101,7 +101,7 @@ flash-only: check-idf
 flash-monitor: check-idf
 	@echo "📡 Flashing $(BOARD_NAME) firmware and starting monitor..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash monitor
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash monitor
 
 monitor:
 	@echo "📺 Starting serial monitor (Ctrl+] to exit)..."

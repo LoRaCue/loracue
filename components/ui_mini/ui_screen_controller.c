@@ -91,20 +91,8 @@ void ui_screen_controller_set(ui_mini_screen_t screen, const ui_status_t *status
             break;
 
         case OLED_SCREEN_PC_MODE:
-            // PC mode needs ui_mini_status_t for command history
-            {
-                ui_mini_status_t *ui_status = ui_mini_get_status();
-                if (ui_status && ui_status->device_name[0] != '\0') {
-                    pc_mode_screen_draw(ui_status);
-                } else {
-                    // Not initialized yet, draw empty PC mode screen
-                    ui_mini_status_t temp_status  = {0};
-                    temp_status.battery_level  = status->battery_level;
-                    temp_status.usb_connected  = status->usb_connected;
-                    temp_status.lora_connected = status->lora_connected;
-                    pc_mode_screen_draw(&temp_status);
-                }
-            }
+            // PC mode screen is self-contained
+            pc_mode_screen_draw();
             break;
 
         case OLED_SCREEN_MENU:
@@ -248,12 +236,9 @@ void ui_screen_controller_update(const ui_status_t *status)
             main_screen_draw(status);
             break;
 
-        case OLED_SCREEN_PC_MODE: {
-            ui_mini_status_t *ui_status = ui_mini_get_status();
-            if (ui_status) {
-                pc_mode_screen_draw(ui_status);
-            }
-        } break;
+        case OLED_SCREEN_PC_MODE:
+            pc_mode_screen_draw();
+            break;
 
         case OLED_SCREEN_BATTERY:
             battery_status_screen_draw(status);

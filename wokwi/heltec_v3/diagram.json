@@ -8,83 +8,57 @@
       "id": "esp",
       "top": 50,
       "left": 0,
-      "attrs": {
-        "i2cAddress": "0x3C"
-      }
+      "attrs": { "i2cAddress": "0x3C" }
     },
     {
       "type": "board-ssd1306",
       "id": "oled",
-      "top": 330,
-      "left": -98,
-      "attrs": {
-        "width": "128",
-        "height": "64"
-      }
+      "top": 300.74,
+      "left": -114.97,
+      "attrs": { "width": "128", "height": "64" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_next",
-      "top": 130,
-      "left": 111,
-      "rotate": 0,
-      "attrs": {
-        "color": "red",
-        "label": "NEXT"
-      }
+      "top": 169.4,
+      "left": 172.8,
+      "attrs": { "color": "red", "label": "NEXT", "key": "ArrowRight", "xray": "" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_prev",
-      "top": 100,
-      "left": -147,
-      "rotate": 0,
-      "attrs": {
-        "color": "green",
-        "label": "PREV"
-      }
+      "top": 188.6,
+      "left": -240,
+      "attrs": { "color": "green", "label": "PREV", "key": "ArrowLeft" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_both",
-      "top": 250,
-      "left": 210,
-      "rotate": 0,
-      "attrs": {
-        "color": "orange",
-        "label": "BOTH"
-      }
+      "top": 246.2,
+      "left": 172.8,
+      "attrs": { "color": "orange", "label": "BOTH" }
     },
     {
       "type": "wokwi-potentiometer",
       "id": "battery_sim",
-      "top": 0,
-      "left": 130,
-      "rotate": 0,
-      "attrs": {
-        "value": "75000",
-        "label": "Battery"
-      }
+      "top": -20.5,
+      "left": 9.4,
+      "attrs": { "value": "75000", "label": "Battery" }
     },
     {
       "type": "wokwi-led",
       "id": "led_power",
-      "top": 240,
-      "left": 100,
-      "attrs": {
-        "color": "blue",
-        "label": "Power"
-      }
+      "top": 294,
+      "left": 138.6,
+      "attrs": { "color": "blue", "label": "Power", "flip": "1" }
     },
     {
       "type": "wokwi-resistor",
       "id": "r_power",
-      "top": 242,
-      "left": 110,
+      "top": 235.2,
+      "left": 105.05,
       "rotate": 90,
-      "attrs": {
-        "value": "220"
-      }
+      "attrs": { "value": "220" }
     },
     {
       "type": "chip-uart",
@@ -92,15 +66,13 @@
       "top": 400,
       "left": -13,
       "rotate": 90,
-      "attrs": {
-        "baudrate": "115200"
-      }
+      "attrs": { "baudrate": "115200" }
     },
     {
       "type": "chip-sx1262",
       "id": "lora",
-      "top": 200,
-      "left": -250,
+      "top": 316.7,
+      "left": -205.32,
       "rotate": 90,
       "attrs": {}
     }
@@ -108,38 +80,30 @@
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
-    
     [ "esp:2", "uart1:RX", "green", [ "h0" ] ],
     [ "esp:3", "uart1:TX", "yellow", [ "h0" ] ],
-    
-    [ "esp:17", "oled:SDA", "blue", [  ] ],
-    [ "esp:18", "oled:SCL", "yellow", [  ] ],
-    [ "esp:3V3.2", "oled:VCC", "red", [ ] ],
-    [ "esp:GND.1", "oled:GND", "black", [  ] ],
-    
-    [ "esp:0", "btn_next:2.l", "yellow", [ ] ],
-    [ "esp:GND.2", "btn_next:1.l", "black", [  ] ],
-    
-    [ "btn_prev:1.r", "esp:46", "yellow", [ "h25", "v-10" ] ],
+    [ "esp:17", "oled:SDA", "blue", [] ],
+    [ "esp:18", "oled:SCL", "yellow", [] ],
+    [ "esp:3V3.2", "oled:VCC", "red", [] ],
+    [ "esp:GND.1", "oled:GND", "black", [] ],
+    [ "esp:GND.2", "btn_next:1.l", "black", [] ],
     [ "btn_prev:2.r", "esp:GND.1", "black", [ "h15", "v-10" ] ],
-    
-    [ "esp:GND.3", "btn_both:2.l", "black", [  ] ],
-    [ "esp:21", "btn_both:1.r", "yellow", [ ] ],
-
-    [ "esp:1", "battery_sim:SIG", "orange", [ ] ],
-    [ "esp:3V3.1", "battery_sim:VCC", "red", [ "v-85", "h208", "v85" ] ],
-    [ "esp:GND.2", "battery_sim:GND", "black", [  ] ],
-    
-    [ "esp:35", "r_power:1", "yellow", [  ] ],
+    [ "esp:21", "btn_both:1.r", "yellow", [] ],
+    [ "esp:1", "battery_sim:SIG", "orange", [] ],
+    [ "esp:GND.2", "battery_sim:GND", "black", [] ],
+    [ "esp:35", "r_power:1", "yellow", [] ],
     [ "r_power:2", "led_power:A", "yellow", [ "v22" ] ],
-    [ "esp:GND.4", "led_power:C", "black", [  ] ],
-    
-    [ "esp:8", "lora:CS", "purple", [  ] ],
-    [ "esp:9", "lora:SCK", "blue", [  ] ],
-    [ "esp:10", "lora:MOSI", "green", [  ] ],
-    [ "esp:11", "lora:MISO", "brown", [  ] ],
-    [ "esp:13", "lora:BUSY", "orange", [  ] ],
-    [ "esp:12", "lora:RESET", "red", [  ] ]
+    [ "esp:8", "lora:CS", "purple", [] ],
+    [ "esp:9", "lora:SCK", "blue", [] ],
+    [ "esp:10", "lora:MOSI", "green", [] ],
+    [ "esp:11", "lora:MISO", "brown", [] ],
+    [ "esp:13", "lora:BUSY", "orange", [] ],
+    [ "esp:12", "lora:RESET", "red", [] ],
+    [ "btn_next:2.l", "esp:0", "green", [ "h0" ] ],
+    [ "esp:46", "btn_prev:1.r", "yellow", [ "v-2.18", "h-168.48" ] ],
+    [ "battery_sim:VCC", "esp:3V3.1", "red", [ "v0" ] ],
+    [ "btn_both:2.l", "esp:GND.4", "black", [ "h0" ] ],
+    [ "led_power:C", "btn_both:2.l", "black", [ "h9.2", "v-57.8" ] ]
   ],
   "dependencies": {}
 }

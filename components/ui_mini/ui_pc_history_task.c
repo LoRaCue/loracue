@@ -45,10 +45,7 @@ static void ui_pc_history_task(void *pvParameters)
                 extern void ui_mini_unlock_draw(void);
 
                 if (ui_mini_try_lock_draw()) {
-                    ui_mini_status_t *ui_status = ui_mini_get_status();
-                    if (ui_status) {
-                        pc_mode_screen_draw(ui_status);
-                    }
+                    pc_mode_screen_draw();
                     ui_mini_unlock_draw();
                 }
             }

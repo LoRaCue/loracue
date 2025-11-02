@@ -19,6 +19,11 @@ esp_err_t bluetooth_config_deinit(void)
     return ESP_OK;
 }
 
+bool bluetooth_config_is_enabled(void)
+{
+    return false;
+}
+
 bool bluetooth_config_is_connected(void)
 {
     return false;

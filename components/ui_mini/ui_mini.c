@@ -6,6 +6,7 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "general_config.h"
+#include "pc_mode_screen.h"
 #include "u8g2.h"
 #include "ui_data_provider.h"
 #include "ui_data_update_task.h"
@@ -19,10 +20,6 @@ static const char *TAG               = "ui_mini";
 static bool ui_initialized           = false;
 static SemaphoreHandle_t draw_mutex  = NULL;
 static bool background_tasks_enabled = true;
-
-// Encapsulated UI state (private to this module)
-static ui_mini_status_t s_status = {0};
-static SemaphoreHandle_t status_mutex = NULL;
 
 // Global u8g2 instance (initialized by BSP)
 extern u8g2_t u8g2;
@@ -82,23 +79,15 @@ esp_err_t ui_mini_init(void)
         return ESP_ERR_NO_MEM;
     }
 
-    // Create status mutex
-    status_mutex = xSemaphoreCreateMutex();
-    if (!status_mutex) {
-        ESP_LOGE(TAG, "Failed to create status mutex");
-        vSemaphoreDelete(draw_mutex);
-        return ESP_ERR_NO_MEM;
-    }
-
-    // Initialize status with defaults
-    memset(&s_status, 0, sizeof(s_status));
-
     // u8g2 is already initialized by BSP
     // Just verify it's ready
     u8g2_ClearDisplay(&u8g2);
 
     // Initialize screen controller
     ui_screen_controller_init();
+    
+    // Initialize PC mode screen (subscribes to HID events)
+    pc_mode_screen_init();
 
     // Start three specialized tasks
     esp_err_t ret;
@@ -167,59 +156,4 @@ uint8_t ui_mini_get_ota_progress(void)
     return s_ota_progress;
 }
 
-ui_mini_status_t* ui_mini_get_status(void)
-{
-    if (!status_mutex) {
-        return NULL;
-    }
-    
-    xSemaphoreTake(status_mutex, portMAX_DELAY);
-    
-    // Merge runtime state with config data
-    general_config_t config;
-    general_config_get(&config);
-    
-    // Generate device_id from MAC address
-    uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    s_status.device_id = (mac[4] << 8) | mac[5];
-    
-    strncpy(s_status.device_name, config.device_name, sizeof(s_status.device_name) - 1);
-    
-    xSemaphoreGive(status_mutex);
-    
-    return &s_status;
-}
-
-esp_err_t ui_mini_update_status(const ui_mini_status_t *status)
-{
-    if (!status_mutex || !status) {
-        return ESP_ERR_INVALID_ARG;
-    }
-    
-    xSemaphoreTake(status_mutex, portMAX_DELAY);
-    
-    // Update runtime state (don't overwrite device_id/name - they come from config)
-    s_status.battery_level = status->battery_level;
-    s_status.battery_charging = status->battery_charging;
-    s_status.lora_connected = status->lora_connected;
-    s_status.lora_signal = status->lora_signal;
-    s_status.usb_connected = status->usb_connected;
-    s_status.bluetooth_connected = status->bluetooth_connected;
-    strncpy(s_status.last_command, status->last_command, sizeof(s_status.last_command) - 1);
-    s_status.active_presenter_count = status->active_presenter_count;
-    
-    // Copy active presenters
-    memcpy(s_status.active_presenters, status->active_presenters, 
-           sizeof(s_status.active_presenters));
-    
-    // Copy command history
-    memcpy(s_status.command_history, status->command_history,
-           sizeof(s_status.command_history));
-    s_status.command_history_count = status->command_history_count;
-    
-    xSemaphoreGive(status_mutex);
-    
-    return ESP_OK;
-}
 

@@ -37,12 +37,9 @@ void system_info_screen_draw(void)
     u8g2_DrawStr(&u8g2, 2, 20, "Firmware: ");
     u8g2_DrawStr(&u8g2, 55, 20, LORACUE_VERSION_FULL);
 
-    // Hardware (dynamic based on build)
-#ifdef SIMULATOR_BUILD
-    u8g2_DrawStr(&u8g2, 2, 30, "Hardware: Wokwi Simulator");
-#else
+    // Hardware
+    // FIXME: Make dynamic for other hardware versions
     u8g2_DrawStr(&u8g2, 2, 30, "Hardware: Heltec LoRa V3");
-#endif
 
     // ESP-IDF version
     u8g2_DrawStr(&u8g2, 2, 40, "ESP-IDF: ");
@@ -93,10 +90,6 @@ void device_info_screen_draw(const ui_status_t *status)
         u8g2_DrawStr(&u8g2, 2, 30, "Mode: PC");
     }
 
-    // LoRa frequency (dynamic from driver)
-#ifdef SIMULATOR_BUILD
-    u8g2_DrawStr(&u8g2, 2, 40, "LoRa: Simulated");
-#else
     uint32_t freq_hz      = lora_get_frequency();
     uint32_t freq_mhz     = freq_hz / 1000000;
     uint32_t freq_decimal = (freq_hz % 1000000) / 100000;
@@ -129,7 +122,6 @@ void device_info_screen_draw(const ui_status_t *status)
     *p   = '\0';
 
     u8g2_DrawStr(&u8g2, 2, 40, freq_str);
-#endif
 
     // Device ID (from MAC)
     uint8_t mac[6];
