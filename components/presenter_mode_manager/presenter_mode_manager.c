@@ -58,7 +58,12 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
             break;
 
         case BUTTON_EVENT_DOUBLE:
-            ESP_LOGI(TAG, "Double press - no action in presenter mode");
+            ESP_LOGI(TAG, "Double press - sending Cursor Left");
+#ifdef CONFIG_LORA_SEND_RELIABLE
+            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x50, 2000, 3);
+#else
+            ret = lora_protocol_send_keyboard(config.slot_id, 0, 0x50);
+#endif
             break;
 
         default:
