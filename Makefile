@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build build-heltec build-lilygo build-sim clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
+.PHONY: all build build-heltec build-lilygo clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -418,7 +418,6 @@ help:
 	@echo "  make build         - Build all board variants"
 	@echo "  make build BOARD=heltec - Build Heltec V3 only"
 	@echo "  make build BOARD=lilygo - Build LilyGO T5 only"
-	@echo "  make build-sim     - Build for Wokwi Simulator"
 	@echo "  make rebuild       - Clean and rebuild all"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
