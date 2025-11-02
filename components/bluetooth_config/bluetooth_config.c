@@ -16,6 +16,8 @@
  */
 
 #include "bluetooth_config.h"
+#include "ble_ota_handler.h"
+#include "ble_ota_integration.h"
 #include "bsp.h"
 #include "esp_log.h"
 #include "esp_random.h"
@@ -238,6 +240,9 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg)
                     memcpy(s_conn_state.addr, desc.peer_id_addr.val, 6);
                     conn_state_unlock();
                 }
+                
+                // Set connection handle for OTA operations
+                ble_ota_set_connection_handle(event->connect.conn_handle);
             }
             
             // Request connection parameter update for low latency
@@ -399,6 +404,14 @@ static void on_sync(void)
                  addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
     }
     
+    // Initialize BLE OTA handler (streaming task) now that NimBLE is ready
+    rc = ble_ota_handler_init();
+    if (rc != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to init BLE OTA handler: %d", rc);
+    } else {
+        ESP_LOGI(TAG, "BLE OTA handler initialized");
+    }
+    
     ble_advertise();
 }
 
@@ -489,6 +502,12 @@ esp_err_t bluetooth_config_init(void)
         vSemaphoreDelete(s_conn_state_mutex);
         return ESP_FAIL;
     }
+    
+    // Register BLE OTA services
+    rc = ble_ota_register_services();
+    if (rc != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to register OTA services, continuing without OTA");
+    }
 
     // Set device name
     ble_svc_gap_device_name_set("LoRaCue");
@@ -503,7 +522,7 @@ esp_err_t bluetooth_config_init(void)
     ble_svc_dis_serial_number_set(serial_number);
     ble_svc_dis_firmware_revision_set(LORACUE_VERSION_STRING);
     
-    // Start NimBLE host task
+    // Start NimBLE host task (OTA will be initialized in on_sync callback)
     nimble_port_freertos_init(nimble_host_task);
 
     s_ble_initialized = true;

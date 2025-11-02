@@ -37,9 +37,10 @@ static void ui_pc_history_task(void *pvParameters)
         // Only update when on MAIN screen in PC mode
         if (current == OLED_SCREEN_MAIN) {
             // Check if we're in PC mode
-            extern device_mode_t current_device_mode;
+            general_config_t config;
+            general_config_get(&config);
 
-            if (current_device_mode == DEVICE_MODE_PC) {
+            if (config.device_mode == DEVICE_MODE_PC) {
                 // Try to acquire draw lock
                 extern bool ui_mini_try_lock_draw(void);
                 extern void ui_mini_unlock_draw(void);

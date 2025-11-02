@@ -32,7 +32,7 @@
 
 static const char *TAG = "ble_ota";
 static RingbufHandle_t s_ringbuf = NULL;
-static SemaphoreHandle_t notify_sem = NULL;
+SemaphoreHandle_t notify_sem = NULL;  // Global - required by BLE OTA library
 static esp_ota_handle_t out_handle;
 
 bool ble_ota_ringbuf_init(uint32_t ringbuf_size)

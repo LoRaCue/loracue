@@ -18,6 +18,7 @@
 #include "general_config.h"
 #include "lora_bands.h"
 #include "lora_driver.h"
+#include "system_events.h"
 #include "mbedtls/base64.h"
 #include "ota_engine.h"
 #include "power_mgmt.h"
@@ -140,8 +141,7 @@ static void handle_set_general(cJSON *config_json)
             return;
         }
         config.device_mode = new_mode;
-        extern device_mode_t current_device_mode;
-        current_device_mode = new_mode;
+        system_events_post_mode_changed(new_mode);
     }
 
     cJSON *brightness = cJSON_GetObjectItem(config_json, "brightness");

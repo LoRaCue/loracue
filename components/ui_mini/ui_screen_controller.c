@@ -264,9 +264,10 @@ void ui_screen_controller_handle_button(button_event_type_t event)
             break;
 
         case OLED_SCREEN_MAIN: {
-            extern device_mode_t current_device_mode;
+            general_config_t config;
+            general_config_get(&config);
             
-            if (current_device_mode == DEVICE_MODE_PC) {
+            if (config.device_mode == DEVICE_MODE_PC) {
                 // PC mode: send HID directly via USB
                 if (event == BUTTON_EVENT_SHORT) {
                     extern esp_err_t usb_hid_send_key(uint8_t keycode);

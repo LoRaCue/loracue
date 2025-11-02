@@ -3,6 +3,7 @@
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 #include "general_config.h"
+#include "system_events.h"
 #include "ui_mini.h"
 #include "u8g2.h"
 #include "ui_config.h"
@@ -113,9 +114,8 @@ void device_mode_screen_select(void)
         return; // No change, stay in screen
     }
 
-    // Update global mode - main loop will save to NVS
-    extern device_mode_t current_device_mode;
-    current_device_mode = new_mode;
+    // Post mode change event
+    system_events_post_mode_changed(new_mode);
 
     // Return to main screen to show new mode
     extern void ui_screen_controller_set(ui_mini_screen_t screen, const ui_status_t *status);
