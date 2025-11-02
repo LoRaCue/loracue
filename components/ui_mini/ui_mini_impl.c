@@ -73,10 +73,103 @@ static void lora_state_event_handler(void *arg, esp_event_base_t base, int32_t i
     ui_mini_update_status(&status);
 }
 
-static void lora_command_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
+static void hid_command_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    const system_event_lora_cmd_t *evt = (const system_event_lora_cmd_t *)data;
-    strncpy(ui_state.last_command, evt->command, sizeof(ui_state.last_command) - 1);
+    const system_event_hid_command_t *evt = (const system_event_hid_command_t *)data;
+    
+    // Extract keyboard data for display
+    uint8_t modifiers = 0, keycode = 0;
+    system_event_get_keyboard_data(evt, &modifiers, &keycode);
+    
+    // Map keycode to command name for display
+    const char *cmd_name = "KEY";
+    switch (keycode) {
+        // Navigation keys
+        case 0x4E: cmd_name = "PgDn"; break;
+        case 0x4B: cmd_name = "PgUp"; break;
+        case 0x4F: cmd_name = "→"; break;      // Right arrow
+        case 0x50: cmd_name = "←"; break;      // Left arrow
+        case 0x51: cmd_name = "↓"; break;      // Down arrow
+        case 0x52: cmd_name = "↑"; break;      // Up arrow
+        case 0x4A: cmd_name = "Home"; break;
+        case 0x4D: cmd_name = "End"; break;
+        
+        // Special keys
+        case 0x2C: cmd_name = "Space"; break;
+        case 0x28: cmd_name = "Enter"; break;
+        case 0x2A: cmd_name = "BkSpc"; break;
+        case 0x2B: cmd_name = "Tab"; break;
+        case 0x29: cmd_name = "Esc"; break;
+        
+        // Function keys
+        case 0x3A: cmd_name = "F1"; break;
+        case 0x3B: cmd_name = "F2"; break;
+        case 0x3C: cmd_name = "F3"; break;
+        case 0x3D: cmd_name = "F4"; break;
+        case 0x3E: cmd_name = "F5"; break;
+        case 0x3F: cmd_name = "F6"; break;
+        case 0x40: cmd_name = "F7"; break;
+        case 0x41: cmd_name = "F8"; break;
+        case 0x42: cmd_name = "F9"; break;
+        case 0x43: cmd_name = "F10"; break;
+        case 0x44: cmd_name = "F11"; break;
+        case 0x45: cmd_name = "F12"; break;
+        
+        // Letters (a-z)
+        case 0x04: cmd_name = "A"; break;
+        case 0x05: cmd_name = "B"; break;
+        case 0x06: cmd_name = "C"; break;
+        case 0x07: cmd_name = "D"; break;
+        case 0x08: cmd_name = "E"; break;
+        case 0x09: cmd_name = "F"; break;
+        case 0x0A: cmd_name = "G"; break;
+        case 0x0B: cmd_name = "H"; break;
+        case 0x0C: cmd_name = "I"; break;
+        case 0x0D: cmd_name = "J"; break;
+        case 0x0E: cmd_name = "K"; break;
+        case 0x0F: cmd_name = "L"; break;
+        case 0x10: cmd_name = "M"; break;
+        case 0x11: cmd_name = "N"; break;
+        case 0x12: cmd_name = "O"; break;
+        case 0x13: cmd_name = "P"; break;
+        case 0x14: cmd_name = "Q"; break;
+        case 0x15: cmd_name = "R"; break;
+        case 0x16: cmd_name = "S"; break;
+        case 0x17: cmd_name = "T"; break;
+        case 0x18: cmd_name = "U"; break;
+        case 0x19: cmd_name = "V"; break;
+        case 0x1A: cmd_name = "W"; break;
+        case 0x1B: cmd_name = "X"; break;
+        case 0x1C: cmd_name = "Y"; break;
+        case 0x1D: cmd_name = "Z"; break;
+        
+        // Numbers (1-9, 0)
+        case 0x1E: cmd_name = "1"; break;
+        case 0x1F: cmd_name = "2"; break;
+        case 0x20: cmd_name = "3"; break;
+        case 0x21: cmd_name = "4"; break;
+        case 0x22: cmd_name = "5"; break;
+        case 0x23: cmd_name = "6"; break;
+        case 0x24: cmd_name = "7"; break;
+        case 0x25: cmd_name = "8"; break;
+        case 0x26: cmd_name = "9"; break;
+        case 0x27: cmd_name = "0"; break;
+        
+        // Special characters
+        case 0x2D: cmd_name = "-"; break;
+        case 0x2E: cmd_name = "="; break;
+        case 0x2F: cmd_name = "["; break;
+        case 0x30: cmd_name = "]"; break;
+        case 0x31: cmd_name = "\\"; break;
+        case 0x33: cmd_name = ";"; break;
+        case 0x34: cmd_name = "'"; break;
+        case 0x35: cmd_name = "`"; break;
+        case 0x36: cmd_name = ","; break;
+        case 0x37: cmd_name = "."; break;
+        case 0x38: cmd_name = "/"; break;
+    }
+    
+    strncpy(ui_state.last_command, cmd_name, sizeof(ui_state.last_command) - 1);
     ui_state.lora_rssi = evt->rssi;
     
     ui_mini_status_t status = {
@@ -161,8 +254,8 @@ static void ui_task(void *arg)
         lora_state_event_handler, NULL));
     
     ESP_ERROR_CHECK(esp_event_handler_register_with(
-        loop, SYSTEM_EVENTS, SYSTEM_EVENT_LORA_COMMAND_RECEIVED,
-        lora_command_event_handler, NULL));
+        loop, SYSTEM_EVENTS, SYSTEM_EVENT_HID_COMMAND_RECEIVED,
+        hid_command_event_handler, NULL));
     
     ESP_ERROR_CHECK(esp_event_handler_register_with(
         loop, SYSTEM_EVENTS, SYSTEM_EVENT_BUTTON_PRESSED,
@@ -196,7 +289,7 @@ static void ui_task(void *arg)
     esp_event_handler_unregister_with(loop, SYSTEM_EVENTS,
                                       SYSTEM_EVENT_LORA_STATE_CHANGED, lora_state_event_handler);
     esp_event_handler_unregister_with(loop, SYSTEM_EVENTS,
-                                      SYSTEM_EVENT_LORA_COMMAND_RECEIVED, lora_command_event_handler);
+                                      SYSTEM_EVENT_HID_COMMAND_RECEIVED, hid_command_event_handler);
     esp_event_handler_unregister_with(loop, SYSTEM_EVENTS,
                                       SYSTEM_EVENT_BUTTON_PRESSED, button_event_handler);
     esp_event_handler_unregister_with(loop, SYSTEM_EVENTS,
