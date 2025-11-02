@@ -21,7 +21,7 @@ typedef enum {
     SYSTEM_EVENT_BUTTON_PRESSED,
     SYSTEM_EVENT_OTA_PROGRESS,
     SYSTEM_EVENT_MODE_CHANGED,
-    SYSTEM_EVENT_PC_COMMAND_RECEIVED,
+    SYSTEM_EVENT_HID_COMMAND_RECEIVED,
     SYSTEM_EVENT_DEVICE_CONFIG_CHANGED,
 } system_event_id_t;
 
@@ -58,12 +58,12 @@ typedef struct {
 } system_event_mode_t;
 
 typedef struct {
-    uint16_t device_id;
-    char command[16];
-    uint8_t keycode;
-    uint8_t modifiers;
-    int8_t rssi;
-} system_event_pc_command_t;
+    uint16_t device_id;        // Source device
+    uint8_t hid_type;          // HID device type (0x1=keyboard, 0x2=mouse, 0x3=media)
+    uint8_t hid_report[5];     // Raw HID report data (protocol format)
+    uint8_t flags;             // Protocol flags (ACK_REQUEST, etc)
+    int8_t rssi;               // Signal strength (RX only, valid in PC mode)
+} system_event_hid_command_t;
 
 typedef struct {
     uint16_t device_id;
@@ -116,10 +116,26 @@ esp_err_t system_events_post_ota_progress(uint8_t percent, const char *status);
 esp_err_t system_events_post_mode_changed(device_mode_t mode);
 
 /**
- * @brief Post PC command received event
+ * @brief Post HID command received event
  */
-esp_err_t system_events_post_pc_command(uint16_t device_id, const char *command,
-                                        uint8_t keycode, uint8_t modifiers, int8_t rssi);
+esp_err_t system_events_post_hid_command(const system_event_hid_command_t *hid_cmd);
+
+/**
+ * @brief Helper to extract keyboard data from HID command (MVP convenience)
+ * @param evt HID command event
+ * @param modifiers Output: modifier keys (Ctrl, Shift, Alt, GUI)
+ * @param keycode Output: first keycode
+ */
+static inline void system_event_get_keyboard_data(
+    const system_event_hid_command_t *evt,
+    uint8_t *modifiers,
+    uint8_t *keycode)
+{
+    if (evt && evt->hid_type == 0x1) {  // Keyboard
+        if (modifiers) *modifiers = evt->hid_report[0];
+        if (keycode) *keycode = evt->hid_report[1];
+    }
+}
 
 /**
  * @brief Post device config changed event

@@ -94,18 +94,14 @@ esp_err_t system_events_post_mode_changed(device_mode_t mode)
                              &data, sizeof(data), portMAX_DELAY);
 }
 
-esp_err_t system_events_post_pc_command(uint16_t device_id, const char *command,
-                                        uint8_t keycode, uint8_t modifiers, int8_t rssi)
+esp_err_t system_events_post_hid_command(const system_event_hid_command_t *hid_cmd)
 {
-    system_event_pc_command_t data = {
-        .device_id = device_id,
-        .keycode = keycode,
-        .modifiers = modifiers,
-        .rssi = rssi
-    };
-    strncpy(data.command, command, sizeof(data.command) - 1);
-    return esp_event_post_to(event_loop, SYSTEM_EVENTS, SYSTEM_EVENT_PC_COMMAND_RECEIVED,
-                             &data, sizeof(data), portMAX_DELAY);
+    if (!hid_cmd) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    return esp_event_post_to(event_loop, SYSTEM_EVENTS, SYSTEM_EVENT_HID_COMMAND_RECEIVED,
+                             hid_cmd, sizeof(system_event_hid_command_t), portMAX_DELAY);
 }
 
 esp_err_t system_events_post_device_config_changed(uint16_t device_id, const char *device_name)

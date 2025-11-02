@@ -127,7 +127,6 @@ esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_
 
     usb_hid_keycode_t keycode = 0;
     uint8_t modifiers = 0;
-    const char *cmd_name = "UNKNOWN";
 
     // Parse HID report from payload
     if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_t)) {
@@ -137,37 +136,32 @@ esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_
         if (hid_type == HID_TYPE_KEYBOARD) {
             keycode = pkt->hid_report.keyboard.keycode[0];
             modifiers = pkt->hid_report.keyboard.modifiers;
-
-            // Map keycode to command name
-            switch (keycode) {
-                case HID_KEY_PAGE_DOWN: cmd_name = "NEXT"; break;
-                case HID_KEY_PAGE_UP: cmd_name = "PREV"; break;
-                case HID_KEY_B: cmd_name = "BLACK"; break;
-                case HID_KEY_F5: cmd_name = "START"; break;
-                default: cmd_name = "KEY"; break;
-            }
         }
-    }
 
-    if (keycode == 0) {
-        ESP_LOGW(TAG, "No valid keycode extracted");
-        xSemaphoreGive(state_mutex);
-        return ESP_ERR_INVALID_ARG;
-    }
+        // Forward to USB HID if connected
+        if (usb_hid_is_connected() && keycode != 0) {
+            ESP_LOGI(TAG, "Forwarding keycode 0x%02X to USB HID", keycode);
+            usb_hid_send_key(keycode);
+        }
 
-    // Forward to USB HID if connected
-    if (usb_hid_is_connected()) {
-        ESP_LOGI(TAG, "Forwarding to USB HID");
-        usb_hid_send_key(keycode);
-    } else {
-        ESP_LOGW(TAG, "USB not connected, skipping HID forwarding");
+        // Post HID command event for UI
+        system_event_hid_command_t hid_evt = {
+            .device_id = device_id,
+            .hid_type = hid_type,
+            .hid_report = {
+                pkt->hid_report.keyboard.modifiers,
+                pkt->hid_report.keyboard.keycode[0],
+                pkt->hid_report.keyboard.keycode[1],
+                pkt->hid_report.keyboard.keycode[2],
+                pkt->hid_report.keyboard.keycode[3]
+            },
+            .flags = LORA_FLAGS(pkt->type_flags),
+            .rssi = rssi
+        };
+        system_events_post_hid_command(&hid_evt);
     }
 
     xSemaphoreGive(state_mutex);
-
-    // Post event for UI
-    system_events_post_lora_command(cmd_name, rssi);
-
     return ESP_OK;
 }
 
