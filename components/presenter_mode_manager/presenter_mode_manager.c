@@ -40,21 +40,17 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
 
     switch (button_type) {
         case BUTTON_EVENT_SHORT:
-            ESP_LOGI(TAG, "Short press - sending Page Down");
+            ESP_LOGI(TAG, "Short press - sending Cursor Right");
 #ifdef CONFIG_LORA_SEND_RELIABLE
-            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4E, 2000, 3);
+            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4F, 2000, 3);
 #else
-            ret = lora_protocol_send_keyboard(config.slot_id, 0, 0x4E);
+            ret = lora_protocol_send_keyboard(config.slot_id, 0, 0x4F);
 #endif
             break;
 
         case BUTTON_EVENT_LONG:
-            ESP_LOGI(TAG, "Long press - sending Page Up");
-#ifdef CONFIG_LORA_SEND_RELIABLE
-            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4B, 2000, 3);
-#else
-            ret = lora_protocol_send_keyboard(config.slot_id, 0, 0x4B);
-#endif
+            ESP_LOGI(TAG, "Long press - entering menu mode");
+            // Long press enters menu mode, no LoRa transmission
             break;
 
         case BUTTON_EVENT_DOUBLE:
