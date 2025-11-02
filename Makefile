@@ -81,12 +81,6 @@ build-lilygo: check-idf
 	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.lilygo_t5" -D BOARD_ID="lilygo_t5" build
 	@echo "✅ LilyGO T5 build complete"
 
-build-sim: check-idf
-	@echo "🔨 Building for Wokwi Simulator..."
-	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.wokwi" build
-	@echo "✅ Wokwi build complete"
-
 clean:
 	@echo "🧹 Cleaning build artifacts and sdkconfig..."
 	@rm -f sdkconfig
@@ -222,12 +216,12 @@ test-build: check-idf
 WOKWI_BOARD ?= heltec_v3
 WOKWI_DIR = wokwi/$(WOKWI_BOARD)
 
-sim: check-idf build-sim build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
+sim: check-idf build-heltec build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
 ifndef WOKWI_CLI
 	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
 	@false
 endif
-	@echo "✅ Wokwi build ready"
+	@echo "✅ Wokwi simulation ready (using Heltec V3 firmware)"
 
 # Build all custom Wokwi chips
 chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm build/wokwi/chips/ed047tc1.chip.wasm
