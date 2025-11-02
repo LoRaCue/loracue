@@ -184,26 +184,116 @@ make flash-monitor BOARD=lilygo
 
 Use **[LoRaCue Manager](https://github.com/LoRaCue/loracue-manager)** to flash firmware to your devices. It provides automatic device detection, one-click updates, and cross-platform support.
 
+## 🏛️ Software Architecture
+
+LoRaCue follows enterprise-grade design principles with complete separation of concerns, thread-safe state management, and event-driven communication.
+
+### Component Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Main Application                         │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ main.c: Initialization & Coordination (minimal logic)      │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└───────────────┬─────────────────────────────────┬───────────────┘
+                │                                 │
+    ┌───────────▼──────────┐         ┌───────────▼──────────┐
+    │  Presenter Mode      │         │    PC Mode           │
+    │  Manager             │         │    Manager           │
+    ├──────────────────────┤         ├──────────────────────┤
+    │ • Button → LoRa TX   │         │ • LoRa RX → USB HID  │
+    │ • Command mapping    │         │ • Active presenters  │
+    │ • Reliable/unreliable│         │ • Rate limiting      │
+    │ • Thread-safe state  │         │ • Command history    │
+    └──────────┬───────────┘         └───────────┬──────────┘
+               │                                 │
+               │         ┌───────────────────────┘
+               │         │
+    ┌──────────▼─────────▼──────────┐
+    │    System Events               │
+    │  (Event-Driven Communication)  │
+    ├────────────────────────────────┤
+    │ • PC_COMMAND_RECEIVED          │
+    │ • DEVICE_CONFIG_CHANGED        │
+    │ • LORA_COMMAND                 │
+    │ • Thread-safe event posting    │
+    └──────────┬─────────────────────┘
+               │
+    ┌──────────▼─────────────────────┐
+    │       UI Mini                   │
+    │  (Display & User Interface)     │
+    ├─────────────────────────────────┤
+    │ • Encapsulated state (private)  │
+    │ • Thread-safe accessors         │
+    │ • OLED screen management        │
+    │ • Event-driven updates          │
+    └─────────────────────────────────┘
+```
+
+### Design Principles
+
+**1. Separation of Concerns**
+- **Presenter Mode Manager**: Handles button events → LoRa transmission
+- **PC Mode Manager**: Handles LoRa reception → USB HID forwarding
+- **UI Mini**: Manages display state and rendering (no business logic)
+- **Main**: Minimal initialization and coordination only
+
+**2. Thread Safety**
+- All shared state protected by mutexes
+- Thread-safe accessor functions for UI state
+- No global variables exposed externally
+
+**3. Event-Driven Communication**
+- Components communicate via system events
+- Loose coupling between modules
+- Easy to extend with new event types
+
+**4. Encapsulated State**
+- UI state is private to `ui_mini.c`
+- Accessed only via `ui_mini_get_status()` function
+- Runtime state merged with config data dynamically
+
+### Data Flow
+
+**Presenter Mode (Button → LoRa)**
+```
+Button Press → Button Manager → Presenter Mode Manager → LoRa Protocol → Radio TX
+                                        ↓
+                                  System Event → UI Update
+```
+
+**PC Mode (LoRa → USB HID)**
+```
+Radio RX → LoRa Protocol → PC Mode Manager → USB HID → Computer
+                                  ↓
+                            System Event → UI Update
+```
+
 ## 📁 Project Structure
 
 ```
 LoRaCue/
-├── 📁 main/                    # Main application
-├── 📁 components/              # Modular components
-│   ├── 📁 bsp/                # Board Support Package
-│   ├── 📁 button_manager/     # Button event handling
-│   ├── 📁 led_manager/        # LED pattern control
-│   ├── 📁 ui_mini/           # Display user interface
-│   ├── 📁 lora/              # LoRa communication
-│   ├── 📁 usb_hid/           # USB keyboard emulation
-│   ├── 📁 power_mgmt/        # Power management
-│   └── 📁 device_registry/   # Secure device pairing
-├── 📁 docs/                   # Documentation
-├── 📁 .github/workflows/     # CI/CD automation
-├── 📄 diagram.json           # Wokwi simulation diagram
-├── 📄 partitions.csv         # Flash memory layout
-├── 📄 Makefile              # Development commands
-└── 📄 README.md             # This file
+├── 📁 main/                          # Main application
+│   └── main.c                        # Initialization only (~50 lines)
+├── 📁 components/                    # Modular components
+│   ├── 📁 bsp/                      # Board Support Package
+│   ├── 📁 button_manager/           # Button event handling
+│   ├── 📁 led_manager/              # LED pattern control
+│   ├── 📁 presenter_mode_manager/   # Button → LoRa TX logic
+│   ├── 📁 pc_mode_manager/          # LoRa RX → USB HID logic
+│   ├── 📁 ui_mini/                  # Display user interface
+│   ├── 📁 lora/                     # LoRa communication
+│   ├── 📁 usb_hid/                  # USB keyboard emulation
+│   ├── 📁 power_mgmt/               # Power management
+│   ├── 📁 system_events/            # Event-driven communication
+│   └── 📁 device_registry/          # Secure device pairing
+├── 📁 docs/                         # Documentation
+├── 📁 .github/workflows/            # CI/CD automation
+├── 📄 diagram.json                  # Wokwi simulation diagram
+├── 📄 partitions.csv                # Flash memory layout
+├── 📄 Makefile                      # Development commands
+└── 📄 README.md                     # This file
 ```
 
 ## 🔧 Technical Specifications

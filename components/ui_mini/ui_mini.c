@@ -5,6 +5,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
+#include "general_config.h"
+#include "pc_mode_screen.h"
 #include "u8g2.h"
 #include "ui_data_provider.h"
 #include "ui_data_update_task.h"
@@ -83,6 +85,9 @@ esp_err_t ui_mini_init(void)
 
     // Initialize screen controller
     ui_screen_controller_init();
+    
+    // Initialize PC mode screen (subscribes to HID events)
+    pc_mode_screen_init();
 
     // Start three specialized tasks
     esp_err_t ret;
@@ -131,45 +136,24 @@ esp_err_t ui_mini_show_message(const char *title, const char *message, uint32_t 
     return ESP_OK;
 }
 
-esp_err_t ui_mini_update_status(const ui_mini_status_t *status)
-{
-    if (!status) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    // Ignore updates before UI is fully initialized
-    if (!ui_initialized) {
-        return ESP_OK;
-    }
-
-    // Update data provider with new values
-    esp_err_t ret = ui_data_provider_force_update(status->usb_connected, status->lora_connected, status->battery_level);
-    if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "Failed to update status: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    // Screen will be updated by monitor task periodically
-    // No need to redraw here to avoid conflicts
-    return ESP_OK;
-}
-
-static uint8_t g_ota_progress = 0;
+static uint8_t s_ota_progress = 0;
 
 esp_err_t ui_mini_show_ota_update(void)
 {
-    g_ota_progress = 0;
+    s_ota_progress = 0;
     return ui_mini_set_screen(OLED_SCREEN_OTA_UPDATE);
 }
 
 esp_err_t ui_mini_update_ota_progress(uint8_t progress)
 {
     if (progress > 100) progress = 100;
-    g_ota_progress = progress;
+    s_ota_progress = progress;
     return ESP_OK;
 }
 
 uint8_t ui_mini_get_ota_progress(void)
 {
-    return g_ota_progress;
+    return s_ota_progress;
 }
+
+

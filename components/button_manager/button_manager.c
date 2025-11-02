@@ -7,15 +7,13 @@
  */
 
 #include "button_manager.h"
+#include "system_events.h"
 #include "bsp.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "led_manager.h"
 #include "power_mgmt.h"
-#ifdef CONFIG_UI_MINI
-#include "ui_screen_controller.h"
-#endif
 #include <string.h>
 
 static const char *TAG = "BUTTON_MGR";
@@ -107,9 +105,7 @@ static void button_manager_task(void *pvParameters)
             uint32_t press_duration = current_time - button.press_start_time;
             if (press_duration >= LONG_PRESS_TIME_MS) {
                 ESP_LOGI(TAG, "Long press");
-#ifdef CONFIG_UI_MINI
-                ui_screen_controller_handle_button(BUTTON_EVENT_LONG);
-#endif
+                system_events_post_button(BUTTON_EVENT_LONG);
                 if (event_callback)
                     event_callback(BUTTON_EVENT_LONG, callback_arg);
                 button.long_press_sent = true;
@@ -123,18 +119,14 @@ static void button_manager_task(void *pvParameters)
 
             if (button.click_count == 2) {
                 ESP_LOGI(TAG, "Double press");
-#ifdef CONFIG_UI_MINI
-                ui_screen_controller_handle_button(BUTTON_EVENT_DOUBLE);
-#endif
+                system_events_post_button(BUTTON_EVENT_DOUBLE);
                 if (event_callback)
                     event_callback(BUTTON_EVENT_DOUBLE, callback_arg);
                 button.click_count = 0;
             } else if (time_since_release >= DOUBLE_CLICK_WINDOW_MS) {
                 // Single click confirmed
                 ESP_LOGI(TAG, "Short press");
-#ifdef CONFIG_UI_MINI
-                ui_screen_controller_handle_button(BUTTON_EVENT_SHORT);
-#endif
+                system_events_post_button(BUTTON_EVENT_SHORT);
                 if (event_callback)
                     event_callback(BUTTON_EVENT_SHORT, callback_arg);
                 button.click_count = 0;
@@ -156,9 +148,6 @@ static void button_manager_task(void *pvParameters)
                 // Use configured timeout from power_mgmt
                 power_mgmt_light_sleep(0); // 0 = indefinite, wake on button/UART
                 // Display and peripherals restored by power_mgmt_light_sleep()
-#ifdef CONFIG_UI_MINI
-                ui_screen_controller_update(NULL);
-#endif
                 last_activity_time = current_time;
             } else if (recommended_mode == POWER_MODE_DEEP_SLEEP) {
                 ESP_LOGI(TAG, "Entering deep sleep due to extended inactivity");

@@ -29,21 +29,21 @@ static esp_netif_t *ap_netif = NULL;
 static bool server_running   = false;
 
 // Commands API bridge
-static httpd_req_t *g_current_req = NULL;
+static httpd_req_t *s_current_req = NULL;
 
 static void http_response_callback(const char *response)
 {
-    if (!g_current_req || !response)
+    if (!s_current_req || !response)
         return;
-    httpd_resp_sendstr(g_current_req, response);
+    httpd_resp_sendstr(s_current_req, response);
 }
 
 static esp_err_t commands_api_handle_get(httpd_req_t *req, const char *command)
 {
     httpd_resp_set_type(req, "application/json");
-    g_current_req = req;
+    s_current_req = req;
     commands_execute(command, http_response_callback);
-    g_current_req = NULL;
+    s_current_req = NULL;
     return ESP_OK;
 }
 
@@ -61,9 +61,9 @@ static esp_err_t commands_api_handle_post(httpd_req_t *req, const char *command_
     snprintf(command, sizeof(command), command_fmt, content);
 
     httpd_resp_set_type(req, "application/json");
-    g_current_req = req;
+    s_current_req = req;
     commands_execute(command, http_response_callback);
-    g_current_req = NULL;
+    s_current_req = NULL;
     return ESP_OK;
 }
 
@@ -231,9 +231,9 @@ static esp_err_t api_devices_post_handler(httpd_req_t *req)
     snprintf(command, sizeof(command), is_update ? "UPDATE_PAIRED_DEVICE %s" : "PAIR_DEVICE %s", content);
 
     httpd_resp_set_type(req, "application/json");
-    g_current_req = req;
+    s_current_req = req;
     commands_execute(command, http_response_callback);
-    g_current_req = NULL;
+    s_current_req = NULL;
     return ESP_OK;
 }
 
@@ -251,9 +251,9 @@ static esp_err_t api_devices_delete_handler(httpd_req_t *req)
     snprintf(command, sizeof(command), "UNPAIR_DEVICE %s", content);
 
     httpd_resp_set_type(req, "application/json");
-    g_current_req = req;
+    s_current_req = req;
     commands_execute(command, http_response_callback);
-    g_current_req = NULL;
+    s_current_req = NULL;
     return ESP_OK;
 }
 
@@ -498,11 +498,9 @@ esp_err_t config_wifi_server_stop(void)
     // Unmount LittleFS
     esp_vfs_littlefs_unregister("storage");
 
-#ifndef SIMULATOR_BUILD
     // Only disable WiFi on real hardware for power saving
     esp_event_loop_delete_default();
     esp_netif_deinit();
-#endif
 
     server_running = false;
     ESP_LOGI(TAG, "WiFi AP and web server stopped");

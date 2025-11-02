@@ -26,6 +26,7 @@ extern void ui_screen_ota_update(void);
 #include "menu_screen.h"
 #include "pairing_screen.h"
 #include "pc_mode_screen.h"
+#include "presenter_mode_manager.h"
 #include "slot_screen.h"
 #include "ui_data_provider.h"
 
@@ -90,21 +91,8 @@ void ui_screen_controller_set(ui_mini_screen_t screen, const ui_status_t *status
             break;
 
         case OLED_SCREEN_PC_MODE:
-            // PC mode needs ui_mini_status_t for command history
-            {
-                extern ui_mini_status_t g_oled_status;
-                // Check if g_oled_status is initialized (device_name will be set)
-                if (g_oled_status.device_name[0] != '\0') {
-                    pc_mode_screen_draw(&g_oled_status);
-                } else {
-                    // Not initialized yet, draw empty PC mode screen
-                    ui_mini_status_t temp_status  = {0};
-                    temp_status.battery_level  = status->battery_level;
-                    temp_status.usb_connected  = status->usb_connected;
-                    temp_status.lora_connected = status->lora_connected;
-                    pc_mode_screen_draw(&temp_status);
-                }
-            }
+            // PC mode screen is self-contained
+            pc_mode_screen_draw();
             break;
 
         case OLED_SCREEN_MENU:
@@ -248,10 +236,9 @@ void ui_screen_controller_update(const ui_status_t *status)
             main_screen_draw(status);
             break;
 
-        case OLED_SCREEN_PC_MODE: {
-            extern ui_mini_status_t g_oled_status;
-            pc_mode_screen_draw(&g_oled_status);
-        } break;
+        case OLED_SCREEN_PC_MODE:
+            pc_mode_screen_draw();
+            break;
 
         case OLED_SCREEN_BATTERY:
             battery_status_screen_draw(status);
@@ -292,23 +279,9 @@ void ui_screen_controller_handle_button(button_event_type_t event)
                     ui_screen_controller_set(OLED_SCREEN_MENU, NULL);
                 }
             } else {
-                // Presenter mode: send via LoRa
-                if (event == BUTTON_EVENT_SHORT) {
-                    general_config_t config;
-                    general_config_get(&config);
-#ifdef CONFIG_LORA_SEND_RELIABLE
-                    lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4E, 2000, 3); // Page Down
-#else
-                    lora_protocol_send_keyboard(config.slot_id, 0, 0x4E); // Page Down (unreliable)
-#endif
-                } else if (event == BUTTON_EVENT_DOUBLE) {
-                    general_config_t config;
-                    general_config_get(&config);
-#ifdef CONFIG_LORA_SEND_RELIABLE
-                    lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4B, 2000, 3); // Page Up
-#else
-                    lora_protocol_send_keyboard(config.slot_id, 0, 0x4B); // Page Up (unreliable)
-#endif
+                // Presenter mode: delegate to presenter_mode_manager
+                if (event == BUTTON_EVENT_SHORT || event == BUTTON_EVENT_DOUBLE) {
+                    presenter_mode_manager_handle_button(event);
                 } else if (event == BUTTON_EVENT_LONG) {
                     menu_screen_reset();
                     ui_screen_controller_set(OLED_SCREEN_MENU, NULL);

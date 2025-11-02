@@ -45,8 +45,7 @@ static void ui_pc_history_task(void *pvParameters)
                 extern void ui_mini_unlock_draw(void);
 
                 if (ui_mini_try_lock_draw()) {
-                    extern ui_mini_status_t g_oled_status;
-                    pc_mode_screen_draw(&g_oled_status);
+                    pc_mode_screen_draw();
                     ui_mini_unlock_draw();
                 }
             }

@@ -23,9 +23,6 @@
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "u8g2.h"
-#ifdef CONFIG_UI_MINI
-#include "ui_screen_controller.h"
-#endif
 #include "version.h"
 #include "xmodem.h"
 #include <inttypes.h>
@@ -34,7 +31,7 @@
 static const char *TAG = "COMMANDS";
 
 // Response callback (set by commands_execute)
-static response_fn_t g_send_response = NULL;
+static response_fn_t s_send_response = NULL;
 
 static void handle_ping(void)
 {
@@ -46,7 +43,7 @@ static void handle_ping(void)
     snprintf(response, sizeof(response), "PONG %s v%s %s", config.device_name, LORACUE_VERSION_FULL,
              usb_config->usb_product);
     ESP_LOGI("COMMANDS", "Sending PING response: %s", response);
-    g_send_response(response);
+    s_send_response(response);
 }
 
 static void handle_get_device_info(void)
@@ -90,7 +87,7 @@ static void handle_get_device_info(void)
     }
 
     char *json_string = cJSON_PrintUnformatted(response);
-    g_send_response(json_string);
+    s_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
 }
@@ -99,7 +96,7 @@ static void handle_get_general(void)
 {
     general_config_t config;
     if (general_config_get(&config) != ESP_OK) {
-        g_send_response("ERROR Failed to get device config");
+        s_send_response("ERROR Failed to get device config");
         return;
     }
 
@@ -111,7 +108,7 @@ static void handle_get_general(void)
     cJSON_AddNumberToObject(response, "slot_id", config.slot_id);
 
     char *json_string = cJSON_PrintUnformatted(response);
-    g_send_response(json_string);
+    s_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
 }
@@ -121,7 +118,7 @@ static void handle_set_general(cJSON *config_json)
     general_config_t config;
     esp_err_t ret = general_config_get(&config);
     if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to get current device config");
+        s_send_response("ERROR Failed to get current device config");
         return;
     }
 
@@ -139,7 +136,7 @@ static void handle_set_general(cJSON *config_json)
         } else if (strcmp(mode->valuestring, "PC") == 0) {
             new_mode = DEVICE_MODE_PC;
         } else {
-            g_send_response("ERROR Invalid mode (must be PRESENTER or PC)");
+            s_send_response("ERROR Invalid mode (must be PRESENTER or PC)");
             return;
         }
         config.device_mode = new_mode;
@@ -164,7 +161,7 @@ static void handle_set_general(cJSON *config_json)
     if (slot_id && cJSON_IsNumber(slot_id)) {
         int slot = slot_id->valueint;
         if (slot < 1 || slot > 16) {
-            g_send_response("ERROR Invalid slot_id (must be 1-16)");
+            s_send_response("ERROR Invalid slot_id (must be 1-16)");
             return;
         }
         config.slot_id = slot;
@@ -172,27 +169,22 @@ static void handle_set_general(cJSON *config_json)
 
     ret = general_config_set(&config);
     if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to save device config");
+        s_send_response("ERROR Failed to save device config");
         return;
     }
 
     // Reload UI data provider to update device name display
     extern esp_err_t ui_data_provider_reload_config(void);
     ui_data_provider_reload_config();
-    
-    // Trigger immediate screen update to show changes
-#ifdef CONFIG_UI_MINI
-    ui_screen_controller_update(NULL);
-#endif
 
-    g_send_response("OK Device config updated");
+    s_send_response("OK Device config updated");
 }
 
 static void handle_get_power_management(void)
 {
     power_mgmt_config_t config;
     if (power_mgmt_config_get(&config) != ESP_OK) {
-        g_send_response("ERROR Failed to get power config");
+        s_send_response("ERROR Failed to get power config");
         return;
     }
 
@@ -205,7 +197,7 @@ static void handle_get_power_management(void)
     cJSON_AddNumberToObject(response, "deep_sleep_timeout_ms", config.deep_sleep_timeout_ms);
 
     char *json_string = cJSON_PrintUnformatted(response);
-    g_send_response(json_string);
+    s_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
 }
@@ -214,7 +206,7 @@ static void handle_set_power_management(cJSON *config_json)
 {
     power_mgmt_config_t config;
     if (power_mgmt_config_get(&config) != ESP_OK) {
-        g_send_response("ERROR Failed to get current power config");
+        s_send_response("ERROR Failed to get current power config");
         return;
     }
 
@@ -233,11 +225,11 @@ static void handle_set_power_management(cJSON *config_json)
         config.deep_sleep_timeout_ms = item->valueint;
 
     if (power_mgmt_config_set(&config) != ESP_OK) {
-        g_send_response("ERROR Failed to save power config");
+        s_send_response("ERROR Failed to save power config");
         return;
     }
 
-    g_send_response("OK Power config updated - restart required");
+    s_send_response("OK Power config updated - restart required");
 }
 
 static void handle_get_lora_config(void)
@@ -246,7 +238,7 @@ static void handle_get_lora_config(void)
     esp_err_t ret = lora_get_config(&config);
 
     if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to get LoRa config");
+        s_send_response("ERROR Failed to get LoRa config");
         return;
     }
 
@@ -259,7 +251,7 @@ static void handle_get_lora_config(void)
     cJSON_AddNumberToObject(response, "tx_power", config.tx_power);
 
     char *json_string = cJSON_PrintUnformatted(response);
-    g_send_response(json_string);
+    s_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
 }
@@ -270,7 +262,7 @@ static void handle_get_lora_key(void)
     esp_err_t ret = lora_get_config(&config);
 
     if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to get LoRa config");
+        s_send_response("ERROR Failed to get LoRa config");
         return;
     }
 
@@ -285,7 +277,7 @@ static void handle_get_lora_key(void)
     cJSON_AddStringToObject(response, "aes_key", hex_key);
 
     char *json_string = cJSON_PrintUnformatted(response);
-    g_send_response(json_string);
+    s_send_response(json_string);
     free(json_string);
     cJSON_Delete(response);
 }
@@ -294,13 +286,13 @@ static void handle_set_lora_key(cJSON *json)
 {
     cJSON *aes_key_json = cJSON_GetObjectItem(json, "aes_key");
     if (!aes_key_json || !cJSON_IsString(aes_key_json)) {
-        g_send_response("ERROR Missing or invalid aes_key parameter");
+        s_send_response("ERROR Missing or invalid aes_key parameter");
         return;
     }
 
     const char *hex_key = aes_key_json->valuestring;
     if (strlen(hex_key) != 64) {
-        g_send_response("ERROR aes_key must be 64 hex characters (32 bytes)");
+        s_send_response("ERROR aes_key must be 64 hex characters (32 bytes)");
         return;
     }
 
@@ -315,7 +307,7 @@ static void handle_set_lora_key(cJSON *json)
     lora_config_t config;
     esp_err_t ret = lora_get_config(&config);
     if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to get LoRa config");
+        s_send_response("ERROR Failed to get LoRa config");
         return;
     }
 
@@ -323,11 +315,11 @@ static void handle_set_lora_key(cJSON *json)
 
     ret = lora_set_config(&config);
     if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to save LoRa config");
+        s_send_response("ERROR Failed to save LoRa config");
         return;
     }
 
-    g_send_response("OK AES key updated");
+    s_send_response("OK AES key updated");
 }
 
 static void handle_set_lora_config(cJSON *config_json)
@@ -336,7 +328,7 @@ static void handle_set_lora_config(cJSON *config_json)
     esp_err_t ret = lora_get_config(&config);
 
     if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to get current LoRa config");
+        s_send_response("ERROR Failed to get current LoRa config");
         return;
     }
 
@@ -374,7 +366,7 @@ static void handle_set_lora_config(cJSON *config_json)
             cJSON_AddNumberToObject(error, "min_khz", band->optimal_freq_min_khz);
             cJSON_AddNumberToObject(error, "max_khz", band->optimal_freq_max_khz);
             char *error_str = cJSON_PrintUnformatted(error);
-            g_send_response(error_str);
+            s_send_response(error_str);
             free(error_str);
             cJSON_Delete(error);
             return;
@@ -383,9 +375,9 @@ static void handle_set_lora_config(cJSON *config_json)
 
     ret = lora_set_config(&config);
     if (ret == ESP_OK) {
-        g_send_response("OK LoRa configuration updated");
+        s_send_response("OK LoRa configuration updated");
     } else {
-        g_send_response("ERROR Failed to update LoRa configuration");
+        s_send_response("ERROR Failed to update LoRa configuration");
     }
 }
 
@@ -419,7 +411,7 @@ static void handle_get_paired_devices(void)
     }
 
     char *json_string = cJSON_PrintUnformatted(devices_array);
-    g_send_response(json_string);
+    s_send_response(json_string);
     free(json_string);
     cJSON_Delete(devices_array);
 }
@@ -447,7 +439,7 @@ static void handle_get_lora_bands(void)
     }
 
     char *json_string = cJSON_PrintUnformatted(bands_array);
-    g_send_response(json_string);
+    s_send_response(json_string);
     free(json_string);
     cJSON_Delete(bands_array);
 }
@@ -459,27 +451,27 @@ static void handle_pair_device(cJSON *pair_json)
     const cJSON *key = cJSON_GetObjectItem(pair_json, "aes_key");
 
     if (!name || !mac || !key) {
-        g_send_response("ERROR Missing pairing parameters");
+        s_send_response("ERROR Missing pairing parameters");
         return;
     }
 
     uint8_t mac_bytes[6];
     if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
                &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
-        g_send_response("ERROR Invalid MAC address");
+        s_send_response("ERROR Invalid MAC address");
         return;
     }
 
     uint8_t aes_key[32];
     const char *key_str = key->valuestring;
     if (strlen(key_str) != 64) {
-        g_send_response("ERROR Invalid key length (expected 64 hex chars for AES-256)");
+        s_send_response("ERROR Invalid key length (expected 64 hex chars for AES-256)");
         return;
     }
 
     for (int i = 0; i < 32; i++) {
         if (sscanf(key_str + i * 2, "%02hhx", &aes_key[i]) != 1) {
-            g_send_response("ERROR Invalid key format");
+            s_send_response("ERROR Invalid key format");
             return;
         }
     }
@@ -488,12 +480,12 @@ static void handle_pair_device(cJSON *pair_json)
 
     esp_err_t ret = device_registry_add(device_id, name->valuestring, mac_bytes, aes_key);
     if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to add device");
+        s_send_response("ERROR Failed to add device");
         return;
     }
 
     ESP_LOGI(TAG, "Device paired: 0x%04X (%s)", device_id, name->valuestring);
-    g_send_response("OK Device paired successfully");
+    s_send_response("OK Device paired successfully");
 }
 
 static void handle_update_paired_device(cJSON *update_json)
@@ -503,7 +495,7 @@ static void handle_update_paired_device(cJSON *update_json)
     const cJSON *key = cJSON_GetObjectItem(update_json, "aes_key");
 
     if (!cJSON_IsString(mac) || !cJSON_IsString(name) || !cJSON_IsString(key)) {
-        g_send_response("ERROR Missing parameters");
+        s_send_response("ERROR Missing parameters");
         return;
     }
 
@@ -511,7 +503,7 @@ static void handle_update_paired_device(cJSON *update_json)
     uint8_t mac_bytes[6];
     if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
                &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
-        g_send_response("ERROR Invalid MAC address");
+        s_send_response("ERROR Invalid MAC address");
         return;
     }
 
@@ -520,7 +512,7 @@ static void handle_update_paired_device(cJSON *update_json)
     // Check if device exists
     paired_device_t existing;
     if (device_registry_get(device_id, &existing) != ESP_OK) {
-        g_send_response("ERROR Device not found");
+        s_send_response("ERROR Device not found");
         return;
     }
 
@@ -528,13 +520,13 @@ static void handle_update_paired_device(cJSON *update_json)
     uint8_t aes_key[32];
     const char *key_str = key->valuestring;
     if (strlen(key_str) != 64) {
-        g_send_response("ERROR Invalid key length (expected 64 hex chars for AES-256)");
+        s_send_response("ERROR Invalid key length (expected 64 hex chars for AES-256)");
         return;
     }
 
     for (int i = 0; i < 32; i++) {
         if (sscanf(key_str + i * 2, "%02hhx", &aes_key[i]) != 1) {
-            g_send_response("ERROR Invalid key format");
+            s_send_response("ERROR Invalid key format");
             return;
         }
     }
@@ -542,17 +534,17 @@ static void handle_update_paired_device(cJSON *update_json)
     // Update device (overwrites existing, MAC stays the same)
     esp_err_t ret = device_registry_add(device_id, name->valuestring, mac_bytes, aes_key);
     if (ret != ESP_OK) {
-        g_send_response("ERROR Failed to update device");
+        s_send_response("ERROR Failed to update device");
         return;
     }
 
     ESP_LOGI(TAG, "Device updated: 0x%04X (%s)", device_id, name->valuestring);
-    g_send_response("OK Device updated successfully");
+    s_send_response("OK Device updated successfully");
 }
 
 void commands_execute(const char *command_line, response_fn_t send_response)
 {
-    g_send_response = send_response;
+    s_send_response = send_response;
 
     // Reset sleep timer on any command activity
     power_mgmt_update_activity();
@@ -593,7 +585,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
             handle_set_lora_key(json);
             cJSON_Delete(json);
         } else {
-            g_send_response("ERROR Invalid JSON");
+            s_send_response("ERROR Invalid JSON");
         }
         return;
     }
@@ -614,7 +606,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
             handle_set_power_management(json);
             cJSON_Delete(json);
         } else {
-            g_send_response("ERROR Invalid JSON");
+            s_send_response("ERROR Invalid JSON");
         }
         return;
     }
@@ -625,7 +617,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
             handle_set_general(json);
             cJSON_Delete(json);
         } else {
-            g_send_response("ERROR Invalid JSON");
+            s_send_response("ERROR Invalid JSON");
         }
         return;
     }
@@ -636,7 +628,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
             handle_pair_device(json);
             cJSON_Delete(json);
         } else {
-            g_send_response("ERROR Invalid JSON");
+            s_send_response("ERROR Invalid JSON");
         }
         return;
     }
@@ -644,14 +636,14 @@ void commands_execute(const char *command_line, response_fn_t send_response)
     if (strncmp(command_line, "UNPAIR_DEVICE ", 14) == 0) {
         cJSON *json = cJSON_Parse(command_line + 14);
         if (!json) {
-            g_send_response("ERROR Invalid JSON");
+            s_send_response("ERROR Invalid JSON");
             return;
         }
 
         const cJSON *mac = cJSON_GetObjectItem(json, "mac");
         if (!cJSON_IsString(mac)) {
             cJSON_Delete(json);
-            g_send_response("ERROR Missing mac parameter");
+            s_send_response("ERROR Missing mac parameter");
             return;
         }
 
@@ -659,7 +651,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
                    &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
             cJSON_Delete(json);
-            g_send_response("ERROR Invalid MAC address");
+            s_send_response("ERROR Invalid MAC address");
             return;
         }
 
@@ -668,12 +660,12 @@ void commands_execute(const char *command_line, response_fn_t send_response)
         cJSON_Delete(json);
 
         if (ret != ESP_OK) {
-            g_send_response("ERROR Device not found");
+            s_send_response("ERROR Device not found");
             return;
         }
 
         ESP_LOGI(TAG, "Device unpaired: 0x%04X", device_id);
-        g_send_response("OK Device unpaired successfully");
+        s_send_response("OK Device unpaired successfully");
         return;
     }
 
@@ -683,7 +675,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
             handle_update_paired_device(json);
             cJSON_Delete(json);
         } else {
-            g_send_response("ERROR Invalid JSON");
+            s_send_response("ERROR Invalid JSON");
         }
         return;
     }
@@ -694,7 +686,7 @@ void commands_execute(const char *command_line, response_fn_t send_response)
             handle_set_lora_config(json);
             cJSON_Delete(json);
         } else {
-            g_send_response("ERROR Invalid JSON");
+            s_send_response("ERROR Invalid JSON");
         }
         return;
     }
@@ -705,20 +697,20 @@ void commands_execute(const char *command_line, response_fn_t send_response)
 
         size_t size = atoi(command_line + 17);
         if (size == 0 || size > 4 * 1024 * 1024) {
-            g_send_response("ERROR Invalid size");
+            s_send_response("ERROR Invalid size");
             return;
         }
 
         // USB-UART/USB-CDC: Use XMODEM-1K
         // BLE: Intercepted by ble_ota_handle_control() before reaching here
-        g_send_response("OK Ready for XMODEM");
+        s_send_response("OK Ready for XMODEM");
         vTaskDelay(pdMS_TO_TICKS(50));
 
         esp_err_t ret = xmodem_receive(size);
         if (ret == ESP_OK) {
             const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
             if (!update_partition) {
-                g_send_response("ERROR No update partition found");
+                s_send_response("ERROR No update partition found");
                 return;
             }
 
@@ -727,20 +719,20 @@ void commands_execute(const char *command_line, response_fn_t send_response)
             ret = esp_ota_set_boot_partition(update_partition);
             if (ret != ESP_OK) {
                 ESP_LOGE(TAG, "Failed to set boot partition: %s", esp_err_to_name(ret));
-                g_send_response("ERROR Failed to set boot partition");
+                s_send_response("ERROR Failed to set boot partition");
                 return;
             }
 
             ESP_LOGW(TAG, "Boot partition set. Device will boot from %s after restart", update_partition->label);
-            g_send_response("OK Firmware uploaded, rebooting...");
+            s_send_response("OK Firmware uploaded, rebooting...");
             vTaskDelay(pdMS_TO_TICKS(500));
             esp_restart();
         } else {
             ESP_LOGE(TAG, "XMODEM upload failed: %s", esp_err_to_name(ret));
-            g_send_response("ERROR Upload failed");
+            s_send_response("ERROR Upload failed");
         }
         return;
     }
 
-    g_send_response("ERROR Unknown command");
+    s_send_response("ERROR Unknown command");
 }

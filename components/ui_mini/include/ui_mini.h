@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include "common_types.h"
+#include "general_config.h"
 #include "esp_err.h"
 #include "u8g2.h"
 #include <stdbool.h>
@@ -17,6 +19,21 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief Minimal UI state - event-driven architecture
+ */
+typedef struct {
+    uint8_t battery_level;
+    bool battery_charging;
+    bool usb_connected;
+    bool ble_enabled;
+    int8_t lora_rssi;
+    device_mode_t current_mode;
+} ui_state_t;
+
+// Global UI state (read-only for screens)
+extern ui_state_t ui_state;
 
 /**
  * @brief OLED UI screen types
@@ -61,46 +78,6 @@ typedef enum {
 } oled_button_t;
 
 /**
- * @brief Active presenter info for PC mode
- */
-typedef struct {
-    uint16_t device_id;
-    int16_t rssi;
-    uint32_t command_count;
-} active_presenter_info_t;
-
-/**
- * @brief Command history entry for PC mode
- */
-typedef struct {
-    uint32_t timestamp_ms;
-    uint16_t device_id;
-    char device_name[16];
-    char command[8];
-    uint8_t keycode;
-    uint8_t modifiers;
-} command_history_entry_t;
-
-/**
- * @brief Device status for display
- */
-typedef struct {
-    uint8_t battery_level; ///< Battery percentage (0-100)
-    bool battery_charging; ///< Battery charging status
-    bool lora_connected;   ///< LoRa connection status
-    uint8_t lora_signal;   ///< LoRa signal strength (0-100)
-    bool usb_connected;    ///< USB connection status
-    bool bluetooth_connected; ///< Bluetooth connection status
-    uint16_t device_id;    ///< Device ID
-    char device_name[32];  ///< Device name
-    char last_command[16]; ///< Last received command (PC mode)
-    uint8_t active_presenter_count;
-    active_presenter_info_t active_presenters[4];
-    command_history_entry_t command_history[4];
-    uint8_t command_history_count;
-} ui_mini_status_t;
-
-/**
  * @brief Initialize OLED UI system
  *
  * Sets up u8g2 graphics library and initializes display.
@@ -112,10 +89,9 @@ esp_err_t ui_mini_init(void);
 /**
  * @brief Update device status and refresh display
  *
- * @param status Device status structure
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t ui_mini_update_status(const ui_mini_status_t *status);
+esp_err_t ui_mini_init(void);
 
 /**
  * @brief Switch to different screen

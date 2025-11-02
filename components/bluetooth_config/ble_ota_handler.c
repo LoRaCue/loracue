@@ -15,7 +15,7 @@
 #include "freertos/ringbuf.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "esp_ble_ota.h"
+#include "ble_ota.h"
 #include "bsp.h"
 
 #ifdef CONFIG_UI_MINI
@@ -186,7 +186,7 @@ esp_err_t ble_ota_handler_init(void)
         return ESP_FAIL;
     }
 
-    esp_ble_ota_recv_fw_data_callback(ota_recv_fw_cb, NULL);
+    esp_ble_ota_recv_fw_data_callback(ota_recv_fw_cb);
     xTaskCreate(&ota_task, "ota_task", OTA_TASK_SIZE, NULL, 5, NULL);
     
     ESP_LOGI(TAG, "BLE OTA handler initialized");

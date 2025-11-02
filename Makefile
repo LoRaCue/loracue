@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build build-heltec build-lilygo build-sim clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
+.PHONY: all build clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -53,39 +53,25 @@ endif
 endif
 
 # Build targets
-# Usage: make build           - Build all boards
-#        make build BOARD=heltec - Build Heltec only
-#        make build BOARD=lilygo - Build LilyGO only
-ifdef BOARD
+# Usage: make build BOARD=heltec - Build Heltec V3
+#        make build BOARD=lilygo - Build LilyGO T5
+BOARD ?= heltec
+
 ifeq ($(BOARD),heltec)
-build: build-heltec
+BOARD_TARGET = heltec_v3
+BOARD_NAME = Heltec V3
 else ifeq ($(BOARD),lilygo)
-build: build-lilygo
+BOARD_TARGET = lilygo_t5
+BOARD_NAME = LilyGO T5
 else
 $(error Invalid BOARD=$(BOARD). Use: BOARD=heltec or BOARD=lilygo)
 endif
-else
-build: build-heltec build-lilygo
-	@echo "✅ All board variants built successfully!"
-endif
 
-build-heltec: check-idf
-	@echo "🔨 Building for Heltec V3..."
+build: check-idf
+	@echo "🔨 Building for $(BOARD_NAME)..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.heltec_v3" -D BOARD_ID="heltec_v3" build
-	@echo "✅ Heltec V3 build complete"
-
-build-lilygo: check-idf
-	@echo "🔨 Building for LilyGO T5..."
-	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.lilygo_t5" -D BOARD_ID="lilygo_t5" build
-	@echo "✅ LilyGO T5 build complete"
-
-build-sim: check-idf
-	@echo "🔨 Building for Wokwi Simulator..."
-	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.wokwi" build
-	@echo "✅ Wokwi build complete"
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" build
+	@echo "✅ $(BOARD_NAME) build complete"
 
 clean:
 	@echo "🧹 Cleaning build artifacts and sdkconfig..."
@@ -101,22 +87,11 @@ rebuild: fullclean build
 
 # Flash targets with BOARD parameter
 # Usage: make flash BOARD=heltec  OR  make flash BOARD=lilygo
-BOARD ?= heltec
-
-ifeq ($(BOARD),heltec)
-BOARD_TARGET = heltec_v3
-BOARD_NAME = Heltec V3
-else ifeq ($(BOARD),lilygo)
-BOARD_TARGET = lilygo_t5
-BOARD_NAME = LilyGO T5
-else
-$(error Invalid BOARD=$(BOARD). Use: BOARD=heltec or BOARD=lilygo)
-endif
 
 flash: check-idf
 	@echo "📡 Flashing $(BOARD_NAME) firmware..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash
 
 flash-only: check-idf
 	@echo "📡 Flashing $(BOARD_NAME) firmware (no rebuild)..."
@@ -126,7 +101,7 @@ flash-only: check-idf
 flash-monitor: check-idf
 	@echo "📡 Flashing $(BOARD_NAME) firmware and starting monitor..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash monitor
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash monitor
 
 monitor:
 	@echo "📺 Starting serial monitor (Ctrl+] to exit)..."
@@ -222,12 +197,13 @@ test-build: check-idf
 WOKWI_BOARD ?= heltec_v3
 WOKWI_DIR = wokwi/$(WOKWI_BOARD)
 
-sim: check-idf build-sim build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
+sim: check-idf build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
 ifndef WOKWI_CLI
 	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
 	@false
 endif
-	@echo "✅ Wokwi build ready"
+	@$(MAKE) build BOARD=heltec
+	@echo "✅ Wokwi simulation ready (using Heltec V3 firmware)"
 
 # Build all custom Wokwi chips
 chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm build/wokwi/chips/ed047tc1.chip.wasm
@@ -421,11 +397,10 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📦 Build:"
-	@echo "  make build         - Build all board variants"
-	@echo "  make build BOARD=heltec - Build Heltec V3 only"
-	@echo "  make build BOARD=lilygo - Build LilyGO T5 only"
-	@echo "  make build-sim     - Build for Wokwi Simulator"
-	@echo "  make rebuild       - Clean and rebuild all"
+	@echo "  make build         - Build firmware (default: BOARD=heltec)"
+	@echo "  make build BOARD=heltec - Build Heltec V3"
+	@echo "  make build BOARD=lilygo - Build LilyGO T5"
+	@echo "  make rebuild       - Clean and rebuild"
 	@echo "  make clean         - Clean build artifacts"
 	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
 	@echo ""
