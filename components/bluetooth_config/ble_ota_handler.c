@@ -199,7 +199,6 @@ esp_err_t ble_ota_handler_init(void)
     esp_ble_ota_recv_fw_data_callback(ota_recv_fw_cb);
     
     ESP_LOGI(TAG, "BLE OTA handler initialized (task starts on transfer)");
-    ESP_LOGI(TAG, "Security: Signature verified by LoRaCueManager before transfer");
     
     return ESP_OK;
 }
