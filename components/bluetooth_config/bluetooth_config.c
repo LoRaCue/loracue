@@ -451,7 +451,7 @@ static void on_sync(void)
     }
     
     // Start advertising from separate task (can't call ble_gap_adv_start from sync callback)
-    xTaskCreate(start_advertising_task, "ble_adv", 2048, NULL, 5, NULL);
+    xTaskCreate(start_advertising_task, "ble_adv", 4096, NULL, 5, NULL);
 }
 
 static void on_reset(int reason)
