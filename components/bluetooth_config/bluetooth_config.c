@@ -368,13 +368,25 @@ static void ble_advertise(void)
 {
     int rc;
     
-    ESP_LOGI(TAG, "Starting extended advertising...");
+    // Get device configuration for name
+    general_config_t config;
+    general_config_get(&config);
+    
+    // Build advertising name: "LoRaCue <device_name>" (max 31 bytes for BLE)
+    char adv_name[32];
+    int len = snprintf(adv_name, sizeof(adv_name), "LoRaCue %.22s", config.device_name);
+    if (len >= (int)sizeof(adv_name)) {
+        len = sizeof(adv_name) - 1;
+    }
+    uint8_t name_len = (uint8_t)len;
+    
+    ESP_LOGI(TAG, "Starting extended advertising as '%s'", adv_name);
     
     // Configure extended advertising instance
     struct ble_gap_ext_adv_params adv_params = {0};
     adv_params.connectable = 1;
     adv_params.scannable = 1;
-    adv_params.legacy_pdu = 1;  // Use legacy PDU for compatibility
+    adv_params.legacy_pdu = 1;  // Use legacy PDU for backward compatibility
     adv_params.itvl_min = BLE_GAP_ADV_FAST_INTERVAL1_MIN;
     adv_params.itvl_max = BLE_GAP_ADV_FAST_INTERVAL1_MAX;
     
@@ -385,20 +397,34 @@ static void ble_advertise(void)
         return;
     }
     
-    // Set advertising data
-    struct os_mbuf *data = ble_hs_mbuf_from_flat((uint8_t[]){
-        0x02, 0x01, 0x06,  // Flags: General Discoverable, BR/EDR not supported
-        0x08, 0x09, 'L', 'o', 'R', 'a', 'C', 'u', 'e',  // Complete local name
-    }, 12);
+    // Build advertising data with flags and complete local name
+    uint8_t adv_data[31];  // Max legacy advertising data size
+    uint8_t pos = 0;
     
+    // Flags (3 bytes)
+    adv_data[pos++] = 0x02;  // Length
+    adv_data[pos++] = 0x01;  // Type: Flags
+    adv_data[pos++] = 0x06;  // General Discoverable, BR/EDR not supported
+    
+    // Complete Local Name (2 + name_len bytes)
+    adv_data[pos++] = name_len + 1;  // Length
+    adv_data[pos++] = 0x09;          // Type: Complete Local Name
+    memcpy(&adv_data[pos], adv_name, name_len);
+    pos += name_len;
+    
+    struct os_mbuf *data = ble_hs_mbuf_from_flat(adv_data, pos);
     if (data) {
         rc = ble_gap_ext_adv_set_data(instance, data);
         if (rc != 0) {
-            ESP_LOGW(TAG, "Failed to set ext adv data: %d", rc);
+            ESP_LOGE(TAG, "Failed to set ext adv data: %d", rc);
+            return;
         }
+    } else {
+        ESP_LOGE(TAG, "Failed to allocate mbuf for adv data");
+        return;
     }
     
-    // Start advertising
+    // Start advertising indefinitely
     rc = ble_gap_ext_adv_start(instance, 0, 0);
     if (rc != 0) {
         ESP_LOGE(TAG, "Failed to start ext adv: %d", rc);
@@ -551,8 +577,12 @@ esp_err_t bluetooth_config_init(void)
         ESP_LOGW(TAG, "Failed to register OTA services, continuing without OTA");
     }
 
-    // Set device name
-    ble_svc_gap_device_name_set("LoRaCue");
+    // Set device name from configuration (max 31 bytes for BLE)
+    general_config_t config;
+    general_config_get(&config);
+    char gap_name[32];
+    snprintf(gap_name, sizeof(gap_name), "LoRaCue %.22s", config.device_name);
+    ble_svc_gap_device_name_set(gap_name);
     
     // Set DIS information
     const bsp_usb_config_t *usb_config = bsp_get_usb_config();
