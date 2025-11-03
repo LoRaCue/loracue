@@ -10,3 +10,4 @@
 [submodule "components/ble_ota"]
 	path = components/ble_ota
 	url = https://github.com/LoRaCue/ble_ota.git
+	branch = main
