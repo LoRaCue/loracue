@@ -66,7 +66,7 @@ static const ble_uuid128_t NUS_CHR_TX_UUID =
 //==============================================================================
 
 #define BLE_CMD_QUEUE_SIZE              10
-#define BLE_CMD_TASK_STACK_SIZE         6144
+#define BLE_CMD_TASK_STACK_SIZE         8192
 #define BLE_CMD_TASK_PRIORITY           5
 #define BLE_CMD_MAX_LENGTH              2048
 #define BLE_RESPONSE_MAX_LENGTH         2048
