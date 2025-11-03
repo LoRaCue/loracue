@@ -344,8 +344,12 @@ static void ble_advertise(void)
 {
     int rc;
     
-    // Stop any existing advertising
-    ble_gap_adv_stop();
+    // Stop any existing advertising and wait for completion
+    rc = ble_gap_adv_stop();
+    if (rc == 0) {
+        // Advertising was active, give it time to stop
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
     
     // Set advertising data
     struct ble_hs_adv_fields fields = {0};
