@@ -32,6 +32,7 @@
 #include "host/ble_hs.h"
 #include "host/ble_uuid.h"
 #include "host/ble_gap.h"
+#include "os/os_mbuf.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 #include "services/dis/ble_svc_dis.h"
@@ -367,44 +368,50 @@ static void ble_advertise(void)
 {
     int rc;
     
-    // Stop any existing advertising and wait for completion
-    rc = ble_gap_adv_stop();
-    if (rc == 0) {
-        vTaskDelay(pdMS_TO_TICKS(10));
-    }
+    ESP_LOGI(TAG, "Starting extended advertising...");
     
-    // Set advertising data with service UUIDs
-    struct ble_hs_adv_fields fields = {0};
-    const char *name = "LoRaCue";
+    // Configure extended advertising instance
+    struct ble_gap_ext_adv_params adv_params = {0};
+    adv_params.connectable = 1;
+    adv_params.scannable = 1;
+    adv_params.legacy_pdu = 1;  // Use legacy PDU for compatibility
+    adv_params.itvl_min = BLE_GAP_ADV_FAST_INTERVAL1_MIN;
+    adv_params.itvl_max = BLE_GAP_ADV_FAST_INTERVAL1_MAX;
     
-    fields.flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP;
-    fields.name = (uint8_t *)name;
-    fields.name_len = strlen(name);
-    fields.name_is_complete = 1;
-    
-    // Advertise NUS service UUID (128-bit)
-    fields.uuids128 = &NUS_SERVICE_UUID;
-    fields.num_uuids128 = 1;
-    fields.uuids128_is_complete = 1;
-    
-    rc = ble_gap_adv_set_fields(&fields);
+    uint8_t instance = 0;
+    rc = ble_gap_ext_adv_configure(instance, &adv_params, NULL, gap_event_handler, NULL);
     if (rc != 0) {
-        ESP_LOGE(TAG, "Failed to set adv fields: %d", rc);
+        ESP_LOGE(TAG, "Failed to configure ext adv: %d", rc);
         return;
     }
     
-    // Start advertising
-    struct ble_gap_adv_params adv_params = {0};
-    adv_params.conn_mode = BLE_GAP_CONN_MODE_UND;
-    adv_params.disc_mode = BLE_GAP_DISC_MODE_GEN;
+    // Set advertising data
+    struct os_mbuf *data = ble_hs_mbuf_from_flat((uint8_t[]){
+        0x02, 0x01, 0x06,  // Flags: General Discoverable, BR/EDR not supported
+        0x08, 0x09, 'L', 'o', 'R', 'a', 'C', 'u', 'e',  // Complete local name
+    }, 12);
     
-    rc = ble_gap_adv_start(s_own_addr_type, NULL, BLE_HS_FOREVER,
-                           &adv_params, gap_event_handler, NULL);
-    if (rc != 0) {
-        ESP_LOGE(TAG, "Failed to start advertising: %d", rc);
-    } else {
-        ESP_LOGI(TAG, "Advertising started with NUS service UUID");
+    if (data) {
+        rc = ble_gap_ext_adv_set_data(instance, data);
+        if (rc != 0) {
+            ESP_LOGW(TAG, "Failed to set ext adv data: %d", rc);
+        }
     }
+    
+    // Start advertising
+    rc = ble_gap_ext_adv_start(instance, 0, 0);
+    if (rc != 0) {
+        ESP_LOGE(TAG, "Failed to start ext adv: %d", rc);
+    } else {
+        ESP_LOGI(TAG, "Extended advertising started successfully");
+    }
+}
+
+static void start_advertising_task(void *arg)
+{
+    vTaskDelay(pdMS_TO_TICKS(100));
+    ble_advertise();
+    vTaskDelete(NULL);
 }
 
 //==============================================================================
@@ -443,7 +450,8 @@ static void on_sync(void)
         ESP_LOGI(TAG, "BLE OTA handler initialized");
     }
     
-    ble_advertise();
+    // Start advertising from separate task (can't call ble_gap_adv_start from sync callback)
+    xTaskCreate(start_advertising_task, "ble_adv", 2048, NULL, 5, NULL);
 }
 
 static void on_reset(int reason)
