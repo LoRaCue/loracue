@@ -34,6 +34,10 @@ static const char *TAG = "ble_ota";
 static RingbufHandle_t s_ringbuf = NULL;
 SemaphoreHandle_t notify_sem = NULL;  // Global - required by BLE OTA library
 static esp_ota_handle_t out_handle;
+static TaskHandle_t s_ota_task_handle = NULL;
+
+// Forward declaration
+static void ota_task(void *arg);
 
 bool ble_ota_ringbuf_init(uint32_t ringbuf_size)
 {
@@ -49,6 +53,11 @@ size_t write_to_ringbuf(const uint8_t *data, size_t size)
 
 void ota_recv_fw_cb(uint8_t *buf, uint32_t length)
 {
+    // Create OTA task on first data reception
+    if (s_ota_task_handle == NULL) {
+        ESP_LOGI(TAG, "OTA transfer started, creating task...");
+        xTaskCreate(&ota_task, "ota_task", OTA_TASK_SIZE, NULL, 5, &s_ota_task_handle);
+    }
     write_to_ringbuf(buf, length);
 }
 
@@ -186,10 +195,10 @@ esp_err_t ble_ota_handler_init(void)
         return ESP_FAIL;
     }
 
+    // Register callback - task will be created when OTA transfer starts
     esp_ble_ota_recv_fw_data_callback(ota_recv_fw_cb);
-    xTaskCreate(&ota_task, "ota_task", OTA_TASK_SIZE, NULL, 5, NULL);
     
-    ESP_LOGI(TAG, "BLE OTA handler initialized");
+    ESP_LOGI(TAG, "BLE OTA handler initialized (task starts on transfer)");
     ESP_LOGI(TAG, "Security: Signature verified by LoRaCueManager before transfer");
     
     return ESP_OK;
