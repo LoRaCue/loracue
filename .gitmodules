@@ -7,3 +7,6 @@
 [submodule "assets/fonts/sf-pro"]
 	path = assets/fonts/sf-pro
 	url = https://github.com/divocbn/sf-pro
+[submodule "components/ble_ota"]
+	path = components/ble_ota
+	url = https://github.com/LoRaCue/ble_ota.git
