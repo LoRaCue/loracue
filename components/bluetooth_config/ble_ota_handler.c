@@ -3,9 +3,9 @@
  * @brief BLE OTA handler with streaming firmware update
  * 
  * Security model:
- * - LoRaCueManager verifies signature before sending
+ * - Requires bonded/paired connection
  * - BLE pairing provides transport security
- * - Device trusts verified firmware from paired manager
+ * - Only accepts OTA from authenticated devices
  */
 
 #include "esp_log.h"
@@ -17,6 +17,7 @@
 #include "freertos/task.h"
 #include "ble_ota.h"
 #include "bsp.h"
+#include "host/ble_gap.h"
 
 #ifdef CONFIG_UI_MINI
 #include "ui_mini.h"
@@ -35,6 +36,7 @@ static RingbufHandle_t s_ringbuf = NULL;
 SemaphoreHandle_t notify_sem = NULL;  // Global - required by BLE OTA library
 static esp_ota_handle_t out_handle;
 static TaskHandle_t s_ota_task_handle = NULL;
+static uint16_t s_ota_conn_handle = BLE_HS_CONN_HANDLE_NONE;
 
 // Forward declaration
 static void ota_task(void *arg);
@@ -53,9 +55,23 @@ size_t write_to_ringbuf(const uint8_t *data, size_t size)
 
 void ota_recv_fw_cb(uint8_t *buf, uint32_t length)
 {
+    // Security check: Require bonded connection
+    if (s_ota_conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+        struct ble_gap_conn_desc desc;
+        if (ble_gap_conn_find(s_ota_conn_handle, &desc) == 0) {
+            if (!desc.sec_state.bonded) {
+                ESP_LOGE(TAG, "OTA rejected: device not bonded");
+                return;
+            }
+        } else {
+            ESP_LOGE(TAG, "OTA rejected: connection not found");
+            return;
+        }
+    }
+    
     // Create OTA task on first data reception
     if (s_ota_task_handle == NULL) {
-        ESP_LOGI(TAG, "OTA transfer started, creating task...");
+        ESP_LOGI(TAG, "OTA transfer started from bonded device");
         xTaskCreate(&ota_task, "ota_task", OTA_TASK_SIZE, NULL, 5, &s_ota_task_handle);
     }
     write_to_ringbuf(buf, length);
@@ -201,4 +217,9 @@ esp_err_t ble_ota_handler_init(void)
     ESP_LOGI(TAG, "BLE OTA handler initialized (task starts on transfer)");
     
     return ESP_OK;
+}
+
+void ble_ota_handler_set_connection(uint16_t conn_handle)
+{
+    s_ota_conn_handle = conn_handle;
 }

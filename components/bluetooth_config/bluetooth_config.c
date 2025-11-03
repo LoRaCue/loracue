@@ -35,8 +35,12 @@
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 #include "services/dis/ble_svc_dis.h"
+#include "store/config/ble_store_config.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
+
+// Forward declaration - defined in NimBLE port
+void ble_store_config_init(void);
 
 static const char *TAG = "ble_config";
 
@@ -243,6 +247,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg)
                 
                 // Set connection handle for OTA operations
                 ble_ota_set_connection_handle(event->connect.conn_handle);
+                ble_ota_handler_set_connection(event->connect.conn_handle);
             }
             
             // Request connection parameter update for low latency
@@ -472,6 +477,9 @@ esp_err_t bluetooth_config_init(void)
         vSemaphoreDelete(s_conn_state_mutex);
         return rc;
     }
+
+    // Initialize bonding storage
+    ble_store_config_init();
 
     // Configure NimBLE
     ble_hs_cfg.sync_cb = on_sync;
