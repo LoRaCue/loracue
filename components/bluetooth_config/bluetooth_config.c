@@ -179,6 +179,11 @@ static int nus_chr_access(uint16_t conn_handle, uint16_t attr_handle,
         cmd.len = len_out;
         cmd.data[cmd.len] = '\0';
         
+        // Strip trailing CR/LF (same as UART handler)
+        while (cmd.len > 0 && (cmd.data[cmd.len - 1] == '\r' || cmd.data[cmd.len - 1] == '\n')) {
+            cmd.data[--cmd.len] = '\0';
+        }
+        
         if (xQueueSend(s_cmd_queue, &cmd, 0) != pdTRUE) {
             ESP_LOGW(TAG, "Command queue full, dropping command");
             return BLE_ATT_ERR_INSUFFICIENT_RES;
