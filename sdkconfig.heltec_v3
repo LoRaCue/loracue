@@ -1,8 +1,5 @@
 # Board Selection
 
-# UI Configuration - Use OLED UI for small display
-CONFIG_UI_MINI=y
-
 # Flash Configuration
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
 
