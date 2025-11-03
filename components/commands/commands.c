@@ -23,9 +23,9 @@
 #include "ota_engine.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
+#include "tusb.h"
 #include "u8g2.h"
 #include "version.h"
-#include "xmodem.h"
 #include <inttypes.h>
 #include <string.h>
 
@@ -692,45 +692,72 @@ void commands_execute(const char *command_line, response_fn_t send_response)
     }
 
     if (strncmp(command_line, "FIRMWARE_UPGRADE ", 17) == 0) {
-        // FIXME: USB-CDC firmware upgrade implemented but not working
-        // XMODEM-1K and OTA integration complete but has bugs preventing successful updates
-
         size_t size = atoi(command_line + 17);
         if (size == 0 || size > 4 * 1024 * 1024) {
             s_send_response("ERROR Invalid size");
             return;
         }
 
-        // USB-UART/USB-CDC: Use XMODEM-1K
-        // BLE: Intercepted by ble_ota_handle_control() before reaching here
-        s_send_response("OK Ready for XMODEM");
-        vTaskDelay(pdMS_TO_TICKS(50));
+        s_send_response("OK Ready");
+        vTaskDelay(pdMS_TO_TICKS(100));
 
-        esp_err_t ret = xmodem_receive(size);
-        if (ret == ESP_OK) {
-            const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
-            if (!update_partition) {
-                s_send_response("ERROR No update partition found");
-                return;
-            }
-
-            ESP_LOGI(TAG, "Setting boot partition: %s (0x%lx)", update_partition->label, update_partition->address);
-
-            ret = esp_ota_set_boot_partition(update_partition);
-            if (ret != ESP_OK) {
-                ESP_LOGE(TAG, "Failed to set boot partition: %s", esp_err_to_name(ret));
-                s_send_response("ERROR Failed to set boot partition");
-                return;
-            }
-
-            ESP_LOGW(TAG, "Boot partition set. Device will boot from %s after restart", update_partition->label);
-            s_send_response("OK Firmware uploaded, rebooting...");
-            vTaskDelay(pdMS_TO_TICKS(500));
-            esp_restart();
-        } else {
-            ESP_LOGE(TAG, "XMODEM upload failed: %s", esp_err_to_name(ret));
-            s_send_response("ERROR Upload failed");
+        esp_err_t ret = ota_engine_start(size);
+        if (ret != ESP_OK) {
+            s_send_response("ERROR OTA start failed");
+            return;
         }
+
+        size_t received = 0;
+        uint8_t buf[512];
+        
+        while (received < size) {
+            size_t to_read = (size - received) < sizeof(buf) ? (size - received) : sizeof(buf);
+            size_t read = 0;
+            
+            while (read < to_read && tud_cdc_available()) {
+                buf[read++] = tud_cdc_read_char();
+            }
+            
+            if (read == 0) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
+            }
+            
+            ret = ota_engine_write(buf, read);
+            if (ret != ESP_OK) {
+                ota_engine_abort();
+                s_send_response("ERROR OTA write failed");
+                return;
+            }
+            
+            received += read;
+            
+            if (received % 10240 == 0) {
+                ESP_LOGI(TAG, "Progress: %zu/%zu bytes", received, size);
+            }
+        }
+
+        ret = ota_engine_finish();
+        if (ret != ESP_OK) {
+            s_send_response("ERROR OTA finish failed");
+            return;
+        }
+
+        const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
+        if (!update_partition) {
+            s_send_response("ERROR No update partition");
+            return;
+        }
+
+        ret = esp_ota_set_boot_partition(update_partition);
+        if (ret != ESP_OK) {
+            s_send_response("ERROR Failed to set boot partition");
+            return;
+        }
+
+        s_send_response("OK Complete, rebooting...");
+        vTaskDelay(pdMS_TO_TICKS(500));
+        esp_restart();
         return;
     }
 
