@@ -628,6 +628,6 @@ esp_err_t lora_protocol_start(void)
         return ESP_FAIL;
     }
     
-    ESP_LOGI(TAG, "Protocol RX task started");
+    ESP_LOGI(TAG, "Protocol RX task created");
     return ESP_OK;
 }
