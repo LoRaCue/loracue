@@ -82,6 +82,8 @@ typedef struct {
     bool notifications_enabled;
     uint8_t addr_type;
     uint8_t addr[6];
+    bool pairing_active;
+    uint32_t passkey;
 } ble_conn_state_t;
 
 typedef struct {
@@ -97,7 +99,9 @@ static ble_conn_state_t s_conn_state = {
     .conn_handle = BLE_HS_CONN_HANDLE_NONE,
     .mtu = 23,
     .connected = false,
-    .notifications_enabled = false
+    .notifications_enabled = false,
+    .pairing_active = false,
+    .passkey = 0
 };
 static SemaphoreHandle_t s_conn_state_mutex = NULL;
 static QueueHandle_t s_cmd_queue = NULL;
@@ -326,12 +330,26 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg)
             ESP_LOGI(TAG, "  PAIRING PASSKEY: %06" PRIu32, pkey.passkey);
             ESP_LOGI(TAG, "===========================================");
             
+            // Store passkey for UI display
+            if (conn_state_lock()) {
+                s_conn_state.pairing_active = true;
+                s_conn_state.passkey = pkey.passkey;
+                conn_state_unlock();
+            }
+            
             ble_sm_inject_io(event->passkey.conn_handle, &pkey);
         }
         break;
 
     case BLE_GAP_EVENT_ENC_CHANGE:
         ESP_LOGI(TAG, "Encryption change: status=%d", event->enc_change.status);
+        
+        // Clear pairing state when encryption established
+        if (event->enc_change.status == 0 && conn_state_lock()) {
+            s_conn_state.pairing_active = false;
+            s_conn_state.passkey = 0;
+            conn_state_unlock();
+        }
         break;
 
     default:
@@ -656,10 +674,16 @@ esp_err_t bluetooth_config_set_enabled(bool enabled)
 
 bool bluetooth_config_get_passkey(uint32_t *passkey)
 {
-    // Passkey is displayed during pairing, not stored
-    if (passkey) {
-        *passkey = 0;
+    bool active = false;
+    
+    if (conn_state_lock()) {
+        active = s_conn_state.pairing_active;
+        if (passkey && active) {
+            *passkey = s_conn_state.passkey;
+        }
+        conn_state_unlock();
     }
-    return false;
+    
+    return active;
 }
 
