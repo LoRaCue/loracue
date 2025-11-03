@@ -402,7 +402,7 @@ static void ble_advertise(void)
         return;
     }
     
-    // Build advertising data with flags and complete local name
+    // Build advertising data with flags, manufacturer data, and complete local name
     uint8_t adv_data[31];  // Max legacy advertising data size
     uint8_t pos = 0;
     
@@ -410,6 +410,19 @@ static void ble_advertise(void)
     adv_data[pos++] = 0x02;  // Length
     adv_data[pos++] = 0x01;  // Type: Flags
     adv_data[pos++] = 0x06;  // General Discoverable, BR/EDR not supported
+    
+    // Manufacturer Data (10 bytes: 1 len + 1 type + 2 company + 6 data)
+    // Company ID 0xFFFF (test/development), followed by "LoRaCue" identifier
+    adv_data[pos++] = 0x09;  // Length (type + company + data)
+    adv_data[pos++] = 0xFF;  // Type: Manufacturer Specific Data
+    adv_data[pos++] = 0xFF;  // Company ID: 0xFFFF (little-endian)
+    adv_data[pos++] = 0xFF;
+    adv_data[pos++] = 'L';   // "LoRaCue" identifier
+    adv_data[pos++] = 'o';
+    adv_data[pos++] = 'R';
+    adv_data[pos++] = 'a';
+    adv_data[pos++] = 'C';
+    adv_data[pos++] = 'u';
     
     // Complete Local Name (2 + name_len bytes)
     adv_data[pos++] = name_len + 1;  // Length
