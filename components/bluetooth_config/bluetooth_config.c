@@ -370,11 +370,10 @@ static void ble_advertise(void)
     // Stop any existing advertising and wait for completion
     rc = ble_gap_adv_stop();
     if (rc == 0) {
-        // Advertising was active, give it time to stop
         vTaskDelay(pdMS_TO_TICKS(10));
     }
     
-    // Set advertising data
+    // Set advertising data with service UUIDs
     struct ble_hs_adv_fields fields = {0};
     const char *name = "LoRaCue";
     
@@ -382,6 +381,11 @@ static void ble_advertise(void)
     fields.name = (uint8_t *)name;
     fields.name_len = strlen(name);
     fields.name_is_complete = 1;
+    
+    // Advertise NUS service UUID (128-bit)
+    fields.uuids128 = &NUS_SERVICE_UUID;
+    fields.num_uuids128 = 1;
+    fields.uuids128_is_complete = 1;
     
     rc = ble_gap_adv_set_fields(&fields);
     if (rc != 0) {
@@ -399,7 +403,7 @@ static void ble_advertise(void)
     if (rc != 0) {
         ESP_LOGE(TAG, "Failed to start advertising: %d", rc);
     } else {
-        ESP_LOGI(TAG, "Advertising started");
+        ESP_LOGI(TAG, "Advertising started with NUS service UUID");
     }
 }
 
