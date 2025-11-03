@@ -43,13 +43,13 @@
       "id": "battery_sim",
       "top": -20.5,
       "left": 9.4,
-      "attrs": { "value": "75000", "label": "Battery" }
+      "attrs": { "value": "573", "label": "Battery" }
     },
     {
       "type": "wokwi-led",
       "id": "led_power",
       "top": 294,
-      "left": 138.6,
+      "left": 129,
       "attrs": { "color": "blue", "label": "Power", "flip": "1" }
     },
     {
