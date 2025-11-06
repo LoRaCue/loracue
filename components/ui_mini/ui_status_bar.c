@@ -3,6 +3,7 @@
 #include "u8g2.h"
 #include "ui_config.h"
 #include "ui_icons.h"
+#include "esp_log.h"
 #include <string.h>
 
 extern u8g2_t u8g2;
@@ -12,6 +13,10 @@ extern u8g2_t u8g2;
 
 void ui_status_bar_draw(const ui_status_t *status)
 {
+    // Debug logging
+    ESP_LOGI("UI_STATUS_BAR", "Drawing status bar: BT_enabled=%d, BT_connected=%d, USB=%d", 
+             status->bluetooth_enabled, status->bluetooth_connected, status->usb_connected);
+    
     // Draw brand name
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     u8g2_DrawStr(&u8g2, TEXT_MARGIN_LEFT - 1, 8, "LORACUE");

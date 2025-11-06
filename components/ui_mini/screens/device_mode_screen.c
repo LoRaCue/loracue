@@ -114,6 +114,10 @@ void device_mode_screen_select(void)
         return; // No change, stay in screen
     }
 
+    // Save to NVS first
+    config.device_mode = new_mode;
+    general_config_set(&config);
+
     // Post mode change event
     system_events_post_mode_changed(new_mode);
 
