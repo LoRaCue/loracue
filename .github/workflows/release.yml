@@ -148,14 +148,15 @@ jobs:
             description: "Enhanced prototype with two separate buttons"
             flash_size: "8MB"
             sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha_plus"
-          - name: "gamma"
-            display_name: "LC-Gamma"
-            board: "lilygo_t5"
-            board_name: "LilyGO T5 Pro"
-            target: "esp32s3"
-            description: "Professional with 4.7\" E-paper display and touch"
-            flash_size: "16MB"
-            sdkconfig: "sdkconfig.defaults;sdkconfig.lilygo_t5;sdkconfig.model_gamma"
+          # TODO: Enable when ui_rich component is complete
+          # - name: "gamma"
+          #   display_name: "LC-Gamma"
+          #   board: "lilygo_t5"
+          #   board_name: "LilyGO T5 Pro"
+          #   target: "esp32s3"
+          #   description: "Professional with 4.7\" E-paper display and touch"
+          #   flash_size: "16MB"
+          #   sdkconfig: "sdkconfig.defaults;sdkconfig.lilygo_t5;sdkconfig.model_gamma"
     
     name: Build ${{ matrix.model.display_name }}
     
