@@ -2,5 +2,3 @@
 # Prototype with single onboard button (GPIO0)
 
 CONFIG_MODEL_LC_ALPHA=y
-CONFIG_BUTTON_MODE_SINGLE=y
-CONFIG_BUTTON_GPIO=0
