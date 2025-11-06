@@ -20,6 +20,7 @@
 #include "lora_driver.h"
 #include "system_events.h"
 #include "mbedtls/base64.h"
+#include "nvs_flash.h"
 #include "ota_engine.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
@@ -569,6 +570,30 @@ static void handle_unpair_device(cJSON *unpair_json)
     send_jsonrpc_result(response);
 }
 
+static void handle_device_reset(void)
+{
+    ESP_LOGW(TAG, "Factory reset initiated - erasing all NVS data");
+    
+    cJSON *response = cJSON_CreateString("Factory reset initiated, rebooting...");
+    send_jsonrpc_result(response);
+    
+    // Give time for response to be sent
+    vTaskDelay(pdMS_TO_TICKS(500));
+    
+    // Erase entire NVS partition
+    esp_err_t ret = nvs_flash_erase();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to erase NVS: %s", esp_err_to_name(ret));
+        return;
+    }
+    
+    ESP_LOGI(TAG, "NVS erased successfully, rebooting...");
+    vTaskDelay(pdMS_TO_TICKS(500));
+    
+    // Reboot device
+    esp_restart();
+}
+
 static void handle_firmware_start(cJSON *params)
 {
     cJSON *size_json = cJSON_GetObjectItem(params, "size");
@@ -649,6 +674,7 @@ static const jsonrpc_method_t method_table[] = {
     {"paired:list", false, {.no_params = handle_get_paired_devices}},
     {"paired:pair", true, {.with_params = handle_pair_device}},
     {"paired:unpair", true, {.with_params = handle_unpair_device}},
+    {"device:reset", false, {.no_params = handle_device_reset}},
     {"firmware:upgrade", true, {.with_params = handle_firmware_start}},
 };
 
