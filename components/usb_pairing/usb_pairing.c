@@ -203,26 +203,35 @@ static void pairing_task(void *arg)
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
 
-    cJSON *json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "name", config.device_name);
+    // Build JSON-RPC request
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddStringToObject(params, "name", config.device_name);
 
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    cJSON_AddStringToObject(json, "mac", mac_str);
+    cJSON_AddStringToObject(params, "mac", mac_str);
 
     char key_str[65];
     for (int i = 0; i < 32; i++) {
         snprintf(key_str + i * 2, 3, "%02x", lora_cfg.aes_key[i]);
     }
-    cJSON_AddStringToObject(json, "aes_key", key_str);
+    cJSON_AddStringToObject(params, "aes_key", key_str);
 
-    char *json_string = cJSON_Print(json);
-    char command[512];
-    snprintf(command, sizeof(command), "PAIR_DEVICE %s\n", json_string);
+    cJSON *request = cJSON_CreateObject();
+    cJSON_AddStringToObject(request, "jsonrpc", "2.0");
+    cJSON_AddStringToObject(request, "method", "paired:pair");
+    cJSON_AddItemToObject(request, "params", params);
+    cJSON_AddNumberToObject(request, "id", 1);
+
+    char *json_string = cJSON_PrintUnformatted(request);
+    size_t len = strlen(json_string);
+    char *command = malloc(len + 2);
+    snprintf(command, len + 2, "%s\n", json_string);
 
     esp_err_t ret = cdc_acm_host_data_tx_blocking(cdc_device, (uint8_t *)command, strlen(command), 1000);
+    free(command);
     free(json_string);
-    cJSON_Delete(json);
+    cJSON_Delete(request);
 
     if (ret != ESP_OK) {
         pairing_active = false;
