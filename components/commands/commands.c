@@ -102,7 +102,6 @@ static void handle_get_device_info(void)
     cJSON_AddStringToObject(response, "model", "LC-Alpha"); // TODO: Get from NVS or build config
 
     // Firmware info
-    const esp_app_desc_t *app_desc = esp_app_get_description();
     cJSON_AddStringToObject(response, "version", LORACUE_VERSION_STRING);
     cJSON_AddStringToObject(response, "commit", LORACUE_BUILD_COMMIT_SHORT);
     cJSON_AddStringToObject(response, "branch", LORACUE_BUILD_BRANCH);

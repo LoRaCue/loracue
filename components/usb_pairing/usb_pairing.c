@@ -224,8 +224,29 @@ static void pairing_task(void *arg)
     cJSON_AddNumberToObject(request, "id", 1);
 
     char *json_string = cJSON_PrintUnformatted(request);
+    if (!json_string) {
+        cJSON_Delete(request);
+        pairing_active = false;
+        if (result_callback)
+            result_callback(false, 0, "JSON serialization failed");
+        switch_to_device_mode();
+        vTaskDelete(NULL);
+        return;
+    }
+    
     size_t len = strlen(json_string);
     char *command = malloc(len + 2);
+    if (!command) {
+        free(json_string);
+        cJSON_Delete(request);
+        pairing_active = false;
+        if (result_callback)
+            result_callback(false, 0, "Memory allocation failed");
+        switch_to_device_mode();
+        vTaskDelete(NULL);
+        return;
+    }
+    
     snprintf(command, len + 2, "%s\n", json_string);
 
     esp_err_t ret = cdc_acm_host_data_tx_blocking(cdc_device, (uint8_t *)command, strlen(command), 1000);
