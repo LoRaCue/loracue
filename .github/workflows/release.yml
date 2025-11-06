@@ -476,20 +476,31 @@ jobs:
         python3 <<'EOF'
         import json
         import glob
+        import re
         
         manifests = []
         tag_name = "${{ needs.version.outputs.tag_name }}"
+        version = "${{ needs.version.outputs.version }}"
+        
+        # Map display names to artifact names (from matrix.model.name)
+        model_name_map = {
+            "LC-Alpha": "alpha",
+            "LC-Alpha+": "alpha-plus",
+            "LC-Gamma": "gamma"
+        }
         
         for manifest_file in sorted(glob.glob("firmware-packages/*-manifest-*/manifest.json")):
             with open(manifest_file, 'r') as f:
                 manifest = json.load(f)
                 
-            # Extract model name from manifest
-            model = manifest.get("model", "")
-            model_slug = model.lower().replace(" ", "-").replace("+", "-plus")
+            # Get model display name from manifest
+            model_display = manifest.get("model", "")
             
-            # Add download_url
-            manifest["download_url"] = f"https://github.com/LoRaCue/loracue/releases/download/{tag_name}/loracue-{model_slug}-v${{ needs.version.outputs.version }}.zip"
+            # Map to artifact name
+            model_slug = model_name_map.get(model_display, model_display.lower().replace(" ", "-"))
+            
+            # Add download_url using artifact naming convention
+            manifest["download_url"] = f"https://github.com/LoRaCue/loracue/releases/download/{tag_name}/loracue-{model_slug}-v{version}.zip"
             
             manifests.append(manifest)
         
@@ -498,7 +509,7 @@ jobs:
         
         print(f"✓ Created combined manifests.json with {len(manifests)} models")
         for m in manifests:
-            print(f"  - {m['model']} ({m['board_id']})")
+            print(f"  - {m['model']} ({m['board_id']}) -> {m['download_url']}")
         EOF
         
         echo "Combined manifests.json:"
