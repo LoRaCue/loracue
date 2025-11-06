@@ -98,9 +98,11 @@ static void handle_get_device_info(void)
 {
     cJSON *response = cJSON_CreateObject();
 
+    // Model first
+    cJSON_AddStringToObject(response, "model", "LC-Alpha"); // TODO: Get from NVS or build config
+
     // Hardware info
     cJSON_AddStringToObject(response, "board_id", bsp_get_board_id());
-    cJSON_AddStringToObject(response, "model", "LC-Alpha"); // TODO: Get from NVS or build config
 
     // Firmware info
     cJSON_AddStringToObject(response, "version", LORACUE_VERSION_STRING);

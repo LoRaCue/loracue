@@ -46,9 +46,9 @@ typedef struct {
 
 // PC Mode key mappings (one-button UI)
 static const key_mapping_t pc_mode_keys[] = {
-    [BUTTON_EVENT_SHORT]  = {HID_KEY_PAGE_DOWN, 0}, // Next slide
-    [BUTTON_EVENT_DOUBLE] = {HID_KEY_PAGE_UP, 0},   // Previous slide
-    [BUTTON_EVENT_LONG]   = {HID_KEY_F5, 0},        // Start slideshow
+    [BUTTON_EVENT_SHORT]  = {HID_KEY_ARROW_RIGHT, 0}, // Cursor right
+    [BUTTON_EVENT_DOUBLE] = {HID_KEY_ARROW_LEFT, 0},  // Cursor left
+    [BUTTON_EVENT_LONG]   = {HID_KEY_F5, 0},          // (unused - menu handled by UI)
 };
 
 // Presenter Mode key mappings (one-button UI)
@@ -62,6 +62,12 @@ static void button_event_handler(button_event_type_t event, void *arg)
 {
     general_config_t config;
     general_config_get(&config);
+    
+    // In PC mode, long press opens menu (handled by UI), not HID
+    if (config.device_mode == DEVICE_MODE_PC && event == BUTTON_EVENT_LONG) {
+        return;
+    }
+    
     const key_mapping_t *key_map = (config.device_mode == DEVICE_MODE_PC) ? pc_mode_keys : presenter_mode_keys;
 
     if (event >= sizeof(pc_mode_keys) / sizeof(key_mapping_t)) {
