@@ -1,0 +1,7 @@
+# LC-Alpha+ Model Configuration
+# Enhanced prototype with two separate buttons (prev/next)
+
+CONFIG_MODEL_LC_ALPHA_PLUS=y
+CONFIG_BUTTON_MODE_DUAL=y
+CONFIG_BUTTON_PREV_GPIO=12
+CONFIG_BUTTON_NEXT_GPIO=13

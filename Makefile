@@ -53,25 +53,33 @@ endif
 endif
 
 # Build targets
-# Usage: make build BOARD=heltec - Build Heltec V3
-#        make build BOARD=lilygo - Build LilyGO T5
-BOARD ?= heltec
+# Usage: make build              - Build LC-Alpha (default)
+#        make build MODEL=alpha  - Build LC-Alpha (Heltec V3, 1 button)
+#        make build MODEL=alpha+ - Build LC-Alpha+ (Heltec V3, 2 buttons)
+#        make build MODEL=gamma  - Build LC-Gamma (LilyGO T5, E-paper)
+MODEL ?= alpha
 
-ifeq ($(BOARD),heltec)
-BOARD_TARGET = heltec_v3
+ifeq ($(MODEL),alpha)
+MODEL_NAME = LC-Alpha
 BOARD_NAME = Heltec V3
-else ifeq ($(BOARD),lilygo)
-BOARD_TARGET = lilygo_t5
-BOARD_NAME = LilyGO T5
+SDKCONFIG = sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha
+else ifeq ($(MODEL),alpha+)
+MODEL_NAME = LC-Alpha+
+BOARD_NAME = Heltec V3
+SDKCONFIG = sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha_plus
+else ifeq ($(MODEL),gamma)
+MODEL_NAME = LC-Gamma
+BOARD_NAME = LilyGO T5 Pro
+SDKCONFIG = sdkconfig.defaults;sdkconfig.lilygo_t5;sdkconfig.model_gamma
 else
-$(error Invalid BOARD=$(BOARD). Use: BOARD=heltec or BOARD=lilygo)
+$(error Invalid MODEL=$(MODEL). Use: alpha, alpha+, or gamma)
 endif
 
 build: check-idf
-	@echo "🔨 Building for $(BOARD_NAME)..."
+	@echo "🔨 Building $(MODEL_NAME) ($(BOARD_NAME))..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" build
-	@echo "✅ $(BOARD_NAME) build complete"
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" build
+	@echo "✅ $(MODEL_NAME) build complete"
 
 clean:
 	@echo "🧹 Cleaning build artifacts and sdkconfig..."
@@ -85,23 +93,26 @@ fullclean:
 
 rebuild: fullclean build
 
-# Flash targets with BOARD parameter
-# Usage: make flash BOARD=heltec  OR  make flash BOARD=lilygo
+# Flash targets with MODEL parameter
+# Usage: make flash              - Flash LC-Alpha (default)
+#        make flash MODEL=alpha  - Flash LC-Alpha
+#        make flash MODEL=alpha+ - Flash LC-Alpha+
+#        make flash MODEL=gamma  - Flash LC-Gamma
 
 flash: check-idf
-	@echo "📡 Flashing $(BOARD_NAME) firmware..."
+	@echo "📡 Flashing $(MODEL_NAME) firmware..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" flash
 
 flash-only: check-idf
-	@echo "📡 Flashing $(BOARD_NAME) firmware (no rebuild)..."
-	@test -f build/$(BOARD_TARGET).bin || { echo "❌ Firmware not found. Run 'make build BOARD=$(BOARD)' first"; exit 1; }
-	$(IDF_SETUP) esptool.py --chip esp32s3 write_flash 0x10000 build/$(BOARD_TARGET).bin
+	@echo "📡 Flashing $(MODEL_NAME) firmware (no rebuild)..."
+	@test -f build/loracue.bin || { echo "❌ Firmware not found. Run 'make build MODEL=$(MODEL)' first"; exit 1; }
+	$(IDF_SETUP) idf.py flash
 
 flash-monitor: check-idf
-	@echo "📡 Flashing $(BOARD_NAME) firmware and starting monitor..."
+	@echo "📡 Flashing $(MODEL_NAME) firmware and starting monitor..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.$(BOARD_TARGET)" -D BOARD_ID="$(BOARD_TARGET)" flash monitor
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" flash monitor
 
 monitor:
 	@echo "📺 Starting serial monitor (Ctrl+] to exit)..."
@@ -397,20 +408,22 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📦 Build:"
-	@echo "  make build         - Build firmware (default: BOARD=heltec)"
-	@echo "  make build BOARD=heltec - Build Heltec V3"
-	@echo "  make build BOARD=lilygo - Build LilyGO T5"
-	@echo "  make rebuild       - Clean and rebuild"
-	@echo "  make clean         - Clean build artifacts"
-	@echo "  make fullclean     - Full clean (CMake cache + sdkconfig)"
+	@echo "  make build              - Build LC-Alpha (default)"
+	@echo "  make build MODEL=alpha  - Build LC-Alpha (Heltec V3, 1 button)"
+	@echo "  make build MODEL=alpha+ - Build LC-Alpha+ (Heltec V3, 2 buttons)"
+	@echo "  make build MODEL=gamma  - Build LC-Gamma (LilyGO T5, E-paper)"
+	@echo "  make rebuild            - Clean and rebuild"
+	@echo "  make clean              - Clean build artifacts"
+	@echo "  make fullclean          - Full clean (CMake cache + sdkconfig)"
 	@echo ""
 	@echo "📡 Flash:"
-	@echo "  make flash BOARD=heltec  - Flash Heltec V3 firmware"
-	@echo "  make flash BOARD=lilygo  - Flash LilyGO T5 firmware"
-	@echo "  make flash-monitor BOARD=heltec - Flash Heltec and monitor"
-	@echo "  make flash-monitor BOARD=lilygo - Flash LilyGO and monitor"
-	@echo "  make monitor       - Serial monitor only"
-	@echo "  make erase         - Erase entire flash"
+	@echo "  make flash              - Flash LC-Alpha (default)"
+	@echo "  make flash MODEL=alpha  - Flash LC-Alpha"
+	@echo "  make flash MODEL=alpha+ - Flash LC-Alpha+"
+	@echo "  make flash MODEL=gamma  - Flash LC-Gamma"
+	@echo "  make flash-monitor MODEL=alpha - Flash and monitor LC-Alpha"
+	@echo "  make monitor            - Serial monitor only"
+	@echo "  make erase              - Erase entire flash"
 	@echo ""
 	@echo "⚙️  Config:"
 	@echo "  make menuconfig    - Open ESP-IDF configuration"
@@ -439,5 +452,5 @@ help:
 	@echo "💡 Quick Start:"
 	@echo "  source ~/esp-idf-v5.5/export.sh  # Setup ESP-IDF"
 	@echo "  make set-target                   # First time only"
-	@echo "  make build-heltec                 # Build for Heltec V3"
-	@echo "  make flash-monitor-heltec         # Flash and monitor"
+	@echo "  make build MODEL=alpha            # Build LC-Alpha"
+	@echo "  make flash-monitor MODEL=alpha    # Flash and monitor"

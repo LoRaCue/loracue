@@ -80,12 +80,15 @@ Our comprehensive Makefile provides a streamlined development experience:
 
 ```bash
 # 🔨 Build Commands
-make build          # Build for real hardware (Heltec V3)
-make rebuild        # Clean and rebuild project
-make clean          # Clean build artifacts
-make size           # Show binary size information
-make menuconfig     # Configure ESP-IDF project settings
-make set-target     # Set ESP-IDF target (esp32s3)
+make build              # Build LC-Alpha (default)
+make build MODEL=alpha  # Build LC-Alpha (Heltec V3, 1 button)
+make build MODEL=alpha+ # Build LC-Alpha+ (Heltec V3, 2 buttons)
+make build MODEL=gamma  # Build LC-Gamma (LilyGO T5, E-paper)
+make rebuild            # Clean and rebuild project
+make clean              # Clean build artifacts
+make size               # Show binary size information
+make menuconfig         # Configure ESP-IDF project settings
+make set-target         # Set ESP-IDF target (esp32s3)
 
 # 🎮 Simulation Commands  
 make sim            # Build for Wokwi simulator
@@ -96,12 +99,15 @@ make sim-web        # Run simulation in web browser
 make sim-info       # Show Wokwi simulation information
 
 # 📡 Hardware Commands
-make flash BOARD=heltec  # Flash Heltec V3 firmware
-make flash BOARD=lilygo  # Flash LilyGO T5 firmware
-make monitor             # Serial monitor for debugging
-make flash-monitor BOARD=heltec  # Flash and monitor Heltec
-make flash-monitor BOARD=lilygo  # Flash and monitor LilyGO
-make erase               # Erase entire flash memory
+make flash              # Flash LC-Alpha (default)
+make flash MODEL=alpha  # Flash LC-Alpha
+make flash MODEL=alpha+ # Flash LC-Alpha+
+make flash MODEL=gamma  # Flash LC-Gamma
+make monitor            # Serial monitor for debugging
+make flash-monitor MODEL=alpha  # Flash and monitor LC-Alpha
+make flash-monitor MODEL=alpha+ # Flash and monitor LC-Alpha+
+make flash-monitor MODEL=gamma  # Flash and monitor LC-Gamma
+make erase              # Erase entire flash memory
 
 # 🌐 Web Interface Commands
 make web-build      # Build web interface for WiFi configuration
@@ -172,12 +178,10 @@ make sim-run
 
 ```bash
 # Build for real hardware
-make build
+make build MODEL=alpha
 
-# Flash to connected device (specify board)
-make flash-monitor BOARD=heltec
-# or
-make flash-monitor BOARD=lilygo
+# Flash to connected device
+make flash-monitor MODEL=alpha
 ```
 
 ### For End Users

@@ -40,81 +40,80 @@ def sign_data(data: str, private_key_path: Path) -> str:
 
 
 def main():
-    if len(sys.argv) != 10:
+    if len(sys.argv) != 11:
         print(f"Usage: {sys.argv[0]} <version> <release_type> <commit_sha> <tag_name> "
-              f"<board_id> <firmware_bin> <bootloader_bin> <partition_bin> <private_key>")
+              f"<model> <board_id> <firmware_bin> <bootloader_bin> <partition_bin> <private_key>")
         sys.exit(1)
     
     version = sys.argv[1]
     release_type = sys.argv[2]
     commit_sha = sys.argv[3]
     tag_name = sys.argv[4]
-    board_id = sys.argv[5]
-    firmware_bin = Path(sys.argv[6])
-    bootloader_bin = Path(sys.argv[7])
-    partition_bin = Path(sys.argv[8])
-    private_key = Path(sys.argv[9])
+    model = sys.argv[5]
+    board_id = sys.argv[6]
+    firmware_bin = Path(sys.argv[7])
+    bootloader_bin = Path(sys.argv[8])
+    partition_bin = Path(sys.argv[9])
+    private_key = Path(sys.argv[10])
     
-    base_url = f"https://github.com/LoRaCue/loracue/releases/download/{tag_name}"
-    
-    manifest = {
-        "schema_version": "1.0.0",
-        "version": version,
-        "release_type": release_type,
-        "published_at": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-        "commit_sha": commit_sha,
-        "tag_name": tag_name,
-        "boards": [
-            {
-                "board_id": board_id,
-                "display_name": "Heltec LoRa V3",
-                "target": "esp32s3",
-                "description": "ESP32-S3 with SX1262 LoRa (868/915MHz) and SSD1306 OLED",
-                "files": {
-                    "firmware": {
-                        "name": firmware_bin.name,
-                        "size": firmware_bin.stat().st_size,
-                        "sha256": calculate_sha256(firmware_bin),
-                        "signature": Path(str(firmware_bin) + '.sig').read_text().strip(),
-                        "url": f"{base_url}/{firmware_bin.name}"
-                    },
-                    "bootloader": {
-                        "name": bootloader_bin.name,
-                        "size": bootloader_bin.stat().st_size,
-                        "sha256": calculate_sha256(bootloader_bin),
-                        "signature": Path(str(bootloader_bin) + '.sig').read_text().strip(),
-                        "url": f"{base_url}/{bootloader_bin.name}"
-                    },
-                    "partition_table": {
-                        "name": partition_bin.name,
-                        "size": partition_bin.stat().st_size,
-                        "sha256": calculate_sha256(partition_bin),
-                        "signature": Path(str(partition_bin) + '.sig').read_text().strip(),
-                        "url": f"{base_url}/{partition_bin.name}"
-                    }
-                },
-                "flash_config": {
-                    "flash_mode": "dio",
-                    "flash_freq": "80m",
-                    "flash_size": "8MB",
-                    "offsets": {
-                        "bootloader": "0x0",
-                        "partition_table": "0x8000",
-                        "firmware": "0x10000"
-                    }
-                }
-            }
-        ],
-        "changelog": {
-            "features": [],
-            "fixes": [],
-            "breaking_changes": [],
-            "performance": []
+    # Determine board display name and flash size from board_id
+    board_info = {
+        "heltec_v3": {
+            "display_name": "Heltec LoRa V3",
+            "flash_size": "8MB"
         },
-        "min_manager_version": "1.0.0"
+        "lilygo_t5": {
+            "display_name": "LilyGO T5 Pro",
+            "flash_size": "16MB"
+        }
     }
     
-    manifest_json = json.dumps(manifest, indent=2, sort_keys=True)
+    board_data = board_info.get(board_id, {
+        "display_name": board_id,
+        "flash_size": "8MB"
+    })
+    
+    manifest = {
+        "model": model,
+        "board_id": board_id,
+        "board_name": board_data["display_name"],
+        "version": version,
+        "build_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "commit": commit_sha[:7],
+        "target": "esp32s3",
+        "flash_size": board_data["flash_size"],
+        "firmware": {
+            "file": "firmware.bin",
+            "size": firmware_bin.stat().st_size,
+            "sha256": calculate_sha256(firmware_bin),
+            "offset": "0x10000"
+        },
+        "bootloader": {
+            "file": "bootloader.bin",
+            "size": bootloader_bin.stat().st_size,
+            "sha256": calculate_sha256(bootloader_bin),
+            "offset": "0x0"
+        },
+        "partition_table": {
+            "file": "partition-table.bin",
+            "size": partition_bin.stat().st_size,
+            "sha256": calculate_sha256(partition_bin),
+            "offset": "0x8000"
+        },
+        "esptool_args": [
+            "--chip", "esp32s3",
+            "--baud", "460800",
+            "write_flash",
+            "--flash_mode", "dio",
+            "--flash_size", board_data["flash_size"],
+            "--flash_freq", "80m",
+            "0x0", "bootloader.bin",
+            "0x8000", "partition-table.bin",
+            "0x10000", "firmware.bin"
+        ]
+    }
+    
+    manifest_json = json.dumps(manifest, indent=2)
     signature = sign_data(manifest_json, private_key)
     
     manifest["signature"] = signature
@@ -123,7 +122,11 @@ def main():
     with open(output_file, 'w') as f:
         json.dump(manifest, f, indent=2)
     
-    print(f"Manifest written to: {output_file}")
+    print(f"✓ Manifest generated: {model} ({board_id})")
+    print(f"  Version: {version}")
+    print(f"  Board: {board_data['display_name']}")
+    print(f"  Firmware: {firmware_bin.stat().st_size} bytes")
+    print(f"  Written to: {output_file}")
 
 
 if __name__ == '__main__':

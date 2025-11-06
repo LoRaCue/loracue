@@ -131,21 +131,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        board:
-          - name: "heltec_v3"
-            display_name: "Heltec LoRa V3"
+        model:
+          - name: "alpha"
+            display_name: "LC-Alpha"
+            board: "heltec_v3"
+            board_name: "Heltec LoRa V3"
             target: "esp32s3"
-            description: "ESP32-S3 with SX1262 LoRa (868/915MHz) and SSD1306 OLED"
+            description: "Prototype with single onboard button"
             flash_size: "8MB"
-            sdkconfig: "sdkconfig.heltec_v3"
-          - name: "lilygo_t5"
-            display_name: "LilyGO T5"
+            sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha"
+          - name: "alpha-plus"
+            display_name: "LC-Alpha+"
+            board: "heltec_v3"
+            board_name: "Heltec LoRa V3"
             target: "esp32s3"
-            description: "ESP32-S3 with ED047TC1 E-Paper (960x540, 16 grayscale) and GT911 touch"
+            description: "Enhanced prototype with two separate buttons"
+            flash_size: "8MB"
+            sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha_plus"
+          - name: "gamma"
+            display_name: "LC-Gamma"
+            board: "lilygo_t5"
+            board_name: "LilyGO T5 Pro"
+            target: "esp32s3"
+            description: "Professional with 4.7\" E-paper display and touch"
             flash_size: "16MB"
-            sdkconfig: "sdkconfig.lilygo_t5"
+            sdkconfig: "sdkconfig.defaults;sdkconfig.lilygo_t5;sdkconfig.model_gamma"
     
-    name: Build ${{ matrix.board.display_name }}
+    name: Build ${{ matrix.model.display_name }}
     
     steps:
     - name: Checkout repository
@@ -160,9 +172,9 @@ jobs:
         path: |
           ~/.espressif
           ~/.cache/pip
-        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-${{ hashFiles('**/CMakeLists.txt') }}
+        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
-          esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-
+          esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-
     
     - name: Install GitVersion in build environment
       shell: bash
@@ -180,8 +192,8 @@ jobs:
       uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
-        target: ${{ matrix.board.target }}
-        command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.board.sdkconfig }}" -D BOARD_ID="${{ matrix.board.name }}" build
+        target: ${{ matrix.model.target }}
+        command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
     
     - name: Extract and validate firmware manifest
       id: manifest
@@ -192,8 +204,8 @@ jobs:
         import sys
         import os
         
-        # Binary name matches project name (board name)
-        binary_name = "${{ matrix.board.name }}.bin"
+        # Binary name is loracue.bin (project name)
+        binary_name = "loracue.bin"
         
         # ESP-IDF app descriptor is at fixed offset 0x20 in the binary
         with open(f'build/{binary_name}', 'rb') as f:
@@ -210,31 +222,24 @@ jobs:
             
             print(f"✓ ESP-IDF app descriptor found at 0x20")
             print(f"  Magic: 0x{magic_word:08X}")
-            print(f"  Board ID (project_name): {project_name}")
+            print(f"  Project Name: {project_name}")
             print(f"  Version: {version}")
             print(f"  Build: {date} {time}")
             print(f"  IDF Version: {idf_ver}")
             
-            # Validate board_id matches matrix
-            expected = "${{ matrix.board.name }}"
-            if project_name != expected:
-                print(f"✗ ERROR: Board ID mismatch!")
-                print(f"  Expected: {expected}")
-                print(f"  Found: {project_name}")
-                sys.exit(1)
-            
             # Export for GitHub Actions
             with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-                f.write(f"board_id={project_name}\n")
+                f.write(f"board_id=${{ matrix.model.board }}\n")
+                f.write(f"model=${{ matrix.model.display_name }}\n")
                 f.write(f"fw_version={version}\n")
             
-            print(f"✓ Manifest validated: {project_name} v{version}")
+            print(f"✓ Manifest validated: ${{ matrix.model.display_name }} ({project_name}) v{version}")
         EOF
     
     - name: Calculate checksums
       id: checksums
       run: |
-        BINARY_NAME="${{ matrix.board.name }}.bin"
+        BINARY_NAME="loracue.bin"
         FIRMWARE_SHA=$(sha256sum build/$BINARY_NAME | cut -d' ' -f1)
         BOOTLOADER_SHA=$(sha256sum build/bootloader/bootloader.bin | cut -d' ' -f1)
         PARTITION_SHA=$(sha256sum build/partition_table/partition-table.bin | cut -d' ' -f1)
@@ -256,7 +261,7 @@ jobs:
         echo "$SIGNING_KEY" > /tmp/signing_key.pem
         chmod 600 /tmp/signing_key.pem
         
-        BINARY_NAME="${{ matrix.board.name }}.bin"
+        BINARY_NAME="loracue.bin"
         
         # Copy binaries to workspace for signing
         cp build/$BINARY_NAME .
@@ -279,7 +284,7 @@ jobs:
         echo "$SIGNING_KEY" > /tmp/signing_key.pem
         chmod 600 /tmp/signing_key.pem
         
-        BINARY_NAME="${{ matrix.board.name }}.bin"
+        BINARY_NAME="loracue.bin"
         
         # Generate and sign manifest (all files are in workspace)
         python3 scripts/generate_manifest.py \
@@ -287,7 +292,8 @@ jobs:
           "${{ needs.version.outputs.is_prerelease == 'true' && 'prerelease' || 'release' }}" \
           "${{ github.sha }}" \
           "${{ needs.version.outputs.tag_name }}" \
-          "${{ matrix.board.name }}" \
+          "${{ matrix.model.display_name }}" \
+          "${{ matrix.model.board }}" \
           "$BINARY_NAME" \
           "bootloader.bin" \
           "partition-table.bin" \
@@ -299,61 +305,61 @@ jobs:
     - name: Generate firmware package
       run: |
         VERSION="${{ needs.version.outputs.version }}"
-        BOARD="${{ matrix.board.name }}"
-        DISPLAY_NAME="${{ matrix.board.display_name }}"
-        BINARY_NAME="${BOARD}.bin"
+        MODEL="${{ matrix.model.name }}"
+        DISPLAY_NAME="${{ matrix.model.display_name }}"
+        BINARY_NAME="loracue.bin"
         
-        mkdir -p release/$BOARD
+        mkdir -p release/$MODEL
         
         # Copy binaries from workspace (already copied there for signing)
-        cp $BINARY_NAME release/$BOARD/
-        cp bootloader.bin release/$BOARD/
-        cp partition-table.bin release/$BOARD/
+        cp $BINARY_NAME release/$MODEL/firmware.bin
+        cp bootloader.bin release/$MODEL/
+        cp partition-table.bin release/$MODEL/
         
         # Copy checksums from workspace
-        cp ${BINARY_NAME}.sha256 release/$BOARD/
-        cp bootloader.bin.sha256 release/$BOARD/
-        cp partition-table.bin.sha256 release/$BOARD/
+        cp ${BINARY_NAME}.sha256 release/$MODEL/firmware.bin.sha256
+        cp bootloader.bin.sha256 release/$MODEL/
+        cp partition-table.bin.sha256 release/$MODEL/
         
         # Copy signatures from workspace
-        cp ${BINARY_NAME}.sig release/$BOARD/
-        cp bootloader.bin.sig release/$BOARD/
-        cp partition-table.bin.sig release/$BOARD/
+        cp ${BINARY_NAME}.sig release/$MODEL/firmware.bin.sig
+        cp bootloader.bin.sig release/$MODEL/
+        cp partition-table.bin.sig release/$MODEL/
         
         # Copy manifest from workspace
-        cp manifest.json release/$BOARD/
+        cp manifest.json release/$MODEL/
         
         # README
-        DISPLAY_NAME_ESCAPED=$(echo '${{ matrix.board.display_name }}' | sed 's/"/\\"/g')
+        DISPLAY_NAME_ESCAPED=$(echo '${{ matrix.model.display_name }}' | sed 's/"/\\"/g')
         bash scripts/generate_readme.sh \
           "${{ needs.version.outputs.version }}" \
           "$DISPLAY_NAME_ESCAPED" \
-          "${{ matrix.board.target }}" \
-          "${{ matrix.board.description }}" \
+          "${{ matrix.model.target }}" \
+          "${{ matrix.model.description }}" \
           "${{ github.sha }}" \
           "${{ steps.manifest.outputs.board_id }}" \
           "${{ steps.manifest.outputs.fw_version }}" \
           "${{ steps.checksums.outputs.firmware_sha256 }}" \
-          "${BINARY_NAME}" \
-          "release/$BOARD/README.md"
+          "firmware.bin" \
+          "release/$MODEL/README.md"
     
     - name: Create firmware archive
       run: |
         cd release
-        zip -r loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}.zip ${{ matrix.board.name }}/
+        zip -r loracue-${{ matrix.model.name }}-v${{ needs.version.outputs.version }}.zip ${{ matrix.model.name }}/
     
     - name: Upload firmware package
       uses: actions/upload-artifact@v5
       with:
-        name: loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}
-        path: release/loracue-${{ matrix.board.name }}-v${{ needs.version.outputs.version }}.zip
+        name: loracue-${{ matrix.model.name }}-v${{ needs.version.outputs.version }}
+        path: release/loracue-${{ matrix.model.name }}-v${{ needs.version.outputs.version }}.zip
         retention-days: 90
     
     - name: Upload manifest
       uses: actions/upload-artifact@v5
       with:
-        name: ${{ matrix.board.name }}-manifest-v${{ needs.version.outputs.version }}
-        path: release/${{ matrix.board.name }}/manifest.json
+        name: ${{ matrix.model.name }}-manifest-v${{ needs.version.outputs.version }}
+        path: release/${{ matrix.model.name }}/manifest.json
         retention-days: 90
 
   generate-changelog:
@@ -471,14 +477,27 @@ jobs:
         import glob
         
         manifests = []
+        tag_name = "${{ needs.version.outputs.tag_name }}"
+        
         for manifest_file in sorted(glob.glob("firmware-packages/*-manifest-*/manifest.json")):
             with open(manifest_file, 'r') as f:
-                manifests.append(json.load(f))
+                manifest = json.load(f)
+                
+            # Extract model name from manifest
+            model = manifest.get("model", "")
+            model_slug = model.lower().replace(" ", "-").replace("+", "-plus")
+            
+            # Add download_url
+            manifest["download_url"] = f"https://github.com/LoRaCue/loracue/releases/download/{tag_name}/loracue-{model_slug}-v${{ needs.version.outputs.version }}.zip"
+            
+            manifests.append(manifest)
         
         with open("release-assets/manifests.json", 'w') as f:
             json.dump(manifests, f, indent=2)
         
-        print(f"Created combined manifests.json with {len(manifests)} boards")
+        print(f"✓ Created combined manifests.json with {len(manifests)} models")
+        for m in manifests:
+            print(f"  - {m['model']} ({m['board_id']})")
         EOF
         
         echo "Combined manifests.json:"
@@ -502,12 +521,13 @@ jobs:
           
           ${{ needs.generate-changelog.outputs.breaking_changes != '' && format('## ⚠️ BREAKING CHANGES{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.breaking_changes) || '' }}
           ${{ needs.generate-changelog.outputs.known_issues != '' && format('## 🐛 Known Issues{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.known_issues) || '' }}
-          ## 📦 Supported Boards
+          ## 📦 Product Models
           
-          | Board | Target | Flash Size | Description |
-          |-------|--------|------------|-------------|
-          | **Heltec LoRa V3** | ESP32-S3 | 8MB | SX1262 LoRa (868/915MHz) + SSD1306 OLED |
-          | **LilyGO T5 4.7"** | ESP32-S3 | 16MB | ED047TC1 E-Paper (960×540, 16 grayscale) + GT911 touch |
+          | Model | Board | Hardware | Description |
+          |-------|-------|----------|-------------|
+          | **LC-Alpha** | Heltec V3 | 1 onboard button | Prototype with single button |
+          | **LC-Alpha+** | Heltec V3 | 2 separate buttons | Enhanced prototype with prev/next buttons |
+          | **LC-Gamma** | LilyGO T5 Pro | E-paper + touch | Professional with 4.7" display |
           
           ## 📥 Installation
           
