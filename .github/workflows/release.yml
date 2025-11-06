@@ -346,8 +346,8 @@ jobs:
     
     - name: Create firmware archive
       run: |
-        cd release
-        zip -r loracue-${{ matrix.model.name }}-v${{ needs.version.outputs.version }}.zip ${{ matrix.model.name }}/
+        cd release/${{ matrix.model.name }}
+        zip -r ../loracue-${{ matrix.model.name }}-v${{ needs.version.outputs.version }}.zip .
     
     - name: Upload firmware package
       uses: actions/upload-artifact@v5
