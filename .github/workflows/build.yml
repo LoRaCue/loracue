@@ -86,11 +86,11 @@ jobs:
             target: "esp32s3"
             board: "Heltec V3"
             sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha_plus"
-          - name: "gamma"
-            display_name: "LC-Gamma"
-            target: "esp32s3"
-            board: "LilyGO T5 Pro"
-            sdkconfig: "sdkconfig.defaults;sdkconfig.lilygo_t5;sdkconfig.model_gamma"
+          # - name: "gamma"
+          #   display_name: "LC-Gamma"
+          #   target: "esp32s3"
+          #   board: "LilyGO T5 Pro"
+          #   sdkconfig: "sdkconfig.defaults;sdkconfig.lilygo_t5;sdkconfig.model_gamma"
     
     steps:
     - name: Checkout repository
