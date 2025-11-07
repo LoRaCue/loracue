@@ -196,6 +196,12 @@ jobs:
         target: ${{ matrix.model.target }}
         command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
     
+    - name: Build WebUI
+      run: |
+        echo "🌐 Building WebUI..."
+        make web-build
+        echo "✅ WebUI build complete"
+    
     - name: Extract and validate firmware manifest
       id: manifest
       shell: bash
@@ -244,15 +250,18 @@ jobs:
         FIRMWARE_SHA=$(sha256sum build/$BINARY_NAME | cut -d' ' -f1)
         BOOTLOADER_SHA=$(sha256sum build/bootloader/bootloader.bin | cut -d' ' -f1)
         PARTITION_SHA=$(sha256sum build/partition_table/partition-table.bin | cut -d' ' -f1)
+        WEBUI_SHA=$(sha256sum build/webui-littlefs.bin | cut -d' ' -f1)
         
         echo "firmware_sha256=$FIRMWARE_SHA" >> $GITHUB_OUTPUT
         echo "bootloader_sha256=$BOOTLOADER_SHA" >> $GITHUB_OUTPUT
         echo "partition_sha256=$PARTITION_SHA" >> $GITHUB_OUTPUT
+        echo "webui_sha256=$WEBUI_SHA" >> $GITHUB_OUTPUT
         
         # Save to files in workspace (not build directory)
         echo "$FIRMWARE_SHA" > ${BINARY_NAME}.sha256
         echo "$BOOTLOADER_SHA" > bootloader.bin.sha256
         echo "$PARTITION_SHA" > partition-table.bin.sha256
+        echo "$WEBUI_SHA" > webui-littlefs.bin.sha256
     
     - name: Sign firmware binaries
       env:
@@ -268,11 +277,13 @@ jobs:
         cp build/$BINARY_NAME .
         cp build/bootloader/bootloader.bin .
         cp build/partition_table/partition-table.bin .
+        cp build/webui-littlefs.bin .
         
         # Sign all binaries in workspace
         python3 scripts/sign_firmware.py $BINARY_NAME /tmp/signing_key.pem
         python3 scripts/sign_firmware.py bootloader.bin /tmp/signing_key.pem
         python3 scripts/sign_firmware.py partition-table.bin /tmp/signing_key.pem
+        python3 scripts/sign_firmware.py webui-littlefs.bin /tmp/signing_key.pem
         
         # Clean up private key
         rm -f /tmp/signing_key.pem
@@ -298,6 +309,7 @@ jobs:
           "$BINARY_NAME" \
           "bootloader.bin" \
           "partition-table.bin" \
+          "webui-littlefs.bin" \
           "/tmp/signing_key.pem"
         
         # Clean up private key
@@ -316,34 +328,57 @@ jobs:
         cp $BINARY_NAME release/$MODEL/firmware.bin
         cp bootloader.bin release/$MODEL/
         cp partition-table.bin release/$MODEL/
+        cp webui-littlefs.bin release/$MODEL/
         
         # Copy checksums from workspace
         cp ${BINARY_NAME}.sha256 release/$MODEL/firmware.bin.sha256
         cp bootloader.bin.sha256 release/$MODEL/
         cp partition-table.bin.sha256 release/$MODEL/
+        cp webui-littlefs.bin.sha256 release/$MODEL/
         
         # Copy signatures from workspace
         cp ${BINARY_NAME}.sig release/$MODEL/firmware.bin.sig
         cp bootloader.bin.sig release/$MODEL/
         cp partition-table.bin.sig release/$MODEL/
+        cp webui-littlefs.bin.sig release/$MODEL/
         
         # Copy manifest and signature from workspace
         cp manifest.json release/$MODEL/
         cp manifest.json.sig release/$MODEL/
         
-        # README
-        DISPLAY_NAME_ESCAPED=$(echo '${{ matrix.model.display_name }}' | sed 's/"/\\"/g')
-        bash scripts/generate_readme.sh \
-          "${{ needs.version.outputs.version }}" \
-          "$DISPLAY_NAME_ESCAPED" \
-          "${{ matrix.model.target }}" \
-          "${{ matrix.model.description }}" \
-          "${{ github.sha }}" \
-          "${{ steps.manifest.outputs.board_id }}" \
-          "${{ steps.manifest.outputs.fw_version }}" \
-          "${{ steps.checksums.outputs.firmware_sha256 }}" \
-          "firmware.bin" \
-          "release/$MODEL/README.md"
+        # Generate compact README
+        cat > release/$MODEL/README.md << EOF
+        # LoRaCue Firmware v${VERSION}
+        
+        **Model**: ${DISPLAY_NAME}
+        **Board**: ${{ matrix.model.board }}
+        **Target**: ${{ matrix.model.target }}
+        **Flash Size**: 8MB
+        **Description**: ${{ matrix.model.description }}
+        **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+        **Commit**: ${{ github.sha }}
+        **Firmware Version**: \`v${VERSION}\`
+        **SHA256**: \`${{ steps.checksums.outputs.firmware_sha256 }}\`
+        
+        ## 📋 Package Contents
+        
+        - \`firmware.bin\` - Main firmware binary
+        - \`bootloader.bin\` - ESP32 bootloader
+        - \`partition-table.bin\` - Partition table
+        - \`webui-littlefs.bin\` - Web UI filesystem image
+        - \`manifest.json\` - Firmware manifest with metadata
+        - \`*.sha256\` - SHA256 checksums for verification
+        - \`*.sig\` - RSA-4096 signatures for authenticity verification
+        
+        ## 📚 Documentation
+        
+        - **Firmware Repository**: https://github.com/LoRaCue/loracue
+        - **Manager Tool**: https://github.com/LoRaCue/loracue-manager-apple
+        - **Issues**: https://github.com/LoRaCue/loracue/issues
+        - **Wiki**: https://github.com/LoRaCue/loracue/wiki
+        
+        ## 🏙️ Made with ❤️ in Hannover
+        EOF
     
     - name: Create firmware archive
       run: |

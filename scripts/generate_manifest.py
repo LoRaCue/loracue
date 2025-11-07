@@ -40,9 +40,9 @@ def sign_data(data: str, private_key_path: Path) -> str:
 
 
 def main():
-    if len(sys.argv) != 11:
+    if len(sys.argv) != 12:
         print(f"Usage: {sys.argv[0]} <version> <release_type> <commit_sha> <tag_name> "
-              f"<model> <board_id> <firmware_bin> <bootloader_bin> <partition_bin> <private_key>")
+              f"<model> <board_id> <firmware_bin> <bootloader_bin> <partition_bin> <webui_bin> <private_key>")
         sys.exit(1)
     
     version = sys.argv[1]
@@ -54,7 +54,8 @@ def main():
     firmware_bin = Path(sys.argv[7])
     bootloader_bin = Path(sys.argv[8])
     partition_bin = Path(sys.argv[9])
-    private_key = Path(sys.argv[10])
+    webui_bin = Path(sys.argv[10])
+    private_key = Path(sys.argv[11])
     
     # Determine board display name and flash size from board_id
     board_info = {
@@ -100,6 +101,12 @@ def main():
             "sha256": calculate_sha256(partition_bin),
             "offset": "0x8000"
         },
+        "webui": {
+            "file": "webui-littlefs.bin",
+            "size": webui_bin.stat().st_size,
+            "sha256": calculate_sha256(webui_bin),
+            "offset": "0x310000"
+        },
         "esptool_args": [
             "--chip", "esp32s3",
             "--baud", "460800",
@@ -109,7 +116,8 @@ def main():
             "--flash_freq", "80m",
             "0x0", "bootloader.bin",
             "0x8000", "partition-table.bin",
-            "0x10000", "firmware.bin"
+            "0x10000", "firmware.bin",
+            "0x310000", "webui-littlefs.bin"
         ]
     }
     
