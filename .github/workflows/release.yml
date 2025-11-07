@@ -327,8 +327,9 @@ jobs:
         cp bootloader.bin.sig release/$MODEL/
         cp partition-table.bin.sig release/$MODEL/
         
-        # Copy manifest from workspace
+        # Copy manifest and signature from workspace
         cp manifest.json release/$MODEL/
+        cp manifest.json.sig release/$MODEL/
         
         # README
         DISPLAY_NAME_ESCAPED=$(echo '${{ matrix.model.display_name }}' | sed 's/"/\\"/g')

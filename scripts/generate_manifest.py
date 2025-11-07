@@ -113,20 +113,28 @@ def main():
         ]
     }
     
-    manifest_json = json.dumps(manifest, indent=2)
-    signature = sign_data(manifest_json, private_key)
-    
-    manifest["signature"] = signature
-    
-    output_file = Path("manifest.json")
-    with open(output_file, 'w') as f:
+    # Write manifest.json (without signature)
+    manifest_file = Path("manifest.json")
+    with open(manifest_file, 'w') as f:
         json.dump(manifest, f, indent=2)
+    
+    # Sign the manifest file
+    with open(manifest_file, 'r') as f:
+        manifest_content = f.read()
+    
+    signature = sign_data(manifest_content, private_key)
+    
+    # Write signature to separate file
+    signature_file = Path("manifest.json.sig")
+    with open(signature_file, 'w') as f:
+        f.write(signature)
     
     print(f"✓ Manifest generated: {model} ({board_id})")
     print(f"  Version: {version}")
     print(f"  Board: {board_data['display_name']}")
     print(f"  Firmware: {firmware_bin.stat().st_size} bytes")
-    print(f"  Written to: {output_file}")
+    print(f"  Manifest: {manifest_file}")
+    print(f"  Signature: {signature_file}")
 
 
 if __name__ == '__main__':
