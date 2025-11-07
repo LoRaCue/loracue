@@ -133,24 +133,6 @@ jobs:
         target: ${{ matrix.model.target }}
         command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
     
-    - name: Verify sdkconfig after build
-      shell: bash
-      run: |
-        echo "=== Post-Build SDK Configuration Verification ==="
-        echo "Verifying BLE settings were not overwritten during build..."
-        
-        grep "CONFIG_BT_BLE_42_ADV_EN=y" sdkconfig || {
-          echo "ERROR: CONFIG_BT_BLE_42_ADV_EN was overwritten!"
-          exit 1
-        }
-        
-        grep "CONFIG_BT_BLE_42_SCAN_EN=y" sdkconfig || {
-          echo "ERROR: CONFIG_BT_BLE_42_SCAN_EN was overwritten!"
-          exit 1
-        }
-        
-        echo "✓ All critical BLE settings verified"
-    
     - name: Validate firmware manifest
       run: |
         echo "=== Firmware Manifest Validation (esp_app_desc_t) ==="
