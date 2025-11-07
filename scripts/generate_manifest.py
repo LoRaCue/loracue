@@ -105,7 +105,7 @@ def main():
             "file": "webui-littlefs.bin",
             "size": webui_bin.stat().st_size,
             "sha256": calculate_sha256(webui_bin),
-            "offset": "0x310000"
+            "offset": "0x640000"
         },
         "esptool_args": [
             "--chip", "esp32s3",
@@ -117,7 +117,7 @@ def main():
             "0x0", "bootloader.bin",
             "0x8000", "partition-table.bin",
             "0x10000", "firmware.bin",
-            "0x310000", "webui-littlefs.bin"
+            "0x640000", "webui-littlefs.bin"
         ]
     }
     
