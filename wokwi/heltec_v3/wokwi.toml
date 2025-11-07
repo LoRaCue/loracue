@@ -1,7 +1,7 @@
 [wokwi]
 version = 1
-firmware = "../../build/heltec_v3.bin"
-elf = "../../build/heltec_v3.elf"
+firmware = "../../build/loracue.bin"
+elf = "../../build/loracue.elf"
 rfc2217ServerPort = 4000
 
 [[net.forward]]
