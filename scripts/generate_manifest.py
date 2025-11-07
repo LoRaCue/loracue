@@ -39,6 +39,21 @@ def sign_data(data: str, private_key_path: Path) -> str:
     return base64.b64encode(signature).decode('ascii')
 
 
+# Flash partition layout
+PARTITIONS = [
+    {"name": "bootloader", "offset": "0x0", "file": "bootloader.bin"},
+    {"name": "partition_table", "offset": "0x8000", "file": "partition-table.bin"},
+    {"name": "firmware", "offset": "0x10000", "file": "firmware.bin"},
+    {"name": "webui", "offset": "0x640000", "file": "webui-littlefs.bin"},
+]
+
+# Board configurations
+BOARDS = {
+    "heltec_v3": {"display_name": "Heltec LoRa V3", "flash_size": "8MB"},
+    "lilygo_t5": {"display_name": "LilyGO T5 Pro", "flash_size": "16MB"},
+}
+
+
 def main():
     if len(sys.argv) != 12:
         print(f"Usage: {sys.argv[0]} <version> <release_type> <commit_sha> <tag_name> "
@@ -51,29 +66,20 @@ def main():
     tag_name = sys.argv[4]
     model = sys.argv[5]
     board_id = sys.argv[6]
-    firmware_bin = Path(sys.argv[7])
-    bootloader_bin = Path(sys.argv[8])
-    partition_bin = Path(sys.argv[9])
-    webui_bin = Path(sys.argv[10])
+    
+    # Map CLI args to partition files
+    binary_files = {
+        "firmware.bin": Path(sys.argv[7]),
+        "bootloader.bin": Path(sys.argv[8]),
+        "partition-table.bin": Path(sys.argv[9]),
+        "webui-littlefs.bin": Path(sys.argv[10]),
+    }
     private_key = Path(sys.argv[11])
     
-    # Determine board display name and flash size from board_id
-    board_info = {
-        "heltec_v3": {
-            "display_name": "Heltec LoRa V3",
-            "flash_size": "8MB"
-        },
-        "lilygo_t5": {
-            "display_name": "LilyGO T5 Pro",
-            "flash_size": "16MB"
-        }
-    }
+    # Get board configuration
+    board_data = BOARDS.get(board_id, {"display_name": board_id, "flash_size": "8MB"})
     
-    board_data = board_info.get(board_id, {
-        "display_name": board_id,
-        "flash_size": "8MB"
-    })
-    
+    # Build manifest dynamically from partition layout
     manifest = {
         "model": model,
         "board_id": board_id,
@@ -83,56 +89,34 @@ def main():
         "commit": commit_sha[:7],
         "target": "esp32s3",
         "flash_size": board_data["flash_size"],
-        "firmware": {
-            "file": "firmware.bin",
-            "size": firmware_bin.stat().st_size,
-            "sha256": calculate_sha256(firmware_bin),
-            "offset": "0x10000"
-        },
-        "bootloader": {
-            "file": "bootloader.bin",
-            "size": bootloader_bin.stat().st_size,
-            "sha256": calculate_sha256(bootloader_bin),
-            "offset": "0x0"
-        },
-        "partition_table": {
-            "file": "partition-table.bin",
-            "size": partition_bin.stat().st_size,
-            "sha256": calculate_sha256(partition_bin),
-            "offset": "0x8000"
-        },
-        "webui": {
-            "file": "webui-littlefs.bin",
-            "size": webui_bin.stat().st_size,
-            "sha256": calculate_sha256(webui_bin),
-            "offset": "0x640000"
-        },
-        "esptool_args": [
-            "--chip", "esp32s3",
-            "--baud", "460800",
-            "write_flash",
-            "--flash_mode", "dio",
-            "--flash_size", board_data["flash_size"],
-            "--flash_freq", "80m",
-            "0x0", "bootloader.bin",
-            "0x8000", "partition-table.bin",
-            "0x10000", "firmware.bin",
-            "0x640000", "webui-littlefs.bin"
-        ]
     }
     
-    # Write manifest.json (without signature)
+    # Add partition entries
+    esptool_args = ["--chip", "esp32s3", "--baud", "460800", "write_flash",
+                    "--flash_mode", "dio", "--flash_size", board_data["flash_size"], "--flash_freq", "80m"]
+    
+    for partition in PARTITIONS:
+        file_path = binary_files[partition["file"]]
+        manifest[partition["name"]] = {
+            "file": partition["file"],
+            "size": file_path.stat().st_size,
+            "sha256": calculate_sha256(file_path),
+            "offset": partition["offset"]
+        }
+        esptool_args.extend([partition["offset"], partition["file"]])
+    
+    manifest["esptool_args"] = esptool_args
+    
+    # Write manifest.json
     manifest_file = Path("manifest.json")
     with open(manifest_file, 'w') as f:
         json.dump(manifest, f, indent=2)
     
-    # Sign the manifest file
+    # Sign manifest
     with open(manifest_file, 'r') as f:
-        manifest_content = f.read()
+        signature = sign_data(f.read(), private_key)
     
-    signature = sign_data(manifest_content, private_key)
-    
-    # Write signature to separate file
+    # Write signature
     signature_file = Path("manifest.json.sig")
     with open(signature_file, 'w') as f:
         f.write(signature)
@@ -140,7 +124,7 @@ def main():
     print(f"✓ Manifest generated: {model} ({board_id})")
     print(f"  Version: {version}")
     print(f"  Board: {board_data['display_name']}")
-    print(f"  Firmware: {firmware_bin.stat().st_size} bytes")
+    print(f"  Firmware: {binary_files['firmware.bin'].stat().st_size} bytes")
     print(f"  Manifest: {manifest_file}")
     print(f"  Signature: {signature_file}")
 
