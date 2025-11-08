@@ -1,0 +1,19 @@
+description: "I2C to USB-CDC console bridge driver for I2Console device"
+url: "https://github.com/metaneutrons/I2Console"
+documentation: "https://github.com/metaneutrons/I2Console/blob/main/README.md"
+issues: "https://github.com/metaneutrons/I2Console/issues"
+repository: "https://github.com/metaneutrons/I2Console.git"
+maintainers:
+  - "metaneutrons"
+license: "GPL-3.0"
+dependencies:
+  idf:
+    version: ">=5.0"
+  espressif/driver:
+    version: "*"
+tags:
+  - i2c
+  - console
+  - logging
+  - usb-cdc
+  - rp2350
