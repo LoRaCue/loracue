@@ -1,7 +1,0 @@
-dependencies:
-  idf:
-    version: ">=5.0"
-  # For local development, component is in ../components/
-  # For published version, use:
-  # metaneutrons/i2console:
-  #   version: "^0.1.0"
