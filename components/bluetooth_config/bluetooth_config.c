@@ -27,6 +27,7 @@
 #include "commands.h"
 #include "ble_ota.h"
 #include <string.h>
+#include <stdlib.h>
 #include <inttypes.h>
 
 #include "host/ble_hs.h"
@@ -366,6 +367,32 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg)
 }
 
 //==============================================================================
+// VERSION HELPERS
+//==============================================================================
+
+static uint8_t get_release_type(void)
+{
+    const char *version = LORACUE_VERSION_STRING;
+    
+    if (strstr(version, "-alpha")) return RELEASE_TYPE_ALPHA;
+    if (strstr(version, "-beta")) return RELEASE_TYPE_BETA;
+    if (strchr(version, '-')) return RELEASE_TYPE_DEV;
+    
+    return RELEASE_TYPE_STABLE;
+}
+
+static uint16_t get_build_number(void)
+{
+    const char *version = LORACUE_VERSION_STRING;
+    const char *dot = strrchr(version, '.');
+    
+    if (dot && *(dot + 1) >= '0' && *(dot + 1) <= '9') {
+        return (uint16_t)atoi(dot + 1);
+    }
+    return 0;
+}
+
+//==============================================================================
 // ADVERTISING
 //==============================================================================
 
@@ -402,31 +429,40 @@ static void ble_advertise(void)
         return;
     }
     
-    // Build advertising data with flags, manufacturer data, and complete local name
+    // Prepare service data
+    const char *model_name = CONFIG_LORACUE_MODEL_NAME;
+    size_t model_len = strlen(model_name) + 1;
+    uint16_t build_flags = BUILD_NUMBER(get_build_number()) | get_release_type();
+    
+    // Build advertising data with flags, service data, and complete local name
     uint8_t adv_data[31];  // Max legacy advertising data size
     uint8_t pos = 0;
     
     // Flags (3 bytes)
-    adv_data[pos++] = 0x02;  // Length
-    adv_data[pos++] = 0x01;  // Type: Flags
-    adv_data[pos++] = 0x06;  // General Discoverable, BR/EDR not supported
+    adv_data[pos++] = 0x02;
+    adv_data[pos++] = 0x01;
+    adv_data[pos++] = 0x06;
     
-    // Manufacturer Data (10 bytes: 1 len + 1 type + 2 company + 6 data)
-    // Company ID 0xFFFF (test/development), followed by "LoRaCue" identifier
-    adv_data[pos++] = 0x09;  // Length (type + company + data)
-    adv_data[pos++] = 0xFF;  // Type: Manufacturer Specific Data
-    adv_data[pos++] = 0xFF;  // Company ID: 0xFFFF (little-endian)
-    adv_data[pos++] = 0xFF;
-    adv_data[pos++] = 'L';   // "LoRaCue" identifier
-    adv_data[pos++] = 'o';
-    adv_data[pos++] = 'R';
-    adv_data[pos++] = 'a';
-    adv_data[pos++] = 'C';
-    adv_data[pos++] = 'u';
+    // Service Data (2 + 16 + 5 + model_len bytes)
+    adv_data[pos++] = 16 + 5 + model_len;  // Length
+    adv_data[pos++] = 0x16;                // Type: Service Data - 128-bit UUID
+    // NUS UUID (little-endian)
+    adv_data[pos++] = 0x9e; adv_data[pos++] = 0xca; adv_data[pos++] = 0xdc; adv_data[pos++] = 0x24;
+    adv_data[pos++] = 0x0e; adv_data[pos++] = 0xe5; adv_data[pos++] = 0xa9; adv_data[pos++] = 0xe0;
+    adv_data[pos++] = 0x93; adv_data[pos++] = 0xf3; adv_data[pos++] = 0xa3; adv_data[pos++] = 0xb5;
+    adv_data[pos++] = 0x01; adv_data[pos++] = 0x00; adv_data[pos++] = 0x40; adv_data[pos++] = 0x6e;
+    // Version info
+    adv_data[pos++] = LORACUE_VERSION_MAJOR;
+    adv_data[pos++] = LORACUE_VERSION_MINOR;
+    adv_data[pos++] = LORACUE_VERSION_PATCH;
+    adv_data[pos++] = build_flags & 0xFF;
+    adv_data[pos++] = (build_flags >> 8) & 0xFF;
+    memcpy(&adv_data[pos], model_name, model_len);
+    pos += model_len;
     
     // Complete Local Name (2 + name_len bytes)
-    adv_data[pos++] = name_len + 1;  // Length
-    adv_data[pos++] = 0x09;          // Type: Complete Local Name
+    adv_data[pos++] = name_len + 1;
+    adv_data[pos++] = 0x09;
     memcpy(&adv_data[pos], adv_name, name_len);
     pos += name_len;
     
@@ -447,7 +483,9 @@ static void ble_advertise(void)
     if (rc != 0) {
         ESP_LOGE(TAG, "Failed to start ext adv: %d", rc);
     } else {
-        ESP_LOGI(TAG, "Extended advertising started successfully");
+        ESP_LOGI(TAG, "Extended advertising started: %s v%d.%d.%d (build %d, type %d)",
+                 model_name, LORACUE_VERSION_MAJOR, LORACUE_VERSION_MINOR, LORACUE_VERSION_PATCH,
+                 get_build_number(), get_release_type());
     }
 }
 

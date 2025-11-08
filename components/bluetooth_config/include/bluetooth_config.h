@@ -6,6 +6,26 @@
 #include <stdint.h>
 
 /**
+ * @brief BLE service data structure
+ */
+typedef struct {
+    uint8_t  version_major;
+    uint8_t  version_minor;
+    uint8_t  version_patch;
+    uint16_t build_flags;
+    char     model[];
+} __attribute__((packed)) ble_service_data_t;
+
+/**
+ * @brief Build flags macros
+ */
+#define BUILD_NUMBER(n)     ((n) << 2)
+#define RELEASE_TYPE_STABLE 0b00
+#define RELEASE_TYPE_BETA   0b01
+#define RELEASE_TYPE_ALPHA  0b10
+#define RELEASE_TYPE_DEV    0b11
+
+/**
  * @brief Initialize Bluetooth configuration service
  *
  * @return ESP_OK on success
