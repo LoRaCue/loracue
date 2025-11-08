@@ -1,0 +1,17 @@
+menu "I2Console Configuration"
+
+    config I2CONSOLE_ENABLED
+        bool "Enable I2Console"
+        default y
+        help
+            Enable I2Console component for I2C to USB-CDC console bridge.
+
+    config I2CONSOLE_I2C_ADDRESS
+        hex "I2Console I2C Address"
+        default 0x37
+        range 0x08 0x77
+        depends on I2CONSOLE_ENABLED
+        help
+            I2C slave address of I2Console device (default: 0x37).
+
+endmenu
