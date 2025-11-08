@@ -11,11 +11,18 @@ extern u8g2_t u8g2;
 #define LONG_PRESS_ICON_WIDTH 13
 #define LONG_PRESS_ICON_HEIGHT 7
 
+static ui_status_t last_status = {0};
+static bool first_draw = true;
+
 void ui_status_bar_draw(const ui_status_t *status)
 {
-    // Debug logging
+    // Debug logging only when something changes
     ESP_LOGI("UI_STATUS_BAR", "Drawing status bar: BT_enabled=%d, BT_connected=%d, USB=%d", 
              status->bluetooth_enabled, status->bluetooth_connected, status->usb_connected);
+    
+    // Store current status for next comparison
+    memcpy(&last_status, status, sizeof(ui_status_t));
+    first_draw = false;
     
     // Draw brand name
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
@@ -79,4 +86,9 @@ void ui_bottom_bar_draw(const ui_status_t *status)
     int start_x = DISPLAY_WIDTH - total_width - TEXT_MARGIN_RIGHT;
     ui_button_long_draw_at(start_x, DISPLAY_HEIGHT - LONG_PRESS_ICON_HEIGHT - 1);
     u8g2_DrawStr(&u8g2, start_x + LONG_PRESS_ICON_WIDTH, DISPLAY_HEIGHT - 1, " Menu");
+}
+
+void ui_status_bar_reset(void)
+{
+    first_draw = true;
 }

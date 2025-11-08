@@ -21,10 +21,9 @@ static void ui_monitor_task(void *pvParameters)
         esp_err_t ret = ui_data_provider_update();
         if (ret != ESP_OK) {
             ESP_LOGW(TAG, "Failed to update data provider: %s", esp_err_to_name(ret));
-        } else {
-            // Update screen with new data
-            ui_screen_controller_update(NULL);
         }
+        // NOTE: Screen update is handled by ui_status_bar_task to avoid race conditions
+        // Do not call ui_screen_controller_update() here
 
         // Wait for next update interval
         vTaskDelayUntil(&last_update, update_interval);
