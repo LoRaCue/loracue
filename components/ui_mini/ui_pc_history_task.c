@@ -34,8 +34,9 @@ static void ui_pc_history_task(void *pvParameters)
 
         ui_mini_screen_t current = ui_screen_controller_get_current();
 
-        // Only update when on MAIN screen in PC mode
-        if (current == OLED_SCREEN_MAIN) {
+        // Update when on PC_MODE screen or MAIN screen in PC mode
+        if (current == OLED_SCREEN_PC_MODE ||
+            (current == OLED_SCREEN_MAIN)) {
             // Check if we're in PC mode
             general_config_t config;
             general_config_get(&config);

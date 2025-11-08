@@ -15,3 +15,7 @@ binary = "../../build/wokwi/chips/uart.chip.wasm"
 [[chip]]
 name = "sx1262"
 binary = "../../build/wokwi/chips/sx1262.chip.wasm"
+
+[[chip]]
+name = "i2console"
+binary = "../../build/wokwi/chips/i2console.chip.wasm"

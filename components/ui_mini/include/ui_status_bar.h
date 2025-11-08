@@ -13,3 +13,8 @@ void ui_status_bar_draw(const ui_status_t *status);
  * @param status Current UI status data
  */
 void ui_bottom_bar_draw(const ui_status_t *status);
+
+/**
+ * @brief Reset status bar change detection to force next redraw
+ */
+void ui_status_bar_reset(void);

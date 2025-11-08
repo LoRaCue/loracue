@@ -418,12 +418,16 @@ void app_main(void)
     ESP_LOGI(TAG, "Console redirected to USB CDC");
 #endif
 
-    // Initialize Bluetooth configuration
+    // Initialize Bluetooth configuration based on settings
     ESP_LOGI(TAG, "Initializing Bluetooth configuration...");
-    ret = bluetooth_config_init();
-    if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "Bluetooth initialization failed: %s (continuing without BLE)", esp_err_to_name(ret));
-        // Non-fatal - continue without Bluetooth
+    if (config.bluetooth_enabled) {
+        ret = bluetooth_config_init();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "Bluetooth initialization failed: %s (continuing without BLE)", esp_err_to_name(ret));
+            // Non-fatal - continue without Bluetooth
+        }
+    } else {
+        ESP_LOGI(TAG, "Bluetooth disabled in configuration");
     }
 
 #ifdef CONFIG_UART_COMMANDS_ENABLED

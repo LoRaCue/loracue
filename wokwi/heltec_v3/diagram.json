@@ -75,6 +75,14 @@
       "left": -205.32,
       "rotate": 90,
       "attrs": {}
+    },
+    {
+      "type": "chip-i2console",
+      "id": "i2console",
+      "top": 77,
+      "left": -166.38,
+      "rotate": 270,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -103,7 +111,11 @@
     [ "esp:46", "btn_prev:1.r", "yellow", [ "v-2.18", "h-168.48" ] ],
     [ "battery_sim:VCC", "esp:3V3.1", "red", [ "v0" ] ],
     [ "btn_both:2.l", "esp:GND.4", "black", [ "h0" ] ],
-    [ "led_power:C", "btn_both:2.l", "black", [ "h9.2", "v-57.8" ] ]
+    [ "led_power:C", "btn_both:2.l", "black", [ "h9.2", "v-57.8" ] ],
+    [ "esp:17", "i2console:SDA", "blue", [] ],
+    [ "esp:18", "i2console:SCL", "yellow", [] ],
+    [ "esp:3V3.1", "i2console:VCC", "red", [] ],
+    [ "battery_sim:GND", "i2console:GND", "black", [] ]
   ],
   "dependencies": {}
 }

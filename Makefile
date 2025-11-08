@@ -217,7 +217,7 @@ endif
 	@echo "✅ Wokwi simulation ready (using Heltec V3 firmware)"
 
 # Build all custom Wokwi chips
-chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm build/wokwi/chips/ed047tc1.chip.wasm
+chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm build/wokwi/chips/ed047tc1.chip.wasm build/wokwi/chips/i2console.chip.wasm
 	@echo "✅ All custom chips compiled"
 
 # Build custom UART bridge chip
@@ -355,6 +355,21 @@ build/wokwi/chips/ed047tc1.chip.wasm: wokwi/chips/ed047tc1.chip.c wokwi/chips/wo
 	@cp wokwi/chips/ed047tc1.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/ed047tc1.o
 	@echo "✅ ED047TC1 chip compiled"
+
+# Build custom I2Console chip
+build/wokwi/chips/i2console.chip.wasm: wokwi/chips/i2console.chip.c wokwi/chips/wokwi-api.h wokwi/chips/i2console.chip.json
+	@echo "🔧 Compiling custom I2Console chip..."
+	@mkdir -p build/wokwi/chips
+	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
+		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+		-c -o build/wokwi/chips/i2console.o wokwi/chips/i2console.chip.c
+	@wasm-ld --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/i2console.chip.wasm \
+		build/wokwi/chips/i2console.o \
+		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/i2console.chip.json build/wokwi/chips/
+	@rm build/wokwi/chips/i2console.o
+	@echo "✅ I2Console chip compiled"
 
 sim-run: sim
 	@if [ ! -d $(WOKWI_DIR) ]; then \

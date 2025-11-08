@@ -15,6 +15,7 @@
  * @license GPL-3.0
  */
 
+#include "sdkconfig.h"
 #include "bluetooth_config.h"
 #include "ble_ota_handler.h"
 #include "ble_ota_integration.h"
@@ -430,7 +431,11 @@ static void ble_advertise(void)
     }
     
     // Prepare service data
+#ifdef CONFIG_LORACUE_MODEL_NAME
     const char *model_name = CONFIG_LORACUE_MODEL_NAME;
+#else
+    const char *model_name = "LC-Alpha";  // Default fallback
+#endif
     size_t model_len = strlen(model_name) + 1;
     uint16_t build_flags = BUILD_NUMBER(get_build_number()) | get_release_type();
     
