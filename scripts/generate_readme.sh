@@ -73,7 +73,7 @@ This firmware supports OTA updates via:
 - **Issues**: https://github.com/LoRaCue/loracue/issues
 - **Wiki**: https://github.com/LoRaCue/loracue/wiki
 
-## 🏙️ Made with ❤️ in Hannover
+## 🏙️ Made with ❤️ in Hannover 🇩🇪
 EOF
 
 # Replace placeholders

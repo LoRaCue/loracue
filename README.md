@@ -365,4 +365,4 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
 
-## 🏙️ Made with ❤️ in Hannover
+## 🏙️ Made with ❤️ in Hannover 🇩🇪

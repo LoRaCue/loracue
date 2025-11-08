@@ -2,3 +2,5 @@
 # Professional with 4.7" E-paper display and touch interface
 
 CONFIG_MODEL_LC_GAMMA=y
+CONFIG_LORACUE_MODEL_NAME="Gamma"
+
