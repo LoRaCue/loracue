@@ -1,5 +1,6 @@
 #include "presenter_main_screen.h"
 #include "bluetooth_config.h"
+#include "esp_log.h"
 #include "icons/ui_status_icons.h"
 #include "u8g2.h"
 #include "ui_config.h"
@@ -8,10 +9,15 @@
 #include "ui_pairing_overlay.h"
 #include "ui_status_bar.h"
 
+static const char *TAG = "presenter_main_screen";
 extern u8g2_t u8g2;
 
 void presenter_main_screen_draw(const ui_status_t *status)
 {
+    if (!status) {
+        return; // No status available - don't clear screen
+    }
+
     u8g2_ClearBuffer(&u8g2);
 
     // Draw status bars

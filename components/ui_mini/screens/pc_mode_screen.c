@@ -6,6 +6,7 @@
 #include "freertos/task.h"
 #include "general_config.h"
 #include "icons/ui_status_icons.h"
+#include "ui_data_provider.h"
 #include "ui_mini.h"
 #include "u8g2.h"
 #include "ui_config.h"
@@ -112,22 +113,18 @@ static const char* keycode_to_name(uint8_t keycode, uint8_t modifiers)
 
 void pc_mode_screen_draw(void)
 {
+    // Get current status from data provider
+    const ui_status_t *ui_status = ui_data_provider_get_status();
+    if (!ui_status) {
+        ESP_LOGW(TAG, "NULL status - skipping draw");
+        return; // No status available - don't clear screen
+    }
+
+    ESP_LOGI(TAG, "Drawing PC mode screen");
     u8g2_ClearBuffer(&u8g2);
 
-    // Get device name from config
-    general_config_t config;
-    general_config_get(&config);
-
-    // Convert to ui_status_t for status bar
-    ui_status_t ui_status = {
-        .usb_connected = ui_state.usb_connected,
-        .lora_connected = (ui_state.lora_rssi != 0),  // Has received packets
-        .battery_level = ui_state.battery_level
-    };
-    strncpy(ui_status.device_name, config.device_name, sizeof(ui_status.device_name) - 1);
-
     // Draw status bar (LORACUE + icons)
-    ui_status_bar_draw(&ui_status);
+    ui_status_bar_draw(ui_status);
 
     // Viewport: Command history (last 4 commands) - moved down 1px
     u8g2_SetFont(&u8g2, u8g2_font_5x7_tr);
@@ -200,7 +197,7 @@ void pc_mode_screen_draw(void)
     u8g2_DrawHLine(&u8g2, 0, SEPARATOR_Y_BOTTOM, DISPLAY_WIDTH);
 
     // Bottom bar
-    ui_bottom_bar_draw(&ui_status);
+    ui_bottom_bar_draw(ui_status);
 
     // Draw Bluetooth pairing overlay if active
     uint32_t passkey;
@@ -208,7 +205,9 @@ void pc_mode_screen_draw(void)
         ui_pairing_overlay_draw(passkey);
     }
 
+    ESP_LOGI(TAG, "About to send buffer to display");
     u8g2_SendBuffer(&u8g2);
+    ESP_LOGI(TAG, "Buffer sent to display successfully");
 }
 
 // HID command event handler - maintains local command history
