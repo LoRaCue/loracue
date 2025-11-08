@@ -9,11 +9,14 @@ branches:
   develop:
     label: alpha
     increment: None
-  feature:
-    label: '{BranchName}'
+  release:
+    label: beta
     increment: None
   hotfix:
-    label: beta
+    label: '{BranchName}'
+    increment: None
+  feature:
+    label: '{BranchName}'
     increment: None
 
 ignore:
