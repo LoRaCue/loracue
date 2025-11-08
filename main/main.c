@@ -20,6 +20,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "general_config.h"
+#include "i2console.h"
 #include "led_manager.h"
 #include "lora_driver.h"
 #include "lora_protocol.h"
@@ -288,6 +289,18 @@ void app_main(void)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "BSP initialization failed: %s", esp_err_to_name(ret));
         return;
+    }
+
+    // Check for I2Console device and initialize logging bridge
+    ESP_LOGI(TAG, "Checking for I2Console device...");
+    ret = i2console_init(I2CONSOLE_DEFAULT_ADDR);
+    if (ret == ESP_OK) {
+        char version[16];
+        if (i2console_get_version(version) == ESP_OK) {
+            ESP_LOGI(TAG, "I2Console connected: %s", version);
+        }
+    } else {
+        ESP_LOGI(TAG, "I2Console not detected - using UART logging only");
     }
 
     // Detect board type early

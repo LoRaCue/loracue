@@ -10,5 +10,5 @@ idf_component_register(
     REQUIRES bsp lora usb_hid usb_cdc device_registry ui_interface system_events common_types ${UI_IMPL}
              button_manager led_manager power_mgmt general_config 
              nvs_flash uart_commands bluetooth_config ota_engine
-             pc_mode_manager presenter_mode_manager
+             pc_mode_manager presenter_mode_manager i2console
 )
