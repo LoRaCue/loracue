@@ -197,6 +197,8 @@ jobs:
         command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
     
     - name: Build WebUI
+      env:
+        PATH: "/usr/local/bin:$PATH"
       run: |
         echo "🌐 Building WebUI..."
         # Install mklittlefs with better error handling
@@ -214,7 +216,6 @@ jobs:
         sudo mv mklittlefs /usr/local/bin/
         sudo chmod +x /usr/local/bin/mklittlefs
         # Verify installation
-        export PATH="/usr/local/bin:$PATH"
         echo "🔍 Verifying mklittlefs installation..."
         which mklittlefs
         mklittlefs --version || echo "mklittlefs installed successfully"
