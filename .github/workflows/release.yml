@@ -203,7 +203,7 @@ jobs:
         echo "🌐 Building WebUI..."
         # Install mklittlefs with better error handling
         echo "📥 Downloading mklittlefs..."
-        wget -v https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz || {
+        curl -L -o x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz || {
           echo "❌ Failed to download mklittlefs"
           exit 1
         }
