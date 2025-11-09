@@ -201,9 +201,12 @@ jobs:
         PATH: "/usr/local/bin:$PATH"
       run: |
         echo "🌐 Building WebUI..."
+        # Install required tools
+        sudo apt-get update -qq
+        sudo apt-get install -y wget
         # Install mklittlefs with better error handling
         echo "📥 Downloading mklittlefs..."
-        curl -L -o x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz || {
+        wget -q https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz || {
           echo "❌ Failed to download mklittlefs"
           exit 1
         }
