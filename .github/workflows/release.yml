@@ -201,34 +201,51 @@ jobs:
         PATH: "$HOME/bin:/usr/local/bin:$PATH"
       run: |
         echo "🌐 Building WebUI..."
-        echo "📥 Downloading mklittlefs with Python..."
-        python << 'EOF'
-        import urllib.request
+        echo "🔍 Checking available Python executables..."
+        which python || echo "python not found"
+        which python3 || echo "python3 not found"
+        which pip || echo "pip not found"
+        which pip3 || echo "pip3 not found"
+        ls -la /usr/bin/python* || echo "No python in /usr/bin"
+        ls -la /opt/hostedtoolcache/Python/*/x64/bin/python* || echo "No python in hostedtoolcache"
+        
+        echo "📥 Downloading mklittlefs with pip..."
+        # Use pip to install a package that can download files
+        pip install requests
+        
+        # Create Python script file
+        cat > download_mklittlefs.py << 'PYTHON_EOF'
+        import requests
         import tarfile
         import os
         import stat
         
-        url = "https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz"
-        filename = "x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz"
+        url = 'https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz'
+        filename = 'x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz'
         
-        print("Downloading mklittlefs...")
-        urllib.request.urlretrieve(url, filename)
+        print('Downloading mklittlefs...')
+        response = requests.get(url)
+        with open(filename, 'wb') as f:
+            f.write(response.content)
         
-        print("Extracting mklittlefs...")
+        print('Extracting mklittlefs...')
         with tarfile.open(filename, 'r:gz') as tar:
             tar.extractall()
         
-        print("Installing mklittlefs...")
-        os.makedirs(os.path.expanduser("~/bin"), exist_ok=True)
-        os.rename("mklittlefs", os.path.expanduser("~/bin/mklittlefs"))
+        print('Installing mklittlefs...')
+        os.makedirs(os.path.expanduser('~/bin'), exist_ok=True)
+        os.rename('mklittlefs', os.path.expanduser('~/bin/mklittlefs'))
         
         # Make executable
-        mklittlefs_path = os.path.expanduser("~/bin/mklittlefs")
+        mklittlefs_path = os.path.expanduser('~/bin/mklittlefs')
         current_permissions = os.stat(mklittlefs_path).st_mode
         os.chmod(mklittlefs_path, current_permissions | stat.S_IEXEC)
         
-        print("✅ mklittlefs installed successfully")
-        EOF
+        print('✅ mklittlefs installed successfully')
+        PYTHON_EOF
+        
+        # Run the Python script
+        python download_mklittlefs.py
         
         export PATH="$HOME/bin:$PATH"
         echo "🏗️ Building WebUI..."
