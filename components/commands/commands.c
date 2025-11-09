@@ -378,11 +378,15 @@ static void handle_set_lora_config(cJSON *config_json)
     cJSON *power   = cJSON_GetObjectItem(config_json, "tx_power_dbm");
     cJSON *band_id = cJSON_GetObjectItem(config_json, "band_id");
 
-    // Validate bandwidth
+    // Validate bandwidth (support all LoRa bandwidths in kHz)
     if (cJSON_IsNumber(bw)) {
         int bw_val = bw->valueint;
-        if (bw_val != 125 && bw_val != 250 && bw_val != 500) {
-            send_jsonrpc_error(-32602, "Invalid bandwidth. Must be 125, 250, or 500 kHz");
+        // Accept: 7.81, 10.42, 15.63, 20.83, 31.25, 41.67, 62.5, 125, 250, 500 kHz
+        // Stored as integers: 7, 10, 15, 20, 31, 41, 62, 125, 250, 500
+        if (bw_val != 7 && bw_val != 10 && bw_val != 15 && bw_val != 20 &&
+            bw_val != 31 && bw_val != 41 && bw_val != 62 &&
+            bw_val != 125 && bw_val != 250 && bw_val != 500) {
+            send_jsonrpc_error(-32602, "Invalid bandwidth. Must be 7, 10, 15, 20, 31, 41, 62, 125, 250, or 500 kHz");
             return;
         }
         config.bandwidth = bw_val;
@@ -518,6 +522,76 @@ static void handle_get_lora_bands(void)
     send_jsonrpc_result(bands_array);
 }
 
+// Embedded preset JSON
+extern const uint8_t lora_presets_json_start[] asm("_binary_lora_presets_json_start");
+extern const uint8_t lora_presets_json_end[] asm("_binary_lora_presets_json_end");
+
+static void handle_get_lora_presets(void)
+{
+    size_t json_len = lora_presets_json_end - lora_presets_json_start;
+    char *json_str = malloc(json_len + 1);
+    if (!json_str) {
+        send_jsonrpc_error(-32603, "Memory allocation failed");
+        return;
+    }
+    memcpy(json_str, lora_presets_json_start, json_len);
+    json_str[json_len] = '\0';
+
+    cJSON *presets = cJSON_Parse(json_str);
+    free(json_str);
+
+    if (presets) {
+        send_jsonrpc_result(presets);
+    } else {
+        send_jsonrpc_error(-32603, "Failed to parse presets");
+    }
+}
+
+static void handle_set_lora_preset(cJSON *params)
+{
+    cJSON *name = cJSON_GetObjectItem(params, "name");
+    if (!cJSON_IsString(name)) {
+        send_jsonrpc_error(-32602, "Missing or invalid 'name' parameter");
+        return;
+    }
+
+    size_t json_len = lora_presets_json_end - lora_presets_json_start;
+    char *json_str = malloc(json_len + 1);
+    if (!json_str) {
+        send_jsonrpc_error(-32603, "Memory allocation failed");
+        return;
+    }
+    memcpy(json_str, lora_presets_json_start, json_len);
+    json_str[json_len] = '\0';
+
+    cJSON *presets = cJSON_Parse(json_str);
+    free(json_str);
+
+    if (!presets) {
+        send_jsonrpc_error(-32603, "Failed to parse presets");
+        return;
+    }
+
+    cJSON *preset = NULL;
+    cJSON_ArrayForEach(preset, presets) {
+        cJSON *preset_name = cJSON_GetObjectItem(preset, "name");
+        if (cJSON_IsString(preset_name) && strcmp(preset_name->valuestring, name->valuestring) == 0) {
+            break;
+        }
+        preset = NULL;
+    }
+
+    if (!preset) {
+        cJSON_Delete(presets);
+        send_jsonrpc_error(-32602, "Preset not found");
+        return;
+    }
+
+    // Apply preset to current config
+    handle_set_lora_config(preset);
+    cJSON_Delete(presets);
+}
+
 static void handle_pair_device(cJSON *pair_json)
 {
     cJSON *name      = cJSON_GetObjectItem(pair_json, "name");
@@ -582,7 +656,7 @@ static void handle_unpair_device(cJSON *unpair_json)
 {
     const cJSON *mac = cJSON_GetObjectItem(unpair_json, "mac");
     if (!cJSON_IsString(mac)) {
-        send_jsonrpc_error(-32602, "Missing mac parameter");
+        send_jsonrpc_error(-32602, "Missing MAC address parameter");
         return;
     }
 
@@ -713,6 +787,8 @@ static const jsonrpc_method_t method_table[] = {
     {"lora:key:get", false, {.no_params = handle_get_lora_key}},
     {"lora:key:set", true, {.with_params = handle_set_lora_key}},
     {"lora:bands", false, {.no_params = handle_get_lora_bands}},
+    {"lora:presets:list", false, {.no_params = handle_get_lora_presets}},
+    {"lora:presets:set", true, {.with_params = handle_set_lora_preset}},
     {"paired:list", false, {.no_params = handle_get_paired_devices}},
     {"paired:pair", true, {.with_params = handle_pair_device}},
     {"paired:unpair", true, {.with_params = handle_unpair_device}},

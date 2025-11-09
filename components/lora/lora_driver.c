@@ -154,9 +154,25 @@ esp_err_t lora_driver_init(void)
         return ret;
     }
 
+    // Convert bandwidth kHz to SX1262 register value
+    uint8_t bw_reg;
+    switch (current_config.bandwidth) {
+        case 7:   bw_reg = 0x00; break;  // 7.8 kHz
+        case 10:  bw_reg = 0x08; break;  // 10.4 kHz
+        case 15:  bw_reg = 0x01; break;  // 15.6 kHz
+        case 20:  bw_reg = 0x09; break;  // 20.8 kHz
+        case 31:  bw_reg = 0x02; break;  // 31.25 kHz
+        case 41:  bw_reg = 0x0A; break;  // 41.7 kHz
+        case 62:  bw_reg = 0x03; break;  // 62.5 kHz
+        case 125: bw_reg = 0x04; break;  // 125.0 kHz
+        case 250: bw_reg = 0x05; break;  // 250.0 kHz
+        case 500: bw_reg = 0x06; break;  // 500.0 kHz
+        default:  bw_reg = 0x04; break;  // Default to 125 kHz
+    }
+
     // Configure LoRa parameters
     ret = sx126x_config(current_config.spreading_factor, // Spreading factor
-                        current_config.bandwidth / 125,  // Bandwidth index (125kHz = 0, 250kHz = 1, 500kHz = 2)
+                        bw_reg,                          // Bandwidth register value
                         current_config.coding_rate,      // Coding rate
                         8,                               // Preamble length
                         0,                               // Variable payload length
@@ -345,9 +361,25 @@ esp_err_t lora_set_config(const lora_config_t *config)
         return init_ret;
     }
 
+    // Convert bandwidth kHz to SX1262 register value
+    uint8_t bw_reg;
+    switch (config->bandwidth) {
+        case 7:   bw_reg = 0x00; break;  // 7.8 kHz
+        case 10:  bw_reg = 0x08; break;  // 10.4 kHz
+        case 15:  bw_reg = 0x01; break;  // 15.6 kHz
+        case 20:  bw_reg = 0x09; break;  // 20.8 kHz
+        case 31:  bw_reg = 0x02; break;  // 31.25 kHz
+        case 41:  bw_reg = 0x0A; break;  // 41.7 kHz
+        case 62:  bw_reg = 0x03; break;  // 62.5 kHz
+        case 125: bw_reg = 0x04; break;  // 125.0 kHz
+        case 250: bw_reg = 0x05; break;  // 250.0 kHz
+        case 500: bw_reg = 0x06; break;  // 500.0 kHz
+        default:  bw_reg = 0x04; break;  // Default to 125 kHz
+    }
+
     // Update LoRa parameters
     init_ret = sx126x_config(config->spreading_factor, // Spreading factor
-                             config->bandwidth / 125,  // Bandwidth index (125kHz = 0, 250kHz = 1, 500kHz = 2)
+                             bw_reg,                   // Bandwidth register value
                              config->coding_rate,      // Coding rate
                              8,                        // Preamble length
                              0,                        // Variable payload length
