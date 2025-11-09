@@ -378,19 +378,59 @@ static void handle_set_lora_config(cJSON *config_json)
     cJSON *power   = cJSON_GetObjectItem(config_json, "tx_power_dbm");
     cJSON *band_id = cJSON_GetObjectItem(config_json, "band_id");
 
-    if (cJSON_IsNumber(freq))
-        config.frequency = freq->valueint * 1000;  // Convert kHz to Hz
-    if (cJSON_IsNumber(sf))
-        config.spreading_factor = sf->valueint;
-    if (cJSON_IsNumber(bw))
-        config.bandwidth = bw->valueint;
-    if (cJSON_IsNumber(cr))
-        config.coding_rate = cr->valueint;
-    if (cJSON_IsNumber(power))
-        config.tx_power = power->valueint;
+    // Validate bandwidth
+    if (cJSON_IsNumber(bw)) {
+        int bw_val = bw->valueint;
+        if (bw_val != 125 && bw_val != 250 && bw_val != 500) {
+            send_jsonrpc_error(-32602, "Invalid bandwidth. Must be 125, 250, or 500 kHz");
+            return;
+        }
+        config.bandwidth = bw_val;
+    }
+
+    // Validate and convert frequency
+    if (cJSON_IsNumber(freq)) {
+        int freq_khz = freq->valueint;
+        if (freq_khz % 100 != 0) {
+            send_jsonrpc_error(-32602, "Frequency must be divisible by 100 kHz");
+            return;
+        }
+        config.frequency = freq_khz * 1000;  // Convert kHz to Hz
+    }
+
+    // Validate spreading factor
+    if (cJSON_IsNumber(sf)) {
+        int sf_val = sf->valueint;
+        if (sf_val < 7 || sf_val > 12) {
+            send_jsonrpc_error(-32602, "Spreading factor must be between 7 and 12");
+            return;
+        }
+        config.spreading_factor = sf_val;
+    }
+
+    // Validate coding rate
+    if (cJSON_IsNumber(cr)) {
+        int cr_val = cr->valueint;
+        if (cr_val < 5 || cr_val > 8) {
+            send_jsonrpc_error(-32602, "Coding rate must be between 5 and 8 (4/5 to 4/8)");
+            return;
+        }
+        config.coding_rate = cr_val;
+    }
+
     if (cJSON_IsString(band_id)) {
         strncpy(config.band_id, band_id->valuestring, sizeof(config.band_id) - 1);
         config.band_id[sizeof(config.band_id) - 1] = '\0';
+    }
+
+    // Validate TX power (hardware limit only, band limit shown as warning in UI)
+    if (cJSON_IsNumber(power)) {
+        int power_val = power->valueint;
+        if (power_val < 2 || power_val > 22) {
+            send_jsonrpc_error(-32602, "TX power must be between 2 and 22 dBm");
+            return;
+        }
+        config.tx_power = power_val;
     }
 
     // Validate frequency against band limits
