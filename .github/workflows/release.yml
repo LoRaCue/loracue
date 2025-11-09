@@ -199,16 +199,27 @@ jobs:
     - name: Build WebUI
       run: |
         echo "🌐 Building WebUI..."
-        # Install mklittlefs
-        wget -q https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
-        tar -xzf x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
+        # Install mklittlefs with better error handling
+        echo "📥 Downloading mklittlefs..."
+        wget -v https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz || {
+          echo "❌ Failed to download mklittlefs"
+          exit 1
+        }
+        echo "📦 Extracting mklittlefs..."
+        tar -xzf x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz || {
+          echo "❌ Failed to extract mklittlefs"
+          exit 1
+        }
+        echo "📋 Installing mklittlefs..."
         sudo mv mklittlefs /usr/local/bin/
         sudo chmod +x /usr/local/bin/mklittlefs
         # Verify installation
         export PATH="/usr/local/bin:$PATH"
+        echo "🔍 Verifying mklittlefs installation..."
         which mklittlefs
         mklittlefs --version || echo "mklittlefs installed successfully"
         # Build WebUI
+        echo "🏗️ Building WebUI..."
         make web-build
         echo "✅ WebUI build complete"
     
