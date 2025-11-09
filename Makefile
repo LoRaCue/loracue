@@ -404,9 +404,13 @@ web-build:
 	@echo "🏗️  Building web interface..."
 	@cd web-interface && npm install && npm run build
 	@echo "📦 Creating LittleFS image..."
-	@command -v mklittlefs >/dev/null 2>&1 || { echo "❌ mklittlefs not found"; exit 1; }
+	@command -v mklittlefs >/dev/null 2>&1 || command -v /usr/local/bin/mklittlefs >/dev/null 2>&1 || { echo "❌ mklittlefs not found"; exit 1; }
 	@mkdir -p build
-	mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
+	@if command -v mklittlefs >/dev/null 2>&1; then \
+		mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin; \
+	else \
+		/usr/local/bin/mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin; \
+	fi
 	@echo "✅ Web interface built: build/webui-littlefs.bin"
 
 web-flash: check-idf

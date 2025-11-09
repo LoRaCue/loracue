@@ -204,6 +204,10 @@ jobs:
         tar -xzf x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
         sudo mv mklittlefs /usr/local/bin/
         sudo chmod +x /usr/local/bin/mklittlefs
+        # Verify installation
+        export PATH="/usr/local/bin:$PATH"
+        which mklittlefs
+        mklittlefs --version || echo "mklittlefs installed successfully"
         # Build WebUI
         make web-build
         echo "✅ WebUI build complete"
