@@ -187,34 +187,15 @@ jobs:
         gitversion version
     
     - name: Install Python dependencies
-      run: pip install cryptography
-    
-    - name: Build firmware with ESP-IDF
-      uses: espressif/esp-idf-ci-action@v1
-      with:
-        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
-        target: ${{ matrix.model.target }}
-        command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
-    
-    - name: Build WebUI
-      env:
-        PATH: "$HOME/bin:/usr/local/bin:$PATH"
       run: |
-        echo "🌐 Building WebUI..."
-        echo "🔍 Checking available Python executables..."
-        which python || echo "python not found"
-        which python3 || echo "python3 not found"
-        which pip || echo "pip not found"
-        which pip3 || echo "pip3 not found"
-        ls -la /usr/bin/python* || echo "No python in /usr/bin"
-        ls -la /opt/hostedtoolcache/Python/*/x64/bin/python* || echo "No python in hostedtoolcache"
-        
-        echo "📥 Downloading mklittlefs with pip..."
-        # Use pip to install a package that can download files
+        pip install cryptography
         pip install requests
         
-        # Create Python script file
-        cat > download_mklittlefs.py << 'PYTHON_EOF'
+        # Download and install mklittlefs while Python is available
+        echo "📥 Downloading mklittlefs..."
+        
+        # Create Python script
+        cat > install_mklittlefs.py << 'EOF'
         import requests
         import tarfile
         import os
@@ -242,13 +223,24 @@ jobs:
         os.chmod(mklittlefs_path, current_permissions | stat.S_IEXEC)
         
         print('✅ mklittlefs installed successfully')
-        PYTHON_EOF
+        EOF
         
-        # Run the Python script
-        python download_mklittlefs.py
-        
-        export PATH="$HOME/bin:$PATH"
-        echo "🏗️ Building WebUI..."
+        # Run the script
+        python install_mklittlefs.py
+    
+    - name: Build firmware with ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
+        target: ${{ matrix.model.target }}
+        command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
+    
+    - name: Build WebUI
+      env:
+        PATH: "$HOME/bin:/usr/local/bin:$PATH"
+      run: |
+        echo "🌐 Building WebUI..."
+        echo "🏗️ Building WebUI with pre-installed mklittlefs..."
         make web-build
         echo "✅ WebUI build complete"
     
