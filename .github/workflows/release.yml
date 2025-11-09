@@ -201,33 +201,36 @@ jobs:
         PATH: "$HOME/bin:/usr/local/bin:$PATH"
       run: |
         echo "🌐 Building WebUI..."
-        # Try different download methods
-        echo "📥 Downloading mklittlefs..."
-        if command -v wget >/dev/null 2>&1; then
-          echo "Using wget..."
-          wget -q https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
-        elif command -v curl >/dev/null 2>&1; then
-          echo "Using curl..."
-          curl -L -o x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
-        else
-          echo "❌ No download tool available"
-          exit 1
-        fi
-        echo "📦 Extracting mklittlefs..."
-        tar -xzf x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz || {
-          echo "❌ Failed to extract mklittlefs"
-          exit 1
-        }
-        echo "📋 Installing mklittlefs..."
-        mkdir -p ~/bin
-        mv mklittlefs ~/bin/
-        chmod +x ~/bin/mklittlefs
+        echo "📥 Downloading mklittlefs with Python..."
+        python3 << 'EOF'
+        import urllib.request
+        import tarfile
+        import os
+        import stat
+        
+        url = "https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz"
+        filename = "x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz"
+        
+        print("Downloading mklittlefs...")
+        urllib.request.urlretrieve(url, filename)
+        
+        print("Extracting mklittlefs...")
+        with tarfile.open(filename, 'r:gz') as tar:
+            tar.extractall()
+        
+        print("Installing mklittlefs...")
+        os.makedirs(os.path.expanduser("~/bin"), exist_ok=True)
+        os.rename("mklittlefs", os.path.expanduser("~/bin/mklittlefs"))
+        
+        # Make executable
+        mklittlefs_path = os.path.expanduser("~/bin/mklittlefs")
+        current_permissions = os.stat(mklittlefs_path).st_mode
+        os.chmod(mklittlefs_path, current_permissions | stat.S_IEXEC)
+        
+        print("✅ mklittlefs installed successfully")
+        EOF
+        
         export PATH="$HOME/bin:$PATH"
-        # Verify installation
-        echo "🔍 Verifying mklittlefs installation..."
-        which mklittlefs || echo "mklittlefs not in PATH, trying direct path..."
-        ~/bin/mklittlefs --version || echo "mklittlefs installed successfully"
-        # Build WebUI
         echo "🏗️ Building WebUI..."
         make web-build
         echo "✅ WebUI build complete"
