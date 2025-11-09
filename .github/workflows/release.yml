@@ -202,7 +202,7 @@ jobs:
       run: |
         echo "🌐 Building WebUI..."
         echo "📥 Downloading mklittlefs with Python..."
-        python3 << 'EOF'
+        python << 'EOF'
         import urllib.request
         import tarfile
         import os
