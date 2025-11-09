@@ -252,6 +252,13 @@ esp_err_t bsp_display_wake(void);
 #include "driver/i2c_master.h"
 
 /**
+ * @brief Initialize shared I2C bus with board-specific pins
+ *
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_i2c_init_default(void);
+
+/**
  * @brief Initialize shared I2C bus
  *
  * @param sda SDA GPIO pin

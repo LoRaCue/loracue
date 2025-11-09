@@ -436,11 +436,11 @@ static void ble_advertise(void)
 #else
     const char *model_name = "LC-Alpha";  // Default fallback
 #endif
-    size_t model_len = strlen(model_name) + 1;
+    size_t model_len = strlen(model_name);  // No null terminator in advertisement
     uint16_t build_flags = BUILD_NUMBER(get_build_number()) | get_release_type();
     
     // Build advertising data with flags, service data, and complete local name
-    uint8_t adv_data[31];  // Max legacy advertising data size
+    uint8_t adv_data[31];  // Use legacy size for compatibility
     uint8_t pos = 0;
     
     // Flags (3 bytes)
@@ -448,28 +448,29 @@ static void ble_advertise(void)
     adv_data[pos++] = 0x01;
     adv_data[pos++] = 0x06;
     
-    // Service Data (2 + 16 + 5 + model_len bytes)
-    adv_data[pos++] = 16 + 5 + model_len;  // Length
-    adv_data[pos++] = 0x16;                // Type: Service Data - 128-bit UUID
-    // NUS UUID (little-endian)
-    adv_data[pos++] = 0x9e; adv_data[pos++] = 0xca; adv_data[pos++] = 0xdc; adv_data[pos++] = 0x24;
-    adv_data[pos++] = 0x0e; adv_data[pos++] = 0xe5; adv_data[pos++] = 0xa9; adv_data[pos++] = 0xe0;
-    adv_data[pos++] = 0x93; adv_data[pos++] = 0xf3; adv_data[pos++] = 0xa3; adv_data[pos++] = 0xb5;
-    adv_data[pos++] = 0x01; adv_data[pos++] = 0x00; adv_data[pos++] = 0x40; adv_data[pos++] = 0x6e;
-    // Version info
-    adv_data[pos++] = LORACUE_VERSION_MAJOR;
-    adv_data[pos++] = LORACUE_VERSION_MINOR;
-    adv_data[pos++] = LORACUE_VERSION_PATCH;
-    adv_data[pos++] = build_flags & 0xFF;
-    adv_data[pos++] = (build_flags >> 8) & 0xFF;
-    memcpy(&adv_data[pos], model_name, model_len);
-    pos += model_len;
+    // Manufacturer Specific Data (2 + 2 + 5 + model_len bytes)
+    uint8_t mfg_data_len = 2 + 5 + model_len;  // Company ID + version + model
+    if (pos + 2 + mfg_data_len <= 31) {
+        adv_data[pos++] = 1 + mfg_data_len;  // Length
+        adv_data[pos++] = 0xFF;  // Manufacturer Specific Data
+        
+        // Company ID (0xFFFF for development/testing)
+        adv_data[pos++] = 0xFF;
+        adv_data[pos++] = 0xFF;
+        
+        // Version and build info (5 bytes)
+        adv_data[pos++] = LORACUE_VERSION_MAJOR;
+        adv_data[pos++] = LORACUE_VERSION_MINOR;
+        adv_data[pos++] = LORACUE_VERSION_PATCH;
+        adv_data[pos++] = build_flags & 0xFF;
+        adv_data[pos++] = (build_flags >> 8) & 0xFF;
+        
+        // Model name (null-terminated)
+        memcpy(&adv_data[pos], model_name, model_len);
+        pos += model_len;
+    }
     
-    // Complete Local Name (2 + name_len bytes)
-    adv_data[pos++] = name_len + 1;
-    adv_data[pos++] = 0x09;
-    memcpy(&adv_data[pos], adv_name, name_len);
-    pos += name_len;
+    ESP_LOGI(TAG, "Advertising data size: %d bytes (max 31)", pos);
     
     struct os_mbuf *data = ble_hs_mbuf_from_flat(adv_data, pos);
     if (data) {
@@ -481,6 +482,24 @@ static void ble_advertise(void)
     } else {
         ESP_LOGE(TAG, "Failed to allocate mbuf for adv data");
         return;
+    }
+    
+    // Set scan response with device name
+    uint8_t scan_rsp[31];
+    uint8_t scan_pos = 0;
+    
+    // Complete Local Name
+    scan_rsp[scan_pos++] = name_len;
+    scan_rsp[scan_pos++] = 0x09;  // Complete Local Name
+    memcpy(&scan_rsp[scan_pos], adv_name, name_len);
+    scan_pos += name_len;
+    
+    struct os_mbuf *scan_data = ble_hs_mbuf_from_flat(scan_rsp, scan_pos);
+    if (scan_data) {
+        rc = ble_gap_ext_adv_rsp_set_data(instance, scan_data);
+        if (rc != 0) {
+            ESP_LOGE(TAG, "Failed to set scan response: %d", rc);
+        }
     }
     
     // Start advertising indefinitely

@@ -48,7 +48,7 @@ u8g2_t u8g2;
 // BSP Configuration
 #define SPI_CLOCK_SPEED_HZ      1000000     // 1MHz for SX1262
 #define SPI_QUEUE_SIZE          1           // Single transaction queue
-#define I2C_CLOCK_SPEED_HZ      400000      // 400kHz fast mode
+#define I2C_CLOCK_SPEED_HZ      CONFIG_BSP_I2C_CLOCK_SPEED_HZ
 #define ADC_BITWIDTH            ADC_BITWIDTH_12
 #define ADC_ATTENUATION         ADC_ATTEN_DB_12
 
@@ -209,11 +209,15 @@ esp_err_t bsp_init(void)
         goto cleanup;
     }
 
-    // Initialize I2C bus for OLED and future I2C devices
-    ret = bsp_i2c_init(OLED_SDA_PIN, OLED_SCL_PIN, I2C_CLOCK_SPEED_HZ);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize I2C: %s", esp_err_to_name(ret));
-        goto cleanup;
+    // Initialize I2C bus for OLED and future I2C devices (if not already initialized)
+    if (bsp_i2c_get_bus() == NULL) {
+        ret = bsp_i2c_init(OLED_SDA_PIN, OLED_SCL_PIN, I2C_CLOCK_SPEED_HZ);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize I2C: %s", esp_err_to_name(ret));
+            goto cleanup;
+        }
+    } else {
+        ESP_LOGI(TAG, "I2C bus already initialized, skipping");
     }
 
     // Set OLED reset pin
@@ -500,6 +504,11 @@ esp_err_t bsp_u8g2_init(void *u8g2_ptr)
 
     ESP_LOGI(TAG, "u8g2 initialized successfully for SSD1306");
     return ESP_OK;
+}
+
+esp_err_t bsp_i2c_init_default(void)
+{
+    return bsp_i2c_init(OLED_SDA_PIN, OLED_SCL_PIN, I2C_CLOCK_SPEED_HZ);
 }
 
 const char *bsp_get_board_id(void)

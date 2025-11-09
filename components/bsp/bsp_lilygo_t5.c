@@ -166,25 +166,16 @@ esp_err_t bsp_init(void)
     ESP_LOGI(TAG, "LVGL initialized (%dx%d, %d-line buffers)", 
              LVGL_DISPLAY_WIDTH, LVGL_DISPLAY_HEIGHT, LVGL_BUFFER_LINES);
     
-    // Initialize I2C
-    ESP_LOGD(TAG, "Initializing I2C (SDA=%d, SCL=%d, 400kHz)", BOARD_SDA, BOARD_SCL);
-    i2c_config_t i2c_conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = BOARD_SDA,
-        .scl_io_num = BOARD_SCL,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = 400000
-    };
-    ret = i2c_param_config(BOARD_I2C_PORT, &i2c_conf);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "I2C param config failed: %s", esp_err_to_name(ret));
-        goto cleanup;
-    }
-    ret = i2c_driver_install(BOARD_I2C_PORT, I2C_MODE_MASTER, 0, 0, 0);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "I2C driver install failed: %s", esp_err_to_name(ret));
-        goto cleanup;
+    // Initialize I2C bus (if not already initialized)
+    if (bsp_i2c_get_bus() == NULL) {
+        ESP_LOGD(TAG, "Initializing I2C (SDA=%d, SCL=%d, 400kHz)", BOARD_SDA, BOARD_SCL);
+        ret = bsp_i2c_init(BOARD_SDA, BOARD_SCL, 400000);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize I2C: %s", esp_err_to_name(ret));
+            goto cleanup;
+        }
+    } else {
+        ESP_LOGI(TAG, "I2C bus already initialized, skipping");
     }
     
     // Initialize PCA9535 GPIO expander
@@ -401,6 +392,11 @@ void bsp_led_set(bool state)
 void bsp_power_deep_sleep(uint64_t time_us)
 {
     ESP_LOGI(TAG, "Entering deep sleep for %llu us", time_us);
+}
+
+esp_err_t bsp_i2c_init_default(void)
+{
+    return bsp_i2c_init(BOARD_SDA, BOARD_SCL, CONFIG_BSP_I2C_CLOCK_SPEED_HZ);
 }
 
 const char *bsp_get_board_id(void)

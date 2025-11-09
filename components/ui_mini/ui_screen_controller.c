@@ -233,8 +233,6 @@ void ui_screen_controller_update(const ui_status_t *status)
     // Redraw current screen with updated data (only screens that need periodic updates)
     switch (current_screen) {
         case OLED_SCREEN_MAIN:
-            ESP_LOGI(TAG, "Updating main screen with status: BT=%d, USB=%d, battery=%d", 
-                     status->bluetooth_enabled, status->usb_connected, status->battery_level);
             main_screen_draw(status);
             break;
 

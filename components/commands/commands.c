@@ -288,11 +288,11 @@ static void handle_get_lora_config(void)
 
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "band_id", config.band_id);
-    cJSON_AddNumberToObject(response, "frequency", config.frequency);
+    cJSON_AddNumberToObject(response, "frequency_khz", config.frequency / 1000);
     cJSON_AddNumberToObject(response, "spreading_factor", config.spreading_factor);
-    cJSON_AddNumberToObject(response, "bandwidth", config.bandwidth);
+    cJSON_AddNumberToObject(response, "bandwidth_khz", config.bandwidth);
     cJSON_AddNumberToObject(response, "coding_rate", config.coding_rate);
-    cJSON_AddNumberToObject(response, "tx_power", config.tx_power);
+    cJSON_AddNumberToObject(response, "tx_power_dbm", config.tx_power);
 
     send_jsonrpc_result(response);
 }
@@ -371,15 +371,15 @@ static void handle_set_lora_config(cJSON *config_json)
         return;
     }
 
-    cJSON *freq    = cJSON_GetObjectItem(config_json, "frequency");
+    cJSON *freq    = cJSON_GetObjectItem(config_json, "frequency_khz");
     cJSON *sf      = cJSON_GetObjectItem(config_json, "spreading_factor");
-    cJSON *bw      = cJSON_GetObjectItem(config_json, "bandwidth");
+    cJSON *bw      = cJSON_GetObjectItem(config_json, "bandwidth_khz");
     cJSON *cr      = cJSON_GetObjectItem(config_json, "coding_rate");
-    cJSON *power   = cJSON_GetObjectItem(config_json, "tx_power");
+    cJSON *power   = cJSON_GetObjectItem(config_json, "tx_power_dbm");
     cJSON *band_id = cJSON_GetObjectItem(config_json, "band_id");
 
     if (cJSON_IsNumber(freq))
-        config.frequency = freq->valueint;
+        config.frequency = freq->valueint * 1000;  // Convert kHz to Hz
     if (cJSON_IsNumber(sf))
         config.spreading_factor = sf->valueint;
     if (cJSON_IsNumber(bw))

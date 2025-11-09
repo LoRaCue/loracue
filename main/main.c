@@ -283,16 +283,17 @@ void app_main(void)
         return;
     }
 
-    // Initialize BSP
-    ESP_LOGI(TAG, "Initializing Board Support Package...");
-    ret = bsp_init();
+    // Initialize I2C bus first (needed for I2Console and display)
+    ESP_LOGI(TAG, "Initializing I2C bus...");
+    ret = bsp_i2c_init_default();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "BSP initialization failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "I2C initialization failed: %s", esp_err_to_name(ret));
         return;
     }
 
-    // Check for I2Console device and initialize logging bridge
+    // Check for I2Console device and initialize logging bridge (before display)
     ESP_LOGI(TAG, "Checking for I2Console device...");
+    vTaskDelay(pdMS_TO_TICKS(100)); // Allow I2Console chip to fully initialize
     ret = i2console_init(I2CONSOLE_DEFAULT_ADDR);
     if (ret == ESP_OK) {
         char version[16];
@@ -301,6 +302,14 @@ void app_main(void)
         }
     } else {
         ESP_LOGI(TAG, "I2Console not detected - using UART logging only");
+    }
+
+    // Initialize BSP (will skip I2C init since already done)
+    ESP_LOGI(TAG, "Initializing Board Support Package...");
+    ret = bsp_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "BSP initialization failed: %s", esp_err_to_name(ret));
+        return;
     }
 
     // Detect board type early

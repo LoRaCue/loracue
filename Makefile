@@ -102,17 +102,17 @@ rebuild: fullclean build
 flash: check-idf
 	@echo "📡 Flashing $(MODEL_NAME) firmware..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" flash
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" -b 921600 flash
 
 flash-only: check-idf
 	@echo "📡 Flashing $(MODEL_NAME) firmware (no rebuild)..."
 	@test -f build/loracue.bin || { echo "❌ Firmware not found. Run 'make build MODEL=$(MODEL)' first"; exit 1; }
-	$(IDF_SETUP) idf.py flash
+	$(IDF_SETUP) idf.py -b 921600 flash
 
 flash-monitor: check-idf
 	@echo "📡 Flashing $(MODEL_NAME) firmware and starting monitor..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" flash monitor
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" -b 921600 flash monitor
 
 monitor:
 	@echo "📺 Starting serial monitor (Ctrl+] to exit)..."
@@ -190,7 +190,7 @@ test:
 test-device: check-idf
 	@echo "🧪 Building and running LoRa protocol tests on device..."
 	$(IDF_SETUP) idf.py -DTEST_COMPONENTS='test' build
-	$(IDF_SETUP) idf.py flash monitor
+	$(IDF_SETUP) idf.py -b 921600 flash monitor
 
 test-build: check-idf
 	@echo "🧪 Building device tests only..."

@@ -116,11 +116,9 @@ void pc_mode_screen_draw(void)
     // Get current status from data provider
     const ui_status_t *ui_status = ui_data_provider_get_status();
     if (!ui_status) {
-        ESP_LOGW(TAG, "NULL status - skipping draw");
         return; // No status available - don't clear screen
     }
 
-    ESP_LOGI(TAG, "Drawing PC mode screen");
     u8g2_ClearBuffer(&u8g2);
 
     // Draw status bar (LORACUE + icons)
@@ -205,9 +203,7 @@ void pc_mode_screen_draw(void)
         ui_pairing_overlay_draw(passkey);
     }
 
-    ESP_LOGI(TAG, "About to send buffer to display");
     u8g2_SendBuffer(&u8g2);
-    ESP_LOGI(TAG, "Buffer sent to display successfully");
 }
 
 // HID command event handler - maintains local command history

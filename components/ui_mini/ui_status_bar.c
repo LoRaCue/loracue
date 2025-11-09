@@ -16,10 +16,6 @@ static bool first_draw = true;
 
 void ui_status_bar_draw(const ui_status_t *status)
 {
-    // Debug logging only when something changes
-    ESP_LOGI("UI_STATUS_BAR", "Drawing status bar: BT_enabled=%d, BT_connected=%d, USB=%d", 
-             status->bluetooth_enabled, status->bluetooth_connected, status->usb_connected);
-    
     // Store current status for next comparison
     memcpy(&last_status, status, sizeof(ui_status_t));
     first_draw = false;

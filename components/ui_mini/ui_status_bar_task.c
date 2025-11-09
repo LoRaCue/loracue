@@ -27,28 +27,18 @@ static void ui_status_bar_task(void *pvParameters)
 
         ui_mini_screen_t current = ui_screen_controller_get_current();
 
-        ESP_LOGI(TAG, "Status bar task tick - current screen: %d", current);
-
         // Only update MAIN screen (PC_MODE has its own 1s update task)
         if (current == OLED_SCREEN_MAIN) {
             // Try to acquire draw lock
             extern bool ui_mini_try_lock_draw(void);
             extern void ui_mini_unlock_draw(void);
 
-            ESP_LOGI(TAG, "Attempting to acquire draw lock for screen update");
             if (ui_mini_try_lock_draw()) {
-                ESP_LOGI(TAG, "Draw lock acquired, updating screen");
                 const ui_status_t *status = ui_data_provider_get_status();
                 if (status) {
-                    ESP_LOGI(TAG, "Status valid, calling screen controller update");
                     ui_screen_controller_update(status);
-                } else {
-                    ESP_LOGW(TAG, "Status is NULL, skipping update");
                 }
                 ui_mini_unlock_draw();
-                ESP_LOGI(TAG, "Draw lock released");
-            } else {
-                ESP_LOGW(TAG, "Failed to acquire draw lock, skipping update");
             }
         }
 

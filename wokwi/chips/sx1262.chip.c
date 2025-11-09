@@ -186,19 +186,19 @@ static void chip_spi_done(void *user_data, uint8_t *buffer, uint32_t count) {
     
     // Only log GET_IRQ_STATUS if IRQ is non-zero (reduce spam)
     if (chip->cmd != SX126X_CMD_GET_IRQ_STATUS || chip->irq_status != 0) {
-      printf("→ %s (0x%02X)\n", cmd_name(chip->cmd), chip->cmd);
+      // printf("→ %s (0x%02X)\n", cmd_name(chip->cmd), chip->cmd);
     }
     
     // Execute simple commands immediately
     switch (chip->cmd) {
       case SX126X_CMD_SET_STANDBY:
         chip->state = 0x02; // STANDBY_RC
-        printf("  State: %s\n", state_name(chip->state));
+        // printf("  State: %s\n", state_name(chip->state));
         break;
       case SX126X_CMD_SET_TX:
         chip->state = 0x06; // TX
         chip->irq_status |= 0x0001; // TX_DONE (instant for simulation)
-        printf("  State: %s, IRQ: TX_DONE\n", state_name(chip->state));
+        // printf("  State: %s, IRQ: TX_DONE\n", state_name(chip->state));
         // Log the payload being transmitted
         if (chip->tx_len > 0) {
           printf("  ========================================\n");
@@ -218,9 +218,9 @@ static void chip_spi_done(void *user_data, uint8_t *buffer, uint32_t count) {
         // Auto-clear TX_DONE when entering RX (simulation convenience)
         if (chip->irq_status & 0x0001) {
           chip->irq_status &= ~0x0001;
-          printf("  State: %s (auto-cleared TX_DONE)\n", state_name(chip->state));
+          // printf("  State: %s (auto-cleared TX_DONE)\n", state_name(chip->state));
         } else {
-          printf("  State: %s\n", state_name(chip->state));
+          // printf("  State: %s\n", state_name(chip->state));
         }
         break;
       case SX126X_CMD_CLEAR_IRQ_STATUS:
@@ -230,7 +230,7 @@ static void chip_spi_done(void *user_data, uint8_t *buffer, uint32_t count) {
           uint16_t clear_mask = (chip->cmd_buffer[1] << 8) | (chip->cmd_pos >= 3 ? chip->cmd_buffer[2] : 0);
           chip->irq_status &= ~clear_mask;
           if (chip->cmd_pos == 3) {
-            printf("  IRQ cleared: mask=0x%04X, remaining=0x%04X\n", clear_mask, chip->irq_status);
+            // printf("  IRQ cleared: mask=0x%04X, remaining=0x%04X\n", clear_mask, chip->irq_status);
           }
         }
         break;
@@ -238,24 +238,24 @@ static void chip_spi_done(void *user_data, uint8_t *buffer, uint32_t count) {
     
     next_byte = get_status_byte(chip);
     if (chip->cmd != SX126X_CMD_GET_IRQ_STATUS || chip->irq_status != 0) {
-      printf("← Status: 0x%02X (%s)\n", next_byte, state_name(chip->state));
+      // printf("← Status: 0x%02X (%s)\n", next_byte, state_name(chip->state));
     }
   } else if (chip->cmd == SX126X_CMD_READ_REGISTER) {
     // READ_REGISTER: [CMD][ADDR_H][ADDR_L][STATUS][DATA...]
     if (chip->cmd_pos == 3) {
       uint16_t reg = (chip->cmd_buffer[1] << 8) | chip->cmd_buffer[2];
-      printf("  Addr: 0x%04X\n", reg);
+      // printf("  Addr: 0x%04X\n", reg);
     }
     if (chip->cmd_pos == 4) {
       // After status byte, send first data byte
       uint16_t reg = (chip->cmd_buffer[1] << 8) | chip->cmd_buffer[2];
       next_byte = chip->registers[reg & 0xFFF];
-      printf("← Data[0]: 0x%02X\n", next_byte);
+      // printf("← Data[0]: 0x%02X\n", next_byte);
     } else if (chip->cmd_pos > 4) {
       // Continue sending register data
       uint16_t reg = (chip->cmd_buffer[1] << 8) | chip->cmd_buffer[2];
       next_byte = chip->registers[(reg + chip->cmd_pos - 4) & 0xFFF];
-      printf("← Data[%d]: 0x%02X\n", chip->cmd_pos - 4, next_byte);
+      // printf("← Data[%d]: 0x%02X\n", chip->cmd_pos - 4, next_byte);
     } else {
       next_byte = get_status_byte(chip);
     }
@@ -265,7 +265,7 @@ static void chip_spi_done(void *user_data, uint8_t *buffer, uint32_t count) {
       uint8_t offset = chip->cmd_buffer[1];
       if (chip->cmd_pos == 2) {
         chip->tx_len = 0; // Reset for new write
-        printf("  Offset: 0x%02X\n", offset);
+        // printf("  Offset: 0x%02X\n", offset);
       }
       if (chip->cmd_pos > 2) {
         // Store data bytes
@@ -279,10 +279,10 @@ static void chip_spi_done(void *user_data, uint8_t *buffer, uint32_t count) {
   } else if (chip->cmd == SX126X_CMD_GET_IRQ_STATUS) {
     if (chip->cmd_pos == 2) {
       next_byte = (chip->irq_status >> 8) & 0xFF;
-      if (chip->irq_status != 0) printf("← IRQ[MSB]: 0x%02X\n", next_byte);
+      // if (chip->irq_status != 0) printf("← IRQ[MSB]: 0x%02X\n", next_byte);
     } else if (chip->cmd_pos == 3) {
       next_byte = chip->irq_status & 0xFF;
-      if (chip->irq_status != 0) printf("← IRQ[LSB]: 0x%02X (IRQ=0x%04X)\n", next_byte, chip->irq_status);
+      // if (chip->irq_status != 0) printf("← IRQ[LSB]: 0x%02X (IRQ=0x%04X)\n", next_byte, chip->irq_status);
     } else {
       next_byte = get_status_byte(chip);
     }

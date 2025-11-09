@@ -578,13 +578,9 @@ jobs:
         tag_name: ${{ needs.version.outputs.tag_name }}
         name: LoRaCue v${{ needs.version.outputs.version }}
         body: |
-          # 🎯 LoRaCue v${{ needs.version.outputs.version }}
-          
-          Enterprise LoRa presentation clicker firmware release.
-          
-          ${{ needs.generate-changelog.outputs.breaking_changes != '' && format('## ⚠️ BREAKING CHANGES{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.breaking_changes) || '' }}
-          ${{ needs.generate-changelog.outputs.known_issues != '' && format('## 🐛 Known Issues{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.known_issues) || '' }}
-          ## 📦 Product Models
+          ${{ needs.generate-changelog.outputs.breaking_changes != '' && format('# ⚠️ BREAKING CHANGES{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.breaking_changes) || '' }}
+          ${{ needs.generate-changelog.outputs.known_issues != '' && format('# 🐛 Known Issues{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.known_issues) || '' }}
+          # 📦 Product Models
           
           | Model | Board | Hardware | Description |
           |-------|-------|----------|-------------|
@@ -592,7 +588,7 @@ jobs:
           | **LC-Alpha+** | Heltec V3 | 2 separate buttons | Enhanced prototype with prev/next buttons |
           | **LC-Gamma** | LilyGO T5 Pro | E-paper + touch | Professional with 4.7" display |
           
-          ## 📥 Installation
+          # 📥 Installation
           
           Use **[LoRaCue Manager](https://github.com/LoRaCue/loracue-manager)** to flash firmware to your devices.
           
@@ -602,25 +598,25 @@ jobs:
           - ✅ Integrity verification
           - ✅ Cross-platform support (Windows, macOS, Linux)
           
-          ## 🔐 Security & Verification
+          # 🔐 Security & Verification
           
           All firmware binaries include:
           - ✅ SHA256 checksums for integrity verification
           - ✅ Embedded firmware manifest with board ID
           - ✅ OTA compatibility checking (prevents wrong board flashing)
           
-          ## 🔄 Changelog
+          # 🔄 Changelog
           
           ${{ needs.generate-changelog.outputs.changelog }}
           
-          ## 🛠️ Technical Details
+          # 🛠️ Technical Details
           
           - **ESP-IDF**: ${{ env.ESP_IDF_VERSION }}
           - **Build Date**: ${{ steps.timestamp.outputs.date }}
           - **Commit**: ${{ github.sha }}
           - **Branch**: ${{ github.ref_name }}
           
-          ## 📚 Documentation
+          # 📚 Documentation
           
           - **Installation Guide**: https://github.com/LoRaCue/loracue/wiki/Installation
           - **User Manual**: https://github.com/LoRaCue/loracue/wiki

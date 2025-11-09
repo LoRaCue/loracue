@@ -10,8 +10,6 @@ static const char *TAG = "main_screen";
 // Main screen adapts to current device mode
 void main_screen_draw(const ui_status_t *status)
 {
-    ESP_LOGI(TAG, "main_screen_draw called, mode=%d, status=%p", ui_state.current_mode, status);
-    
     if (ui_state.current_mode == DEVICE_MODE_PC) {
         // Draw PC mode layout
         pc_mode_screen_draw();
