@@ -199,6 +199,12 @@ jobs:
     - name: Build WebUI
       run: |
         echo "🌐 Building WebUI..."
+        # Install mklittlefs
+        wget -q https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-4.0.1.tar.gz
+        tar -xzf x86_64-linux-gnu-mklittlefs-4.0.1.tar.gz
+        sudo mv mklittlefs /usr/local/bin/
+        sudo chmod +x /usr/local/bin/mklittlefs
+        # Build WebUI
         make web-build
         echo "✅ WebUI build complete"
     
