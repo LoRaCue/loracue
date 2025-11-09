@@ -234,9 +234,9 @@ jobs:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
         target: ${{ matrix.model.target }}
         command: |
-          # Install Node.js and npm for WebUI build
+          # Install Node.js 20 and npm for WebUI build
           apt-get update && apt-get install -y curl
-          curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
           apt-get install -y nodejs
           
           # Build WebUI first
