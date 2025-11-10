@@ -239,23 +239,26 @@ jobs:
           curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
           apt-get install -y nodejs
           
+          # Install mklittlefs inside container
+          echo "📥 Installing mklittlefs..."
+          curl -L -o mklittlefs.tar.gz https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
+          tar -xzf mklittlefs.tar.gz
+          chmod +x mklittlefs
+          mv mklittlefs /usr/local/bin/
+          
           # Build WebUI first
           echo "🌐 Building WebUI..."
           cd web-interface && npm install && npm run build && cd ..
           
-          # Create LittleFS image using pre-installed mklittlefs
+          # Create LittleFS image
           echo "📦 Creating LittleFS image..."
           mkdir -p build
-          ~/bin/mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
+          mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
           ls -la build/webui-littlefs.bin
           echo "✅ WebUI LittleFS image created: build/webui-littlefs.bin"
           
           # Build firmware
           idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
-          
-          # Verify all required files exist
-          echo "🔍 Verifying build artifacts..."
-          ls -la build/loracue.bin build/bootloader/bootloader.bin build/partition_table/partition-table.bin build/webui-littlefs.bin
     
     - name: Build WebUI
       env:
