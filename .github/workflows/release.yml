@@ -187,46 +187,7 @@ jobs:
         gitversion version
     
     - name: Install Python dependencies
-      run: |
-        pip install cryptography
-        pip install requests
-        
-        # Download and install mklittlefs while Python is available
-        echo "📥 Downloading mklittlefs..."
-        
-        # Create Python script
-        cat > install_mklittlefs.py << 'EOF'
-        import requests
-        import tarfile
-        import os
-        import stat
-        
-        url = 'https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz'
-        filename = 'x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz'
-        
-        print('Downloading mklittlefs...')
-        response = requests.get(url)
-        with open(filename, 'wb') as f:
-            f.write(response.content)
-        
-        print('Extracting mklittlefs...')
-        with tarfile.open(filename, 'r:gz') as tar:
-            tar.extractall()
-        
-        print('Installing mklittlefs...')
-        os.makedirs(os.path.expanduser('~/bin'), exist_ok=True)
-        os.rename('mklittlefs', os.path.expanduser('~/bin/mklittlefs'))
-        
-        # Make executable
-        mklittlefs_path = os.path.expanduser('~/bin/mklittlefs')
-        current_permissions = os.stat(mklittlefs_path).st_mode
-        os.chmod(mklittlefs_path, current_permissions | stat.S_IEXEC)
-        
-        print('✅ mklittlefs installed successfully')
-        EOF
-        
-        # Run the script
-        python install_mklittlefs.py
+      run: pip install cryptography
     
     - name: Build firmware with ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
