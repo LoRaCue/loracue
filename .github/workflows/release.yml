@@ -205,7 +205,9 @@ jobs:
           curl -L -o mklittlefs.tar.gz https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
           tar -xzf mklittlefs.tar.gz
           chmod +x mklittlefs
-          mv mklittlefs /usr/local/bin/
+          cp mklittlefs /usr/local/bin/mklittlefs
+          which mklittlefs
+          mklittlefs --version || echo "mklittlefs installed"
           
           # Build WebUI first
           echo "🌐 Building WebUI..."
@@ -214,7 +216,7 @@ jobs:
           # Create LittleFS image
           echo "📦 Creating LittleFS image..."
           mkdir -p build
-          mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
+          /usr/local/bin/mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
           ls -la build/webui-littlefs.bin
           echo "✅ WebUI LittleFS image created: build/webui-littlefs.bin"
           
