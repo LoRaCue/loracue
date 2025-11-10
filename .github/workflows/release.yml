@@ -204,8 +204,9 @@ jobs:
           echo "📥 Installing mklittlefs..."
           curl -L -o mklittlefs.tar.gz https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
           tar -xzf mklittlefs.tar.gz
-          chmod +x mklittlefs
-          cp mklittlefs /usr/local/bin/mklittlefs
+          find . -name "mklittlefs" -type f -executable
+          chmod +x */mklittlefs
+          cp */mklittlefs /usr/local/bin/mklittlefs
           which mklittlefs
           mklittlefs --version || echo "mklittlefs installed"
           
