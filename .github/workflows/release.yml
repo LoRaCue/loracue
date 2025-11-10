@@ -597,8 +597,15 @@ jobs:
         tag_name: ${{ needs.version.outputs.tag_name }}
         name: LoRaCue v${{ needs.version.outputs.version }}
         body: |
-          ${{ needs.generate-changelog.outputs.breaking_changes != '' && format('# ⚠️ BREAKING CHANGES{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.breaking_changes) || '' }}
-          ${{ needs.generate-changelog.outputs.known_issues != '' && format('# 🐛 Known Issues{0}{0}{1}{0}{0}', '\n', needs.generate-changelog.outputs.known_issues) || '' }}
+          ${{ needs.generate-changelog.outputs.breaking_changes != '' && format('# ⚠️ BREAKING CHANGES
+
+          {0}
+
+          ', needs.generate-changelog.outputs.breaking_changes) || '' }}${{ needs.generate-changelog.outputs.known_issues != '' && format('# 🐛 Known Issues
+
+          {0}
+
+          ', needs.generate-changelog.outputs.known_issues) || '' }}
           # 📦 Product Models
           
           | Model | Board | Hardware | Description |
