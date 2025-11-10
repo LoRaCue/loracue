@@ -55,41 +55,29 @@ jobs:
         MANUAL_TAG="${{ github.event.inputs.manual_tag }}"
         PUSHED_TAG="${{ github.ref_name }}"
         
-        # Determine source
+        # Always use GitVersion semver for consistency
+        VERSION="$GITVERSION"
+        TAG_NAME="v$VERSION"
+        
+        # Determine source for logging
         if [ "${{ github.event_name }}" == "push" ] && [[ "${{ github.ref }}" == refs/tags/* ]]; then
-          # Tag was pushed - validate it
-          VERSION="${PUSHED_TAG#v}"
-          TAG_NAME="$PUSHED_TAG"
-          echo "Using pushed tag: $TAG_NAME"
-          
-          # Validate tag format
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-            echo "ERROR: Invalid tag format: $TAG_NAME"
-            echo "Expected format: v1.2.3 or v1.2.3-alpha.1"
-            exit 1
-          fi
+          echo "Tag was pushed: $PUSHED_TAG, using GitVersion: $TAG_NAME"
           
           # Warn if tag doesn't match GitVersion
-          if [ "$VERSION" != "$GITVERSION" ]; then
-            echo "WARNING: Pushed tag v$VERSION differs from GitVersion v$GITVERSION"
-            echo "This may indicate the tag was created manually"
+          if [ "${PUSHED_TAG#v}" != "$GITVERSION" ]; then
+            echo "WARNING: Pushed tag $PUSHED_TAG differs from GitVersion $TAG_NAME"
+            echo "Using GitVersion for consistency"
           fi
         elif [ -n "$MANUAL_TAG" ]; then
-          # Manual tag specified
-          VERSION="${MANUAL_TAG#v}"
-          TAG_NAME="v$VERSION"
-          echo "Manual tag requested: $TAG_NAME"
+          echo "Manual tag requested: $MANUAL_TAG, using GitVersion: $TAG_NAME"
           
           # Compare versions
-          if [ "$(printf '%s\n' "$VERSION" "$GITVERSION" | sort -V | head -n1)" != "$GITVERSION" ]; then
-            echo "ERROR: Manual tag v$VERSION is below GitVersion v$GITVERSION"
-            echo "Cannot create tag that is older than calculated version"
+          if [ "$(printf '%s\n' "$VERSION" "${MANUAL_TAG#v}" | sort -V | head -n1)" != "${MANUAL_TAG#v}" ]; then
+            echo "ERROR: GitVersion $TAG_NAME is above manual tag $MANUAL_TAG"
+            echo "Cannot use manual tag that is older than calculated version"
             exit 1
           fi
         else
-          # Auto-generate from GitVersion
-          VERSION="$GITVERSION"
-          TAG_NAME="v$VERSION"
           echo "Auto-generating tag from GitVersion: $TAG_NAME"
         fi
         
