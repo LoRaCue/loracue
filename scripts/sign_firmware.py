@@ -10,7 +10,7 @@ from cryptography.hazmat.backends import default_backend
 
 
 def sign_file(file_path: Path, private_key_path: Path) -> str:
-    """Sign a file and return base64-encoded signature."""
+    """Sign a file's SHA256 hash and return base64-encoded signature."""
     with open(private_key_path, 'rb') as f:
         private_key = serialization.load_pem_private_key(
             f.read(),
@@ -18,11 +18,17 @@ def sign_file(file_path: Path, private_key_path: Path) -> str:
             backend=default_backend()
         )
     
+    # Calculate SHA256 hash of the file
     with open(file_path, 'rb') as f:
         data = f.read()
     
+    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    digest.update(data)
+    file_hash = digest.finalize()
+    
+    # Sign the hash instead of raw data
     signature = private_key.sign(
-        data,
+        file_hash,
         padding.PKCS1v15(),
         hashes.SHA256()
     )
