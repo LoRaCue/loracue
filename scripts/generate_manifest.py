@@ -22,7 +22,7 @@ def calculate_sha256(file_path: Path) -> str:
 
 
 def sign_data(data: str, private_key_path: Path) -> str:
-    """Sign data and return base64-encoded signature."""
+    """Sign data's SHA256 hash and return base64-encoded signature."""
     with open(private_key_path, 'rb') as f:
         private_key = serialization.load_pem_private_key(
             f.read(),
@@ -30,8 +30,15 @@ def sign_data(data: str, private_key_path: Path) -> str:
             backend=default_backend()
         )
     
+    # Calculate SHA256 hash of the data
+    data_bytes = data.encode('utf-8')
+    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+    digest.update(data_bytes)
+    data_hash = digest.finalize()
+    
+    # Sign the hash instead of raw data
     signature = private_key.sign(
-        data.encode('utf-8'),
+        data_hash,
         padding.PKCS1v15(),
         hashes.SHA256()
     )
