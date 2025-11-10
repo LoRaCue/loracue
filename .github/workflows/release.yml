@@ -247,10 +247,15 @@ jobs:
           echo "📦 Creating LittleFS image..."
           mkdir -p build
           ~/bin/mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
+          ls -la build/webui-littlefs.bin
           echo "✅ WebUI LittleFS image created: build/webui-littlefs.bin"
           
           # Build firmware
           idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
+          
+          # Verify all required files exist
+          echo "🔍 Verifying build artifacts..."
+          ls -la build/loracue.bin build/bootloader/bootloader.bin build/partition_table/partition-table.bin build/webui-littlefs.bin
     
     - name: Build WebUI
       env:
