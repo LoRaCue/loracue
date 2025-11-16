@@ -1,4 +1,4 @@
-mode: ContinuousDeployment
+mode: Mainline
 tag-prefix: 'v'
 increment: None
 
