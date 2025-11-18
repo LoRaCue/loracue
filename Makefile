@@ -62,23 +62,31 @@ MODEL ?= alpha
 ifeq ($(MODEL),alpha)
 MODEL_NAME = LC-Alpha
 BOARD_NAME = Heltec V3
+BOARD_ID = heltec_v3
 SDKCONFIG = sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha
 else ifeq ($(MODEL),alpha+)
 MODEL_NAME = LC-Alpha+
 BOARD_NAME = Heltec V3
+BOARD_ID = heltec_v3
 SDKCONFIG = sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha_plus
+else ifeq ($(MODEL),beta)
+MODEL_NAME = LC-Beta
+BOARD_NAME = LilyGO T3-S3
+BOARD_ID = lilygo_t3
+SDKCONFIG = sdkconfig.defaults;sdkconfig.lilygo_t3;sdkconfig.model_beta
 else ifeq ($(MODEL),gamma)
 MODEL_NAME = LC-Gamma
 BOARD_NAME = LilyGO T5 Pro
+BOARD_ID = lilygo_t5
 SDKCONFIG = sdkconfig.defaults;sdkconfig.lilygo_t5;sdkconfig.model_gamma
 else
-$(error Invalid MODEL=$(MODEL). Use: alpha, alpha+, or gamma)
+$(error Invalid MODEL=$(MODEL). Use: alpha, alpha+, beta, or gamma)
 endif
 
 build: check-idf
 	@echo "🔨 Building $(MODEL_NAME) ($(BOARD_NAME))..."
 	@rm -f sdkconfig
-	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" build
+	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" -D BOARD_ID="$(BOARD_ID)" build
 	@echo "✅ $(MODEL_NAME) build complete"
 
 clean:

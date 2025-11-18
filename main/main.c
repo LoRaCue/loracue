@@ -26,7 +26,8 @@
 #include "lora_protocol.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "ui_interface.h"
+#include "ui_lvgl.h"
+#include "screens.h"
 #include "system_events.h"
 #include "ota_engine.h"
 #include "pc_mode_manager.h"
@@ -335,11 +336,16 @@ void app_main(void)
 
     // Initialize UI (self-contained, creates own task)
     ESP_LOGI(TAG, "Initializing UI...");
-    ret = ui_init();
+    ret = ui_lvgl_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "UI initialization failed: %s", esp_err_to_name(ret));
         return;
     }
+    
+    // Create and load boot screen
+    lv_obj_t *screen = lv_obj_create(NULL);
+    screen_boot_create(screen);
+    lv_screen_load(screen);
 
     // Initialize button manager
     ESP_LOGI(TAG, "Initializing button manager...");

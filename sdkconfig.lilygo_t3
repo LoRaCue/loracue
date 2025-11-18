@@ -1,0 +1,4 @@
+# LilyGO T3-S3 Board Configuration
+# E-Paper Display: DEPG0213BN (250x122, SSD1681)
+# LoRa: SX1262
+# Buttons: 2x GPIO (43, 44)
