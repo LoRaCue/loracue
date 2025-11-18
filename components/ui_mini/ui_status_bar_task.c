@@ -27,8 +27,8 @@ static void ui_status_bar_task(void *pvParameters)
 
         ui_mini_screen_t current = ui_screen_controller_get_current();
 
-        // Only update MAIN screen (PC_MODE has its own 1s update task)
-        if (current == OLED_SCREEN_MAIN) {
+        // Update MAIN screen or BLUETOOTH screen (for pairing display)
+        if (current == OLED_SCREEN_MAIN || current == OLED_SCREEN_BLUETOOTH) {
             // Try to acquire draw lock
             extern bool ui_mini_try_lock_draw(void);
             extern void ui_mini_unlock_draw(void);

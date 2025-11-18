@@ -154,6 +154,7 @@ static void handle_get_general(void)
     cJSON_AddStringToObject(response, "mode", device_mode_to_string(config.device_mode));
     cJSON_AddNumberToObject(response, "brightness", config.display_brightness);
     cJSON_AddBoolToObject(response, "bluetooth", config.bluetooth_enabled);
+    cJSON_AddBoolToObject(response, "bluetooth_pairing", config.bluetooth_pairing_enabled);
     cJSON_AddNumberToObject(response, "slot_id", config.slot_id);
 
     send_jsonrpc_result(response);
@@ -200,6 +201,11 @@ static void handle_set_general(cJSON *config_json)
     if (bluetooth && cJSON_IsBool(bluetooth)) {
         config.bluetooth_enabled = cJSON_IsTrue(bluetooth);
         bluetooth_config_set_enabled(config.bluetooth_enabled);
+    }
+
+    cJSON *bluetooth_pairing = cJSON_GetObjectItem(config_json, "bluetooth_pairing");
+    if (bluetooth_pairing && cJSON_IsBool(bluetooth_pairing)) {
+        config.bluetooth_pairing_enabled = cJSON_IsTrue(bluetooth_pairing);
     }
 
     cJSON *slot_id = cJSON_GetObjectItem(config_json, "slot_id");

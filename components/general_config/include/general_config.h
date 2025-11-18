@@ -38,6 +38,7 @@ typedef struct {
     device_mode_t device_mode;  ///< Current device mode (PRESENTER/PC) // cppcheck-suppress unusedStructMember
     uint8_t display_brightness; ///< Display brightness (0-255) // cppcheck-suppress unusedStructMember
     bool bluetooth_enabled;     ///< Bluetooth configuration mode enabled // cppcheck-suppress unusedStructMember
+    bool bluetooth_pairing_enabled; ///< Bluetooth pairing mode enabled // cppcheck-suppress unusedStructMember
     uint8_t slot_id;            ///< LoRa slot ID (1-16, default=1) // cppcheck-suppress unusedStructMember
 } general_config_t;
 

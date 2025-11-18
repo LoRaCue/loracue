@@ -24,6 +24,7 @@ static const general_config_t default_config = {
     .device_mode        = DEVICE_MODE_PRESENTER,
     .display_brightness = 128,
     .bluetooth_enabled  = true,
+    .bluetooth_pairing_enabled = false,
     .slot_id            = 1,
 };
 
