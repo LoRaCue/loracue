@@ -3,7 +3,7 @@
 #include "button_manager.h"
 #include "ui_mini.h"
 #include "ui_screen_controller.h"
-#include "bluetooth_config.h"
+#include "ble.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -87,7 +87,7 @@ static void mode_changed_event_handler(void *arg, esp_event_base_t base, int32_t
     ui_state.current_mode = evt->mode;
     
     // Update BLE state
-    ui_state.ble_enabled = bluetooth_config_is_enabled();
+    ui_state.ble_enabled = ble_is_enabled();
     
     // Update screen based on mode
     ui_mini_set_screen(OLED_SCREEN_MAIN);

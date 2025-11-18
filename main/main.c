@@ -7,7 +7,7 @@
  * PURPOSE: Main application entry point and system initialization
  */
 
-#include "bluetooth_config.h"
+#include "ble.h"
 #include "bsp.h"
 #include "button_manager.h"
 #include "common_types.h"
@@ -443,7 +443,7 @@ void app_main(void)
     // Initialize Bluetooth configuration based on settings
     ESP_LOGI(TAG, "Initializing Bluetooth configuration...");
     if (config.bluetooth_enabled) {
-        ret = bluetooth_config_init();
+        ret = ble_init();
         if (ret != ESP_OK) {
             ESP_LOGW(TAG, "Bluetooth initialization failed: %s (continuing without BLE)", esp_err_to_name(ret));
             // Non-fatal - continue without Bluetooth

@@ -1,5 +1,5 @@
 #include "presenter_main_screen.h"
-#include "bluetooth_config.h"
+#include "ble.h"
 #include "esp_log.h"
 #include "icons/ui_status_icons.h"
 #include "u8g2.h"
@@ -45,7 +45,7 @@ void presenter_main_screen_draw(const ui_status_t *status)
 
     // Draw Bluetooth pairing overlay if active
     uint32_t passkey;
-    if (bluetooth_config_get_passkey(&passkey)) {
+    if (ble_get_passkey(&passkey)) {
         ui_pairing_overlay_draw(passkey);
     }
 

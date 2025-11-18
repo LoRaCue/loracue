@@ -1,5 +1,5 @@
 #include "bluetooth_screen.h"
-#include "bluetooth_config.h"
+#include "ble.h"
 #include "general_config.h"
 #include "ui_mini.h"
 #include "u8g2.h"
@@ -125,7 +125,7 @@ static void draw_pairing_screen(void)
     ui_draw_header("PAIRING");
 
     uint32_t passkey = 0;
-    bool pairing_active = bluetooth_config_get_passkey(&passkey);
+    bool pairing_active = ble_get_passkey(&passkey);
 
     u8g2_SetFont(&u8g2, u8g2_font_helvR08_tr);
     
@@ -207,7 +207,7 @@ void bluetooth_screen_handle_input(int button)
         } else if (button == 2) { // SELECT
             config.bluetooth_enabled = (selected_item == 0);
             general_config_set(&config);
-            bluetooth_config_set_enabled(config.bluetooth_enabled);
+            ble_set_enabled(config.bluetooth_enabled);
             
             // Return to main menu
             menu_state = BT_MENU_MAIN;

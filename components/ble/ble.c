@@ -16,7 +16,7 @@
  */
 
 #include "sdkconfig.h"
-#include "bluetooth_config.h"
+#include "ble.h"
 #include "ble_ota_handler.h"
 #include "ble_ota_integration.h"
 #include "bsp.h"
@@ -45,7 +45,7 @@
 // Forward declaration - defined in NimBLE port
 void ble_store_config_init(void);
 
-static const char *TAG = "ble_config";
+static const char *TAG = "ble";
 
 //==============================================================================
 // NORDIC UART SERVICE (NUS) UUIDs
@@ -111,7 +111,7 @@ static QueueHandle_t s_cmd_queue = NULL;
 static TaskHandle_t s_cmd_task_handle = NULL;
 
 // Forward declarations
-static void bluetooth_config_send_response(const char *response);
+static void ble_send_response(const char *response);
 static void ble_advertise(void);
 
 //==============================================================================
@@ -146,7 +146,7 @@ static void ble_cmd_task(void *arg)
     while (1) {
         if (xQueueReceive(s_cmd_queue, &cmd, portMAX_DELAY) == pdTRUE) {
             ESP_LOGI(TAG, "Processing command: %s", cmd.data);
-            commands_execute(cmd.data, bluetooth_config_send_response);
+            commands_execute(cmd.data, ble_send_response);
         }
     }
 }
@@ -569,7 +569,7 @@ static void on_reset(int reason)
 // PUBLIC API
 //==============================================================================
 
-esp_err_t bluetooth_config_init(void)
+esp_err_t ble_init(void)
 {
     if (s_ble_initialized) {
         ESP_LOGW(TAG, "Already initialized");
@@ -684,7 +684,7 @@ esp_err_t bluetooth_config_init(void)
     return ESP_OK;
 }
 
-esp_err_t bluetooth_config_deinit(void)
+esp_err_t ble_deinit(void)
 {
     if (!s_ble_initialized) {
         return ESP_OK;
@@ -717,12 +717,12 @@ esp_err_t bluetooth_config_deinit(void)
     return ESP_OK;
 }
 
-bool bluetooth_config_is_enabled(void)
+bool ble_is_enabled(void)
 {
     return s_ble_enabled;
 }
 
-bool bluetooth_config_is_connected(void)
+bool ble_is_connected(void)
 {
     bool connected = false;
     if (conn_state_lock()) {
@@ -732,7 +732,7 @@ bool bluetooth_config_is_connected(void)
     return connected;
 }
 
-void bluetooth_config_send_response(const char *response)
+void ble_send_response(const char *response)
 {
     if (!response || strlen(response) == 0) {
         return;
@@ -781,20 +781,20 @@ void bluetooth_config_send_response(const char *response)
     }
 }
 
-esp_err_t bluetooth_config_set_enabled(bool enabled)
+esp_err_t ble_set_enabled(bool enabled)
 {
     if (enabled == s_ble_enabled) {
         return ESP_OK;
     }
     
     if (enabled) {
-        return bluetooth_config_init();
+        return ble_init();
     } else {
-        return bluetooth_config_deinit();
+        return ble_deinit();
     }
 }
 
-bool bluetooth_config_get_passkey(uint32_t *passkey)
+bool ble_get_passkey(uint32_t *passkey)
 {
     bool active = false;
     

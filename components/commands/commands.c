@@ -1,5 +1,5 @@
 #include "commands.h"
-#include "bluetooth_config.h"
+#include "ble.h"
 #include "bsp.h"
 #include "cJSON.h"
 #include "device_registry.h"
@@ -200,7 +200,7 @@ static void handle_set_general(cJSON *config_json)
     cJSON *bluetooth = cJSON_GetObjectItem(config_json, "bluetooth");
     if (bluetooth && cJSON_IsBool(bluetooth)) {
         config.bluetooth_enabled = cJSON_IsTrue(bluetooth);
-        bluetooth_config_set_enabled(config.bluetooth_enabled);
+        ble_set_enabled(config.bluetooth_enabled);
     }
 
     cJSON *bluetooth_pairing = cJSON_GetObjectItem(config_json, "bluetooth_pairing");

@@ -1,5 +1,5 @@
 #include "pc_mode_screen.h"
-#include "bluetooth_config.h"
+#include "ble.h"
 #include "bsp.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -199,7 +199,7 @@ void pc_mode_screen_draw(void)
 
     // Draw Bluetooth pairing overlay if active
     uint32_t passkey;
-    if (bluetooth_config_get_passkey(&passkey)) {
+    if (ble_get_passkey(&passkey)) {
         ui_pairing_overlay_draw(passkey);
     }
 

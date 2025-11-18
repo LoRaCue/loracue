@@ -1,5 +1,5 @@
 #include "ui_data_provider.h"
-#include "bluetooth_config.h"
+#include "ble.h"
 #include "bsp.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -26,7 +26,7 @@ esp_err_t ui_data_provider_init(void)
 
     // Initialize with safe defaults
     cached_status.usb_connected       = false;
-    cached_status.bluetooth_enabled   = bluetooth_config_is_enabled();
+    cached_status.bluetooth_enabled   = ble_is_enabled();
     cached_status.bluetooth_connected = false;
     cached_status.lora_connected      = false;
     cached_status.signal_strength     = SIGNAL_NONE;
@@ -73,8 +73,8 @@ esp_err_t ui_data_provider_update(void)
     }
 
     // Update Bluetooth status
-    cached_status.bluetooth_enabled   = bluetooth_config_is_enabled();
-    cached_status.bluetooth_connected = bluetooth_config_is_connected();
+    cached_status.bluetooth_enabled   = ble_is_enabled();
+    cached_status.bluetooth_connected = ble_is_connected();
     
     ESP_LOGI(TAG, "BLE status: enabled=%d, connected=%d", 
              cached_status.bluetooth_enabled, cached_status.bluetooth_connected);
@@ -166,8 +166,8 @@ esp_err_t ui_data_provider_reload_config(void)
     cached_status.device_name[sizeof(cached_status.device_name) - 1] = '\0';
     
     // Update bluetooth status immediately
-    cached_status.bluetooth_enabled = bluetooth_config_is_enabled();
-    cached_status.bluetooth_connected = bluetooth_config_is_connected();
+    cached_status.bluetooth_enabled = ble_is_enabled();
+    cached_status.bluetooth_connected = ble_is_connected();
 
     ESP_LOGI(TAG, "Config reloaded: device_name=%s, bluetooth=%s", 
              cached_status.device_name, 

@@ -1,5 +1,5 @@
 #include "ui_status_bar_task.h"
-#include "bluetooth_config.h"
+#include "ble.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -48,7 +48,7 @@ static void ui_status_bar_task(void *pvParameters)
 
         // Also use fast updates during Bluetooth pairing
         uint32_t dummy_passkey;
-        if (bluetooth_config_get_passkey(&dummy_passkey)) {
+        if (ble_get_passkey(&dummy_passkey)) {
             needs_fast_update = true;
         }
 
