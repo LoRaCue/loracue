@@ -26,6 +26,14 @@ typedef enum {
 } bsp_button_t;
 
 /**
+ * @brief Display type enumeration
+ */
+typedef enum {
+    BSP_DISPLAY_TYPE_OLED_SSD1306,  ///< OLED display (SSD1306)
+    BSP_DISPLAY_TYPE_EPAPER_SSD1681 ///< E-Paper display (SSD1681)
+} bsp_display_type_t;
+
+/**
  * @brief Initialize the board support package
  *
  * Initializes all hardware peripherals including GPIO, ADC, and power management.
@@ -325,6 +333,55 @@ esp_err_t bsp_epaper_power_on(void);
  * @return ESP_OK on success
  */
 esp_err_t bsp_epaper_power_off(void);
+
+/**
+ * @brief Get display type for this board
+ *
+ * @return Display type enumeration
+ */
+bsp_display_type_t bsp_get_display_type(void);
+
+/**
+ * @brief Get I2C bus handle for display
+ *
+ * @return I2C bus handle or NULL if not available
+ */
+i2c_master_bus_handle_t bsp_get_i2c_bus(void);
+
+/**
+ * @brief Get SPI device handle for display
+ *
+ * @return SPI device handle or NULL if not available
+ */
+void *bsp_get_spi_device(void);
+
+/**
+ * @brief Get E-Paper DC pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_dc_pin(void);
+
+/**
+ * @brief Get E-Paper CS pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_cs_pin(void);
+
+/**
+ * @brief Get E-Paper RST pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_rst_pin(void);
+
+/**
+ * @brief Get E-Paper BUSY pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_busy_pin(void);
 
 #ifdef __cplusplus
 }

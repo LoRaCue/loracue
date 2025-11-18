@@ -1,0 +1,22 @@
+idf_component_register(
+    SRCS 
+        "ui_lvgl.c"
+        "lv_port_disp.c"
+        "lv_port_indev.c"
+        "screens/screen_boot.c"
+        "screens/screen_main.c"
+        "screens/screen_menu.c"
+        "screens/screen_settings.c"
+        "screens/screen_ota.c"
+        "screens/screen_pairing.c"
+        "widgets/widget_statusbar.c"
+        "widgets/widget_battery.c"
+        "widgets/widget_rssi.c"
+    INCLUDE_DIRS 
+        "include"
+    REQUIRES 
+        bsp
+        display
+        lvgl
+        esp_timer
+)

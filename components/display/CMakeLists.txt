@@ -1,0 +1,13 @@
+idf_component_register(
+    SRCS 
+        "display.c"
+        "display_ssd1306.c"
+        "display_ssd1681.c"
+    INCLUDE_DIRS 
+        "include"
+    REQUIRES 
+        bsp
+        esp_lcd
+        lvgl
+        espressif__esp_lcd_ssd1681
+)

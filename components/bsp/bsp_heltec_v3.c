@@ -588,3 +588,38 @@ esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin)
             return ESP_ERR_INVALID_ARG;
     }
 }
+
+bsp_display_type_t bsp_get_display_type(void)
+{
+    return BSP_DISPLAY_TYPE_OLED_SSD1306;
+}
+
+i2c_master_bus_handle_t bsp_get_i2c_bus(void)
+{
+    return bsp_i2c_get_bus();
+}
+
+void *bsp_get_spi_device(void)
+{
+    return NULL; // Heltec V3 uses I2C for display
+}
+
+int bsp_get_epaper_dc_pin(void)
+{
+    return -1; // Not applicable for OLED
+}
+
+int bsp_get_epaper_cs_pin(void)
+{
+    return -1; // Not applicable for OLED
+}
+
+int bsp_get_epaper_rst_pin(void)
+{
+    return -1; // Not applicable for OLED
+}
+
+int bsp_get_epaper_busy_pin(void)
+{
+    return -1; // Not applicable for OLED
+}
