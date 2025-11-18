@@ -40,8 +40,11 @@ lv_display_t *lv_port_disp_init(void) {
     // Store display config as user data
     lv_display_set_user_data(disp, &display_config);
 
-    // Configure for monochrome displays
+    // Configure for monochrome displays (white on black)
     lv_display_set_color_format(disp, LV_COLOR_FORMAT_I1);
+    
+    // Set default background to black
+    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
 
     ESP_LOGI(TAG, "LVGL display initialized: %dx%d", display_config.width, display_config.height);
     return disp;

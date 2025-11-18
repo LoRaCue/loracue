@@ -57,6 +57,7 @@ esp_err_t display_ssd1306_init(display_config_t *config) {
     ESP_ERROR_CHECK(esp_lcd_new_panel_ssd1306(io_handle, &panel_config, &config->panel));
     ESP_ERROR_CHECK(esp_lcd_panel_reset(config->panel));
     ESP_ERROR_CHECK(esp_lcd_panel_init(config->panel));
+    ESP_ERROR_CHECK(esp_lcd_panel_invert_color(config->panel, false));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(config->panel, true));
 
     config->width = OLED_WIDTH;
