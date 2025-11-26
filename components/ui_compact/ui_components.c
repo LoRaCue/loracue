@@ -71,6 +71,7 @@ void ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text,
 // 3-item scrollable menu
 ui_menu_t *ui_menu_create(lv_obj_t *parent, const char **item_names, int count) {
     ui_menu_t *menu = malloc(sizeof(ui_menu_t));
+    if (!menu) return NULL;
     menu->screen = parent;
     menu->total_items = count;
     menu->selected_index = 0;
@@ -199,6 +200,7 @@ void ui_menu_set_checkmark(ui_menu_t *menu, int index, bool checked) {
 // Edit mode screen
 ui_edit_screen_t *ui_edit_screen_create(const char *title) {
     ui_edit_screen_t *screen = malloc(sizeof(ui_edit_screen_t));
+    if (!screen) return NULL;
     screen->screen = NULL;  // Parent will be provided
     screen->edit_mode = false;
 
@@ -280,6 +282,7 @@ void ui_edit_screen_render(ui_edit_screen_t *screen, lv_obj_t *parent, const cha
 // Info screen
 ui_info_screen_t *ui_info_screen_create(const char *title) {
     ui_info_screen_t *screen = malloc(sizeof(ui_info_screen_t));
+    if (!screen) return NULL;
     screen->screen = NULL;
     return screen;
 }
@@ -310,6 +313,7 @@ void ui_info_screen_set_line(ui_info_screen_t *screen, int line, const char *tex
 // Numeric input screen
 ui_numeric_input_t *ui_numeric_input_create(float initial, float min, float max, float step) {
     ui_numeric_input_t *input = malloc(sizeof(ui_numeric_input_t));
+    if (!input) return NULL;
     input->screen = NULL;
     input->value = initial;
     input->min = min;
@@ -379,6 +383,7 @@ void ui_numeric_input_decrement(ui_numeric_input_t *input) {
 // Dropdown selection screen
 ui_dropdown_t *ui_dropdown_create(int initial_index, int option_count) {
     ui_dropdown_t *dropdown = malloc(sizeof(ui_dropdown_t));
+    if (!dropdown) return NULL;
     dropdown->screen = NULL;
     dropdown->selected_index = initial_index;
     dropdown->option_count = option_count;
@@ -437,6 +442,7 @@ void ui_dropdown_next(ui_dropdown_t *dropdown) {
 // Radio select screen
 ui_radio_select_t *ui_radio_select_create(int item_count, ui_radio_mode_t mode) {
     ui_radio_select_t *radio = malloc(sizeof(ui_radio_select_t));
+    if (!radio) return NULL;
     radio->screen = NULL;
     radio->selected_index = 0;
     radio->item_count = item_count;
@@ -596,6 +602,7 @@ bool ui_radio_select_is_selected(ui_radio_select_t *radio, int index) {
 // Confirmation dialog screen
 ui_confirmation_t *ui_confirmation_create(void) {
     ui_confirmation_t *confirm = malloc(sizeof(ui_confirmation_t));
+    if (!confirm) return NULL;
     confirm->screen = NULL;
     confirm->hold_start_time = 0;
     confirm->holding = false;

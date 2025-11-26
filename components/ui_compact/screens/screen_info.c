@@ -42,7 +42,7 @@ void screen_device_info_create(lv_obj_t *parent) {
     snprintf(line1, sizeof(line1), "Mode: %s", mode_str);
     
     uint32_t freq_hz = lora_get_frequency();
-    snprintf(line2, sizeof(line2), "LoRa: %lu.%lu MHz", freq_hz / 1000000, (freq_hz % 1000000) / 100000);
+    snprintf(line2, sizeof(line2), "LoRa: %u.%u MHz", (unsigned int)(freq_hz / 1000000), (unsigned int)((freq_hz % 1000000) / 100000));
     
     const char *lines[] = {line0, line1, line2};
     ui_info_screen_render(info_screen, parent, "DEVICE INFO", lines);
