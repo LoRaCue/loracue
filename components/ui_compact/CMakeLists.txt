@@ -1,0 +1,39 @@
+file(GLOB GENERATED_SOURCES "generated/*.c")
+
+idf_component_register(
+    SRCS 
+        "ui_compact.c"
+        "ui_compact_statusbar.c"
+        "ui_components.c"
+        "screens/screen_boot.c"
+        "screens/screen_main.c"
+        "screens/screen_pc_mode.c"
+        "screens/screen_menu.c"
+        "screens/screen_info.c"
+        "screens/screen_factory_reset.c"
+        "screens/screen_device_mode.c"
+        "screens/screen_slot.c"
+        "screens/screen_brightness.c"
+        "screens/screen_pairing.c"
+        "screens/screen_device_registry.c"
+        "screens/screen_config_mode.c"
+        "screens/screen_bluetooth.c"
+        "screens/screen_lora_submenu.c"
+        "screens/screen_lora_presets.c"
+        "screens/screen_lora_frequency.c"
+        "screens/screen_lora_sf.c"
+        "screens/screen_lora_bw.c"
+        "screens/screen_stubs.c"
+        ${GENERATED_SOURCES}
+    INCLUDE_DIRS 
+        "include"
+        "generated"
+    REQUIRES 
+        ui_lvgl
+        button_manager
+        general_config
+        power_mgmt
+        ble
+        bsp
+        lora
+)

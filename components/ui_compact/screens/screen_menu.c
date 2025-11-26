@@ -1,0 +1,56 @@
+#include "lvgl.h"
+#include "ui_components.h"
+#include "screens.h"
+
+static ui_menu_t *menu = NULL;
+
+const char *MAIN_MENU_ITEMS[MAIN_MENU_COUNT] = {
+    [MAIN_MENU_DEVICE_MODE] = "Device Mode",
+    [MAIN_MENU_SLOT] = "Slot",
+    [MAIN_MENU_LORA] = "LoRa Settings",
+    [MAIN_MENU_PAIRING] = "Device Pairing",
+    [MAIN_MENU_REGISTRY] = "Device Registry",
+    [MAIN_MENU_BRIGHTNESS] = "Display Brightness",
+    [MAIN_MENU_BATTERY] = "Battery Status",
+    [MAIN_MENU_BLUETOOTH] = "Bluetooth",
+    [MAIN_MENU_CONFIG] = "Configuration Mode",
+    [MAIN_MENU_DEVICE_INFO] = "Device Info",
+    [MAIN_MENU_SYSTEM_INFO] = "System Info",
+    [MAIN_MENU_FACTORY_RESET] = "Factory Reset"
+};
+
+void screen_menu_create(lv_obj_t *parent) {
+    lv_obj_set_style_bg_color(parent, lv_color_black(), 0);
+    
+    // Preserve selected index if menu already exists
+    int selected = menu ? menu->selected_index : 0;
+    
+    menu = ui_menu_create(parent, MAIN_MENU_ITEMS, MAIN_MENU_COUNT);
+    menu->selected_index = selected;
+    ui_menu_update(menu, MAIN_MENU_ITEMS);
+}
+
+void screen_menu_navigate_down(void) {
+    if (!menu) return;
+    menu->selected_index = (menu->selected_index + 1) % MAIN_MENU_COUNT;
+    ui_menu_update(menu, MAIN_MENU_ITEMS);
+}
+
+int screen_menu_get_selected(void) {
+    return menu ? menu->selected_index : 0;
+}
+
+void screen_menu_reset(void) {
+    if (menu) {
+        menu->selected_index = 0;
+        free(menu);
+        menu = NULL;
+    }
+}
+
+const char* screen_menu_get_selected_name(void) {
+    if (menu && menu->selected_index >= 0 && menu->selected_index < MAIN_MENU_COUNT) {
+        return MAIN_MENU_ITEMS[menu->selected_index];
+    }
+    return NULL;
+}
