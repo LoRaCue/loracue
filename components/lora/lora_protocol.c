@@ -145,7 +145,11 @@ static esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_
         memcpy(&plaintext[4], payload, payload_length);
     }
 
-    mbedtls_aes_crypt_ecb(&aes_ctx, MBEDTLS_AES_ENCRYPT, plaintext, packet.encrypted_data);
+    int ret = mbedtls_aes_crypt_ecb(&aes_ctx, MBEDTLS_AES_ENCRYPT, plaintext, packet.encrypted_data);
+    if (ret != 0) {
+        ESP_LOGE(TAG, "AES encryption failed: -0x%04X", -ret);
+        return ESP_FAIL;
+    }
 
     uint8_t mac_data[18];
     mac_data[0] = (packet.device_id >> 8) & 0xFF;
@@ -338,9 +342,18 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
     uint8_t plaintext[16];
     mbedtls_aes_context sender_aes_ctx;
     mbedtls_aes_init(&sender_aes_ctx);
-    mbedtls_aes_setkey_dec(&sender_aes_ctx, sender_device.aes_key, 256);
-    mbedtls_aes_crypt_ecb(&sender_aes_ctx, MBEDTLS_AES_DECRYPT, packet->encrypted_data, plaintext);
+    int aes_ret = mbedtls_aes_setkey_dec(&sender_aes_ctx, sender_device.aes_key, 256);
+    if (aes_ret != 0) {
+        ESP_LOGE(TAG, "AES setkey_dec failed: -0x%04X", -aes_ret);
+        mbedtls_aes_free(&sender_aes_ctx);
+        return ESP_FAIL;
+    }
+    aes_ret = mbedtls_aes_crypt_ecb(&sender_aes_ctx, MBEDTLS_AES_DECRYPT, packet->encrypted_data, plaintext);
     mbedtls_aes_free(&sender_aes_ctx);
+    if (aes_ret != 0) {
+        ESP_LOGE(TAG, "AES decryption failed: -0x%04X", -aes_ret);
+        return ESP_FAIL;
+    }
 
     // Parse decrypted data
     packet_data->device_id      = packet->device_id;
