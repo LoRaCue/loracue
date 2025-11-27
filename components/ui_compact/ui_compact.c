@@ -10,6 +10,7 @@
 #include "bsp.h"
 #include "lora_protocol.h"
 #include "system_events.h"
+#include "presenter_mode_manager.h"
 #include "tusb.h"
 #include "esp_log.h"
 
@@ -189,7 +190,12 @@ static void button_event_handler(button_event_type_t event, void *arg) {
         general_config_get(&config);
         
         if (config.device_mode == DEVICE_MODE_PRESENTER) {
-            if (event == BUTTON_EVENT_LONG) {
+            if (event == BUTTON_EVENT_SHORT || event == BUTTON_EVENT_DOUBLE) {
+                // Forward to presenter mode manager for HID commands
+                ui_lvgl_unlock();
+                presenter_mode_manager_handle_button(event);
+                return;
+            } else if (event == BUTTON_EVENT_LONG) {
                 // Long press -> go to menu
                 ESP_LOGI(TAG, "Switching to menu screen");
                 lv_obj_t *menu_screen = lv_obj_create(NULL);

@@ -36,4 +36,5 @@ idf_component_register(
         ble
         bsp
         lora
+        presenter_mode_manager
 )
