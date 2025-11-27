@@ -114,3 +114,13 @@ esp_err_t display_ssd1681_set_refresh_mode(display_config_t *config, display_ref
     
     return ESP_OK;
 }
+
+esp_err_t display_ssd1681_sleep(display_config_t *config) {
+    // E-Paper doesn't need sleep mode - it retains image without power
+    return ESP_OK;
+}
+
+esp_err_t display_ssd1681_wake(display_config_t *config) {
+    // E-Paper doesn't need wake - always ready
+    return ESP_OK;
+}

@@ -181,7 +181,7 @@ static void handle_menu_selection(int selected_index, const char *item_name) {
 }
 
 static void button_event_handler(button_event_type_t event, void *arg) {
-    ESP_LOGI(TAG, "Button event received: %d on screen %d", event, current_screen_type);
+    ESP_LOGD(TAG, "Button event received: %d on screen %d", event, current_screen_type);
     
     ui_lvgl_lock();
     
@@ -224,7 +224,7 @@ static void button_event_handler(button_event_type_t event, void *arg) {
             // Long press on menu -> select item
             int selected = screen_menu_get_selected();
             const char *item_name = screen_menu_get_selected_name();
-            ESP_LOGI(TAG, "Menu: selected item %d - %s", selected, item_name);
+            ESP_LOGD(TAG, "Menu: selected item %d - %s", selected, item_name);
             handle_menu_selection(selected, item_name);
         } else if (event == BUTTON_EVENT_DOUBLE) {
             // Double press on menu -> go back to main
@@ -285,17 +285,17 @@ static void button_event_handler(button_event_type_t event, void *arg) {
                 case LORA_MENU_CR:
                     screen_lora_cr_init();
                     screen_lora_cr_create(screen);
-                    current_screen_type = UI_SCREEN_LORA_BW; // Reuse BW type for now
+                    current_screen_type = UI_SCREEN_LORA_CR;
                     break;
                 case LORA_MENU_TXPOWER:
                     screen_lora_txpower_init();
                     screen_lora_txpower_create(screen);
-                    current_screen_type = UI_SCREEN_LORA_BW; // Reuse BW type for now
+                    current_screen_type = UI_SCREEN_LORA_TXPOWER;
                     break;
                 case LORA_MENU_BAND:
                     screen_lora_band_init();
                     screen_lora_band_create(screen);
-                    current_screen_type = UI_SCREEN_LORA_BW; // Reuse BW type for now
+                    current_screen_type = UI_SCREEN_LORA_BAND;
                     break;
                 default:
                     // All items now implemented
@@ -487,7 +487,10 @@ static void button_event_handler(button_event_type_t event, void *arg) {
         }
     } else if (current_screen_type == UI_SCREEN_LORA_FREQUENCY ||
                current_screen_type == UI_SCREEN_LORA_SF ||
-               current_screen_type == UI_SCREEN_LORA_BW) {
+               current_screen_type == UI_SCREEN_LORA_BW ||
+               current_screen_type == UI_SCREEN_LORA_CR ||
+               current_screen_type == UI_SCREEN_LORA_TXPOWER ||
+               current_screen_type == UI_SCREEN_LORA_BAND) {
         bool is_edit = false;
         
         if (current_screen_type == UI_SCREEN_LORA_FREQUENCY) {
@@ -534,6 +537,13 @@ static void button_event_handler(button_event_type_t event, void *arg) {
                 lv_screen_load(screen);
                 if (current_screen) lv_obj_del(current_screen);
                 current_screen = screen;
+            } else if (event == BUTTON_EVENT_DOUBLE && is_edit) {
+                screen_lora_sf_navigate_up();
+                lv_obj_t *screen = lv_obj_create(NULL);
+                screen_lora_sf_create(screen);
+                lv_screen_load(screen);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = screen;
             } else if (event == BUTTON_EVENT_LONG) {
                 screen_lora_sf_select();
                 if (!screen_lora_sf_is_edit_mode()) {
@@ -560,6 +570,13 @@ static void button_event_handler(button_event_type_t event, void *arg) {
                 lv_screen_load(screen);
                 if (current_screen) lv_obj_del(current_screen);
                 current_screen = screen;
+            } else if (event == BUTTON_EVENT_DOUBLE && is_edit) {
+                screen_lora_bw_navigate_up();
+                lv_obj_t *screen = lv_obj_create(NULL);
+                screen_lora_bw_create(screen);
+                lv_screen_load(screen);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = screen;
             } else if (event == BUTTON_EVENT_LONG) {
                 screen_lora_bw_select();
                 if (!screen_lora_bw_is_edit_mode()) {
@@ -576,6 +593,100 @@ static void button_event_handler(button_event_type_t event, void *arg) {
                     if (current_screen) lv_obj_del(current_screen);
                     current_screen = screen;
                 }
+            }
+        } else if (current_screen_type == UI_SCREEN_LORA_CR) {
+            is_edit = screen_lora_cr_is_edit_mode();
+            if (event == BUTTON_EVENT_SHORT && is_edit) {
+                screen_lora_cr_navigate_down();
+                lv_obj_t *screen = lv_obj_create(NULL);
+                screen_lora_cr_create(screen);
+                lv_screen_load(screen);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = screen;
+            } else if (event == BUTTON_EVENT_DOUBLE && is_edit) {
+                screen_lora_cr_navigate_up();
+                lv_obj_t *screen = lv_obj_create(NULL);
+                screen_lora_cr_create(screen);
+                lv_screen_load(screen);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = screen;
+            } else if (event == BUTTON_EVENT_LONG) {
+                screen_lora_cr_select();
+                if (!screen_lora_cr_is_edit_mode()) {
+                    // Saved - go back to submenu
+                    lv_obj_t *submenu = lv_obj_create(NULL);
+                    screen_lora_submenu_create(submenu);
+                    lv_screen_load(submenu);
+                    if (current_screen) lv_obj_del(current_screen);
+                    current_screen = submenu;
+                    current_screen_type = UI_SCREEN_LORA_SUBMENU;
+                } else {
+                    // Entered edit mode - redraw to show new hints
+                    lv_obj_t *screen = lv_obj_create(NULL);
+                    screen_lora_cr_create(screen);
+                    lv_screen_load(screen);
+                    if (current_screen) lv_obj_del(current_screen);
+                    current_screen = screen;
+                }
+            }
+        } else if (current_screen_type == UI_SCREEN_LORA_TXPOWER) {
+            is_edit = screen_lora_txpower_is_edit_mode();
+            if (event == BUTTON_EVENT_SHORT && is_edit) {
+                screen_lora_txpower_navigate_down();
+                lv_obj_t *screen = lv_obj_create(NULL);
+                screen_lora_txpower_create(screen);
+                lv_screen_load(screen);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = screen;
+            } else if (event == BUTTON_EVENT_DOUBLE && is_edit) {
+                screen_lora_txpower_navigate_up();
+                lv_obj_t *screen = lv_obj_create(NULL);
+                screen_lora_txpower_create(screen);
+                lv_screen_load(screen);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = screen;
+            } else if (event == BUTTON_EVENT_LONG) {
+                screen_lora_txpower_select();
+                if (!screen_lora_txpower_is_edit_mode()) {
+                    lv_obj_t *submenu = lv_obj_create(NULL);
+                    screen_lora_submenu_create(submenu);
+                    lv_screen_load(submenu);
+                    if (current_screen) lv_obj_del(current_screen);
+                    current_screen = submenu;
+                    current_screen_type = UI_SCREEN_LORA_SUBMENU;
+                } else {
+                    lv_obj_t *screen = lv_obj_create(NULL);
+                    screen_lora_txpower_create(screen);
+                    lv_screen_load(screen);
+                    if (current_screen) lv_obj_del(current_screen);
+                    current_screen = screen;
+                }
+            }
+        } else if (current_screen_type == UI_SCREEN_LORA_BAND) {
+            // Band uses radio select - no edit mode, always navigable
+            if (event == BUTTON_EVENT_SHORT) {
+                screen_lora_band_navigate_down();
+                lv_obj_t *screen = lv_obj_create(NULL);
+                screen_lora_band_create(screen);
+                lv_screen_load(screen);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = screen;
+            } else if (event == BUTTON_EVENT_LONG) {
+                screen_lora_band_select();
+                lv_obj_t *submenu = lv_obj_create(NULL);
+                screen_lora_submenu_create(submenu);
+                lv_screen_load(submenu);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = submenu;
+                current_screen_type = UI_SCREEN_LORA_SUBMENU;
+            } else if (event == BUTTON_EVENT_DOUBLE) {
+                // Back to submenu
+                lv_obj_t *submenu = lv_obj_create(NULL);
+                screen_lora_submenu_create(submenu);
+                lv_screen_load(submenu);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = submenu;
+                current_screen_type = UI_SCREEN_LORA_SUBMENU;
             }
         }
         

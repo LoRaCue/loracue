@@ -79,3 +79,39 @@ esp_err_t display_deinit(display_config_t *config) {
 
     return ESP_OK;
 }
+
+esp_err_t display_sleep(display_config_t *config) {
+    if (!config) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    extern esp_err_t display_ssd1306_sleep(display_config_t *config);
+    extern esp_err_t display_ssd1681_sleep(display_config_t *config);
+
+    switch (config->type) {
+        case DISPLAY_TYPE_OLED_SSD1306:
+            return display_ssd1306_sleep(config);
+        case DISPLAY_TYPE_EPAPER_SSD1681:
+            return display_ssd1681_sleep(config);
+        default:
+            return ESP_ERR_NOT_SUPPORTED;
+    }
+}
+
+esp_err_t display_wake(display_config_t *config) {
+    if (!config) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    extern esp_err_t display_ssd1306_wake(display_config_t *config);
+    extern esp_err_t display_ssd1681_wake(display_config_t *config);
+
+    switch (config->type) {
+        case DISPLAY_TYPE_OLED_SSD1306:
+            return display_ssd1306_wake(config);
+        case DISPLAY_TYPE_EPAPER_SSD1681:
+            return display_ssd1681_wake(config);
+        default:
+            return ESP_ERR_NOT_SUPPORTED;
+    }
+}

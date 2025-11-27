@@ -21,14 +21,34 @@ esp_err_t ui_mini_init(void) {
     
     esp_err_t ret = ui_lvgl_init();
     if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "ui_lvgl_init failed: %d", ret);
         return ret;
     }
     
-    // Create main screen with status bar
+    ESP_LOGI(TAG, "ui_lvgl_init OK, creating screen object...");
+    
+    // Create main screen
     lv_obj_t *screen = lv_obj_create(NULL);
+    if (!screen) {
+        ESP_LOGE(TAG, "Failed to create screen object");
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "Screen object created, creating widgets...");
     widget_statusbar_create(screen);
+    
+    ESP_LOGI(TAG, "Statusbar created, creating main screen...");
     screen_main_create(screen);
+    
+    ESP_LOGI(TAG, "Main screen created, loading screen...");
     lv_screen_load(screen);
+    
+    ESP_LOGI(TAG, "Screen loaded, forcing refresh...");
+    // Force full screen redraw to clear garbage pixels
+    lv_obj_invalidate(screen);
+    lv_refr_now(NULL);
+    
+    ESP_LOGI(TAG, "Screen loaded and refreshed");
     
     ui_initialized = true;
     ESP_LOGI(TAG, "UI Mini initialized");

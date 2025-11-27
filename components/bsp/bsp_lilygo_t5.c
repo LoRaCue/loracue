@@ -379,6 +379,11 @@ uint8_t bsp_battery_get_percentage(void)
     return bq27220_get_soc();
 }
 
+const char* bsp_get_board_name(void)
+{
+    return "LilyGO T5";
+}
+
 bool bsp_battery_is_charging(void)
 {
     return bq25896_is_charging();

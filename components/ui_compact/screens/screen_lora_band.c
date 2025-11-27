@@ -49,6 +49,10 @@ void screen_lora_band_navigate_down(void) {
     ui_radio_select_navigate_down(radio);
 }
 
+void screen_lora_band_navigate_up(void) {
+    ui_radio_select_navigate_up(radio);
+}
+
 void screen_lora_band_select(void) {
     if (!radio) return;
     
@@ -67,6 +71,11 @@ void screen_lora_band_select(void) {
         
         ESP_LOGI(TAG, "Band set to %s", profile->name);
     }
+}
+
+bool screen_lora_band_is_edit_mode(void) {
+    // Radio select doesn't have edit mode - always in selection mode
+    return false;
 }
 
 void screen_lora_band_reset(void) {

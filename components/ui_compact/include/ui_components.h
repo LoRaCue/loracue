@@ -45,7 +45,7 @@ typedef enum {
     UI_ALIGN_RIGHT
 } ui_align_t;
 
-void ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, int x, int y, ui_align_t align);
+int ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, int x, int y, ui_align_t align);
 
 // 3-item scrollable menu
 typedef struct {
@@ -99,6 +99,7 @@ typedef struct {
 ui_dropdown_t *ui_dropdown_create(int initial_index, int option_count);
 void ui_dropdown_render(ui_dropdown_t *dropdown, lv_obj_t *parent, const char *title, const char **options);
 void ui_dropdown_next(ui_dropdown_t *dropdown);
+void ui_dropdown_prev(ui_dropdown_t *dropdown);
 
 // Radio select screen (single or multi selection)
 typedef enum {

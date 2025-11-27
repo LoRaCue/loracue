@@ -136,6 +136,7 @@ void screen_lora_frequency_reset(void);
 void screen_lora_sf_init(void);
 void screen_lora_sf_create(lv_obj_t *parent);
 void screen_lora_sf_navigate_down(void);
+void screen_lora_sf_navigate_up(void);
 void screen_lora_sf_select(void);
 bool screen_lora_sf_is_edit_mode(void);
 void screen_lora_sf_reset(void);
@@ -144,6 +145,7 @@ void screen_lora_sf_reset(void);
 void screen_lora_bw_init(void);
 void screen_lora_bw_create(lv_obj_t *parent);
 void screen_lora_bw_navigate_down(void);
+void screen_lora_bw_navigate_up(void);
 void screen_lora_bw_select(void);
 bool screen_lora_bw_is_edit_mode(void);
 
@@ -151,6 +153,7 @@ bool screen_lora_bw_is_edit_mode(void);
 void screen_lora_cr_init(void);
 void screen_lora_cr_create(lv_obj_t *parent);
 void screen_lora_cr_navigate_down(void);
+void screen_lora_cr_navigate_up(void);
 void screen_lora_cr_select(void);
 bool screen_lora_cr_is_edit_mode(void);
 
@@ -165,6 +168,7 @@ bool screen_lora_txpower_is_edit_mode(void);
 void screen_lora_band_init(void);
 void screen_lora_band_create(lv_obj_t *parent);
 void screen_lora_band_navigate_down(void);
+void screen_lora_band_navigate_up(void);
 void screen_lora_band_select(void);
 bool screen_lora_band_is_edit_mode(void);
 

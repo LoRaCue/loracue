@@ -10,6 +10,7 @@
  */
 
 #include "bsp.h"
+#include "display.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_adc/adc_oneshot.h"
@@ -283,6 +284,11 @@ void bsp_u8g2_unlock(void)
     if (u8g2_mutex) {
         xSemaphoreGive(u8g2_mutex);
     }
+}
+
+const char* bsp_get_board_name(void)
+{
+    return "Heltec V3";
 }
 
 esp_err_t bsp_init_buttons(void)
@@ -559,14 +565,22 @@ esp_err_t bsp_set_display_brightness(uint8_t brightness)
 
 esp_err_t bsp_display_sleep(void)
 {
-    u8g2_SetPowerSave(&u8g2, 1);
-    return ESP_OK;
+    extern display_config_t *ui_lvgl_get_display_config(void);
+    display_config_t *config = ui_lvgl_get_display_config();
+    if (config) {
+        return display_sleep(config);
+    }
+    return ESP_ERR_INVALID_STATE;
 }
 
 esp_err_t bsp_display_wake(void)
 {
-    u8g2_SetPowerSave(&u8g2, 0);
-    return ESP_OK;
+    extern display_config_t *ui_lvgl_get_display_config(void);
+    display_config_t *config = ui_lvgl_get_display_config();
+    if (config) {
+        return display_wake(config);
+    }
+    return ESP_ERR_INVALID_STATE;
 }
 
 esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin)

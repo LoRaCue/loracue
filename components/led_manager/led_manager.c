@@ -130,11 +130,9 @@ esp_err_t led_manager_stop(void)
 
     // Signal fade task to stop
     if (fade_task_handle != NULL) {
-        TaskHandle_t task_to_delete = fade_task_handle;
-        fade_task_handle = NULL;  // Clear handle first
-        current_pattern = LED_PATTERN_OFF;  // Signal task to exit
-        vTaskDelay(pdMS_TO_TICKS(10));  // Brief delay for task to see the change
-        vTaskDelete(task_to_delete);
+        current_pattern = LED_PATTERN_OFF;  // Signal task to exit first
+        vTaskDelay(pdMS_TO_TICKS(50));  // Wait for task to exit cleanly
+        fade_task_handle = NULL;  // Clear handle after task exits
     }
 
     // Turn off LED

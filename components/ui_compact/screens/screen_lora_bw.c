@@ -41,6 +41,12 @@ void screen_lora_bw_navigate_down(void) {
     }
 }
 
+void screen_lora_bw_navigate_up(void) {
+    if (dropdown && dropdown->edit_mode) {
+        ui_dropdown_prev(dropdown);
+    }
+}
+
 void screen_lora_bw_select(void) {
     if (!dropdown) return;
     

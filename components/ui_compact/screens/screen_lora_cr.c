@@ -35,10 +35,17 @@ void screen_lora_cr_navigate_down(void) {
     }
 }
 
+void screen_lora_cr_navigate_up(void) {
+    if (dropdown && dropdown->edit_mode) {
+        ui_dropdown_prev(dropdown);
+    }
+}
+
 void screen_lora_cr_select(void) {
     if (!dropdown) return;
     
     if (!dropdown->edit_mode) {
+        ESP_LOGI(TAG, "Entering edit mode");
         dropdown->edit_mode = true;
     } else {
         lora_config_t config;

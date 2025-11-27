@@ -1,6 +1,11 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf
+.PHONY: all build clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf assets ui_compact_assets fonts-1bpp fonts-4bpp fonts-8bpp fonts-all
+
+# WASI Toolchain Detection (for Wokwi chips)
+WASI_SYSROOT := $(shell find /opt/homebrew/Cellar/wasi-libc -name wasi-sysroot 2>/dev/null | head -1)
+CLANG := $(shell test -f /opt/homebrew/opt/llvm/bin/clang && echo /opt/homebrew/opt/llvm/bin/clang || which clang 2>/dev/null)
+WASM_LD := $(shell test -f /opt/homebrew/opt/llvm/bin/wasm-ld && echo /opt/homebrew/opt/llvm/bin/wasm-ld || which wasm-ld 2>/dev/null)
 
 # ESP-IDF Detection Logic
 IDF_PATH_CANDIDATES := \
@@ -34,6 +39,155 @@ endif
 
 # Wokwi CLI detection
 WOKWI_CLI := $(shell which wokwi-cli 2>/dev/null)
+
+# PNG to LVGL conversion for ui_compact
+UI_COMPACT_ASSETS_DIR := components/ui_compact/assets
+UI_COMPACT_GENERATED_DIR := components/ui_compact/generated
+UI_COMPACT_PNGS := $(wildcard $(UI_COMPACT_ASSETS_DIR)/*.png)
+UI_COMPACT_GENERATED := $(patsubst $(UI_COMPACT_ASSETS_DIR)/%.png,$(UI_COMPACT_GENERATED_DIR)/%.c,$(UI_COMPACT_PNGS))
+
+check-png2lvgl:
+ifneq ($(UI_COMPACT_PNGS),)
+	@command -v png2lvgl >/dev/null 2>&1 || { \
+		echo "❌ png2lvgl not found!"; \
+		echo ""; \
+		echo "Install png2lvgl:"; \
+		echo "  git clone https://github.com/metaneutrons/png2lvgl.git"; \
+		echo "  cd png2lvgl && make && sudo make install"; \
+		echo ""; \
+		echo "Or visit: https://github.com/metaneutrons/png2lvgl"; \
+		exit 1; \
+	}
+endif
+
+$(UI_COMPACT_GENERATED_DIR)/%.c: $(UI_COMPACT_ASSETS_DIR)/%.png
+	@mkdir -p $(UI_COMPACT_GENERATED_DIR)
+	@if [ ! -f "$@" ] || [ "$<" -nt "$@" ]; then \
+		echo "🎨 Converting $< to LVGL C file..."; \
+		png2lvgl --format indexed1 --overwrite -o $@ $<; \
+	else \
+		echo "✅ $@ is up to date"; \
+	fi
+
+ui_compact_assets: check-png2lvgl $(UI_COMPACT_GENERATED)
+
+# Font generation for LVGL
+FONT_OUTPUT_DIR := components/ui_lvgl/generated
+FONT_SIZES := 8 10 12 14 16 18 20
+FONT_RANGE := 0x20-0x7F
+FONT_TEMP_DIR := /tmp/loracue-fonts
+
+# Inter font from GitHub (official repository)
+INTER_FONT_URL := https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip
+INTER_FONT_LIGHT := $(FONT_TEMP_DIR)/Inter/extras/ttf/Inter-Light.ttf
+
+# Pixolletta font from DaFont
+PIXOLLETTA_FONT_URL := https://dl.dafont.com/dl/?f=pixolletta8px
+PIXOLLETTA_FONT := $(FONT_TEMP_DIR)/Pixolletta8px.ttf
+
+# Micro font from 1001fonts
+MICRO_FONT_URL := https://www.1001fonts.com/download/micro.zip
+MICRO_FONT := $(FONT_TEMP_DIR)/micro.ttf
+
+check-lv-font-conv:
+	@command -v npx >/dev/null 2>&1 || { \
+		echo "❌ npx not found! Install Node.js first."; \
+		exit 1; \
+	}
+
+# Download Inter font from GitHub
+$(INTER_FONT_LIGHT):
+	@echo "📥 Downloading Inter font from GitHub..."
+	@mkdir -p $(FONT_TEMP_DIR)
+	@curl -fL "$(INTER_FONT_URL)" -o $(FONT_TEMP_DIR)/inter.zip
+	@unzip -q -o $(FONT_TEMP_DIR)/inter.zip -d $(FONT_TEMP_DIR)/Inter
+	@test -f $(INTER_FONT_LIGHT) || { echo "❌ Inter-Light.ttf not found"; exit 1; }
+	@echo "✅ Inter font downloaded"
+
+# Download Pixolletta font from DaFont
+$(PIXOLLETTA_FONT):
+	@echo "📥 Downloading Pixolletta font from DaFont..."
+	@mkdir -p $(FONT_TEMP_DIR)
+	@curl -fL "$(PIXOLLETTA_FONT_URL)" -o $(FONT_TEMP_DIR)/pixolletta.zip
+	@unzip -q -o $(FONT_TEMP_DIR)/pixolletta.zip -d $(FONT_TEMP_DIR)
+	@test -f $(PIXOLLETTA_FONT) || { echo "❌ Pixolletta8px.ttf not found"; exit 1; }
+	@echo "✅ Pixolletta font downloaded"
+
+# Download Micro font from 1001fonts
+$(MICRO_FONT):
+	@echo "📥 Downloading Micro font from 1001fonts..."
+	@mkdir -p $(FONT_TEMP_DIR)
+	@curl -fL "$(MICRO_FONT_URL)" -o $(FONT_TEMP_DIR)/micro.zip
+	@unzip -q -o $(FONT_TEMP_DIR)/micro.zip -d $(FONT_TEMP_DIR)/micro_extracted
+	@find $(FONT_TEMP_DIR)/micro_extracted -name "*.ttf" -exec cp {} $(MICRO_FONT) \;
+	@test -f $(MICRO_FONT) || { echo "❌ micro.ttf not found"; exit 1; }
+	@echo "✅ Micro font downloaded"
+
+# Generate 1bpp fonts for ui_compact (OLED displays) using Inter
+fonts-1bpp: check-lv-font-conv $(INTER_FONT_LIGHT) $(PIXOLLETTA_FONT) $(MICRO_FONT)
+	@mkdir -p $(FONT_OUTPUT_DIR)
+	@if [ ! -f "$(FONT_OUTPUT_DIR)/lv_font_pixolletta_10.c" ]; then \
+		echo "🔤 Generating 1bpp Inter fonts for ui_compact..."; \
+		$(foreach size,$(FONT_SIZES), \
+			echo "  - Inter light $(size)px (1bpp)"; \
+			npx lv_font_conv --bpp 1 --format lvgl --font $(INTER_FONT_LIGHT) \
+				--range $(FONT_RANGE) --size $(size) \
+				--output $(FONT_OUTPUT_DIR)/lv_font_1bpp_inter_light_$(size).c;) \
+		echo "🔤 Generating Pixolletta 10px (1bpp) for small screens..."; \
+		npx lv_font_conv --bpp 1 --format lvgl --font $(PIXOLLETTA_FONT) \
+			--range $(FONT_RANGE) --size 10 --no-compress \
+			--output $(FONT_OUTPUT_DIR)/lv_font_pixolletta_10.c; \
+		echo "🔤 Generating Pixolletta 20px (1bpp) for large value displays..."; \
+		npx lv_font_conv --bpp 1 --format lvgl --font $(PIXOLLETTA_FONT) \
+			--range $(FONT_RANGE) --size 20 --no-compress \
+			--output $(FONT_OUTPUT_DIR)/lv_font_pixolletta_20.c; \
+		echo "🔤 Generating Micro 5px (1bpp) for version text..."; \
+		npx lv_font_conv --bpp 1 --format lvgl --font $(MICRO_FONT) \
+			--range $(FONT_RANGE) --size 5 --no-compress \
+			--output $(FONT_OUTPUT_DIR)/lv_font_micro_5.c; \
+		echo "✅ 1bpp fonts generated"; \
+	else \
+		echo "✅ 1bpp fonts already exist, skipping generation"; \
+	fi
+
+# Generate 4bpp fonts for e-paper displays (16 grayscale)
+fonts-4bpp: check-lv-font-conv $(INTER_FONT_LIGHT)
+	@mkdir -p $(FONT_OUTPUT_DIR)
+	@if [ ! -f "$(FONT_OUTPUT_DIR)/lv_font_4bpp_inter_light_8.c" ]; then \
+		echo "🔤 Generating 4bpp Inter fonts for e-paper..."; \
+		$(foreach size,$(FONT_SIZES), \
+			echo "  - Inter light $(size)px (4bpp)"; \
+			npx lv_font_conv --bpp 4 --format lvgl --font $(INTER_FONT_LIGHT) \
+				--range $(FONT_RANGE) --size $(size) \
+				--output $(FONT_OUTPUT_DIR)/lv_font_4bpp_inter_light_$(size).c;) \
+		echo "✅ 4bpp fonts generated"; \
+	else \
+		echo "✅ 4bpp fonts already exist, skipping generation"; \
+	fi
+
+# Generate 8bpp fonts for color displays (256 colors)
+fonts-8bpp: check-lv-font-conv $(INTER_FONT_LIGHT)
+	@mkdir -p $(FONT_OUTPUT_DIR)
+	@if [ ! -f "$(FONT_OUTPUT_DIR)/lv_font_8bpp_inter_light_8.c" ]; then \
+		echo "🔤 Generating 8bpp Inter fonts for color displays..."; \
+		$(foreach size,$(FONT_SIZES), \
+			echo "  - Inter light $(size)px (8bpp)"; \
+			npx lv_font_conv --bpp 8 --format lvgl --font $(INTER_FONT_LIGHT) \
+				--range $(FONT_RANGE) --size $(size) \
+				--output $(FONT_OUTPUT_DIR)/lv_font_8bpp_inter_light_$(size).c;) \
+		echo "✅ 8bpp fonts generated"; \
+	else \
+		echo "✅ 8bpp fonts already exist, skipping generation"; \
+	fi
+
+# Generate all font variants
+fonts-all: fonts-1bpp fonts-4bpp fonts-8bpp
+	@rm -rf $(FONT_TEMP_DIR)
+	@echo "✅ All fonts generated and temp files cleaned"
+
+# Generate all assets (fonts + PNG icons)
+assets: fonts-all ui_compact_assets
+	@echo "✅ All assets generated"
 
 # Default target
 all: build
@@ -83,7 +237,7 @@ else
 $(error Invalid MODEL=$(MODEL). Use: alpha, alpha+, beta, or gamma)
 endif
 
-build: check-idf
+build: check-idf fonts-1bpp ui_compact_assets
 	@echo "🔨 Building $(MODEL_NAME) ($(BOARD_NAME))..."
 	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" -D BOARD_ID="$(BOARD_ID)" build
@@ -95,8 +249,10 @@ clean:
 	$(IDF_SETUP) idf.py clean
 
 fullclean:
-	@echo "🧹 Full clean (removing CMake cache and sdkconfig)..."
+	@echo "🧹 Full clean (removing CMake cache, sdkconfig, and generated assets)..."
 	@rm -f sdkconfig
+	@rm -rf $(UI_COMPACT_GENERATED_DIR)/*.c
+	@rm -rf $(FONT_OUTPUT_DIR)/*.c
 	$(IDF_SETUP) idf.py fullclean
 
 rebuild: fullclean build
@@ -232,13 +388,13 @@ chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build
 build/wokwi/chips/uart.chip.wasm: wokwi/chips/uart.chip.c wokwi/chips/wokwi-api.h wokwi/chips/uart.chip.json
 	@echo "🔧 Compiling custom UART bridge chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/uart.o wokwi/chips/uart.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/uart.chip.wasm \
 		build/wokwi/chips/uart.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/uart.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/uart.o
 	@echo "✅ Custom chip compiled"
@@ -247,13 +403,13 @@ build/wokwi/chips/uart.chip.wasm: wokwi/chips/uart.chip.c wokwi/chips/wokwi-api.
 build/wokwi/chips/sx1262.chip.wasm: wokwi/chips/sx1262.chip.c wokwi/chips/wokwi-api.h wokwi/chips/sx1262.chip.json wokwi/chips/sx1262.chip.svg
 	@echo "🔧 Compiling custom SX1262 LoRa chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/sx1262.o wokwi/chips/sx1262.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/sx1262.chip.wasm \
 		build/wokwi/chips/sx1262.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/sx1262.chip.json build/wokwi/chips/
 	@cp wokwi/chips/sx1262.chip.svg build/wokwi/chips/
 	@rm build/wokwi/chips/sx1262.o
@@ -263,13 +419,13 @@ build/wokwi/chips/sx1262.chip.wasm: wokwi/chips/sx1262.chip.c wokwi/chips/wokwi-
 build/wokwi/chips/pca9535.chip.wasm: wokwi/chips/pca9535.chip.c wokwi/chips/wokwi-api.h wokwi/chips/pca9535.chip.json
 	@echo "🔧 Compiling custom PCA9535 chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/pca9535.o wokwi/chips/pca9535.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/pca9535.chip.wasm \
 		build/wokwi/chips/pca9535.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/pca9535.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/pca9535.o
 	@echo "✅ PCA9535 chip compiled"
@@ -278,13 +434,13 @@ build/wokwi/chips/pca9535.chip.wasm: wokwi/chips/pca9535.chip.c wokwi/chips/wokw
 build/wokwi/chips/pcf85063.chip.wasm: wokwi/chips/pcf85063.chip.c wokwi/chips/wokwi-api.h wokwi/chips/pcf85063.chip.json
 	@echo "🔧 Compiling custom PCF85063 RTC chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/pcf85063.o wokwi/chips/pcf85063.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/pcf85063.chip.wasm \
 		build/wokwi/chips/pcf85063.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/pcf85063.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/pcf85063.o
 	@echo "✅ PCF85063 chip compiled"
@@ -293,13 +449,13 @@ build/wokwi/chips/pcf85063.chip.wasm: wokwi/chips/pcf85063.chip.c wokwi/chips/wo
 build/wokwi/chips/bq27220.chip.wasm: wokwi/chips/bq27220.chip.c wokwi/chips/wokwi-api.h wokwi/chips/bq27220.chip.json
 	@echo "🔧 Compiling custom BQ27220 fuel gauge chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/bq27220.o wokwi/chips/bq27220.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/bq27220.chip.wasm \
 		build/wokwi/chips/bq27220.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/bq27220.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/bq27220.o
 	@echo "✅ BQ27220 chip compiled"
@@ -308,13 +464,13 @@ build/wokwi/chips/bq27220.chip.wasm: wokwi/chips/bq27220.chip.c wokwi/chips/wokw
 build/wokwi/chips/bq25896.chip.wasm: wokwi/chips/bq25896.chip.c wokwi/chips/wokwi-api.h wokwi/chips/bq25896.chip.json
 	@echo "🔧 Compiling custom BQ25896 charger chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/bq25896.o wokwi/chips/bq25896.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/bq25896.chip.wasm \
 		build/wokwi/chips/bq25896.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/bq25896.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/bq25896.o
 	@echo "✅ BQ25896 chip compiled"
@@ -323,13 +479,13 @@ build/wokwi/chips/bq25896.chip.wasm: wokwi/chips/bq25896.chip.c wokwi/chips/wokw
 build/wokwi/chips/tps65185.chip.wasm: wokwi/chips/tps65185.chip.c wokwi/chips/wokwi-api.h wokwi/chips/tps65185.chip.json
 	@echo "🔧 Compiling custom TPS65185 PMIC chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/tps65185.o wokwi/chips/tps65185.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/tps65185.chip.wasm \
 		build/wokwi/chips/tps65185.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/tps65185.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/tps65185.o
 	@echo "✅ TPS65185 chip compiled"
@@ -338,13 +494,13 @@ build/wokwi/chips/tps65185.chip.wasm: wokwi/chips/tps65185.chip.c wokwi/chips/wo
 build/wokwi/chips/gt911.chip.wasm: wokwi/chips/gt911.chip.c wokwi/chips/wokwi-api.h wokwi/chips/gt911.chip.json
 	@echo "🔧 Compiling custom GT911 touch chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/gt911.o wokwi/chips/gt911.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/gt911.chip.wasm \
 		build/wokwi/chips/gt911.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/gt911.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/gt911.o
 	@echo "✅ GT911 chip compiled"
@@ -353,13 +509,13 @@ build/wokwi/chips/gt911.chip.wasm: wokwi/chips/gt911.chip.c wokwi/chips/wokwi-ap
 build/wokwi/chips/ed047tc1.chip.wasm: wokwi/chips/ed047tc1.chip.c wokwi/chips/wokwi-api.h wokwi/chips/ed047tc1.chip.json
 	@echo "🔧 Compiling custom ED047TC1 e-paper display chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/ed047tc1.o wokwi/chips/ed047tc1.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/ed047tc1.chip.wasm \
 		build/wokwi/chips/ed047tc1.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/ed047tc1.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/ed047tc1.o
 	@echo "✅ ED047TC1 chip compiled"
@@ -368,13 +524,13 @@ build/wokwi/chips/ed047tc1.chip.wasm: wokwi/chips/ed047tc1.chip.c wokwi/chips/wo
 build/wokwi/chips/i2console.chip.wasm: wokwi/chips/i2console.chip.c wokwi/chips/wokwi-api.h wokwi/chips/i2console.chip.json
 	@echo "🔧 Compiling custom I2Console chip..."
 	@mkdir -p build/wokwi/chips
-	@/opt/homebrew/opt/llvm/bin/clang --target=wasm32-unknown-wasi \
-		--sysroot /opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot \
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
 		-c -o build/wokwi/chips/i2console.o wokwi/chips/i2console.chip.c
-	@wasm-ld --no-entry --import-memory --export-table \
+	@$(WASM_LD) --no-entry --import-memory --export-table \
 		-o build/wokwi/chips/i2console.chip.wasm \
 		build/wokwi/chips/i2console.o \
-		/opt/homebrew/Cellar/wasi-libc/27/share/wasi-sysroot/lib/wasm32-wasi/libc.a
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
 	@cp wokwi/chips/i2console.chip.json build/wokwi/chips/
 	@rm build/wokwi/chips/i2console.o
 	@echo "✅ I2Console chip compiled"
@@ -475,6 +631,12 @@ help:
 	@echo "  make format        - Format all code"
 	@echo "  make format-check  - Check formatting"
 	@echo "  make lint          - Run static analysis"
+	@echo ""
+	@echo "🔤 Font Generation:"
+	@echo "  make fonts-1bpp    - Generate 1bpp fonts (OLED)"
+	@echo "  make fonts-4bpp    - Generate 4bpp fonts (e-paper)"
+	@echo "  make fonts-8bpp    - Generate 8bpp fonts (color)"
+	@echo "  make fonts-all     - Generate all font variants"
 	@echo ""
 	@echo "💡 Quick Start:"
 	@echo "  source ~/esp-idf-v5.5/export.sh  # Setup ESP-IDF"

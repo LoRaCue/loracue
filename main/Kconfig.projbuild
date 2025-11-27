@@ -1,17 +1,27 @@
-menu "LoRaCue Configuration"
+menu "LoRaCue Model Configuration"
 
-    config BOARD_WOKWI
-        bool "Build for Wokwi Simulator"
+    config MODEL_LC_ALPHA
+        bool "LC-Alpha Model"
         default n
         help
-            Enable this option when building for Wokwi simulation.
-            This will use the Wokwi BSP instead of real hardware BSP.
+            Enable LC-Alpha model configuration (Heltec V3, 1 button).
 
-    config UI_RICH
-        bool "Enable Rich UI (LVGL)"
+    config MODEL_LC_ALPHA_PLUS
+        bool "LC-Alpha+ Model"
         default n
         help
-            Enable rich UI with LVGL graphics library.
-            Disable for minimal UI with basic OLED display.
+            Enable LC-Alpha+ model configuration (Heltec V3, 2 buttons).
+
+    config MODEL_LC_BETA
+        bool "LC-Beta Model"
+        default n
+        help
+            Enable LC-Beta model configuration (LilyGO T3-S3, E-Paper).
+
+    config MODEL_LC_GAMMA
+        bool "LC-Gamma Model"
+        default n
+        help
+            Enable LC-Gamma model configuration (future TFT touchscreen).
 
 endmenu

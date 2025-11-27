@@ -28,6 +28,8 @@ DOCUMENTED_METHODS = [
     "lora:bands",
     "lora:key:get",
     "lora:key:set",
+    "lora:presets:list",
+    "lora:presets:set",
     "paired:list",
     "paired:pair",
     "paired:unpair",
@@ -158,6 +160,17 @@ class JSONRPCTester:
         if len(result) == 0:
             return False, f"✗ No bands returned"
         return True, f"✓ Returns {len(result)} bands"
+    
+    def test_lora_presets_list(self) -> tuple[bool, str]:
+        """Test lora:presets:list method"""
+        response = self.send_request("lora:presets:list")
+        if "result" not in response:
+            return False, f"✗ No result: {response}"
+            
+        result = response["result"]
+        if not isinstance(result, list):
+            return False, f"✗ Result is not an array"
+        return True, f"✓ Returns {len(result)} presets"
 
 def main():
     if len(sys.argv) < 2:
@@ -215,6 +228,7 @@ def main():
             ("general:get", tester.test_general_get),
             ("paired:list", tester.test_paired_list),
             ("lora:bands", tester.test_lora_bands),
+            ("lora:presets:list", tester.test_lora_presets_list),
         ]
         
         all_passed = True

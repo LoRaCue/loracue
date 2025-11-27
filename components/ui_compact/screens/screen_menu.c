@@ -26,14 +26,19 @@ void screen_menu_create(lv_obj_t *parent) {
     int selected = menu ? menu->selected_index : 0;
     
     menu = ui_menu_create(parent, MAIN_MENU_ITEMS, MAIN_MENU_COUNT);
-    menu->selected_index = selected;
-    ui_menu_update(menu, MAIN_MENU_ITEMS);
+    if (selected != 0) {
+        menu->selected_index = selected;
+        ui_menu_update(menu, MAIN_MENU_ITEMS);
+    }
 }
 
 void screen_menu_navigate_down(void) {
     if (!menu) return;
-    menu->selected_index = (menu->selected_index + 1) % MAIN_MENU_COUNT;
-    ui_menu_update(menu, MAIN_MENU_ITEMS);
+    int new_index = (menu->selected_index + 1) % MAIN_MENU_COUNT;
+    if (new_index != menu->selected_index) {
+        menu->selected_index = new_index;
+        ui_menu_update(menu, MAIN_MENU_ITEMS);
+    }
 }
 
 int screen_menu_get_selected(void) {

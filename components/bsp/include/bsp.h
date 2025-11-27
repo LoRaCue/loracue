@@ -43,6 +43,13 @@ typedef enum {
 esp_err_t bsp_init(void);
 
 /**
+ * @brief Get the board name
+ *
+ * @return Pointer to board name string (e.g., "Heltec V3", "LilyGO T3")
+ */
+const char* bsp_get_board_name(void);
+
+/**
  * @brief Deinitialize BSP and free resources
  *
  * Cleans up LVGL, mutexes, and other allocated resources.

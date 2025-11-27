@@ -133,6 +133,7 @@ esp_err_t bsp_enter_sleep(void) { return ESP_OK; }
 esp_err_t bsp_init_spi(void) { return ESP_OK; }
 uint8_t bsp_sx1262_read_register(uint16_t reg) { (void)reg; return 0; }
 esp_err_t bsp_sx1262_reset(void) { return ESP_OK; }
+const char* bsp_get_board_name(void) { return "LilyGO T3"; }
 esp_err_t bsp_validate_hardware(void) { return ESP_OK; }
 const bsp_usb_config_t *bsp_get_usb_config(void) { return NULL; }
 bool bsp_is_usb_connected(void) { return false; }

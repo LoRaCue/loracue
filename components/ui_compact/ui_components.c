@@ -35,7 +35,7 @@ void ui_components_init(void) {
     lv_style_set_text_color(&style_small, lv_color_make(0xA0, 0xA0, 0xA0));
 }
 
-void ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, int x, int y, ui_align_t align) {
+int ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, int x, int y, ui_align_t align) {
     const lv_img_dsc_t *img_dsc = icon_src;
     int icon_width = img_dsc->header.w;
     
@@ -66,6 +66,8 @@ void ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text,
     
     lv_obj_set_pos(icon, icon_x, y);
     lv_obj_set_pos(label, text_x, y - 1);
+    
+    return total_width;
 }
 
 // 3-item scrollable menu
@@ -92,7 +94,7 @@ ui_menu_t *ui_menu_create(lv_obj_t *parent, const char **item_names, int count) 
 void ui_menu_update(ui_menu_t *menu, const char **item_names) {
     if (!menu || !menu->screen) return;
     
-    ESP_LOGI("ui_menu", "Updating menu: selected=%d, scroll_offset=%d", menu->selected_index, menu->scroll_offset);
+    ESP_LOGD("ui_menu", "Updating menu: selected=%d, scroll_offset=%d", menu->selected_index, menu->scroll_offset);
     
     // Delete old menu items if they exist
     for (int i = 0; i < UI_MENU_VISIBLE_ITEMS; i++) {
@@ -362,11 +364,12 @@ void ui_numeric_input_render(const ui_numeric_input_t *input, lv_obj_t *parent, 
     
     // Bottom bar hints
     if (input->edit_mode) {
-        ui_draw_icon_text(parent, &button_short_press, "+", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-        ui_draw_icon_text(parent, &button_double_press, "-", 30, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+        int plus_width = ui_draw_icon_text(parent, &button_short_press, "+", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+        ui_draw_icon_text(parent, &button_double_press, "-", 2 + plus_width + 4, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
         ui_draw_icon_text(parent, &button_long_press, "Save", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
     } else {
         ui_draw_icon_text(parent, &button_long_press, "Edit", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+        ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
     }
 }
 
@@ -428,15 +431,21 @@ void ui_dropdown_render(ui_dropdown_t *dropdown, lv_obj_t *parent, const char *t
     
     // Bottom bar hints
     if (dropdown->edit_mode) {
-        ui_draw_icon_text(parent, &button_short_press, "Next", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+        int next_width = ui_draw_icon_text(parent, &button_short_press, "Next", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+        ui_draw_icon_text(parent, &button_double_press, "Prev", 2 + next_width + 4, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
         ui_draw_icon_text(parent, &button_long_press, "Save", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
     } else {
         ui_draw_icon_text(parent, &button_long_press, "Edit", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+        ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
     }
 }
 
 void ui_dropdown_next(ui_dropdown_t *dropdown) {
     dropdown->selected_index = (dropdown->selected_index + 1) % dropdown->option_count;
+}
+
+void ui_dropdown_prev(ui_dropdown_t *dropdown) {
+    dropdown->selected_index = (dropdown->selected_index - 1 + dropdown->option_count) % dropdown->option_count;
 }
 
 // Radio select screen

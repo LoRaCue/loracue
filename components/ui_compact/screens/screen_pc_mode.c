@@ -14,8 +14,6 @@ static lv_obj_t *statusbar = NULL;
 static lv_obj_t *mode_label = NULL;
 static lv_obj_t *waiting_label1 = NULL;
 static lv_obj_t *waiting_label2 = NULL;
-static lv_obj_t *history_labels[4] = {NULL};
-static lv_obj_t *lightbars[4] = {NULL};
 
 static struct {
     command_history_entry_t history[4];
@@ -25,35 +23,6 @@ static struct {
 } screen_state = {0};
 
 LV_IMG_DECLARE(button_long_press);
-
-static const char* keycode_to_name(uint8_t keycode, uint8_t modifiers) {
-    static char buf[16];
-    const char *key_name = NULL;
-    
-    if (keycode >= 0x04 && keycode <= 0x1D) {
-        buf[0] = 'a' + (keycode - 0x04);
-        buf[1] = '\0';
-        key_name = buf;
-    } else if (keycode >= 0x1E && keycode <= 0x26) {
-        buf[0] = '1' + (keycode - 0x1E);
-        buf[1] = '\0';
-        key_name = buf;
-    } else if (keycode == 0x27) {
-        key_name = "0";
-    } else if (keycode >= 0x3A && keycode <= 0x45) {
-        snprintf(buf, sizeof(buf), "F%d", keycode - 0x39);
-        key_name = buf;
-    } else {
-        switch (keycode) {
-            case 0x28: key_name = "Enter"; break;
-            case 0x4F: key_name = "→"; break;
-            case 0x50: key_name = "←"; break;
-            default: key_name = "?"; break;
-        }
-    }
-    
-    return key_name;
-}
 
 static void hid_command_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data) {
     const system_event_hid_command_t *evt = (const system_event_hid_command_t *)data;

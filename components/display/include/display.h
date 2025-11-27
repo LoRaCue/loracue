@@ -69,6 +69,16 @@ esp_err_t display_epaper_set_refresh_mode(display_config_t *config, display_refr
  */
 esp_err_t display_deinit(display_config_t *config);
 
+/**
+ * @brief Put display into sleep mode
+ */
+esp_err_t display_sleep(display_config_t *config);
+
+/**
+ * @brief Wake display from sleep mode
+ */
+esp_err_t display_wake(display_config_t *config);
+
 #ifdef __cplusplus
 }
 #endif
