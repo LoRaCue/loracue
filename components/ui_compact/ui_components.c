@@ -491,17 +491,18 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
     bool has_nav_arrows = (radio->scroll_offset > 0) || 
                          (radio->scroll_offset + visible_items < radio->item_count);
     int lightbar_width = has_nav_arrows ? (DISPLAY_WIDTH - 9) : DISPLAY_WIDTH;
+    int lightbar_x = 14;  // Start after radio circles
     
     // Draw items
     for (int i = 0; i < visible_items && (radio->scroll_offset + i) < radio->item_count; i++) {
         int item_idx = radio->scroll_offset + i;
         int item_y = start_y + (i * UI_MENU_ITEM_HEIGHT);
         
-        // Rounded highlight bar for selected item
+        // Rounded highlight bar for selected item (starts after circles)
         if (item_idx == radio->selected_index) {
             lv_obj_t *highlight = lv_obj_create(parent);
-            lv_obj_set_size(highlight, lightbar_width, UI_MENU_ITEM_HEIGHT - 2);
-            lv_obj_set_pos(highlight, 0, item_y + 1);
+            lv_obj_set_size(highlight, lightbar_width - lightbar_x, UI_MENU_ITEM_HEIGHT - 2);
+            lv_obj_set_pos(highlight, lightbar_x, item_y + 1);
             lv_obj_set_style_bg_color(highlight, lv_color_white(), 0);
             lv_obj_set_style_border_width(highlight, 0, 0);
             lv_obj_set_style_radius(highlight, 3, 0);
@@ -516,33 +517,33 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
                          (item_idx == radio->selected_index) : 
                          radio->selected_items[item_idx];
         
-        // Outer circle (9px) - always shown, inverted on lightbar
+        // Outer circle (9px) - always shown
         lv_obj_t *outer_circle = lv_obj_create(parent);
         lv_obj_set_size(outer_circle, 9, 9);
         lv_obj_set_pos(outer_circle, circle_x, circle_y);
         lv_obj_set_style_radius(outer_circle, 5, 0);
-        lv_obj_set_style_bg_color(outer_circle, item_idx == radio->selected_index ? lv_color_white() : lv_color_black(), 0);
-        lv_obj_set_style_border_color(outer_circle, item_idx == radio->selected_index ? lv_color_black() : lv_color_white(), 0);
+        lv_obj_set_style_bg_color(outer_circle, lv_color_black(), 0);
+        lv_obj_set_style_border_color(outer_circle, lv_color_white(), 0);
         lv_obj_set_style_border_width(outer_circle, 1, 0);
         
-        // Inner filled circle (9px) - only if checked, inverted on lightbar
+        // Inner filled circle (5px) - only if checked
         if (is_checked) {
             lv_obj_t *inner_circle = lv_obj_create(parent);
-            lv_obj_set_size(inner_circle, 9, 9);
-            lv_obj_set_pos(inner_circle, circle_x, circle_y);
-            lv_obj_set_style_radius(inner_circle, 5, 0);
-            lv_obj_set_style_bg_color(inner_circle, item_idx == radio->selected_index ? lv_color_black() : lv_color_white(), 0);
+            lv_obj_set_size(inner_circle, 5, 5);
+            lv_obj_set_pos(inner_circle, circle_x + 2, circle_y + 2);
+            lv_obj_set_style_radius(inner_circle, 3, 0);
+            lv_obj_set_style_bg_color(inner_circle, lv_color_white(), 0);
             lv_obj_set_style_border_width(inner_circle, 0, 0);
         }
         
-        // Item text (4px down)
+        // Item text (4px down) - inverted on lightbar
         lv_obj_t *text = lv_label_create(parent);
         lv_obj_add_style(text, item_idx == radio->selected_index ? &style_title : &style_text, 0);
         if (item_idx == radio->selected_index) {
             lv_obj_set_style_text_color(text, lv_color_black(), 0);
         }
         lv_label_set_text(text, items[item_idx]);
-        lv_obj_set_pos(text, 14, item_y + 2);
+        lv_obj_set_pos(text, lightbar_x + 2, item_y + 2);
     }
     
     // Nav arrows
