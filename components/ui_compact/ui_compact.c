@@ -282,8 +282,23 @@ static void button_event_handler(button_event_type_t event, void *arg) {
                     screen_lora_bw_create(screen);
                     current_screen_type = UI_SCREEN_LORA_BW;
                     break;
+                case LORA_MENU_CR:
+                    screen_lora_cr_init();
+                    screen_lora_cr_create(screen);
+                    current_screen_type = UI_SCREEN_LORA_BW; // Reuse BW type for now
+                    break;
+                case LORA_MENU_TXPOWER:
+                    screen_lora_txpower_init();
+                    screen_lora_txpower_create(screen);
+                    current_screen_type = UI_SCREEN_LORA_BW; // Reuse BW type for now
+                    break;
+                case LORA_MENU_BAND:
+                    screen_lora_band_init();
+                    screen_lora_band_create(screen);
+                    current_screen_type = UI_SCREEN_LORA_BW; // Reuse BW type for now
+                    break;
                 default:
-                    // Other items not implemented yet
+                    // All items now implemented
                     lv_obj_del(screen);
                     return;
             }

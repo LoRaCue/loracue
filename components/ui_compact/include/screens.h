@@ -297,6 +297,27 @@ void screen_lora_bw_select(void);
 bool screen_lora_bw_is_edit_mode(void);
 void screen_lora_bw_reset(void);
 
+void screen_lora_cr_init(void);
+void screen_lora_cr_create(lv_obj_t *parent);
+void screen_lora_cr_navigate_down(void);
+void screen_lora_cr_select(void);
+bool screen_lora_cr_is_edit_mode(void);
+void screen_lora_cr_reset(void);
+
+void screen_lora_txpower_init(void);
+void screen_lora_txpower_create(lv_obj_t *parent);
+void screen_lora_txpower_navigate_down(void);
+void screen_lora_txpower_navigate_up(void);
+void screen_lora_txpower_select(void);
+bool screen_lora_txpower_is_edit_mode(void);
+void screen_lora_txpower_reset(void);
+
+void screen_lora_band_init(void);
+void screen_lora_band_create(lv_obj_t *parent);
+void screen_lora_band_navigate_down(void);
+void screen_lora_band_select(void);
+void screen_lora_band_reset(void);
+
 /**
  * @brief Create pairing screen
  * @param parent Parent object to create screen in
