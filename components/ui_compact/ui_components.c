@@ -451,10 +451,17 @@ ui_radio_select_t *ui_radio_select_create(int item_count, ui_radio_mode_t mode) 
     radio->nav_up = NULL;
     radio->nav_down = NULL;
     
+    // Allocate selected_items for both single and multi-select
+    // For single-select: selected_items[0] stores the saved/committed value index
+    // For multi-select: each element stores the checked state
     if (mode == UI_RADIO_MULTI) {
         radio->selected_items = calloc(item_count, sizeof(bool));
     } else {
-        radio->selected_items = NULL;
+        // Single-select: use selected_items[0] to store saved value index
+        radio->selected_items = calloc(1, sizeof(int));
+        if (radio->selected_items) {
+            ((int*)radio->selected_items)[0] = -1;  // No saved value initially
+        }
     }
     
     return radio;
@@ -512,10 +519,16 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
         int circle_x = 2;
         int circle_y = item_y + (UI_MENU_ITEM_HEIGHT - 9) / 2;
         
-        // Check if this item is selected (for radio button state)
-        bool is_checked = (radio->mode == UI_RADIO_SINGLE) ? 
-                         (item_idx == radio->selected_index) : 
-                         radio->selected_items[item_idx];
+        // For single-select radio: filled circle shows the SAVED value (from selected_items[0])
+        // Navigation (lightbar) is separate and controlled by selected_index
+        bool is_checked = false;
+        if (radio->mode == UI_RADIO_SINGLE) {
+            // In single-select, selected_items[0] stores the saved/committed value
+            is_checked = (radio->selected_items && radio->selected_items[0] == item_idx);
+        } else {
+            // In multi-select, each item has its own checked state
+            is_checked = radio->selected_items[item_idx];
+        }
         
         // Outer circle (9px) - always shown
         lv_obj_t *outer_circle = lv_obj_create(parent);

@@ -19,7 +19,13 @@ void screen_device_mode_create(lv_obj_t *parent) {
         // Set initial selection based on config
         general_config_t config;
         general_config_get(&config);
-        radio->selected_index = (config.device_mode == DEVICE_MODE_PRESENTER) ? 0 : 1;
+        int current_mode_idx = (config.device_mode == DEVICE_MODE_PRESENTER) ? 0 : 1;
+        radio->selected_index = current_mode_idx;
+        
+        // Set the saved/committed value (filled radio)
+        if (radio->selected_items) {
+            ((int*)radio->selected_items)[0] = current_mode_idx;
+        }
     }
     
     ui_radio_select_render(radio, parent, "DEVICE MODE", mode_items);
@@ -40,6 +46,11 @@ void screen_device_mode_select(void) {
     if (new_mode != config.device_mode) {
         config.device_mode = new_mode;
         general_config_set(&config);
+        
+        // Update the saved/committed value (filled radio)
+        if (radio->selected_items) {
+            ((int*)radio->selected_items)[0] = radio->selected_index;
+        }
         
         system_event_mode_t evt = {.mode = new_mode};
         esp_event_post_to(system_events_get_loop(), SYSTEM_EVENTS, SYSTEM_EVENT_MODE_CHANGED, &evt, sizeof(evt), 0);
