@@ -105,7 +105,7 @@ static esp_err_t switch_to_host_mode(void)
     vTaskDelay(pdMS_TO_TICKS(100));
 
     const usb_host_config_t host_config = {
-        .skip_phy_setup = false,
+        .skip_phy_setup = true,  // PHY already configured by TinyUSB device mode
         .intr_flags     = ESP_INTR_FLAG_LEVEL1,
     };
 
