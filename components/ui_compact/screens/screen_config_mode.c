@@ -62,10 +62,10 @@ void screen_config_mode_create(lv_obj_t *parent) {
     lv_obj_set_pos(pass_label, 2, 28);
     
     lv_obj_t *url_label = lv_label_create(parent);
-    lv_label_set_text(url_label, "192.168.4.1");
+    lv_label_set_text(url_label, "http://192.168.4.1");
     lv_obj_set_style_text_color(url_label, lv_color_white(), 0);
     lv_obj_set_style_text_font(url_label, &lv_font_pixolletta_10, 0);
-    lv_obj_set_pos(url_label, 20, 42);
+    lv_obj_set_pos(url_label, 0, 38);
     
     lv_obj_t *bottom_line = lv_line_create(parent);
     static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};

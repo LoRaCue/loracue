@@ -145,4 +145,16 @@ ui_info_screen_t *ui_info_screen_create(const char *title);
 void ui_info_screen_render(ui_info_screen_t *screen, lv_obj_t *parent, const char *title, const char *lines[3]);
 void ui_info_screen_set_line(const ui_info_screen_t *screen, int line, const char *text);
 
+// Text viewer component
+typedef struct {
+    const char **lines;
+    uint8_t line_count;
+    uint8_t scroll_pos;
+} ui_text_viewer_t;
+
+ui_text_viewer_t *ui_text_viewer_create(const char **lines, uint8_t line_count);
+void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const char *title);
+void ui_text_viewer_scroll(ui_text_viewer_t *viewer);
+void ui_text_viewer_destroy(ui_text_viewer_t *viewer);
+
 #endif // UI_COMPONENTS_H

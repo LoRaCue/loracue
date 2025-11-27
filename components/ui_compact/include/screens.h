@@ -96,6 +96,8 @@ void screen_system_info_create(lv_obj_t *parent);
  * @param parent Parent object to create screen in
  */
 void screen_device_info_create(lv_obj_t *parent);
+void screen_device_info_button_press(void);
+void screen_device_info_reset(void);
 
 /**
  * @brief Create battery status screen

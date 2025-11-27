@@ -237,13 +237,25 @@ static void button_event_handler(button_event_type_t event, void *arg) {
                current_screen_type == UI_SCREEN_PAIRING ||
                current_screen_type == UI_SCREEN_DEVICE_REGISTRY ||
                current_screen_type == UI_SCREEN_CONFIG_MODE) {
-        if (event == BUTTON_EVENT_DOUBLE) {
+        if (event == BUTTON_EVENT_SHORT) {
+            // Single press on device info -> scroll
+            if (current_screen_type == UI_SCREEN_DEVICE_INFO) {
+                screen_device_info_button_press();
+                lv_obj_t *screen = lv_obj_create(NULL);
+                screen_device_info_create(screen);
+                lv_screen_load(screen);
+                if (current_screen) lv_obj_del(current_screen);
+                current_screen = screen;
+            }
+        } else if (event == BUTTON_EVENT_DOUBLE) {
             // Double press -> go back to menu
             ESP_LOGI(TAG, "Going back to menu");
             
             // Clean up current screen before leaving
             if (current_screen_type == UI_SCREEN_PAIRING) {
                 screen_pairing_reset();
+            } else if (current_screen_type == UI_SCREEN_DEVICE_INFO) {
+                screen_device_info_reset();
             }
             
             lv_obj_t *menu_screen = lv_obj_create(NULL);

@@ -294,7 +294,21 @@ void ui_info_screen_render(ui_info_screen_t *screen, lv_obj_t *parent, const cha
     lv_obj_t *title_label = lv_label_create(parent);
     lv_obj_add_style(title_label, &style_title, 0);
     lv_label_set_text(title_label, title);
-    lv_obj_set_pos(title_label, UI_MARGIN_LEFT, UI_MARGIN_TOP);
+    lv_obj_set_pos(title_label, UI_MARGIN_LEFT, 0);
+
+    // Top separator
+    lv_obj_t *line = lv_line_create(parent);
+    static lv_point_precise_t points[] = {{0, SEPARATOR_Y_TOP}, {DISPLAY_WIDTH, SEPARATOR_Y_TOP}};
+    lv_line_set_points(line, points, 2);
+    lv_obj_set_style_line_color(line, lv_color_white(), 0);
+    lv_obj_set_style_line_width(line, 1, 0);
+    
+    // Bottom separator
+    lv_obj_t *bottom_line = lv_line_create(parent);
+    static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
+    lv_line_set_points(bottom_line, bottom_points, 2);
+    lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
+    lv_obj_set_style_line_width(bottom_line, 1, 0);
 
     // Info lines
     for (int i = 0; i < 3; i++) {
@@ -306,6 +320,74 @@ void ui_info_screen_render(ui_info_screen_t *screen, lv_obj_t *parent, const cha
 
     // Back icon
     ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+}
+
+// Text viewer implementation
+#define TEXT_VIEWER_MAX_VISIBLE_LINES 4
+
+ui_text_viewer_t *ui_text_viewer_create(const char **lines, uint8_t line_count) {
+    ui_text_viewer_t *viewer = malloc(sizeof(ui_text_viewer_t));
+    viewer->lines = lines;
+    viewer->line_count = line_count;
+    viewer->scroll_pos = 0;
+    return viewer;
+}
+
+void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const char *title) {
+    // Title at Y=0
+    lv_obj_t *title_label = lv_label_create(parent);
+    lv_obj_add_style(title_label, &style_title, 0);
+    lv_label_set_text(title_label, title);
+    lv_obj_set_pos(title_label, UI_MARGIN_LEFT, 0);
+
+    // Top separator
+    lv_obj_t *line = lv_line_create(parent);
+    static lv_point_precise_t points[] = {{0, SEPARATOR_Y_TOP}, {DISPLAY_WIDTH, SEPARATOR_Y_TOP}};
+    lv_line_set_points(line, points, 2);
+    lv_obj_set_style_line_color(line, lv_color_white(), 0);
+    lv_obj_set_style_line_width(line, 1, 0);
+    
+    // Bottom separator
+    lv_obj_t *bottom_line = lv_line_create(parent);
+    static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
+    lv_line_set_points(bottom_line, bottom_points, 2);
+    lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
+    lv_obj_set_style_line_width(bottom_line, 1, 0);
+
+    // Display visible lines
+    uint8_t visible_lines = (viewer->line_count - viewer->scroll_pos) > TEXT_VIEWER_MAX_VISIBLE_LINES 
+                            ? TEXT_VIEWER_MAX_VISIBLE_LINES 
+                            : (viewer->line_count - viewer->scroll_pos);
+    
+    for (uint8_t i = 0; i < visible_lines; i++) {
+        lv_obj_t *line_label = lv_label_create(parent);
+        lv_obj_add_style(line_label, &style_text, 0);
+        lv_label_set_text(line_label, viewer->lines[viewer->scroll_pos + i]);
+        lv_obj_set_pos(line_label, 0, 12 + i * UI_LINE_HEIGHT);
+    }
+
+    // Scroll icon (left)
+    ui_draw_icon_text(parent, &button_double_press, "Scroll", 0, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+    
+    // Back icon (right)
+    ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+}
+
+void ui_text_viewer_scroll(ui_text_viewer_t *viewer) {
+    if (viewer->line_count <= TEXT_VIEWER_MAX_VISIBLE_LINES) {
+        return; // No scrolling needed
+    }
+    
+    viewer->scroll_pos++;
+    if (viewer->scroll_pos > viewer->line_count - TEXT_VIEWER_MAX_VISIBLE_LINES) {
+        viewer->scroll_pos = 0; // Jump back to start
+    }
+}
+
+void ui_text_viewer_destroy(ui_text_viewer_t *viewer) {
+    if (viewer) {
+        free(viewer);
+    }
 }
 
 void ui_info_screen_set_line(const ui_info_screen_t *screen, int line, const char *text) {
