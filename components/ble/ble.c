@@ -68,7 +68,7 @@ static const ble_uuid128_t NUS_CHR_TX_UUID =
 //==============================================================================
 
 #define BLE_CMD_QUEUE_SIZE              10
-#define BLE_CMD_TASK_STACK_SIZE         8192
+#define BLE_CMD_TASK_STACK_SIZE         6144
 #define BLE_CMD_TASK_PRIORITY           5
 #define BLE_CMD_MAX_LENGTH              2048
 #define BLE_RESPONSE_MAX_LENGTH         2048
@@ -557,7 +557,7 @@ static void on_sync(void)
     }
     
     // Start advertising from separate task (can't call ble_gap_adv_start from sync callback)
-    xTaskCreate(start_advertising_task, "ble_adv", 4096, NULL, 5, NULL);
+    xTaskCreate(start_advertising_task, "ble_adv", 3072, NULL, 5, NULL);
 }
 
 static void on_reset(int reason)

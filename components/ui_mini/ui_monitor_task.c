@@ -42,7 +42,7 @@ esp_err_t ui_monitor_task_start(void)
 
     monitor_running = true;
 
-    BaseType_t ret = xTaskCreate(ui_monitor_task, "ui_monitor", 4096, NULL,
+    BaseType_t ret = xTaskCreate(ui_monitor_task, "ui_monitor", 3072, NULL,
                                  5, // Priority
                                  &monitor_task_handle);
 

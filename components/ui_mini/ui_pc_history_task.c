@@ -67,7 +67,7 @@ esp_err_t ui_pc_history_task_start(void)
 
     task_running = true;
 
-    BaseType_t ret = xTaskCreate(ui_pc_history_task, "ui_pc_hist", 4096, NULL,
+    BaseType_t ret = xTaskCreate(ui_pc_history_task, "ui_pc_hist", 3072, NULL,
                                  5, // Normal priority
                                  &pc_history_task_handle);
 

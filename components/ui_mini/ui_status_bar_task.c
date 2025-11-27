@@ -72,7 +72,7 @@ esp_err_t ui_status_bar_task_start(void)
 
     task_running = true;
 
-    BaseType_t ret = xTaskCreate(ui_status_bar_task, "ui_status", 4096, NULL,
+    BaseType_t ret = xTaskCreate(ui_status_bar_task, "ui_status", 3072, NULL,
                                  5, // Normal priority
                                  &status_bar_task_handle);
 

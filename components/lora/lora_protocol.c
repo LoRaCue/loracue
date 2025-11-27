@@ -626,17 +626,20 @@ esp_err_t lora_protocol_start(void)
     
     protocol_rx_task_running = true;
     
+    // Log heap before task creation
+    ESP_LOGI(TAG, "Free heap before RX task creation: %lu bytes", esp_get_free_heap_size());
+    
     BaseType_t ret = xTaskCreate(
         protocol_rx_task,
         "protocol_rx",
-        4096,
+        3072,
         NULL,
         5,
         &protocol_rx_task_handle
     );
     
     if (ret != pdPASS) {
-        ESP_LOGE(TAG, "Failed to create protocol RX task");
+        ESP_LOGE(TAG, "Failed to create protocol RX task (heap: %lu bytes)", esp_get_free_heap_size());
         protocol_rx_task_running = false;
         return ESP_FAIL;
     }

@@ -105,7 +105,7 @@ static esp_err_t switch_to_host_mode(void)
         return ret;
 
     host_mode_active = true;
-    if (xTaskCreate(usb_host_lib_task, "usb_host", 4096, NULL, 5, &usb_host_task_handle) != pdPASS) {
+    if (xTaskCreate(usb_host_lib_task, "usb_host", 3072, NULL, 5, &usb_host_task_handle) != pdPASS) {
         usb_host_uninstall();
         return ESP_ERR_NO_MEM;
     }
@@ -298,7 +298,7 @@ esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
         return ret;
     }
 
-    if (xTaskCreate(pairing_task, "usb_pairing", 4096, NULL, 5, NULL) != pdPASS) {
+    if (xTaskCreate(pairing_task, "usb_pairing", 3072, NULL, 5, NULL) != pdPASS) {
         switch_to_device_mode();
         pairing_active = false;
         return ESP_ERR_NO_MEM;

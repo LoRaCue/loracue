@@ -174,7 +174,7 @@ esp_err_t ui_init(void)
     
     // Create UI task
     ui_running = true;
-    BaseType_t task_ret = xTaskCreate(ui_task, "ui_mini", 4096, NULL, 5, &ui_task_handle);
+    BaseType_t task_ret = xTaskCreate(ui_task, "ui_mini", 3072, NULL, 5, &ui_task_handle);
     if (task_ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create UI task");
         return ESP_FAIL;
