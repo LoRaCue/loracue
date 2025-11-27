@@ -54,7 +54,7 @@ void screen_pairing_create(lv_obj_t *parent) {
     lv_label_set_text(status_label, "Waiting...");
     lv_obj_set_style_text_color(status_label, lv_color_white(), 0);
     lv_obj_set_style_text_font(status_label, &lv_font_pixolletta_10, 0);
-    lv_obj_align(status_label, LV_ALIGN_CENTER, 0, 20);
+    lv_obj_align(status_label, LV_ALIGN_CENTER, 0, 15);
     
     // Start USB pairing
     esp_err_t ret = usb_pairing_start(pairing_callback);

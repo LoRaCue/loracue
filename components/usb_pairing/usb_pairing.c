@@ -95,6 +95,12 @@ static esp_err_t switch_to_host_mode(void)
 {
     ESP_LOGI(TAG, "Switching to USB host mode");
 
+    // Stop USB device mode (CDC) first
+    esp_err_t deinit_ret = tinyusb_driver_uninstall();
+    if (deinit_ret != ESP_OK && deinit_ret != ESP_ERR_INVALID_STATE) {
+        ESP_LOGW(TAG, "Failed to uninstall TinyUSB: %s", esp_err_to_name(deinit_ret));
+    }
+
     const usb_host_config_t host_config = {
         .skip_phy_setup = false,
         .intr_flags     = ESP_INTR_FLAG_LEVEL1,
