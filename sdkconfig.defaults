@@ -47,5 +47,8 @@ CONFIG_LV_FONT_MONTSERRAT_14=y
 CONFIG_LV_FONT_UNSCII_8=y
 
 # mbedTLS - Disable hardware AES to avoid memory allocation contention
+# TODO: Investigate hardware AES contention issues and re-enable if possible
+# Hardware AES was causing "Failed to allocate memory" errors during LoRa TX
+# Software AES is slower but more reliable for our use case
 CONFIG_MBEDTLS_HARDWARE_AES=n
 CONFIG_MBEDTLS_AES_USE_INTERRUPT=n
