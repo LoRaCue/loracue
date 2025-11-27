@@ -723,7 +723,7 @@ static void button_event_handler(button_event_type_t event, void *arg) {
 }
 
 static void mode_change_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data) {
-    system_event_mode_t *evt = (system_event_mode_t *)data;
+    const system_event_mode_t *evt = (const system_event_mode_t *)data;
     ESP_LOGI(TAG, "Mode changed to: %s", evt->mode == DEVICE_MODE_PRESENTER ? "PRESENTER" : "PC");
     
     // Reload main screen with new mode

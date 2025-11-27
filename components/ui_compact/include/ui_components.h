@@ -147,9 +147,9 @@ void ui_info_screen_set_line(const ui_info_screen_t *screen, int line, const cha
 
 // Text viewer component
 typedef struct {
-    const char **lines;
-    uint8_t line_count;
-    uint8_t scroll_pos;
+    const char **lines;  // cppcheck-suppress unusedStructMember
+    uint8_t line_count;  // cppcheck-suppress unusedStructMember
+    uint8_t scroll_pos;  // cppcheck-suppress unusedStructMember
 } ui_text_viewer_t;
 
 ui_text_viewer_t *ui_text_viewer_create(const char **lines, uint8_t line_count);
