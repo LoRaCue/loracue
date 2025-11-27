@@ -28,7 +28,7 @@
 #include "ui_rich.h"
 #endif
 
-#define OTA_RINGBUF_SIZE 8192
+#define OTA_RINGBUF_SIZE 4096
 #define OTA_TASK_SIZE 8192
 
 static const char *TAG = "ble_ota";
