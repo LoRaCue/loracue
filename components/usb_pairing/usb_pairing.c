@@ -100,6 +100,9 @@ static esp_err_t switch_to_host_mode(void)
     if (deinit_ret != ESP_OK && deinit_ret != ESP_ERR_INVALID_STATE) {
         ESP_LOGW(TAG, "Failed to uninstall TinyUSB: %s", esp_err_to_name(deinit_ret));
     }
+    
+    // Wait for USB PHY to be fully released
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     const usb_host_config_t host_config = {
         .skip_phy_setup = false,

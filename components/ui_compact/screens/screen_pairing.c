@@ -67,7 +67,27 @@ void screen_pairing_create(lv_obj_t *parent) {
     esp_err_t ret = usb_pairing_start(pairing_callback);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start USB pairing: %s", esp_err_to_name(ret));
-        lv_label_set_text(status_label, "Start failed");
+        
+        // Hide hints and show error centered
+        lv_obj_add_flag(msg1, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(msg2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_align(status_label, LV_ALIGN_CENTER, 0, -5);
+        
+        // Show detailed error
+        lv_label_set_text(status_label, "Error");
+        
+        lv_obj_t *error_detail = lv_label_create(parent);
+        lv_obj_set_style_text_color(error_detail, lv_color_white(), 0);
+        lv_obj_set_style_text_font(error_detail, &lv_font_pixolletta_10, 0);
+        lv_obj_align(error_detail, LV_ALIGN_CENTER, 0, 5);
+        
+        if (ret == ESP_ERR_INVALID_STATE) {
+            lv_label_set_text(error_detail, "Already active");
+        } else if (ret == ESP_ERR_NO_MEM) {
+            lv_label_set_text(error_detail, "Out of memory");
+        } else {
+            lv_label_set_text_fmt(error_detail, "Code: 0x%x", ret);
+        }
     } else {
         ESP_LOGI(TAG, "USB pairing started");
     }
