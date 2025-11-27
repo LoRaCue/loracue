@@ -240,6 +240,12 @@ static void button_event_handler(button_event_type_t event, void *arg) {
         if (event == BUTTON_EVENT_DOUBLE) {
             // Double press -> go back to menu
             ESP_LOGI(TAG, "Going back to menu");
+            
+            // Clean up current screen before leaving
+            if (current_screen_type == UI_SCREEN_PAIRING) {
+                screen_pairing_reset();
+            }
+            
             lv_obj_t *menu_screen = lv_obj_create(NULL);
             screen_menu_create(menu_screen);
             lv_screen_load(menu_screen);

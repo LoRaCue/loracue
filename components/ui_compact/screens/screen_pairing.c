@@ -17,6 +17,7 @@ static void pairing_callback(bool success, uint16_t device_id, const char *devic
         // Hide hint messages and show status centered
         if (msg1) lv_obj_add_flag(msg1, LV_OBJ_FLAG_HIDDEN);
         if (msg2) lv_obj_add_flag(msg2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(status_label, LV_OBJ_FLAG_HIDDEN);
         lv_obj_align(status_label, LV_ALIGN_CENTER, 0, 0);
         
         if (success) {
@@ -56,12 +57,11 @@ void screen_pairing_create(lv_obj_t *parent) {
     lv_obj_set_style_text_font(msg2, &lv_font_pixolletta_10, 0);
     lv_obj_align(msg2, LV_ALIGN_CENTER, 0, 5);
     
-    // Status label for pairing feedback
+    // Status label for pairing feedback (initially hidden)
     status_label = lv_label_create(parent);
-    lv_label_set_text(status_label, "Waiting...");
     lv_obj_set_style_text_color(status_label, lv_color_white(), 0);
     lv_obj_set_style_text_font(status_label, &lv_font_pixolletta_10, 0);
-    lv_obj_align(status_label, LV_ALIGN_CENTER, 0, 15);
+    lv_obj_add_flag(status_label, LV_OBJ_FLAG_HIDDEN);
     
     // Start USB pairing
     esp_err_t ret = usb_pairing_start(pairing_callback);
@@ -71,6 +71,7 @@ void screen_pairing_create(lv_obj_t *parent) {
         // Hide hints and show error centered
         lv_obj_add_flag(msg1, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(msg2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(status_label, LV_OBJ_FLAG_HIDDEN);
         lv_obj_align(status_label, LV_ALIGN_CENTER, 0, -5);
         
         // Show detailed error
@@ -110,8 +111,9 @@ void screen_pairing_create(lv_obj_t *parent) {
 }
 
 void screen_pairing_reset(void) {
-    ESP_LOGI(TAG, "Pairing screen reset - stopping USB pairing");
+    ESP_LOGW(TAG, "=== Pairing screen reset - stopping USB pairing ===");
     usb_pairing_stop();
+    ESP_LOGW(TAG, "=== usb_pairing_stop returned ===");
     status_label = NULL;
     msg1 = NULL;
     msg2 = NULL;
