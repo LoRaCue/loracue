@@ -23,7 +23,7 @@ void screen_lora_submenu_create(lv_obj_t *parent) {
     lv_obj_t *title = lv_label_create(parent);
     lv_obj_add_style(title, &style_title, 0);
     lv_label_set_text(title, "LORA SETTINGS");
-    lv_obj_set_pos(title, UI_MARGIN_LEFT, UI_MARGIN_TOP);
+    lv_obj_set_pos(title, UI_MARGIN_LEFT, 0);
     
     // Preserve selected index if menu already exists
     int selected = menu ? menu->selected_index : 0;

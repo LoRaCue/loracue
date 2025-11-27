@@ -87,7 +87,7 @@ ui_menu_t *ui_menu_create(lv_obj_t *parent, const char **item_names, int count) 
     menu->nav_down = NULL;
     menu->back_icon = NULL;
 
-    ui_menu_update(menu, item_names);
+    // Don't auto-update - let caller control initial render
     return menu;
 }
 

@@ -40,4 +40,5 @@ idf_component_register(
         bsp
         lora
         presenter_mode_manager
+        usb_pairing
 )

@@ -41,7 +41,7 @@ void screen_config_mode_create(lv_obj_t *parent) {
     lv_label_set_text(title, "CONFIG MODE");
     lv_obj_set_style_text_color(title, lv_color_white(), 0);
     lv_obj_set_style_text_font(title, &lv_font_pixolletta_10, 0);
-    lv_obj_set_pos(title, 2, 1);
+    lv_obj_set_pos(title, 2, 0);
     
     lv_obj_t *line = lv_line_create(parent);
     static lv_point_precise_t points[] = {{0, SEPARATOR_Y_TOP}, {DISPLAY_WIDTH, SEPARATOR_Y_TOP}};

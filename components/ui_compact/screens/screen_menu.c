@@ -26,10 +26,8 @@ void screen_menu_create(lv_obj_t *parent) {
     int selected = menu ? menu->selected_index : 0;
     
     menu = ui_menu_create(parent, MAIN_MENU_ITEMS, MAIN_MENU_COUNT);
-    if (selected != 0) {
-        menu->selected_index = selected;
-        ui_menu_update(menu, MAIN_MENU_ITEMS);
-    }
+    menu->selected_index = selected;
+    ui_menu_update(menu, MAIN_MENU_ITEMS);
 }
 
 void screen_menu_navigate_down(void) {
