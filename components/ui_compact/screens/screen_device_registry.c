@@ -26,19 +26,19 @@ void screen_device_registry_create(lv_obj_t *parent) {
     lv_label_set_text(msg1, "No devices paired");
     lv_obj_set_style_text_color(msg1, lv_color_white(), 0);
     lv_obj_set_style_text_font(msg1, &lv_font_pixolletta_10, 0);
-    lv_obj_set_pos(msg1, 12, 22);
+    lv_obj_align(msg1, LV_ALIGN_CENTER, 0, -10);
     
     lv_obj_t *msg2 = lv_label_create(parent);
     lv_label_set_text(msg2, "Use config mode to");
     lv_obj_set_style_text_color(msg2, lv_color_white(), 0);
     lv_obj_set_style_text_font(msg2, &lv_font_pixolletta_10, 0);
-    lv_obj_set_pos(msg2, 8, 32);
+    lv_obj_align(msg2, LV_ALIGN_CENTER, 0, 0);
     
     lv_obj_t *msg3 = lv_label_create(parent);
     lv_label_set_text(msg3, "pair new devices");
     lv_obj_set_style_text_color(msg3, lv_color_white(), 0);
     lv_obj_set_style_text_font(msg3, &lv_font_pixolletta_10, 0);
-    lv_obj_set_pos(msg3, 12, 42);
+    lv_obj_align(msg3, LV_ALIGN_CENTER, 0, 10);
     
     lv_obj_t *bottom_line = lv_line_create(parent);
     static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
