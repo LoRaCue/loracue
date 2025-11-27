@@ -207,7 +207,7 @@ ui_edit_screen_t *ui_edit_screen_create(const char *title) {
     return screen;
 }
 
-void ui_edit_screen_render(ui_edit_screen_t *screen, lv_obj_t *parent, const char *title, const char *value, int current, int max) {
+void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, const char *title, const char *value, int current, int max) {
     // Title
     lv_obj_t *title_label = lv_label_create(parent);
     lv_obj_add_style(title_label, &style_title, 0);
@@ -306,7 +306,7 @@ void ui_info_screen_render(ui_info_screen_t *screen, lv_obj_t *parent, const cha
     ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
 }
 
-void ui_info_screen_set_line(ui_info_screen_t *screen, int line, const char *text) {
+void ui_info_screen_set_line(const ui_info_screen_t *screen, int line, const char *text) {
     // Not used in new implementation
 }
 
@@ -323,7 +323,7 @@ ui_numeric_input_t *ui_numeric_input_create(float initial, float min, float max,
     return input;
 }
 
-void ui_numeric_input_render(ui_numeric_input_t *input, lv_obj_t *parent, const char *title, const char *unit) {
+void ui_numeric_input_render(const ui_numeric_input_t *input, lv_obj_t *parent, const char *title, const char *unit) {
     // Title above separator
     lv_obj_t *title_label = lv_label_create(parent);
     lv_obj_add_style(title_label, &style_title, 0);

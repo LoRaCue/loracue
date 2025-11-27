@@ -71,7 +71,7 @@ typedef struct {
 } ui_edit_screen_t;
 
 ui_edit_screen_t *ui_edit_screen_create(const char *title);
-void ui_edit_screen_render(ui_edit_screen_t *screen, lv_obj_t *parent, const char *title, const char *value, int current, int max);
+void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, const char *title, const char *value, int current, int max);
 
 // Numeric input screen
 typedef struct {
@@ -84,7 +84,7 @@ typedef struct {
 } ui_numeric_input_t;
 
 ui_numeric_input_t *ui_numeric_input_create(float initial, float min, float max, float step);
-void ui_numeric_input_render(ui_numeric_input_t *input, lv_obj_t *parent, const char *title, const char *unit);
+void ui_numeric_input_render(const ui_numeric_input_t *input, lv_obj_t *parent, const char *title, const char *unit);
 void ui_numeric_input_increment(ui_numeric_input_t *input);
 void ui_numeric_input_decrement(ui_numeric_input_t *input);
 
@@ -142,6 +142,6 @@ typedef struct {
 
 ui_info_screen_t *ui_info_screen_create(const char *title);
 void ui_info_screen_render(ui_info_screen_t *screen, lv_obj_t *parent, const char *title, const char *lines[3]);
-void ui_info_screen_set_line(ui_info_screen_t *screen, int line, const char *text);
+void ui_info_screen_set_line(const ui_info_screen_t *screen, int line, const char *text);
 
 #endif // UI_COMPONENTS_H
