@@ -64,11 +64,6 @@ extern const char *MAIN_MENU_ITEMS[MAIN_MENU_COUNT];
 void screen_menu_create(lv_obj_t *parent);
 
 /**
- * @brief Navigate up in menu
- */
-void screen_menu_navigate_up(void);
-
-/**
  * @brief Navigate down in menu
  */
 void screen_menu_navigate_down(void);
@@ -127,7 +122,6 @@ void screen_factory_reset_reset(void);
 // LoRa Frequency screen
 void screen_lora_frequency_init(void);
 void screen_lora_frequency_create(lv_obj_t *parent);
-void screen_lora_frequency_increment(void);
 void screen_lora_frequency_select(void);
 bool screen_lora_frequency_is_edit_mode(void);
 void screen_lora_frequency_reset(void);
