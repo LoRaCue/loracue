@@ -9,9 +9,16 @@ static const char *TAG = "pairing";
 LV_IMG_DECLARE(button_double_press);
 
 static lv_obj_t *status_label = NULL;
+static lv_obj_t *msg1 = NULL;
+static lv_obj_t *msg2 = NULL;
 
 static void pairing_callback(bool success, uint16_t device_id, const char *device_name) {
     if (status_label) {
+        // Hide hint messages and show status centered
+        if (msg1) lv_obj_add_flag(msg1, LV_OBJ_FLAG_HIDDEN);
+        if (msg2) lv_obj_add_flag(msg2, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_align(status_label, LV_ALIGN_CENTER, 0, 0);
+        
         if (success) {
             ESP_LOGI(TAG, "Pairing successful: %s (0x%04X)", device_name, device_id);
             lv_label_set_text_fmt(status_label, "Paired: %s", device_name);
@@ -37,13 +44,13 @@ void screen_pairing_create(lv_obj_t *parent) {
     lv_obj_set_style_line_color(line, lv_color_white(), 0);
     lv_obj_set_style_line_width(line, 1, 0);
     
-    lv_obj_t *msg1 = lv_label_create(parent);
+    msg1 = lv_label_create(parent);
     lv_label_set_text(msg1, "Connect other LoRaCue");
     lv_obj_set_style_text_color(msg1, lv_color_white(), 0);
     lv_obj_set_style_text_font(msg1, &lv_font_pixolletta_10, 0);
     lv_obj_align(msg1, LV_ALIGN_CENTER, 0, -5);
     
-    lv_obj_t *msg2 = lv_label_create(parent);
+    msg2 = lv_label_create(parent);
     lv_label_set_text(msg2, "device by USB-C.");
     lv_obj_set_style_text_color(msg2, lv_color_white(), 0);
     lv_obj_set_style_text_font(msg2, &lv_font_pixolletta_10, 0);
@@ -86,4 +93,6 @@ void screen_pairing_reset(void) {
     ESP_LOGI(TAG, "Pairing screen reset - stopping USB pairing");
     usb_pairing_stop();
     status_label = NULL;
+    msg1 = NULL;
+    msg2 = NULL;
 }
