@@ -415,13 +415,17 @@ const char *bsp_get_model_name(void)
 }
 
 // USB configuration for LilyGO T5
-static const bsp_usb_config_t usb_config = {
-    .usb_pid = 0x4004,
-    .usb_product = "LC-gamma"
-};
-
 const bsp_usb_config_t *bsp_get_usb_config(void)
 {
+    static bsp_usb_config_t usb_config = {
+        .usb_pid = 0x4004,
+        .usb_product = NULL
+    };
+    
+    if (!usb_config.usb_product) {
+        usb_config.usb_product = bsp_get_model_name();
+    }
+    
     return &usb_config;
 }
 
