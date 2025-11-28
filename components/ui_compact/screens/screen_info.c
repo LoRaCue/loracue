@@ -206,7 +206,10 @@ static void handle_system_info_input(button_event_type_t event)
     if (event == BUTTON_EVENT_SHORT) {
         if (system_viewer) {
             ui_text_viewer_scroll(system_viewer);
-            ui_navigator_switch_to(UI_SCREEN_SYSTEM_INFO);
+            // Recreate screen to show updated scroll position
+            lv_obj_t *screen = lv_scr_act();
+            lv_obj_clean(screen);
+            screen_system_info_create(screen);
         }
     } else if (event == BUTTON_EVENT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
@@ -238,7 +241,10 @@ static void handle_device_info_input(button_event_type_t event)
     if (event == BUTTON_EVENT_SHORT) {
         if (device_viewer) {
             ui_text_viewer_scroll(device_viewer);
-            ui_navigator_switch_to(UI_SCREEN_DEVICE_INFO);
+            // Recreate screen to show updated scroll position
+            lv_obj_t *screen = lv_scr_act();
+            lv_obj_clean(screen);
+            screen_device_info_create(screen);
         }
     } else if (event == BUTTON_EVENT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
@@ -270,7 +276,10 @@ static void handle_battery_status_input(button_event_type_t event)
     if (event == BUTTON_EVENT_SHORT) {
         if (battery_viewer) {
             ui_text_viewer_scroll(battery_viewer);
-            ui_navigator_switch_to(UI_SCREEN_BATTERY);
+            // Recreate screen to show updated scroll position
+            lv_obj_t *screen = lv_scr_act();
+            lv_obj_clean(screen);
+            screen_battery_status_create(screen);
         }
     } else if (event == BUTTON_EVENT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);

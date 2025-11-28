@@ -371,14 +371,14 @@ void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const cha
     // Nav arrows if scrolling is needed
     if (viewer->line_count > TEXT_VIEWER_MAX_VISIBLE_LINES) {
         if (viewer->scroll_pos > 0) {
-            lv_obj_t *nav_up = lv_img_create(parent);
-            lv_img_set_src(nav_up, &nav_up);
-            lv_obj_set_pos(nav_up, UI_NAV_ARROW_X, SEPARATOR_Y_TOP + UI_MENU_ARROW_Y_UP);
+            lv_obj_t *nav_up_img = lv_img_create(parent);
+            lv_img_set_src(nav_up_img, &nav_up);
+            lv_obj_set_pos(nav_up_img, UI_NAV_ARROW_X, SEPARATOR_Y_TOP + UI_MENU_ARROW_Y_UP);
         }
         if (viewer->scroll_pos < viewer->line_count - TEXT_VIEWER_MAX_VISIBLE_LINES) {
-            lv_obj_t *nav_down = lv_img_create(parent);
-            lv_img_set_src(nav_down, &nav_down);
-            lv_obj_set_pos(nav_down, UI_NAV_ARROW_X, UI_MENU_ARROW_Y_DOWN);
+            lv_obj_t *nav_down_img = lv_img_create(parent);
+            lv_img_set_src(nav_down_img, &nav_down);
+            lv_obj_set_pos(nav_down_img, UI_NAV_ARROW_X, UI_MENU_ARROW_Y_DOWN);
         }
     }
 
