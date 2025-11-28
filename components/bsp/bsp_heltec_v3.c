@@ -10,19 +10,17 @@
  */
 
 #include "bsp.h"
+#include "display.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_mac.h"
 #include "esp_log.h"
 #include "esp_sleep.h"
-#include "u8g2.h"
 #include <string.h>
 
 static const char *TAG = "BSP_HELTEC_V3";
 
-// Global u8g2 instance
-u8g2_t u8g2;
 
 // Heltec LoRa V3 Pin Definitions
 #define BUTTON_PIN GPIO_NUM_0
@@ -55,7 +53,6 @@ u8g2_t u8g2;
 // Static handles
 static adc_oneshot_unit_handle_t adc_handle = NULL;
 static spi_device_handle_t spi_handle       = NULL;
-static SemaphoreHandle_t u8g2_mutex         = NULL;
 
 esp_err_t bsp_init_spi(void)
 {
@@ -164,14 +161,6 @@ esp_err_t bsp_init(void)
 
     esp_err_t ret = ESP_OK;
 
-    // Create u8g2 mutex for thread safety
-    ESP_LOGD(TAG, "Creating u8g2 mutex");
-    u8g2_mutex = xSemaphoreCreateMutex();
-    if (!u8g2_mutex) {
-        ESP_LOGE(TAG, "Failed to create u8g2 mutex - out of memory");
-        return ESP_ERR_NO_MEM;
-    }
-
     // Initialize GPIO for buttons
     ret = bsp_init_buttons();
     if (ret != ESP_OK) {
@@ -220,16 +209,6 @@ esp_err_t bsp_init(void)
         ESP_LOGI(TAG, "I2C bus already initialized, skipping");
     }
 
-    // Set OLED reset pin
-    bsp_oled_set_reset_pin(OLED_RST_PIN);
-
-    // Initialize u8g2 for OLED
-    ret = bsp_u8g2_init(&u8g2);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize u8g2: %s", esp_err_to_name(ret));
-        goto cleanup;
-    }
-
     ESP_LOGI(TAG, "BSP initialization complete");
     return ESP_OK;
 
@@ -259,30 +238,15 @@ esp_err_t bsp_deinit(void)
     // Clean up I2C
     bsp_i2c_deinit();
     
-    // Delete mutex
-    if (u8g2_mutex) {
-        vSemaphoreDelete(u8g2_mutex);
-        u8g2_mutex = NULL;
-    }
-    
     ESP_LOGI(TAG, "BSP deinitialized");
     return ESP_OK;
 }
 
-bool bsp_u8g2_lock(uint32_t timeout_ms)
-{
-    if (!u8g2_mutex) {
-        ESP_LOGW(TAG, "u8g2 mutex not initialized");
-        return false;
-    }
-    return xSemaphoreTake(u8g2_mutex, pdMS_TO_TICKS(timeout_ms)) == pdTRUE;
-}
 
-void bsp_u8g2_unlock(void)
+
+const char* bsp_get_board_name(void)
 {
-    if (u8g2_mutex) {
-        xSemaphoreGive(u8g2_mutex);
-    }
+    return "Heltec V3";
 }
 
 esp_err_t bsp_init_buttons(void)
@@ -459,52 +423,6 @@ esp_err_t bsp_validate_hardware(void)
     return ESP_OK;
 }
 
-esp_err_t bsp_u8g2_init(void *u8g2_ptr)
-{
-    u8g2_t *u8g2_local = (u8g2_t *)u8g2_ptr;
-
-    ESP_LOGI(TAG, "Initializing u8g2 with SSD1306 for Heltec V3");
-
-    // Enable Vext power (powers OLED and LoRa module)
-    ESP_LOGI(TAG, "Enabling Vext power for OLED");
-    gpio_config_t vext_conf = {.pin_bit_mask = (1ULL << VEXT_CTRL_PIN),
-                               .mode         = GPIO_MODE_OUTPUT,
-                               .pull_up_en   = GPIO_PULLUP_DISABLE,
-                               .pull_down_en = GPIO_PULLDOWN_DISABLE,
-                               .intr_type    = GPIO_INTR_DISABLE};
-    gpio_config(&vext_conf);
-    gpio_set_level(VEXT_CTRL_PIN, 0); // LOW = power ON (active low)
-    vTaskDelay(pdMS_TO_TICKS(200));   // Wait for power to stabilize
-
-    // Configure OLED reset pin
-    gpio_config_t rst_conf = {.pin_bit_mask = (1ULL << OLED_RST_PIN),
-                              .mode         = GPIO_MODE_OUTPUT,
-                              .pull_up_en   = GPIO_PULLUP_DISABLE,
-                              .pull_down_en = GPIO_PULLDOWN_DISABLE,
-                              .intr_type    = GPIO_INTR_DISABLE};
-    gpio_config(&rst_conf);
-
-    // Hardware reset sequence for SSD1306
-    ESP_LOGI(TAG, "Performing hardware reset on OLED");
-    gpio_set_level(OLED_RST_PIN, 0);
-    vTaskDelay(pdMS_TO_TICKS(50));
-    gpio_set_level(OLED_RST_PIN, 1);
-    vTaskDelay(pdMS_TO_TICKS(50));
-
-    // Wait for I2C bus to stabilize
-    vTaskDelay(pdMS_TO_TICKS(200));
-
-    // Initialize u8g2 with SSD1306 128x64 display using BSP callbacks
-    u8g2_Setup_ssd1306_i2c_128x64_noname_f(u8g2_local, U8G2_R0, bsp_u8g2_i2c_byte_cb, bsp_u8g2_gpio_and_delay_cb);
-
-    // Initialize display
-    u8g2_InitDisplay(u8g2_local);
-    u8g2_SetPowerSave(u8g2_local, 0);
-    u8g2_ClearDisplay(u8g2_local);
-
-    ESP_LOGI(TAG, "u8g2 initialized successfully for SSD1306");
-    return ESP_OK;
-}
 
 esp_err_t bsp_i2c_init_default(void)
 {
@@ -516,10 +434,32 @@ const char *bsp_get_board_id(void)
     return "heltec_v3";
 }
 
-static const bsp_usb_config_t usb_config = {.usb_pid = 0xFAB0, .usb_product = "LC-alpha"};
+const char *bsp_get_model_name(void)
+{
+#if defined(CONFIG_MODEL_ALPHA_PLUS)
+    return "LC-Alpha+";
+#else
+    return "LC-Alpha";
+#endif
+}
+
+bool bsp_battery_is_charging(void)
+{
+    // Heltec V3 doesn't have charging detection hardware
+    return false;
+}
 
 const bsp_usb_config_t *bsp_get_usb_config(void)
 {
+    static bsp_usb_config_t usb_config = {
+        .usb_pid = 0xFAB0,
+        .usb_product = NULL
+    };
+    
+    if (!usb_config.usb_product) {
+        usb_config.usb_product = bsp_get_model_name();
+    }
+    
     return &usb_config;
 }
 
@@ -553,20 +493,33 @@ const bsp_lora_pins_t *bsp_get_lora_pins(void)
 
 esp_err_t bsp_set_display_brightness(uint8_t brightness)
 {
-    u8g2_SetContrast(&u8g2, brightness);
-    return ESP_OK;
+    extern display_config_t *ui_lvgl_get_display_config(void);
+    display_config_t *config = ui_lvgl_get_display_config();
+    if (!config) {
+        ESP_LOGW(TAG, "Display not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+    return display_set_brightness(config, brightness);
 }
 
 esp_err_t bsp_display_sleep(void)
 {
-    u8g2_SetPowerSave(&u8g2, 1);
-    return ESP_OK;
+    extern display_config_t *ui_lvgl_get_display_config(void);
+    display_config_t *config = ui_lvgl_get_display_config();
+    if (config) {
+        return display_sleep(config);
+    }
+    return ESP_ERR_INVALID_STATE;
 }
 
 esp_err_t bsp_display_wake(void)
 {
-    u8g2_SetPowerSave(&u8g2, 0);
-    return ESP_OK;
+    extern display_config_t *ui_lvgl_get_display_config(void);
+    display_config_t *config = ui_lvgl_get_display_config();
+    if (config) {
+        return display_wake(config);
+    }
+    return ESP_ERR_INVALID_STATE;
 }
 
 esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin)
@@ -587,4 +540,39 @@ esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin)
         default:
             return ESP_ERR_INVALID_ARG;
     }
+}
+
+bsp_display_type_t bsp_get_display_type(void)
+{
+    return BSP_DISPLAY_TYPE_OLED_SSD1306;
+}
+
+i2c_master_bus_handle_t bsp_get_i2c_bus(void)
+{
+    return bsp_i2c_get_bus();
+}
+
+void *bsp_get_spi_device(void)
+{
+    return NULL; // Heltec V3 uses I2C for display
+}
+
+int bsp_get_epaper_dc_pin(void)
+{
+    return -1; // Not applicable for OLED
+}
+
+int bsp_get_epaper_cs_pin(void)
+{
+    return -1; // Not applicable for OLED
+}
+
+int bsp_get_epaper_rst_pin(void)
+{
+    return -1; // Not applicable for OLED
+}
+
+int bsp_get_epaper_busy_pin(void)
+{
+    return -1; // Not applicable for OLED
 }

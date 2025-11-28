@@ -26,6 +26,14 @@ typedef enum {
 } bsp_button_t;
 
 /**
+ * @brief Display type enumeration
+ */
+typedef enum {
+    BSP_DISPLAY_TYPE_OLED_SSD1306,  ///< OLED display (SSD1306)
+    BSP_DISPLAY_TYPE_EPAPER_SSD1681 ///< E-Paper display (SSD1681)
+} bsp_display_type_t;
+
+/**
  * @brief Initialize the board support package
  *
  * Initializes all hardware peripherals including GPIO, ADC, and power management.
@@ -33,6 +41,13 @@ typedef enum {
  * @return ESP_OK on success, error code otherwise
  */
 esp_err_t bsp_init(void);
+
+/**
+ * @brief Get the board name
+ *
+ * @return Pointer to board name string (e.g., "Heltec V3", "LilyGO T3")
+ */
+const char* bsp_get_board_name(void);
 
 /**
  * @brief Deinitialize BSP and free resources
@@ -45,20 +60,14 @@ esp_err_t bsp_init(void);
 esp_err_t bsp_deinit(void);
 
 /**
- * @brief Lock u8g2 mutex for thread-safe access
  * 
- * Must be called before any u8g2 operations.
- * Always pair with bsp_u8g2_unlock().
  * 
  * @param timeout_ms Timeout in milliseconds (portMAX_DELAY for infinite)
  * @return true if lock acquired, false on timeout
  */
-bool bsp_u8g2_lock(uint32_t timeout_ms);
 
 /**
- * @brief Unlock u8g2 mutex after operations complete
  */
-void bsp_u8g2_unlock(void);
 
 /**
  * @brief Get UART pins for specified port
@@ -118,6 +127,13 @@ bool bsp_read_button(bsp_button_t button);
 float bsp_read_battery(void);
 
 /**
+ * @brief Check if battery is currently charging
+ *
+ * @return true if battery is charging, false otherwise (or if hardware doesn't support detection)
+ */
+bool bsp_battery_is_charging(void);
+
+/**
  * @brief Enter deep sleep mode with button wake-up
  *
  * Configures both buttons as wake sources and enters deep sleep.
@@ -163,12 +179,9 @@ esp_err_t bsp_sx1262_reset(void);
 esp_err_t bsp_validate_hardware(void);
 
 /**
- * @brief Initialize u8g2 graphics library with BSP HAL callbacks
  *
- * @param u8g2 Pointer to u8g2 structure to initialize
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t bsp_u8g2_init(void *u8g2);
 
 /**
  * @brief Get board identifier string
@@ -179,6 +192,13 @@ esp_err_t bsp_u8g2_init(void *u8g2);
  * @return Constant string with board ID (e.g., "heltec_v3", "wokwi_sim")
  */
 const char *bsp_get_board_id(void);
+
+/**
+ * @brief Get model name string
+ *
+ * @return Constant string with model name (e.g., "LC-Alpha", "LC-Alpha+", "LC-Beta", "LC-Gamma")
+ */
+const char *bsp_get_model_name(void);
 
 /**
  * @brief USB descriptor configuration
@@ -292,18 +312,12 @@ i2c_master_bus_handle_t bsp_i2c_get_bus(void);
  */
 esp_err_t bsp_i2c_add_device(uint8_t addr, uint32_t freq_hz, i2c_master_dev_handle_t *dev_handle);
 
-// OLED u8g2 Callbacks
-#include "u8g2.h"
 
 /**
- * @brief u8g2 I2C byte callback for OLED
  */
-uint8_t bsp_u8g2_i2c_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
 
 /**
- * @brief u8g2 GPIO and delay callback for OLED
  */
-uint8_t bsp_u8g2_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
 
 /**
  * @brief Set OLED reset pin
@@ -325,6 +339,55 @@ esp_err_t bsp_epaper_power_on(void);
  * @return ESP_OK on success
  */
 esp_err_t bsp_epaper_power_off(void);
+
+/**
+ * @brief Get display type for this board
+ *
+ * @return Display type enumeration
+ */
+bsp_display_type_t bsp_get_display_type(void);
+
+/**
+ * @brief Get I2C bus handle for display
+ *
+ * @return I2C bus handle or NULL if not available
+ */
+i2c_master_bus_handle_t bsp_get_i2c_bus(void);
+
+/**
+ * @brief Get SPI device handle for display
+ *
+ * @return SPI device handle or NULL if not available
+ */
+void *bsp_get_spi_device(void);
+
+/**
+ * @brief Get E-Paper DC pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_dc_pin(void);
+
+/**
+ * @brief Get E-Paper CS pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_cs_pin(void);
+
+/**
+ * @brief Get E-Paper RST pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_rst_pin(void);
+
+/**
+ * @brief Get E-Paper BUSY pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_busy_pin(void);
 
 #ifdef __cplusplus
 }

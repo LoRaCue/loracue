@@ -83,6 +83,14 @@
       "left": -166.38,
       "rotate": 270,
       "attrs": {}
+    },
+    {
+      "type": "wokwi-ky-040",
+      "id": "encoder1",
+      "top": 94,
+      "left": 124.8,
+      "rotate": 180,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -115,7 +123,12 @@
     [ "esp:17", "i2console:SDA", "blue", [] ],
     [ "esp:18", "i2console:SCL", "yellow", [] ],
     [ "esp:3V3.1", "i2console:VCC", "red", [] ],
-    [ "battery_sim:GND", "i2console:GND", "black", [] ]
+    [ "battery_sim:GND", "i2console:GND", "black", [] ],
+    [ "encoder1:CLK", "esp:39", "green", [ "h0" ] ],
+    [ "encoder1:DT", "esp:40", "green", [ "h0" ] ],
+    [ "encoder1:SW", "esp:41", "green", [ "h0" ] ],
+    [ "encoder1:VCC", "battery_sim:VCC", "red", [ "h-19.2", "v-67.6" ] ],
+    [ "encoder1:GND", "esp:GND.2", "black", [ "h-9.6", "v-29.6" ] ]
   ],
   "dependencies": {}
 }

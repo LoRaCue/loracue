@@ -189,7 +189,7 @@ esp_err_t lora_driver_init(void)
     SetSyncWord(0x1424);
 
     // Create TX task
-    BaseType_t task_ret = xTaskCreate(lora_tx_task, "lora_tx", 4096, NULL,
+    BaseType_t task_ret = xTaskCreate(lora_tx_task, "lora_tx", 3072, NULL,
                                       5, // Priority
                                       &tx_task_handle);
 
@@ -199,7 +199,7 @@ esp_err_t lora_driver_init(void)
     }
 
     // Create RX task
-    task_ret = xTaskCreate(lora_rx_task, "lora_rx", 4096, NULL,
+    task_ret = xTaskCreate(lora_rx_task, "lora_rx", 3072, NULL,
                            5, // Priority
                            &rx_task_handle);
 

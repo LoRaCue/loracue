@@ -1,4 +1,4 @@
-# LoRaCue Partition Table - 8MB SPI Flash Layout (Corrected)
+# LoRaCue Partition Table - 8MB SPI Flash Layout
 # Name,   Type, SubType, Offset,  Size,    Flags
 nvs,      data, nvs,     0x9000,  0x17000,
 phy_init, data, phy,     0x20000, 0x1000,

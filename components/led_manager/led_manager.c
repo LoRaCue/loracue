@@ -92,17 +92,32 @@ esp_err_t led_manager_fade(uint32_t period_ms)
 {
     ESP_LOGD(TAG, "Starting LED fade: %dms period", period_ms);
 
+    // If already fading with same period, do nothing
+    if (current_pattern == LED_PATTERN_FADE && fade_period_ms == period_ms && fade_task_handle != NULL) {
+        return ESP_OK;
+    }
+
     // Stop any running patterns
     led_manager_stop();
+    
+    // Ensure task handle is cleared
+    if (fade_task_handle != NULL) {
+        ESP_LOGW(TAG, "Task handle not cleared after stop, forcing NULL");
+        fade_task_handle = NULL;
+    }
 
     fade_period_ms  = period_ms;
     current_pattern = LED_PATTERN_FADE;
 
+    // Log heap before task creation
+    ESP_LOGI(TAG, "Free heap before task creation: %lu bytes", esp_get_free_heap_size());
+
     // Create fade task
     BaseType_t ret = xTaskCreate(fade_task, "led_fade", 2048, NULL, 5, &fade_task_handle);
     if (ret != pdPASS) {
-        ESP_LOGE(TAG, "Failed to create fade task");
+        ESP_LOGE(TAG, "Failed to create fade task (heap: %lu bytes)", esp_get_free_heap_size());
         current_pattern = LED_PATTERN_OFF;
+        fade_task_handle = NULL;
         return ESP_ERR_NO_MEM;
     }
 
@@ -113,10 +128,11 @@ esp_err_t led_manager_stop(void)
 {
     ESP_LOGD(TAG, "Stopping LED patterns");
 
-    // Stop fade task
+    // Signal fade task to stop
     if (fade_task_handle != NULL) {
-        vTaskDelete(fade_task_handle);
-        fade_task_handle = NULL;
+        current_pattern = LED_PATTERN_OFF;  // Signal task to exit first
+        vTaskDelay(pdMS_TO_TICKS(50));  // Wait for task to exit cleanly
+        fade_task_handle = NULL;  // Clear handle after task exits
     }
 
     // Turn off LED

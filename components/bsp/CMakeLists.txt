@@ -6,14 +6,17 @@ endif()
 if(BOARD_ID STREQUAL "lilygo_t5")
     set(BSP_SRCS "bsp_lilygo_t5.c")
     message(STATUS "Building BSP for LilyGO T5 4.7\" E-Paper (UI_RICH)")
+elseif(BOARD_ID STREQUAL "lilygo_t3")
+    set(BSP_SRCS "bsp_lilygo_t3.c")
+    message(STATUS "Building BSP for LilyGO T3-S3 2.13\" E-Paper (UI_MINI)")
 elseif(BOARD_ID STREQUAL "heltec_v3")
-    set(BSP_SRCS "bsp_heltec_v3.c" "bsp_i2c.c" "bsp_oled.c")
-    message(STATUS "Building BSP for Heltec V3 (UI_MINI)")
+    set(BSP_SRCS "bsp_heltec_v3.c" "bsp_i2c.c")
+    message(STATUS "Building BSP for Heltec V3 (UI_COMPACT)")
 elseif(DEFINED ENV{WOKWI_BUILD})
-    set(BSP_SRCS "bsp_wokwi.c" "bsp_i2c.c" "bsp_oled.c")
-    message(STATUS "Building BSP for Wokwi Simulator (UI_MINI)")
+    set(BSP_SRCS "bsp_wokwi.c" "bsp_i2c.c")
+    message(STATUS "Building BSP for Wokwi Simulator (UI_COMPACT)")
 else()
-    set(BSP_SRCS "bsp_heltec_v3.c" "bsp_i2c.c" "bsp_oled.c")
+    set(BSP_SRCS "bsp_heltec_v3.c" "bsp_i2c.c")
     message(STATUS "Building BSP for Heltec V3 (default)")
 endif()
 
@@ -22,5 +25,5 @@ idf_component_register(
     SRCS ${BSP_SRCS}
     INCLUDE_DIRS "include"
     REQUIRES driver esp_adc esp_driver_spi esp_driver_i2c spi_flash esp_timer efuse
-             u8g2 lvgl pca9535 tps65185 gt911 bq25896 bq27220 pcf85063
+             lvgl pca9535 tps65185 gt911 bq25896 bq27220 pcf85063 display
 )

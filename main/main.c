@@ -26,7 +26,7 @@
 #include "lora_protocol.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "ui_interface.h"
+#include "ui_compact.h"
 #include "system_events.h"
 #include "ota_engine.h"
 #include "pc_mode_manager.h"
@@ -115,7 +115,8 @@ static void battery_monitor_task(void *pvParameters)
         uint8_t current_battery = (uint8_t)(bsp_read_battery() * 100 / 4.2f);
 
         if (current_battery != prev_battery) {
-            system_events_post_battery(current_battery, false);  // TODO: detect charging
+            bool is_charging = bsp_battery_is_charging();
+            system_events_post_battery(current_battery, is_charging);
             prev_battery = current_battery;
         }
 
@@ -333,21 +334,24 @@ void app_main(void)
         return;
     }
 
-    // Initialize UI (self-contained, creates own task)
-    ESP_LOGI(TAG, "Initializing UI...");
-    ret = ui_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "UI initialization failed: %s", esp_err_to_name(ret));
-        return;
-    }
-
-    // Initialize button manager
+    // Initialize button manager first (before UI registers callbacks)
     ESP_LOGI(TAG, "Initializing button manager...");
     ret = button_manager_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Button manager initialization failed: %s", esp_err_to_name(ret));
         return;
     }
+
+    // Initialize UI (self-contained, creates own task)
+    ESP_LOGI(TAG, "Initializing UI...");
+    ret = ui_compact_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "UI initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Creating boot screen...");
+    ui_compact_show_boot_screen();
 
     // Initialize PC mode manager
     ESP_LOGI(TAG, "Initializing PC mode manager...");
@@ -422,6 +426,14 @@ void app_main(void)
         return;
     }
 
+    // Register UI button callback (must be after usb_hid to override its callback)
+    ESP_LOGI(TAG, "Registering UI button callback...");
+    ret = ui_compact_register_button_callback();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "UI button callback registration failed: %s", esp_err_to_name(ret));
+        return;
+    }
+
     // Initialize USB CDC command interface
     ESP_LOGI(TAG, "Initializing USB CDC command interface...");
     ret = usb_cdc_init();
@@ -486,8 +498,8 @@ void app_main(void)
     ESP_LOGI(TAG, "Starting LoRa communication...");
     ret = lora_protocol_start();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to start LoRa communication: %s", esp_err_to_name(ret));
-        return;
+        ESP_LOGW(TAG, "Failed to start LoRa communication: %s (continuing anyway)", esp_err_to_name(ret));
+        // Continue anyway - UI should still work
     }
 
     // Reset watchdog after successful init
@@ -510,8 +522,12 @@ void app_main(void)
     lora_protocol_register_state_callback((lora_protocol_state_callback_t)lora_state_handler, NULL);
 
     // Start monitoring tasks
-    xTaskCreate(battery_monitor_task, "battery_monitor", 4096, NULL, 5, NULL);
+    xTaskCreate(battery_monitor_task, "battery_monitor", 3072, NULL, 5, NULL);
     xTaskCreate(usb_monitor_task, "usb_monitor", 2048, NULL, 5, NULL);
+
+    // Switch to main screen after initialization
+    ESP_LOGI(TAG, "Switching to main screen...");
+    ui_compact_show_main_screen();
 
     // Main task now just handles events
     ESP_LOGI(TAG, "Main loop starting - watchdog keepalive only");

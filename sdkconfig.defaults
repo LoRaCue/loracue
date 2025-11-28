@@ -37,3 +37,18 @@ CONFIG_PM_ENABLE=y
 
 # Interrupt Watchdog - increase timeout for OTA flash operations
 CONFIG_ESP_INT_WDT_TIMEOUT_MS=1000
+
+# LVGL Configuration (v9)
+CONFIG_LV_COLOR_DEPTH_16=y
+CONFIG_LV_USE_LOG=y
+CONFIG_LV_LOG_LEVEL_WARN=y
+CONFIG_LV_FONT_MONTSERRAT_8=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_UNSCII_8=y
+
+# mbedTLS - Disable hardware AES to avoid memory allocation contention
+# TODO: Investigate hardware AES contention issues and re-enable if possible
+# Hardware AES was causing "Failed to allocate memory" errors during LoRa TX
+# Software AES is slower but more reliable for our use case
+CONFIG_MBEDTLS_HARDWARE_AES=n
+CONFIG_MBEDTLS_AES_USE_INTERRUPT=n

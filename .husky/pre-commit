@@ -60,22 +60,35 @@ if [ -n "$STAGED_FILES" ]; then
     if command -v cppcheck &> /dev/null; then
         echo "🔍 Running static analysis..."
         
+        CPPCHECK_FAILED=0
         for file in $STAGED_FILES; do
             if [ -f "$file" ]; then
-                cppcheck --enable=warning,style,performance,portability \
+                OUTPUT=$(cppcheck --enable=warning,style,performance,portability \
                     --suppress=missingIncludeSystem \
                     --inline-suppr \
                     --error-exitcode=1 \
                     --quiet \
                     -I main/include -I components/*/include \
-                    "$file" 2>&1 | grep -v "Checking" || true
+                    "$file" 2>&1 | grep -v "Checking")
                 
-                if [ $? -eq 1 ]; then
+                EXITCODE=$?
+                
+                # Show output if there are any issues
+                if [ -n "$OUTPUT" ]; then
+                    echo "$OUTPUT"
+                fi
+                
+                # Fail if cppcheck returned error
+                if [ $EXITCODE -ne 0 ]; then
                     echo "❌ Static analysis found issues in $file"
-                    exit 1
+                    CPPCHECK_FAILED=1
                 fi
             fi
         done
+        
+        if [ $CPPCHECK_FAILED -eq 1 ]; then
+            exit 1
+        fi
         
         echo "✅ Static analysis passed"
     else

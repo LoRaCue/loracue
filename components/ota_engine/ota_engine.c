@@ -3,6 +3,9 @@
 #include "esp_ota_ops.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "mbedtls/sha256.h"
+#include "tweetnacl.h"
+#include <string.h>
 
 static const char *TAG = "ota_engine";
 
@@ -13,8 +16,19 @@ static size_t ota_received_bytes            = 0;
 static size_t ota_total_size                = 0;
 static ota_state_t ota_state                = OTA_STATE_IDLE;
 static TickType_t ota_last_write_time       = 0;
+static mbedtls_sha256_context sha256_ctx;
+static char expected_sha256[65]             = {0}; // 64 hex chars + null terminator
+static bool sha256_verification_enabled     = false;
+static uint8_t public_key[32]               = {0}; // Ed25519 public key (32 bytes)
+static bool public_key_set                  = false;
+static char expected_signature[129]         = {0}; // 128 hex chars + null terminator
+static bool signature_verification_enabled  = false;
 
 #define OTA_TIMEOUT_MS 30000
+
+// Embedded Ed25519 public key (32 bytes) from keys/firmware_public_ed25519.bin
+extern const uint8_t firmware_public_ed25519_bin_start[] asm("_binary_firmware_public_ed25519_bin_start");
+extern const uint8_t firmware_public_ed25519_bin_end[] asm("_binary_firmware_public_ed25519_bin_end");
 
 esp_err_t ota_engine_init(void)
 {
@@ -23,6 +37,92 @@ esp_err_t ota_engine_init(void)
         if (!ota_mutex)
             return ESP_ERR_NO_MEM;
     }
+    return ESP_OK;
+}
+
+esp_err_t ota_engine_set_expected_sha256(const char *sha256_hex)
+{
+    if (!sha256_hex) {
+        sha256_verification_enabled = false;
+        expected_sha256[0] = '\0';
+        return ESP_OK;
+    }
+
+    // Validate format: 64 hex characters
+    size_t len = strlen(sha256_hex);
+    if (len != 64) {
+        ESP_LOGE(TAG, "Invalid SHA256 length: %zu (expected 64)", len);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    for (size_t i = 0; i < 64; i++) {
+        char c = sha256_hex[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+            ESP_LOGE(TAG, "Invalid SHA256 character at position %zu: '%c'", i, c);
+            return ESP_ERR_INVALID_ARG;
+        }
+    }
+
+    strncpy(expected_sha256, sha256_hex, sizeof(expected_sha256) - 1);
+    expected_sha256[64] = '\0';
+    sha256_verification_enabled = true;
+    
+    ESP_LOGI(TAG, "Expected SHA256 set: %.16s...", expected_sha256);
+    return ESP_OK;
+}
+
+esp_err_t ota_engine_set_public_key(const uint8_t *key, size_t key_len)
+{
+    if (!key || key_len != 32) {
+        ESP_LOGE(TAG, "Invalid public key (expected 32 bytes)");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    memcpy(public_key, key, 32);
+    public_key_set = true;
+    ESP_LOGI(TAG, "Ed25519 public key set");
+    return ESP_OK;
+}
+
+esp_err_t ota_engine_verify_signature(const char *signature_hex)
+{
+    if (!signature_hex) {
+        signature_verification_enabled = false;
+        expected_signature[0] = '\0';
+        return ESP_OK;
+    }
+
+    // Validate format: 128 hex characters (64 bytes)
+    size_t len = strlen(signature_hex);
+    if (len != 128) {
+        ESP_LOGE(TAG, "Invalid signature length: %zu (expected 128)", len);
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    for (size_t i = 0; i < 128; i++) {
+        char c = signature_hex[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+            ESP_LOGE(TAG, "Invalid signature character at position %zu: '%c'", i, c);
+            return ESP_ERR_INVALID_ARG;
+        }
+    }
+
+    strncpy(expected_signature, signature_hex, sizeof(expected_signature) - 1);
+    expected_signature[128] = '\0';
+    signature_verification_enabled = true;
+
+    // Use embedded public key if not set
+    if (!public_key_set) {
+        size_t key_size = firmware_public_ed25519_bin_end - firmware_public_ed25519_bin_start;
+        if (key_size != 32) {
+            ESP_LOGE(TAG, "Invalid embedded public key size: %zu (expected 32)", key_size);
+            return ESP_ERR_INVALID_SIZE;
+        }
+        memcpy(public_key, firmware_public_ed25519_bin_start, 32);
+        ESP_LOGI(TAG, "Using embedded Ed25519 public key");
+    }
+
+    ESP_LOGI(TAG, "Expected signature set: %.16s...", expected_signature);
     return ESP_OK;
 }
 
@@ -68,6 +168,13 @@ esp_err_t ota_engine_start(size_t firmware_size)
     ota_state           = OTA_STATE_ACTIVE;
     ota_last_write_time = xTaskGetTickCount();
 
+    // Initialize SHA256 context if verification is enabled
+    if (sha256_verification_enabled) {
+        mbedtls_sha256_init(&sha256_ctx);
+        mbedtls_sha256_starts(&sha256_ctx, 0); // 0 = SHA256 (not SHA224)
+        ESP_LOGI(TAG, "SHA256 verification enabled");
+    }
+
     ESP_LOGI(TAG, "OTA started: %zu bytes to partition %s", firmware_size, ota_partition->label);
 
     xSemaphoreGive(ota_mutex);
@@ -106,6 +213,11 @@ esp_err_t ota_engine_write(const uint8_t *data, size_t len)
     if (ret == ESP_OK) {
         ota_received_bytes += len;
         ota_last_write_time = now;
+        
+        // Update SHA256 hash if verification is enabled
+        if (sha256_verification_enabled) {
+            mbedtls_sha256_update(&sha256_ctx, data, len);
+        }
     }
 
     xSemaphoreGive(ota_mutex);
@@ -133,6 +245,76 @@ esp_err_t ota_engine_finish(void)
     }
 
     ota_state = OTA_STATE_FINALIZING;
+
+    // Verify SHA256 if enabled
+    if (sha256_verification_enabled) {
+        uint8_t calculated_hash[32];
+        mbedtls_sha256_finish(&sha256_ctx, calculated_hash);
+        mbedtls_sha256_free(&sha256_ctx);
+
+        // Convert calculated hash to hex string
+        char calculated_hex[65];
+        for (int i = 0; i < 32; i++) {
+            sprintf(&calculated_hex[i * 2], "%02x", calculated_hash[i]);
+        }
+        calculated_hex[64] = '\0';
+
+        // Compare with expected hash (case-insensitive)
+        if (strcasecmp(calculated_hex, expected_sha256) != 0) {
+            ESP_LOGE(TAG, "SHA256 mismatch!");
+            ESP_LOGE(TAG, "Expected:   %s", expected_sha256);
+            ESP_LOGE(TAG, "Calculated: %s", calculated_hex);
+            ota_handle = 0;
+            ota_state = OTA_STATE_IDLE;
+            sha256_verification_enabled = false;
+            xSemaphoreGive(ota_mutex);
+            return ESP_ERR_INVALID_CRC;
+        }
+
+        ESP_LOGI(TAG, "SHA256 verification passed: %s", calculated_hex);
+        sha256_verification_enabled = false;
+
+        // Verify Ed25519 signature if enabled
+        if (signature_verification_enabled) {
+            // Convert signature from hex to binary
+            uint8_t signature_bin[64];
+            for (int i = 0; i < 64; i++) {
+                char hex[3] = {expected_signature[i * 2], expected_signature[i * 2 + 1], '\0'};
+                signature_bin[i] = (uint8_t)strtol(hex, NULL, 16);
+            }
+
+            // Convert SHA256 hash from hex to binary
+            uint8_t hash_bin[32];
+            for (int i = 0; i < 32; i++) {
+                char hex[3] = {calculated_hex[i * 2], calculated_hex[i * 2 + 1], '\0'};
+                hash_bin[i] = (uint8_t)strtol(hex, NULL, 16);
+            }
+
+            // Verify Ed25519 signature using TweetNaCl
+            // crypto_sign_open returns 0 on success, -1 on failure
+            // We need to prepend signature to message for crypto_sign_open
+            uint8_t signed_message[96]; // 64 bytes signature + 32 bytes hash
+            memcpy(signed_message, signature_bin, 64);
+            memcpy(signed_message + 64, hash_bin, 32);
+            
+            unsigned long long message_len;
+            uint8_t message_out[32];
+            
+            if (crypto_sign_open(message_out, &message_len, signed_message, 96, public_key) != 0) {
+                ESP_LOGE(TAG, "Ed25519 signature verification FAILED!");
+                ESP_LOGE(TAG, "Firmware is NOT authentic - rejecting OTA");
+                ota_handle = 0;
+                ota_state = OTA_STATE_IDLE;
+                signature_verification_enabled = false;
+                xSemaphoreGive(ota_mutex);
+                return ESP_ERR_INVALID_RESPONSE;
+            }
+
+            ESP_LOGI(TAG, "✓ Ed25519 signature verification PASSED");
+            ESP_LOGI(TAG, "✓ Firmware authenticity confirmed");
+            signature_verification_enabled = false;
+        }
+    }
 
     esp_err_t ret = esp_ota_end(ota_handle);
     if (ret != ESP_OK) {

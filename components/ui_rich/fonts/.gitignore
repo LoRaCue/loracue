@@ -1,6 +1,0 @@
-# Generated font files - do not commit
-*.c
-*.h
-
-# Temporary conversion files
-temp/

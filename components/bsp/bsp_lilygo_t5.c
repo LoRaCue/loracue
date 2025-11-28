@@ -379,6 +379,11 @@ uint8_t bsp_battery_get_percentage(void)
     return bq27220_get_soc();
 }
 
+const char* bsp_get_board_name(void)
+{
+    return "LilyGO T5";
+}
+
 bool bsp_battery_is_charging(void)
 {
     return bq25896_is_charging();
@@ -404,14 +409,23 @@ const char *bsp_get_board_id(void)
     return "lilygo_t5";
 }
 
-// USB configuration for LilyGO T5
-static const bsp_usb_config_t usb_config = {
-    .usb_pid = 0x4004,
-    .usb_product = "LC-gamma"
-};
+const char *bsp_get_model_name(void)
+{
+    return "LC-Gamma";
+}
 
+// USB configuration for LilyGO T5
 const bsp_usb_config_t *bsp_get_usb_config(void)
 {
+    static bsp_usb_config_t usb_config = {
+        .usb_pid = 0x4004,
+        .usb_product = NULL
+    };
+    
+    if (!usb_config.usb_product) {
+        usb_config.usb_product = bsp_get_model_name();
+    }
+    
     return &usb_config;
 }
 

@@ -25,7 +25,6 @@
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "tusb.h"
-#include "u8g2.h"
 #include "version.h"
 #include <inttypes.h>
 #include <string.h>
@@ -99,7 +98,7 @@ static void handle_get_device_info(void)
     cJSON *response = cJSON_CreateObject();
 
     // Model first
-    cJSON_AddStringToObject(response, "model", "LC-Alpha"); // TODO: Get from NVS or build config
+    cJSON_AddStringToObject(response, "model", bsp_get_model_name());
 
     // Hardware info
     cJSON_AddStringToObject(response, "board_id", bsp_get_board_id());
@@ -192,9 +191,12 @@ static void handle_set_general(cJSON *config_json)
 
     cJSON *brightness = cJSON_GetObjectItem(config_json, "brightness");
     if (brightness && cJSON_IsNumber(brightness)) {
-        config.display_brightness = brightness->valueint;
-        extern u8g2_t u8g2;
-        u8g2_SetContrast(&u8g2, config.display_brightness);
+        uint8_t brightness_value = (uint8_t)brightness->valueint;
+        config.display_brightness = brightness_value;
+        esp_err_t ret = bsp_set_display_brightness(brightness_value);
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to set display brightness: %s", esp_err_to_name(ret));
+        }
     }
 
     cJSON *bluetooth = cJSON_GetObjectItem(config_json, "bluetooth");
@@ -742,15 +744,27 @@ static void handle_firmware_start(cJSON *params)
         return;
     }
 
-    // TODO: Validate sha256 format (64 hex chars)
-    // TODO: Validate signature format
-    // TODO: Implement SHA256 verification after binary transfer
-    // TODO: Implement signature verification (Ed25519 or RSA)
-    
-    ESP_LOGW(TAG, "Firmware upgrade: size=%zu, sha256=%s (verification not implemented)", 
-             size, sha256_json->valuestring);
+    const char *sha256_str = sha256_json->valuestring;
+    const char *signature_str = signature_json->valuestring;
 
-    esp_err_t ret = ota_engine_start(size);
+    // Set expected SHA256 for verification
+    esp_err_t ret = ota_engine_set_expected_sha256(sha256_str);
+    if (ret != ESP_OK) {
+        send_jsonrpc_error(-32602, "Invalid SHA256 format (expected 64 hex characters)");
+        return;
+    }
+
+    // Set expected signature for verification
+    ret = ota_engine_verify_signature(signature_str);
+    if (ret != ESP_OK) {
+        send_jsonrpc_error(-32602, "Invalid signature format (expected 128 hex characters)");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Firmware upgrade: size=%zu, sha256=%s", size, sha256_str);
+    ESP_LOGI(TAG, "Signature: %.16s...", signature_str);
+
+    ret = ota_engine_start(size);
     if (ret != ESP_OK) {
         send_jsonrpc_error(-32603, "Failed to start OTA");
         return;

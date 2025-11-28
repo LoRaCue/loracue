@@ -186,7 +186,7 @@ esp_err_t uart_commands_start(void)
     uart_running = true;
 
     // High-priority RX task (priority 10) - must always be responsive
-    BaseType_t ret = xTaskCreate(uart_rx_task, "uart_rx", 4096, NULL, 10, &uart_rx_task_handle);
+    BaseType_t ret = xTaskCreate(uart_rx_task, "uart_rx", 3072, NULL, 10, &uart_rx_task_handle);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create UART RX task");
         uart_running = false;
@@ -195,7 +195,7 @@ esp_err_t uart_commands_start(void)
     }
 
     // Lower-priority command processor (priority 5) - can be preempted
-    ret = xTaskCreate(cmd_processor_task, "cmd_proc", 8192, NULL, 5, &cmd_processor_task_handle);
+    BaseType_t ret = xTaskCreate(cmd_processor_task, "cmd_proc", 4096, NULL, 5, &cmd_processor_task_handle);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create command processor task");
         uart_running = false;
