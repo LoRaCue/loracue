@@ -754,11 +754,15 @@ static void handle_firmware_start(cJSON *params)
         return;
     }
 
-    // TODO: Implement signature verification (Ed25519 or RSA)
-    // For now, just log the signature
-    ESP_LOGI(TAG, "Firmware upgrade: size=%zu, sha256=%s, signature=%s", 
-             size, sha256_str, signature_str);
-    ESP_LOGW(TAG, "Signature verification not yet implemented");
+    // Set expected signature for verification
+    ret = ota_engine_verify_signature(signature_str);
+    if (ret != ESP_OK) {
+        send_jsonrpc_error(-32602, "Invalid signature format (expected 128 hex characters)");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Firmware upgrade: size=%zu, sha256=%s", size, sha256_str);
+    ESP_LOGI(TAG, "Signature: %.16s...", signature_str);
 
     ret = ota_engine_start(size);
     if (ret != ESP_OK) {
