@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-"""Sign firmware files with RSA-4096 private key."""
+"""Sign firmware files with Ed25519 private key."""
 
 import sys
-import base64
+import hashlib
 from pathlib import Path
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
 
 
 def sign_file(file_path: Path, private_key_path: Path) -> str:
-    """Sign a file's SHA256 hash and return base64-encoded signature."""
+    """Sign a file's SHA256 hash with Ed25519 and return hex-encoded signature."""
     with open(private_key_path, 'rb') as f:
         private_key = serialization.load_pem_private_key(
             f.read(),
@@ -22,18 +21,12 @@ def sign_file(file_path: Path, private_key_path: Path) -> str:
     with open(file_path, 'rb') as f:
         data = f.read()
     
-    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
-    digest.update(data)
-    file_hash = digest.finalize()
+    file_hash = hashlib.sha256(data).digest()
     
-    # Sign the hash instead of raw data
-    signature = private_key.sign(
-        file_hash,
-        padding.PKCS1v15(),
-        hashes.SHA256()
-    )
+    # Sign the hash with Ed25519 (signs the raw hash, not double-hashed)
+    signature = private_key.sign(file_hash)
     
-    return base64.b64encode(signature).decode('ascii')
+    return signature.hex()
 
 
 def main():

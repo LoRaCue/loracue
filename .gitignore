@@ -38,3 +38,4 @@ keys/firmware_private.pem
 # Generated LVGL assets
 components/ui_compact/generated/
 components/ui_lvgl/generated/
+keys/*_private*.pem

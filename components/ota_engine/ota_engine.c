@@ -27,16 +27,9 @@ static bool signature_verification_enabled  = false;
 
 #define OTA_TIMEOUT_MS 30000
 
-// Hardcoded Ed25519 public key for firmware signing (REPLACE IN PRODUCTION!)
-// This is a placeholder - in production, store in secure NVS or efuse
-static const uint8_t DEFAULT_PUBLIC_KEY[32] = {
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
-#define OTA_TIMEOUT_MS 30000
+// Embedded Ed25519 public key (32 bytes) from keys/firmware_public_ed25519.bin
+extern const uint8_t firmware_public_ed25519_bin_start[] asm("_binary_firmware_public_ed25519_bin_start");
+extern const uint8_t firmware_public_ed25519_bin_end[] asm("_binary_firmware_public_ed25519_bin_end");
 
 esp_err_t ota_engine_init(void)
 {
@@ -119,10 +112,15 @@ esp_err_t ota_engine_verify_signature(const char *signature_hex)
     expected_signature[128] = '\0';
     signature_verification_enabled = true;
 
-    // Use default public key if not set
+    // Use embedded public key if not set
     if (!public_key_set) {
-        memcpy(public_key, DEFAULT_PUBLIC_KEY, 32);
-        ESP_LOGW(TAG, "Using default public key (INSECURE - set proper key in production!)");
+        size_t key_size = firmware_public_ed25519_bin_end - firmware_public_ed25519_bin_start;
+        if (key_size != 32) {
+            ESP_LOGE(TAG, "Invalid embedded public key size: %zu (expected 32)", key_size);
+            return ESP_ERR_INVALID_SIZE;
+        }
+        memcpy(public_key, firmware_public_ed25519_bin_start, 32);
+        ESP_LOGI(TAG, "Using embedded Ed25519 public key");
     }
 
     ESP_LOGI(TAG, "Expected signature set: %.16s...", expected_signature);
