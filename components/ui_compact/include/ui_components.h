@@ -139,6 +139,7 @@ typedef struct {
 ui_text_viewer_t *ui_text_viewer_create(const char **lines, uint8_t line_count);
 void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const char *title);
 void ui_text_viewer_scroll(ui_text_viewer_t *viewer);
+void ui_text_viewer_scroll_back(ui_text_viewer_t *viewer);
 void ui_text_viewer_destroy(ui_text_viewer_t *viewer);
 
 #endif // UI_COMPONENTS_H

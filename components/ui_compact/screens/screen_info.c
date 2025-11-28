@@ -152,14 +152,6 @@ void screen_device_info_create(lv_obj_t *parent)
     ui_text_viewer_render(device_viewer, parent, "DEVICE INFO");
 }
 
-void screen_device_info_button_press(void)
-{
-    if (device_viewer) {
-        ui_text_viewer_scroll(device_viewer);
-        ui_navigator_switch_to(UI_SCREEN_DEVICE_INFO);
-    }
-}
-
 void screen_device_info_reset(void)
 {
     if (device_viewer) {
@@ -211,7 +203,12 @@ void screen_battery_status_create(lv_obj_t *parent)
 
 static void handle_system_info_input(button_event_type_t event)
 {
-    if (event == BUTTON_EVENT_DOUBLE) {
+    if (event == BUTTON_EVENT_SHORT) {
+        if (system_viewer) {
+            ui_text_viewer_scroll(system_viewer);
+            ui_navigator_switch_to(UI_SCREEN_SYSTEM_INFO);
+        }
+    } else if (event == BUTTON_EVENT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
 }
@@ -239,7 +236,10 @@ ui_screen_t *screen_system_info_get_interface(void)
 static void handle_device_info_input(button_event_type_t event)
 {
     if (event == BUTTON_EVENT_SHORT) {
-        screen_device_info_button_press();
+        if (device_viewer) {
+            ui_text_viewer_scroll(device_viewer);
+            ui_navigator_switch_to(UI_SCREEN_DEVICE_INFO);
+        }
     } else if (event == BUTTON_EVENT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
@@ -267,7 +267,12 @@ ui_screen_t *screen_device_info_get_interface(void)
 
 static void handle_battery_status_input(button_event_type_t event)
 {
-    if (event == BUTTON_EVENT_DOUBLE) {
+    if (event == BUTTON_EVENT_SHORT) {
+        if (battery_viewer) {
+            ui_text_viewer_scroll(battery_viewer);
+            ui_navigator_switch_to(UI_SCREEN_BATTERY);
+        }
+    } else if (event == BUTTON_EVENT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
 }

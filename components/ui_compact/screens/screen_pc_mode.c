@@ -78,9 +78,9 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
     const char *device_name = (initial_status && initial_status->device_name) ? initial_status->device_name : "LC-????";
     mode_label = ui_create_main_screen_layout(parent, "PC MODE", device_name);
 
-    // Waiting text - centered in content area, 5px down
+    // Waiting text - centered in content area, 10px down
     int content_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
-    int content_center_y = SEPARATOR_Y_TOP + (content_height / 2) + 5;  // +5px down
+    int content_center_y = SEPARATOR_Y_TOP + (content_height / 2) + 10;  // +10px down
     
     waiting_label1 = lv_label_create(parent);
     lv_label_set_text(waiting_label1, "Waiting for commands...");

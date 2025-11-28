@@ -382,10 +382,8 @@ void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const cha
         }
     }
 
-    // Scroll icon (left)
-    ui_draw_icon_text(parent, &button_double_press, "Scroll", 0, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-    
-    // Back icon (right)
+    // Button hints: short press for scroll, double press for back
+    ui_draw_icon_text(parent, &button_short_press, "Scroll", 0, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
     ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
 }
 
@@ -397,6 +395,17 @@ void ui_text_viewer_scroll(ui_text_viewer_t *viewer) {
     viewer->scroll_pos++;
     if (viewer->scroll_pos > viewer->line_count - TEXT_VIEWER_MAX_VISIBLE_LINES) {
         viewer->scroll_pos = 0; // Jump back to start
+    }
+}
+
+void ui_text_viewer_scroll_back(ui_text_viewer_t *viewer) {
+    if (viewer->line_count <= TEXT_VIEWER_MAX_VISIBLE_LINES) {
+        return; // No scrolling needed
+    }
+    
+    viewer->scroll_pos--;
+    if (viewer->scroll_pos < 0) {
+        viewer->scroll_pos = viewer->line_count - TEXT_VIEWER_MAX_VISIBLE_LINES; // Jump to end
     }
 }
 
