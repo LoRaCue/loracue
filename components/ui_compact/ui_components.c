@@ -329,6 +329,7 @@ void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, con
 
 ui_text_viewer_t *ui_text_viewer_create(const char **lines, uint8_t line_count) {
     ui_text_viewer_t *viewer = malloc(sizeof(ui_text_viewer_t));
+    if (!viewer) return NULL;
     viewer->lines = lines;
     viewer->line_count = line_count;
     viewer->scroll_pos = 0;
