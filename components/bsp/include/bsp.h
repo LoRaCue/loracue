@@ -127,6 +127,13 @@ bool bsp_read_button(bsp_button_t button);
 float bsp_read_battery(void);
 
 /**
+ * @brief Check if battery is currently charging
+ *
+ * @return true if battery is charging, false otherwise (or if hardware doesn't support detection)
+ */
+bool bsp_battery_is_charging(void);
+
+/**
  * @brief Enter deep sleep mode with button wake-up
  *
  * Configures both buttons as wake sources and enters deep sleep.
@@ -185,6 +192,13 @@ esp_err_t bsp_validate_hardware(void);
  * @return Constant string with board ID (e.g., "heltec_v3", "wokwi_sim")
  */
 const char *bsp_get_board_id(void);
+
+/**
+ * @brief Get model name string
+ *
+ * @return Constant string with model name (e.g., "LC-Alpha", "LC-Alpha+", "LC-Beta", "LC-Gamma")
+ */
+const char *bsp_get_model_name(void);
 
 /**
  * @brief USB descriptor configuration

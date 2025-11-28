@@ -5,9 +5,6 @@
 #include "esp_ota_ops.h"
 #include "esp_system.h"
 #include "esp_timer.h"
-#include "general_config.h"
-#include "lora_driver.h"
-#include "lvgl.h"
 #include "screens.h"
 #include "ui_components.h"
 #include "ui_navigator.h"
@@ -152,7 +149,7 @@ void screen_device_info_create(lv_obj_t *parent)
     ui_text_viewer_render(device_viewer, parent, "DEVICE INFO");
 }
 
-void screen_device_info_reset(void)
+static void screen_device_info_reset(void)
 {
     if (device_viewer) {
         ui_text_viewer_destroy(device_viewer);
@@ -251,18 +248,10 @@ static void handle_device_info_input(button_event_type_t event)
     }
 }
 
-static void screen_device_info_reset_only(void)
-{
-    if (device_viewer) {
-        ui_text_viewer_destroy(device_viewer);
-        device_viewer = NULL;
-    }
-}
-
 static ui_screen_t device_info_screen = {
     .type         = UI_SCREEN_DEVICE_INFO,
     .create       = screen_device_info_create,
-    .destroy      = screen_device_info_reset_only,
+    .destroy      = screen_device_info_reset,
     .handle_input = handle_device_info_input,
 };
 

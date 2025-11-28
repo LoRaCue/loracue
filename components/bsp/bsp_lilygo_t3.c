@@ -111,6 +111,15 @@ const char *bsp_get_board_id(void) {
     return "lilygo_t3";
 }
 
+const char *bsp_get_model_name(void) {
+    return "LC-Beta";
+}
+
+bool bsp_battery_is_charging(void) {
+    // LilyGO T3-S3 doesn't have charging detection hardware
+    return false;
+}
+
 const bsp_lora_pins_t *bsp_get_lora_pins(void) {
     static const bsp_lora_pins_t lora_pins = {
         .miso = PIN_LORA_MISO,

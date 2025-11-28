@@ -434,6 +434,21 @@ const char *bsp_get_board_id(void)
     return "heltec_v3";
 }
 
+const char *bsp_get_model_name(void)
+{
+#if defined(CONFIG_MODEL_ALPHA_PLUS)
+    return "LC-Alpha+";
+#else
+    return "LC-Alpha";
+#endif
+}
+
+bool bsp_battery_is_charging(void)
+{
+    // Heltec V3 doesn't have charging detection hardware
+    return false;
+}
+
 static const bsp_usb_config_t usb_config = {.usb_pid = 0xFAB0, .usb_product = "LC-alpha"};
 
 const bsp_usb_config_t *bsp_get_usb_config(void)

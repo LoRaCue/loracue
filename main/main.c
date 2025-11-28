@@ -115,7 +115,8 @@ static void battery_monitor_task(void *pvParameters)
         uint8_t current_battery = (uint8_t)(bsp_read_battery() * 100 / 4.2f);
 
         if (current_battery != prev_battery) {
-            system_events_post_battery(current_battery, false);  // TODO: detect charging
+            bool is_charging = bsp_battery_is_charging();
+            system_events_post_battery(current_battery, is_charging);
             prev_battery = current_battery;
         }
 

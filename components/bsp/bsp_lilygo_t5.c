@@ -409,6 +409,11 @@ const char *bsp_get_board_id(void)
     return "lilygo_t5";
 }
 
+const char *bsp_get_model_name(void)
+{
+    return "LC-Gamma";
+}
+
 // USB configuration for LilyGO T5
 static const bsp_usb_config_t usb_config = {
     .usb_pid = 0x4004,

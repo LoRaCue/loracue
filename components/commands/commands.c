@@ -98,7 +98,7 @@ static void handle_get_device_info(void)
     cJSON *response = cJSON_CreateObject();
 
     // Model first
-    cJSON_AddStringToObject(response, "model", "LC-Alpha"); // TODO: Get from NVS or build config
+    cJSON_AddStringToObject(response, "model", bsp_get_model_name());
 
     // Hardware info
     cJSON_AddStringToObject(response, "board_id", bsp_get_board_id());
@@ -191,8 +191,12 @@ static void handle_set_general(cJSON *config_json)
 
     cJSON *brightness = cJSON_GetObjectItem(config_json, "brightness");
     if (brightness && cJSON_IsNumber(brightness)) {
-        config.display_brightness = brightness->valueint;
-        // TODO: Implement brightness control via ui_lvgl
+        uint8_t brightness_value = (uint8_t)brightness->valueint;
+        config.display_brightness = brightness_value;
+        esp_err_t ret = bsp_set_display_brightness(brightness_value);
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "Failed to set display brightness: %s", esp_err_to_name(ret));
+        }
     }
 
     cJSON *bluetooth = cJSON_GetObjectItem(config_json, "bluetooth");
