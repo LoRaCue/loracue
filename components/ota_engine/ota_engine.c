@@ -4,8 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "mbedtls/sha256.h"
-#include "mbedtls/pk.h"
-#include "mbedtls/error.h"
+#include "tweetnacl.h"
 #include <string.h>
 
 static const char *TAG = "ota_engine";
@@ -284,48 +283,35 @@ esp_err_t ota_engine_finish(void)
                 signature_bin[i] = (uint8_t)strtol(hex, NULL, 16);
             }
 
-            // Convert SHA256 hash from hex to binary for signing
+            // Convert SHA256 hash from hex to binary
             uint8_t hash_bin[32];
             for (int i = 0; i < 32; i++) {
                 char hex[3] = {calculated_hex[i * 2], calculated_hex[i * 2 + 1], '\0'};
                 hash_bin[i] = (uint8_t)strtol(hex, NULL, 16);
             }
 
-            // Verify signature using mbedtls Ed25519
-            mbedtls_pk_context pk_ctx;
-            mbedtls_pk_init(&pk_ctx);
-
-            // Setup Ed25519 key (mbedtls uses ECDSA with Ed25519 curve)
-            int ret_sig = mbedtls_pk_setup(&pk_ctx, mbedtls_pk_info_from_type(MBEDTLS_PK_ECKEY));
-            if (ret_sig == 0) {
-                // Note: mbedtls doesn't have native Ed25519, we'll use a simplified check
-                // In production, use a proper Ed25519 library like libsodium or TweetNaCl
-                ESP_LOGW(TAG, "Ed25519 signature verification not fully implemented");
-                ESP_LOGW(TAG, "Using placeholder verification (INSECURE!)");
-                
-                // Placeholder: Just check signature is not all zeros
-                bool all_zeros = true;
-                for (int i = 0; i < 64; i++) {
-                    if (signature_bin[i] != 0) {
-                        all_zeros = false;
-                        break;
-                    }
-                }
-
-                if (all_zeros) {
-                    ESP_LOGE(TAG, "Invalid signature (all zeros)");
-                    mbedtls_pk_free(&pk_ctx);
-                    ota_handle = 0;
-                    ota_state = OTA_STATE_IDLE;
-                    signature_verification_enabled = false;
-                    xSemaphoreGive(ota_mutex);
-                    return ESP_ERR_INVALID_RESPONSE;
-                }
-
-                ESP_LOGI(TAG, "Signature format validated (full Ed25519 verification TODO)");
+            // Verify Ed25519 signature using TweetNaCl
+            // crypto_sign_open returns 0 on success, -1 on failure
+            // We need to prepend signature to message for crypto_sign_open
+            uint8_t signed_message[96]; // 64 bytes signature + 32 bytes hash
+            memcpy(signed_message, signature_bin, 64);
+            memcpy(signed_message + 64, hash_bin, 32);
+            
+            unsigned long long message_len;
+            uint8_t message_out[32];
+            
+            if (crypto_sign_open(message_out, &message_len, signed_message, 96, public_key) != 0) {
+                ESP_LOGE(TAG, "Ed25519 signature verification FAILED!");
+                ESP_LOGE(TAG, "Firmware is NOT authentic - rejecting OTA");
+                ota_handle = 0;
+                ota_state = OTA_STATE_IDLE;
+                signature_verification_enabled = false;
+                xSemaphoreGive(ota_mutex);
+                return ESP_ERR_INVALID_RESPONSE;
             }
 
-            mbedtls_pk_free(&pk_ctx);
+            ESP_LOGI(TAG, "✓ Ed25519 signature verification PASSED");
+            ESP_LOGI(TAG, "✓ Firmware authenticity confirmed");
             signature_verification_enabled = false;
         }
     }
