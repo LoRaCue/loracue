@@ -59,8 +59,6 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
 {
     ESP_LOGI(TAG, "Creating PC mode screen");
 
-    lv_obj_set_style_bg_color(parent, lv_color_black(), 0);
-
     statusbar = ui_compact_statusbar_create(parent);
 
     statusbar_data_t status;
@@ -76,16 +74,13 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
     }
     ui_compact_statusbar_update(statusbar, &status);
 
-    // PC MODE text
-    mode_label = lv_label_create(parent);
-    lv_label_set_text(mode_label, "PC MODE");
-    lv_obj_set_style_text_color(mode_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(mode_label, &lv_font_pixolletta_20, 0);
-    lv_obj_align(mode_label, LV_ALIGN_CENTER, 0, PRESENTER_TEXT_Y - (DISPLAY_HEIGHT / 2));
+    // Create main screen layout (mode label, bottom bar with device name and menu)
+    const char *device_name = (initial_status && initial_status->device_name) ? initial_status->device_name : "LC-????";
+    mode_label = ui_create_main_screen_layout(parent, "PC MODE", device_name);
 
-    // Waiting text - centered in content area between separators
+    // Waiting text - centered in content area, 5px down
     int content_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
-    int content_center_y = SEPARATOR_Y_TOP + (content_height / 2);
+    int content_center_y = SEPARATOR_Y_TOP + (content_height / 2) + 5;  // +5px down
     
     waiting_label1 = lv_label_create(parent);
     lv_label_set_text(waiting_label1, "Waiting for commands...");
@@ -96,17 +91,6 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
     lv_obj_set_pos(waiting_label1, 0, content_center_y - 5);  // -5 to center 10px font
 
     waiting_label2 = NULL;
-
-    // Bottom separator
-    lv_obj_t *bottom_line                     = lv_line_create(parent);
-    static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
-    lv_line_set_points(bottom_line, bottom_points, 2);
-    lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
-    lv_obj_set_style_line_width(bottom_line, 1, 0);
-
-    // Bottom bar
-    ui_draw_icon_text(parent, &button_long_press, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
-                      UI_ALIGN_RIGHT);
 
     // Subscribe to HID events
     esp_event_loop_handle_t loop = system_events_get_loop();

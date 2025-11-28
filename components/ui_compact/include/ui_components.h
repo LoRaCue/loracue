@@ -51,6 +51,7 @@ int ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, 
 // Header and footer helpers
 void ui_create_header(lv_obj_t *parent, const char *title);
 void ui_create_footer(lv_obj_t *parent);
+lv_obj_t *ui_create_main_screen_layout(lv_obj_t *parent, const char *mode_text, const char *device_name);
 
 // 3-item scrollable menu
 typedef struct {

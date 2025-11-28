@@ -85,6 +85,33 @@ void ui_create_footer(lv_obj_t *parent) {
     lv_obj_set_style_line_width(bottom_line, 1, 0);
 }
 
+lv_obj_t *ui_create_main_screen_layout(lv_obj_t *parent, const char *mode_text, const char *device_name) {
+    // Black background
+    lv_obj_set_style_bg_color(parent, lv_color_black(), 0);
+    
+    // Mode label centered
+    lv_obj_t *mode_label = lv_label_create(parent);
+    lv_label_set_text(mode_label, mode_text);
+    lv_obj_set_style_text_color(mode_label, lv_color_white(), 0);
+    lv_obj_set_style_text_font(mode_label, &lv_font_pixolletta_20, 0);
+    lv_obj_align(mode_label, LV_ALIGN_CENTER, 0, PRESENTER_TEXT_Y - (DISPLAY_HEIGHT / 2));
+    
+    // Bottom separator
+    ui_create_footer(parent);
+    
+    // Device name bottom left
+    lv_obj_t *device_label = lv_label_create(parent);
+    lv_label_set_text(device_label, device_name ? device_name : "LC-????");
+    lv_obj_set_style_text_color(device_label, lv_color_white(), 0);
+    lv_obj_set_style_text_font(device_label, &lv_font_pixolletta_10, 0);
+    lv_obj_set_pos(device_label, TEXT_MARGIN_LEFT, BOTTOM_TEXT_Y);
+    
+    // Menu button bottom right
+    ui_draw_icon_text(parent, &button_long_press, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2, UI_ALIGN_RIGHT);
+    
+    return mode_label;
+}
+
 // 3-item scrollable menu
 ui_menu_t *ui_menu_create(lv_obj_t *parent, const char **item_names, int count) {
     ui_menu_t *menu = malloc(sizeof(ui_menu_t));
