@@ -9,9 +9,9 @@ const char *MAIN_MENU_ITEMS[MAIN_MENU_COUNT] = {
     [MAIN_MENU_DEVICE_MODE] = "Device Mode",   [MAIN_MENU_SLOT] = "Slot",
     [MAIN_MENU_LORA] = "LoRa Settings",        [MAIN_MENU_PAIRING] = "Device Pairing",
     [MAIN_MENU_REGISTRY] = "Device Registry",  [MAIN_MENU_BRIGHTNESS] = "Display Brightness",
-    [MAIN_MENU_BATTERY] = "Battery Status",    [MAIN_MENU_BLUETOOTH] = "Bluetooth",
-    [MAIN_MENU_CONFIG] = "Configuration Mode", [MAIN_MENU_DEVICE_INFO] = "Device Info",
-    [MAIN_MENU_SYSTEM_INFO] = "System Info",   [MAIN_MENU_FACTORY_RESET] = "Factory Reset"};
+    [MAIN_MENU_BLUETOOTH] = "Bluetooth",       [MAIN_MENU_CONFIG] = "Configuration Mode",
+    [MAIN_MENU_DEVICE_INFO] = "Device Info",   [MAIN_MENU_SYSTEM_INFO] = "System Info",
+    [MAIN_MENU_FACTORY_RESET] = "Factory Reset"};
 
 void screen_menu_create(lv_obj_t *parent)
 {
@@ -83,9 +83,6 @@ static void handle_input(button_event_type_t event)
                 break;
             case MAIN_MENU_BRIGHTNESS:
                 ui_navigator_switch_to(UI_SCREEN_BRIGHTNESS);
-                break;
-            case MAIN_MENU_BATTERY:
-                ui_navigator_switch_to(UI_SCREEN_BATTERY);
                 break;
             case MAIN_MENU_BLUETOOTH:
                 ui_navigator_switch_to(UI_SCREEN_BLUETOOTH);
