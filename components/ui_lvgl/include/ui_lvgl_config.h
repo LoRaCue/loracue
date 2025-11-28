@@ -4,7 +4,7 @@
 #define DISPLAY_WIDTH 128
 #define DISPLAY_HEIGHT 64
 
-// Layout constants (matching u8g2 version exactly)
+// Layout constants (for 128x64 OLED display)
 #define HEADER_HEIGHT 9
 #define FOOTER_HEIGHT 10
 #define SEPARATOR_Y_TOP 10

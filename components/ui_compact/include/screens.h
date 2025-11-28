@@ -2,6 +2,7 @@
 
 #include "lvgl.h"
 #include "ui_compact_statusbar.h"
+#include "ui_screen_interface.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,6 +13,7 @@ extern "C" {
  * @param parent Parent object to create screen in
  */
 void screen_boot_create(lv_obj_t *parent);
+ui_screen_t *screen_boot_get_interface(void);
 
 /**
  * @brief Create main screen
@@ -25,6 +27,7 @@ void screen_main_create(lv_obj_t *parent, const statusbar_data_t *initial_status
  * @param device_name Device name to display
  */
 void screen_main_update_device_name(const char *device_name);
+ui_screen_t *screen_main_get_interface(void);
 
 /**
  * @brief Create PC mode screen
@@ -32,6 +35,7 @@ void screen_main_update_device_name(const char *device_name);
  * @param initial_status Initial status data (NULL for defaults)
  */
 void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_status);
+ui_screen_t *screen_pc_mode_get_interface(void);
 
 /**
  * @brief Main menu items
@@ -83,7 +87,8 @@ void screen_menu_reset(void);
  * @brief Get selected menu item name
  * @return Selected item name or NULL
  */
-const char* screen_menu_get_selected_name(void);
+const char *screen_menu_get_selected_name(void);
+ui_screen_t *screen_menu_get_interface(void);
 
 /**
  * @brief Create system info screen
@@ -98,12 +103,15 @@ void screen_system_info_create(lv_obj_t *parent);
 void screen_device_info_create(lv_obj_t *parent);
 void screen_device_info_button_press(void);
 void screen_device_info_reset(void);
+ui_screen_t *screen_device_info_get_interface(void);
+ui_screen_t *screen_system_info_get_interface(void);
 
 /**
  * @brief Create battery status screen
  * @param parent Parent object to create screen in
  */
 void screen_battery_status_create(lv_obj_t *parent);
+ui_screen_t *screen_battery_status_get_interface(void);
 
 /**
  * @brief Create factory reset screen
@@ -120,6 +128,7 @@ void screen_factory_reset_check_hold(bool button_pressed);
  * @brief Reset factory reset screen
  */
 void screen_factory_reset_reset(void);
+ui_screen_t *screen_factory_reset_get_interface(void);
 
 // LoRa Frequency screen
 void screen_lora_frequency_init(void);
@@ -188,6 +197,7 @@ void screen_device_mode_select(void);
  * @brief Reset device mode screen
  */
 void screen_device_mode_reset(void);
+ui_screen_t *screen_device_mode_get_interface(void);
 
 /**
  * @brief Create slot screen
@@ -199,6 +209,7 @@ void screen_slot_create(lv_obj_t *parent);
  * @brief Initialize slot screen
  */
 void screen_slot_init(void);
+ui_screen_t *screen_slot_get_interface(void);
 
 /**
  * @brief Navigate down in slot screen
@@ -265,12 +276,15 @@ int screen_lora_submenu_get_selected(void);
  * @brief Reset LoRa submenu
  */
 void screen_lora_submenu_reset(void);
+ui_screen_t *screen_lora_submenu_get_interface(void);
 
 // LoRa Presets screen
 void screen_lora_presets_create(lv_obj_t *parent);
 void screen_lora_presets_navigate_down(void);
 void screen_lora_presets_select(void);
 void screen_lora_presets_reset(void);
+ui_screen_t *screen_lora_presets_get_interface(void);
+void screen_lora_presets_init(void);
 
 // LoRa Frequency Screen
 void screen_lora_frequency_init(void);
@@ -280,6 +294,7 @@ void screen_lora_frequency_navigate_up(void);
 void screen_lora_frequency_select(void);
 bool screen_lora_frequency_is_edit_mode(void);
 void screen_lora_frequency_reset(void);
+ui_screen_t *screen_lora_frequency_get_interface(void);
 
 // LoRa Spreading Factor Screen
 void screen_lora_sf_init(void);
@@ -288,6 +303,7 @@ void screen_lora_sf_navigate_down(void);
 void screen_lora_sf_select(void);
 bool screen_lora_sf_is_edit_mode(void);
 void screen_lora_sf_reset(void);
+ui_screen_t *screen_lora_sf_get_interface(void);
 
 // LoRa Bandwidth Screen
 void screen_lora_bw_init(void);
@@ -296,6 +312,7 @@ void screen_lora_bw_navigate_down(void);
 void screen_lora_bw_select(void);
 bool screen_lora_bw_is_edit_mode(void);
 void screen_lora_bw_reset(void);
+ui_screen_t *screen_lora_bw_get_interface(void);
 
 void screen_lora_cr_init(void);
 void screen_lora_cr_create(lv_obj_t *parent);
@@ -303,6 +320,7 @@ void screen_lora_cr_navigate_down(void);
 void screen_lora_cr_select(void);
 bool screen_lora_cr_is_edit_mode(void);
 void screen_lora_cr_reset(void);
+ui_screen_t *screen_lora_cr_get_interface(void);
 
 void screen_lora_txpower_init(void);
 void screen_lora_txpower_create(lv_obj_t *parent);
@@ -311,12 +329,14 @@ void screen_lora_txpower_navigate_up(void);
 void screen_lora_txpower_select(void);
 bool screen_lora_txpower_is_edit_mode(void);
 void screen_lora_txpower_reset(void);
+ui_screen_t *screen_lora_txpower_get_interface(void);
 
 void screen_lora_band_init(void);
 void screen_lora_band_create(lv_obj_t *parent);
 void screen_lora_band_navigate_down(void);
 void screen_lora_band_select(void);
 void screen_lora_band_reset(void);
+ui_screen_t *screen_lora_band_get_interface(void);
 
 /**
  * @brief Create pairing screen
@@ -328,6 +348,7 @@ void screen_pairing_create(lv_obj_t *parent);
  * @brief Reset pairing screen
  */
 void screen_pairing_reset(void);
+ui_screen_t *screen_pairing_get_interface(void);
 
 /**
  * @brief Create device registry screen
@@ -339,6 +360,7 @@ void screen_device_registry_create(lv_obj_t *parent);
  * @brief Reset device registry screen
  */
 void screen_device_registry_reset(void);
+ui_screen_t *screen_device_registry_get_interface(void);
 
 /**
  * @brief Create brightness screen
@@ -350,6 +372,7 @@ void screen_brightness_create(lv_obj_t *parent);
  * @brief Initialize brightness screen
  */
 void screen_brightness_init(void);
+ui_screen_t *screen_brightness_get_interface(void);
 
 /**
  * @brief Navigate down in brightness screen
@@ -392,6 +415,7 @@ void screen_bluetooth_select(void);
  * @brief Reset bluetooth screen
  */
 void screen_bluetooth_reset(void);
+ui_screen_t *screen_bluetooth_get_interface(void);
 
 /**
  * @brief Create config mode screen
@@ -403,6 +427,7 @@ void screen_config_mode_create(lv_obj_t *parent);
  * @brief Reset config mode screen
  */
 void screen_config_mode_reset(void);
+ui_screen_t *screen_config_mode_get_interface(void);
 
 #ifdef __cplusplus
 }

@@ -70,6 +70,21 @@ int ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, 
     return total_width;
 }
 
+void ui_create_header(lv_obj_t *parent, const char *title) {
+    lv_obj_t *title_label = lv_label_create(parent);
+    lv_obj_add_style(title_label, &style_title, 0);
+    lv_label_set_text(title_label, title);
+    lv_obj_set_pos(title_label, UI_MARGIN_LEFT, 0);
+}
+
+void ui_create_footer(lv_obj_t *parent) {
+    lv_obj_t *bottom_line = lv_line_create(parent);
+    static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
+    lv_line_set_points(bottom_line, bottom_points, 2);
+    lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
+    lv_obj_set_style_line_width(bottom_line, 1, 0);
+}
+
 // 3-item scrollable menu
 ui_menu_t *ui_menu_create(lv_obj_t *parent, const char **item_names, int count) {
     ui_menu_t *menu = malloc(sizeof(ui_menu_t));
@@ -282,46 +297,6 @@ void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, con
 }
 
 // Info screen
-ui_info_screen_t *ui_info_screen_create(const char *title) {
-    ui_info_screen_t *screen = malloc(sizeof(ui_info_screen_t));
-    if (!screen) return NULL;
-    screen->screen = NULL;
-    return screen;
-}
-
-void ui_info_screen_render(ui_info_screen_t *screen, lv_obj_t *parent, const char *title, const char *lines[3]) {
-    // Title
-    lv_obj_t *title_label = lv_label_create(parent);
-    lv_obj_add_style(title_label, &style_title, 0);
-    lv_label_set_text(title_label, title);
-    lv_obj_set_pos(title_label, UI_MARGIN_LEFT, 0);
-
-    // Top separator
-    lv_obj_t *line = lv_line_create(parent);
-    static lv_point_precise_t points[] = {{0, SEPARATOR_Y_TOP}, {DISPLAY_WIDTH, SEPARATOR_Y_TOP}};
-    lv_line_set_points(line, points, 2);
-    lv_obj_set_style_line_color(line, lv_color_white(), 0);
-    lv_obj_set_style_line_width(line, 1, 0);
-    
-    // Bottom separator
-    lv_obj_t *bottom_line = lv_line_create(parent);
-    static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
-    lv_line_set_points(bottom_line, bottom_points, 2);
-    lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
-    lv_obj_set_style_line_width(bottom_line, 1, 0);
-
-    // Info lines
-    for (int i = 0; i < 3; i++) {
-        lv_obj_t *line_label = lv_label_create(parent);
-        lv_obj_add_style(line_label, &style_text, 0);
-        lv_label_set_text(line_label, lines[i]);
-        lv_obj_set_pos(line_label, UI_MARGIN_LEFT, 15 + i * UI_LINE_HEIGHT);
-    }
-
-    // Back icon
-    ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
-}
-
 // Text viewer implementation
 #define TEXT_VIEWER_MAX_VISIBLE_LINES 4
 
@@ -366,6 +341,20 @@ void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const cha
         lv_obj_set_pos(line_label, 0, 12 + i * UI_LINE_HEIGHT);
     }
 
+    // Nav arrows if scrolling is needed
+    if (viewer->line_count > TEXT_VIEWER_MAX_VISIBLE_LINES) {
+        if (viewer->scroll_pos > 0) {
+            lv_obj_t *nav_up = lv_img_create(parent);
+            lv_img_set_src(nav_up, &nav_up);
+            lv_obj_set_pos(nav_up, UI_NAV_ARROW_X, SEPARATOR_Y_TOP + UI_MENU_ARROW_Y_UP);
+        }
+        if (viewer->scroll_pos < viewer->line_count - TEXT_VIEWER_MAX_VISIBLE_LINES) {
+            lv_obj_t *nav_down = lv_img_create(parent);
+            lv_img_set_src(nav_down, &nav_down);
+            lv_obj_set_pos(nav_down, UI_NAV_ARROW_X, UI_MENU_ARROW_Y_DOWN);
+        }
+    }
+
     // Scroll icon (left)
     ui_draw_icon_text(parent, &button_double_press, "Scroll", 0, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
     
@@ -388,10 +377,6 @@ void ui_text_viewer_destroy(ui_text_viewer_t *viewer) {
     if (viewer) {
         free(viewer);
     }
-}
-
-void ui_info_screen_set_line(const ui_info_screen_t *screen, int line, const char *text) {
-    // Not used in new implementation
 }
 
 // Numeric input screen
@@ -465,71 +450,6 @@ void ui_numeric_input_decrement(ui_numeric_input_t *input) {
     if (input->value < input->min) input->value = input->min;
 }
 
-// Dropdown selection screen
-ui_dropdown_t *ui_dropdown_create(int initial_index, int option_count) {
-    ui_dropdown_t *dropdown = malloc(sizeof(ui_dropdown_t));
-    if (!dropdown) return NULL;
-    dropdown->screen = NULL;
-    dropdown->selected_index = initial_index;
-    dropdown->option_count = option_count;
-    dropdown->edit_mode = false;
-    return dropdown;
-}
-
-void ui_dropdown_render(ui_dropdown_t *dropdown, lv_obj_t *parent, const char *title, const char **options) {
-    // Title above separator
-    lv_obj_t *title_label = lv_label_create(parent);
-    lv_obj_add_style(title_label, &style_title, 0);
-    lv_label_set_text(title_label, title);
-    lv_obj_set_pos(title_label, UI_MARGIN_LEFT, 0);
-    
-    // Top separator line (same Y as main screen)
-    lv_obj_t *top_line = lv_line_create(parent);
-    static lv_point_precise_t top_points[] = {{0, SEPARATOR_Y_TOP}, {DISPLAY_WIDTH, SEPARATOR_Y_TOP}};
-    lv_line_set_points(top_line, top_points, 2);
-    lv_obj_set_style_line_color(top_line, lv_color_white(), 0);
-    lv_obj_set_style_line_width(top_line, 1, 0);
-    
-    // Current value (large font, centered)
-    int content_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
-    int value_height = 20;  // Font height
-    
-    lv_obj_t *value_label = lv_label_create(parent);
-    lv_obj_set_style_text_font(value_label, &lv_font_pixolletta_20, 0);
-    lv_obj_set_style_text_color(value_label, lv_color_white(), 0);
-    lv_label_set_text(value_label, options[dropdown->selected_index]);
-    lv_obj_update_layout(value_label);
-    int text_width = lv_obj_get_width(value_label);
-    int center_x = (DISPLAY_WIDTH - text_width) / 2;
-    int center_y = SEPARATOR_Y_TOP + (content_height - value_height) / 2;
-    lv_obj_set_pos(value_label, center_x, center_y);
-    
-    // Bottom separator line
-    lv_obj_t *bottom_line = lv_line_create(parent);
-    static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
-    lv_line_set_points(bottom_line, bottom_points, 2);
-    lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
-    lv_obj_set_style_line_width(bottom_line, 1, 0);
-    
-    // Bottom bar hints
-    if (dropdown->edit_mode) {
-        int next_width = ui_draw_icon_text(parent, &button_short_press, "Next", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-        ui_draw_icon_text(parent, &button_double_press, "Prev", 2 + next_width + 4, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-        ui_draw_icon_text(parent, &button_long_press, "Save", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
-    } else {
-        ui_draw_icon_text(parent, &button_long_press, "Edit", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-        ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
-    }
-}
-
-void ui_dropdown_next(ui_dropdown_t *dropdown) {
-    dropdown->selected_index = (dropdown->selected_index + 1) % dropdown->option_count;
-}
-
-void ui_dropdown_prev(ui_dropdown_t *dropdown) {
-    dropdown->selected_index = (dropdown->selected_index - 1 + dropdown->option_count) % dropdown->option_count;
-}
-
 // Radio select screen
 ui_radio_select_t *ui_radio_select_create(int item_count, ui_radio_mode_t mode) {
     ui_radio_select_t *radio = malloc(sizeof(ui_radio_select_t));
@@ -575,7 +495,7 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
     lv_obj_set_style_line_width(top_line, 1, 0);
     
     // Calculate visible items
-    int visible_items = UI_MENU_VISIBLE_ITEMS;
+    int visible_items = UI_RADIO_VISIBLE_ITEMS;
     int start_y = SEPARATOR_Y_TOP + 2;
     
     // Adjust scroll offset
@@ -654,7 +574,7 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
     if (radio->scroll_offset > 0) {
         radio->nav_up = lv_img_create(parent);
         lv_img_set_src(radio->nav_up, &nav_up);
-        lv_obj_set_pos(radio->nav_up, UI_NAV_ARROW_X, UI_MENU_ARROW_Y_UP);
+        lv_obj_set_pos(radio->nav_up, UI_NAV_ARROW_X, SEPARATOR_Y_TOP + UI_MENU_ARROW_Y_UP);
     }
     
     if (radio->scroll_offset + visible_items < radio->item_count) {

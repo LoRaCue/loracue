@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esp_err.h"
+#include "ui_compact_statusbar.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,6 +10,7 @@ extern "C" {
 typedef enum {
     UI_SCREEN_BOOT,
     UI_SCREEN_MAIN,
+    UI_SCREEN_PC_MODE,
     UI_SCREEN_MENU,
     UI_SCREEN_SETTINGS,
     UI_SCREEN_OTA,
@@ -35,36 +37,43 @@ typedef enum {
 
 /**
  * @brief Initialize compact UI for small displays
- * 
+ *
  * Initializes LVGL core and compact UI components optimized
  * for small displays (128x64, 240x135, etc.)
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t ui_compact_init(void);
 
 /**
  * @brief Show boot screen
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t ui_compact_show_boot_screen(void);
 
 /**
  * @brief Show main screen
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t ui_compact_show_main_screen(void);
 
 /**
  * @brief Register button event callback
- * 
+ *
  * Must be called AFTER all other components that register button callbacks
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t ui_compact_register_button_callback(void);
+
+/**
+ * @brief Get current status bar data
+ *
+ * @param status Pointer to status structure to fill
+ */
+void ui_compact_get_status(statusbar_data_t *status);
 
 #ifdef __cplusplus
 }

@@ -96,3 +96,13 @@ esp_err_t display_ssd1306_wake(display_config_t *config) {
     }
     return esp_lcd_panel_disp_on_off(config->panel, true);
 }
+
+esp_err_t display_ssd1306_set_brightness(display_config_t *config, uint8_t brightness) {
+    if (!config || !config->user_data) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
+    // SSD1306 uses contrast control (0x81 command)
+    esp_lcd_panel_io_handle_t io_handle = (esp_lcd_panel_io_handle_t)config->user_data;
+    return esp_lcd_panel_io_tx_param(io_handle, 0x81, (uint8_t[]){brightness}, 1);
+}

@@ -60,20 +60,14 @@ const char* bsp_get_board_name(void);
 esp_err_t bsp_deinit(void);
 
 /**
- * @brief Lock u8g2 mutex for thread-safe access
  * 
- * Must be called before any u8g2 operations.
- * Always pair with bsp_u8g2_unlock().
  * 
  * @param timeout_ms Timeout in milliseconds (portMAX_DELAY for infinite)
  * @return true if lock acquired, false on timeout
  */
-bool bsp_u8g2_lock(uint32_t timeout_ms);
 
 /**
- * @brief Unlock u8g2 mutex after operations complete
  */
-void bsp_u8g2_unlock(void);
 
 /**
  * @brief Get UART pins for specified port
@@ -178,12 +172,9 @@ esp_err_t bsp_sx1262_reset(void);
 esp_err_t bsp_validate_hardware(void);
 
 /**
- * @brief Initialize u8g2 graphics library with BSP HAL callbacks
  *
- * @param u8g2 Pointer to u8g2 structure to initialize
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t bsp_u8g2_init(void *u8g2);
 
 /**
  * @brief Get board identifier string
@@ -307,18 +298,12 @@ i2c_master_bus_handle_t bsp_i2c_get_bus(void);
  */
 esp_err_t bsp_i2c_add_device(uint8_t addr, uint32_t freq_hz, i2c_master_dev_handle_t *dev_handle);
 
-// OLED u8g2 Callbacks
-#include "u8g2.h"
 
 /**
- * @brief u8g2 I2C byte callback for OLED
  */
-uint8_t bsp_u8g2_i2c_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
 
 /**
- * @brief u8g2 GPIO and delay callback for OLED
  */
-uint8_t bsp_u8g2_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
 
 /**
  * @brief Set OLED reset pin

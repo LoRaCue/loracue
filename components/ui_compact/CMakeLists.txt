@@ -5,6 +5,7 @@ idf_component_register(
         "ui_compact.c"
         "ui_compact_statusbar.c"
         "ui_components.c"
+        "ui_navigator.c"
         "screens/screen_boot.c"
         "screens/screen_main.c"
         "screens/screen_pc_mode.c"
@@ -26,7 +27,6 @@ idf_component_register(
         "screens/screen_lora_cr.c"
         "screens/screen_lora_txpower.c"
         "screens/screen_lora_band.c"
-        "screens/screen_stubs.c"
         ${GENERATED_SOURCES}
     INCLUDE_DIRS 
         "include"

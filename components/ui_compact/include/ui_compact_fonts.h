@@ -16,7 +16,7 @@ LV_FONT_DECLARE(lv_font_pixolletta_10);  // UI text
 LV_FONT_DECLARE(lv_font_pixolletta_20);  // Large value displays
 
 // Micro font for version text
-LV_FONT_DECLARE(lv_font_micro_5);
+LV_FONT_DECLARE(lv_font_micro_10);
 
 #ifdef __cplusplus
 }

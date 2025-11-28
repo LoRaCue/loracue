@@ -79,6 +79,15 @@ esp_err_t display_sleep(display_config_t *config);
  */
 esp_err_t display_wake(display_config_t *config);
 
+/**
+ * @brief Set display brightness/contrast
+ * 
+ * @param config Display configuration
+ * @param brightness Brightness value (0-255)
+ * @return esp_err_t ESP_OK on success
+ */
+esp_err_t display_set_brightness(display_config_t *config, uint8_t brightness);
+
 #ifdef __cplusplus
 }
 #endif

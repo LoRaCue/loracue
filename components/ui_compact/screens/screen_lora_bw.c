@@ -1,75 +1,106 @@
+#include "esp_log.h"
+#include "lora_driver.h"
 #include "lvgl.h"
 #include "ui_components.h"
-#include "lora_driver.h"
-#include "esp_log.h"
+#include "ui_navigator.h"
+#include "ui_screen_interface.h"
 
 static const char *TAG = "lora_bw";
-static ui_dropdown_t *dropdown = NULL;
+static ui_radio_select_t *radio = NULL;
 
 static const char *bw_options[] = {"125 kHz", "250 kHz", "500 kHz"};
-static const uint16_t bw_values[] = {125, 250, 500};
+static const uint32_t bw_values[] = {125000, 250000, 500000};
 #define BW_OPTION_COUNT 3
 
-void screen_lora_bw_init(void) {
+static int current_bw_index = 0;
+static int preserved_index = -1;
+
+void screen_lora_bw_on_enter(void)
+{
     lora_config_t config;
     lora_get_config(&config);
-    
-    int index = 0;
+    current_bw_index = 0;
     for (int i = 0; i < BW_OPTION_COUNT; i++) {
         if (config.bandwidth == bw_values[i]) {
-            index = i;
+            current_bw_index = i;
             break;
         }
     }
-    
-    if (!dropdown) {
-        dropdown = ui_dropdown_create(index, BW_OPTION_COUNT);
-    } else {
-        dropdown->selected_index = index;
+}
+
+void screen_lora_bw_init(void)
+{
+    if (!radio) {
+        radio = ui_radio_select_create(BW_OPTION_COUNT, UI_RADIO_SINGLE);
+        radio->selected_index = preserved_index >= 0 ? preserved_index : current_bw_index;
+        
+        if (radio->selected_items) {
+            ((int *)radio->selected_items)[0] = current_bw_index;
+        }
     }
 }
 
-void screen_lora_bw_create(lv_obj_t *parent) {
+void screen_lora_bw_create(lv_obj_t *parent)
+{
     lv_obj_set_style_bg_color(parent, lv_color_black(), 0);
-    if (!dropdown) screen_lora_bw_init();
-    ui_dropdown_render(dropdown, parent, "BANDWIDTH", bw_options);
+    if (!radio)
+        screen_lora_bw_init();
+    ui_radio_select_render(radio, parent, "BANDWIDTH", bw_options);
 }
 
-void screen_lora_bw_navigate_down(void) {
-    if (dropdown && dropdown->edit_mode) {
-        ui_dropdown_next(dropdown);
-    }
+void screen_lora_bw_navigate_down(void)
+{
+    ui_radio_select_navigate_down(radio);
 }
 
-void screen_lora_bw_navigate_up(void) {
-    if (dropdown && dropdown->edit_mode) {
-        ui_dropdown_prev(dropdown);
-    }
-}
+void screen_lora_bw_select(void)
+{
+    if (!radio)
+        return;
 
-void screen_lora_bw_select(void) {
-    if (!dropdown) return;
+    lora_config_t config;
+    lora_get_config(&config);
+    config.bandwidth = bw_values[radio->selected_index];
+    lora_set_config(&config);
+    ESP_LOGI(TAG, "BW saved: %lu Hz", config.bandwidth);
     
-    if (dropdown->edit_mode) {
-        // Save to config
-        lora_config_t config;
-        lora_get_config(&config);
-        config.bandwidth = bw_values[dropdown->selected_index];
-        lora_set_config(&config);
-        ESP_LOGI(TAG, "BW saved: %d kHz", config.bandwidth);
-        dropdown->edit_mode = false;
-    } else {
-        dropdown->edit_mode = true;
+    if (radio->selected_items) {
+        ((int *)radio->selected_items)[0] = radio->selected_index;
     }
 }
 
-bool screen_lora_bw_is_edit_mode(void) {
-    return dropdown ? dropdown->edit_mode : false;
+static void screen_lora_bw_handle_input(button_event_type_t event)
+{
+    if (event == BUTTON_EVENT_SHORT) {
+        screen_lora_bw_navigate_down();
+        ui_navigator_switch_to(UI_SCREEN_LORA_BW);
+    } else if (event == BUTTON_EVENT_LONG) {
+        screen_lora_bw_select();
+        ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+    } else if (event == BUTTON_EVENT_DOUBLE) {
+        ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+    }
 }
 
-void screen_lora_bw_reset(void) {
-    if (dropdown) {
-        free(dropdown);
-        dropdown = NULL;
+void screen_lora_bw_reset(void)
+{
+    if (radio) {
+        preserved_index = radio->selected_index;
+        if (radio->selected_items) {
+            free(radio->selected_items);
+        }
+        free(radio);
+        radio = NULL;
     }
+}
+
+ui_screen_t *screen_lora_bw_get_interface(void)
+{
+    static ui_screen_t screen = {.type         = UI_SCREEN_LORA_BW,
+                                 .create       = screen_lora_bw_create,
+                                 .destroy      = screen_lora_bw_reset,
+                                 .handle_input = screen_lora_bw_handle_input,
+                                 .on_enter     = screen_lora_bw_on_enter,
+                                 .on_exit      = NULL};
+    return &screen;
 }

@@ -141,10 +141,10 @@ fonts-1bpp: check-lv-font-conv $(INTER_FONT_LIGHT) $(PIXOLLETTA_FONT) $(MICRO_FO
 		npx lv_font_conv --bpp 1 --format lvgl --font $(PIXOLLETTA_FONT) \
 			--range $(FONT_RANGE) --size 20 --no-compress \
 			--output $(FONT_OUTPUT_DIR)/lv_font_pixolletta_20.c; \
-		echo "🔤 Generating Micro 5px (1bpp) for version text..."; \
+		echo "🔤 Generating Micro 10px (1bpp) for version text..."; \
 		npx lv_font_conv --bpp 1 --format lvgl --font $(MICRO_FONT) \
-			--range $(FONT_RANGE) --size 5 --no-compress \
-			--output $(FONT_OUTPUT_DIR)/lv_font_micro_5.c; \
+			--range $(FONT_RANGE) --size 10 --no-compress \
+			--output $(FONT_OUTPUT_DIR)/lv_font_micro_10.c; \
 		echo "✅ 1bpp fonts generated"; \
 	else \
 		echo "✅ 1bpp fonts already exist, skipping generation"; \
@@ -237,7 +237,7 @@ else
 $(error Invalid MODEL=$(MODEL). Use: alpha, alpha+, beta, or gamma)
 endif
 
-build: check-idf fonts-1bpp ui_compact_assets
+build: check-idf fonts-1bpp ui_compact_assets chips
 	@echo "🔨 Building $(MODEL_NAME) ($(BOARD_NAME))..."
 	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" -D BOARD_ID="$(BOARD_ID)" build

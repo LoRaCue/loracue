@@ -115,3 +115,20 @@ esp_err_t display_wake(display_config_t *config) {
             return ESP_ERR_NOT_SUPPORTED;
     }
 }
+
+esp_err_t display_set_brightness(display_config_t *config, uint8_t brightness) {
+    if (!config) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    extern esp_err_t display_ssd1306_set_brightness(display_config_t *config, uint8_t brightness);
+
+    switch (config->type) {
+        case DISPLAY_TYPE_OLED_SSD1306:
+            return display_ssd1306_set_brightness(config, brightness);
+        case DISPLAY_TYPE_EPAPER_SSD1681:
+            return ESP_ERR_NOT_SUPPORTED;  // E-Paper doesn't support brightness
+        default:
+            return ESP_ERR_NOT_SUPPORTED;
+    }
+}

@@ -25,7 +25,6 @@
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "tusb.h"
-#include "u8g2.h"
 #include "version.h"
 #include <inttypes.h>
 #include <string.h>
@@ -193,8 +192,7 @@ static void handle_set_general(cJSON *config_json)
     cJSON *brightness = cJSON_GetObjectItem(config_json, "brightness");
     if (brightness && cJSON_IsNumber(brightness)) {
         config.display_brightness = brightness->valueint;
-        extern u8g2_t u8g2;
-        u8g2_SetContrast(&u8g2, config.display_brightness);
+        // TODO: Implement brightness control via ui_lvgl
     }
 
     cJSON *bluetooth = cJSON_GetObjectItem(config_json, "bluetooth");

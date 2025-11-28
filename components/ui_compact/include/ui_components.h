@@ -22,7 +22,8 @@
 // Menu constants
 #define UI_MENU_ITEM_HEIGHT 13
 #define UI_MENU_BOTTOM_BAR_HEIGHT 11
-#define UI_MENU_VISIBLE_ITEMS ((DISPLAY_HEIGHT - UI_MENU_BOTTOM_BAR_HEIGHT) / UI_MENU_ITEM_HEIGHT)
+#define UI_MENU_VISIBLE_ITEMS (SEPARATOR_Y_BOTTOM / UI_MENU_ITEM_HEIGHT)  // Menu without heading: 4 items on 64px (53/13=4)
+#define UI_RADIO_VISIBLE_ITEMS ((SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP - 2) / UI_MENU_ITEM_HEIGHT)  // With heading: 3 items on 64px
 #define UI_MENU_ARROW_Y_UP 3
 #define UI_MENU_ARROW_Y_DOWN (SEPARATOR_Y_BOTTOM - 7)
 
@@ -46,6 +47,10 @@ typedef enum {
 } ui_align_t;
 
 int ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, int x, int y, ui_align_t align);
+
+// Header and footer helpers
+void ui_create_header(lv_obj_t *parent, const char *title);
+void ui_create_footer(lv_obj_t *parent);
 
 // 3-item scrollable menu
 typedef struct {
@@ -88,19 +93,6 @@ void ui_numeric_input_render(const ui_numeric_input_t *input, lv_obj_t *parent, 
 void ui_numeric_input_increment(ui_numeric_input_t *input);
 void ui_numeric_input_decrement(ui_numeric_input_t *input);
 
-// Dropdown selection screen
-typedef struct {
-    lv_obj_t *screen;
-    int selected_index;
-    int option_count;
-    bool edit_mode;
-} ui_dropdown_t;
-
-ui_dropdown_t *ui_dropdown_create(int initial_index, int option_count);
-void ui_dropdown_render(ui_dropdown_t *dropdown, lv_obj_t *parent, const char *title, const char **options);
-void ui_dropdown_next(ui_dropdown_t *dropdown);
-void ui_dropdown_prev(ui_dropdown_t *dropdown);
-
 // Radio select screen (single or multi selection)
 typedef enum {
     UI_RADIO_SINGLE,
@@ -135,15 +127,6 @@ typedef struct {
 ui_confirmation_t *ui_confirmation_create(void);
 void ui_confirmation_render(ui_confirmation_t *confirm, lv_obj_t *parent, const char *title, const char *message);
 bool ui_confirmation_check_hold(ui_confirmation_t *confirm, bool button_pressed, uint32_t hold_duration_ms);
-
-// Info screen (3 lines of text)
-typedef struct {
-    lv_obj_t *screen;
-} ui_info_screen_t;
-
-ui_info_screen_t *ui_info_screen_create(const char *title);
-void ui_info_screen_render(ui_info_screen_t *screen, lv_obj_t *parent, const char *title, const char *lines[3]);
-void ui_info_screen_set_line(const ui_info_screen_t *screen, int line, const char *text);
 
 // Text viewer component
 typedef struct {
