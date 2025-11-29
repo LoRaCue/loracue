@@ -133,12 +133,16 @@ jobs:
         npm install -g lv_font_conv
         cargo install png2lvgl
     
-    - name: Setup ESP-IDF
-      uses: espressif/esp-idf-ci-action@v1
-      with:
-        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
-        target: ${{ matrix.model.target }}
-        command: echo "ESP-IDF environment ready"
+    - name: Install ESP-IDF
+      shell: bash
+      run: |
+        echo "📥 Installing ESP-IDF ${{ env.ESP_IDF_VERSION }}..."
+        mkdir -p ~/esp
+        cd ~/esp
+        git clone --recursive --branch ${{ env.ESP_IDF_VERSION }} --depth 1 https://github.com/espressif/esp-idf.git
+        cd esp-idf
+        ./install.sh esp32s3
+        echo "ESP_IDF=$HOME/esp/esp-idf" >> $GITHUB_ENV
     
     - name: Build firmware with make
       shell: bash
@@ -146,6 +150,7 @@ jobs:
         CI: true
       run: |
         echo "🔨 Building ${{ matrix.model.display_name }}..."
+        source $ESP_IDF/export.sh
         make build MODEL=${{ matrix.model.name }}
     
     - name: Validate firmware manifest
