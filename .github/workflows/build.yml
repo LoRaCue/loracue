@@ -126,6 +126,17 @@ jobs:
         echo "Using layered sdkconfig: ${{ matrix.model.sdkconfig }}"
         rm -f sdkconfig
     
+    - name: Cache ESP-IDF
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.espressif
+          ~/esp/esp-idf
+        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-${{ hashFiles('**/CMakeLists.txt', 'sdkconfig.*') }}
+        restore-keys: |
+          esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-
+          esp-idf-${{ env.ESP_IDF_VERSION }}-
+    
     - name: Install build dependencies
       shell: bash
       run: |
@@ -136,12 +147,16 @@ jobs:
     - name: Install ESP-IDF
       shell: bash
       run: |
-        echo "📥 Installing ESP-IDF ${{ env.ESP_IDF_VERSION }}..."
-        mkdir -p ~/esp
-        cd ~/esp
-        git clone --recursive --branch ${{ env.ESP_IDF_VERSION }} --depth 1 https://github.com/espressif/esp-idf.git
-        cd esp-idf
-        ./install.sh esp32s3
+        if [ ! -d "$HOME/esp/esp-idf" ]; then
+          echo "📥 Installing ESP-IDF ${{ env.ESP_IDF_VERSION }}..."
+          mkdir -p ~/esp
+          cd ~/esp
+          git clone --recursive --branch ${{ env.ESP_IDF_VERSION }} --depth 1 https://github.com/espressif/esp-idf.git
+          cd esp-idf
+          ./install.sh esp32s3
+        else
+          echo "✅ ESP-IDF already installed (from cache)"
+        fi
         echo "ESP_IDF=$HOME/esp/esp-idf" >> $GITHUB_ENV
     
     - name: Build firmware with make
