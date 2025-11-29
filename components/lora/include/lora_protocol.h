@@ -197,13 +197,6 @@ lora_connection_state_t lora_protocol_get_connection_state(void);
 int16_t lora_protocol_get_last_rssi(void);
 
 /**
- * @brief Start RSSI monitoring task
- *
- * @return ESP_OK on success
- */
-esp_err_t lora_protocol_start_rssi_monitor(void);
-
-/**
  * @brief Connection statistics
  */
 typedef struct {

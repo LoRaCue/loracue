@@ -36,11 +36,9 @@ static uint16_t local_device_id  = 0;
 static uint16_t sequence_counter = 0;
 static uint8_t local_device_key[32]; // Local device's AES-256 key
 
-// RSSI monitoring variables
-static int16_t last_rssi                     = 0;
-static uint64_t last_packet_time             = 0;
-static TaskHandle_t rssi_monitor_task_handle = NULL;
-static bool rssi_monitor_running             = false;
+// RSSI monitoring variables (event-driven, updated on packet reception)
+static int16_t last_rssi         = 0;
+static uint64_t last_packet_time = 0;
 
 // Connection statistics
 static lora_connection_stats_t connection_stats = {0};
@@ -475,48 +473,6 @@ int16_t lora_protocol_get_last_rssi(void)
     return last_rssi;
 }
 
-static void rssi_monitor_task(void *pvParameters)
-{
-    ESP_LOGI(TAG, "RSSI monitor task started");
-
-    while (rssi_monitor_running) {
-        lora_connection_state_t state = lora_protocol_get_connection_state();
-
-        // Log connection quality changes
-        static lora_connection_state_t last_state = LORA_CONNECTION_LOST;
-        if (state != last_state) {
-            const char *state_names[] = {"EXCELLENT", "GOOD", "WEAK", "POOR", "LOST"};
-            ESP_LOGI(TAG, "Connection state: %s (RSSI: %d dBm)", state_names[state], last_rssi);
-            last_state = state;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(5000)); // Check every 5 seconds
-    }
-
-    ESP_LOGI(TAG, "RSSI monitor task stopped");
-    vTaskDelete(NULL);
-}
-
-esp_err_t lora_protocol_start_rssi_monitor(void)
-{
-    if (rssi_monitor_running) {
-        return ESP_OK;
-    }
-
-    rssi_monitor_running = true;
-    BaseType_t ret = xTaskCreate(rssi_monitor_task, "lora_rssi", TASK_STACK_SIZE_MEDIUM, NULL,
-                                 TASK_PRIORITY_LOW, &rssi_monitor_task_handle);
-
-    if (ret != pdPASS) {
-        ESP_LOGE(TAG, "Failed to create RSSI monitor task");
-        rssi_monitor_running = false;
-        return ESP_FAIL;
-    }
-
-    ESP_LOGI(TAG, "RSSI monitor started");
-    return ESP_OK;
-}
-
 esp_err_t lora_protocol_get_stats(lora_connection_stats_t *stats)
 {
     if (!stats) {
@@ -591,7 +547,9 @@ static void protocol_rx_task(void *arg)
                 ESP_LOGD(TAG, "RX task: callback completed");
             }
             
-            // Check for state change
+            // Event-driven connection state monitoring (replaces polling task)
+            // RSSI and last_packet_time are updated in lora_protocol_receive_packet()
+            // State callback is invoked immediately when connection quality changes
             lora_connection_state_t state = lora_protocol_get_connection_state();
             if (state != last_connection_state) {
                 last_connection_state = state;
