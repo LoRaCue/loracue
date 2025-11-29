@@ -1,5 +1,5 @@
 set(DISPLAY_SRCS "display.c")
-set(DISPLAY_REQUIRES bsp esp_lcd lvgl)
+set(DISPLAY_REQUIRES bsp esp_lcd lvgl common_types)
 
 if(DEFINED ENV{WOKWI_BUILD})
     list(APPEND DISPLAY_SRCS "display_ssd1306.c")
