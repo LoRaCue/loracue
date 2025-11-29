@@ -7,9 +7,10 @@
  * PURPOSE: Main application entry point and system initialization
  */
 
+#include "ble.h"
 #include "bsp.h"
 #include "button_manager.h"
-#include "device_config.h"
+#include "common_types.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -18,77 +19,31 @@
 #include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "general_config.h"
+#include "i2console.h"
 #include "led_manager.h"
-#include "lora_comm.h"
 #include "lora_driver.h"
 #include "lora_protocol.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "oled_ui.h"
+#include "ui_compact.h"
+#include "system_events.h"
+#include "ota_engine.h"
+#include "pc_mode_manager.h"
 #include "power_mgmt.h"
+#include "power_mgmt_config.h"
+#include "presenter_mode_manager.h"
+#include "uart_commands.h"
+#include "usb_cdc.h"
+#include "usb_console.h"
 #include "usb_hid.h"
 #include "version.h"
-#include "bluetooth_config.h"
 #include <stdio.h>
 #include <string.h>
 
 static const char *TAG            = "LORACUE_MAIN";
-device_mode_t current_device_mode = DEVICE_MODE_PRESENTER;
-static EventGroupHandle_t system_events;
 static const esp_partition_t *running_partition = NULL;
 static TimerHandle_t ota_validation_timer       = NULL;
-
-// External UI functions
-extern void oled_ui_enable_background_tasks(bool enable);
-
-// Active presenter tracking (PC mode)
-typedef struct {
-    uint16_t device_id;
-    int16_t last_rssi;
-    uint32_t last_seen_ms;
-    uint32_t command_count;
-} active_presenter_t;
-
-#define MAX_ACTIVE_PRESENTERS 4
-#define MAX_COMMAND_HISTORY 4
-static active_presenter_t active_presenters[MAX_ACTIVE_PRESENTERS]  = {0};
-static command_history_entry_t command_history[MAX_COMMAND_HISTORY] = {0};
-static uint8_t command_history_count                                = 0;
-static uint32_t total_commands_received                             = 0;
-
-// Global status for PC mode screen access
-oled_status_t g_oled_status = {0};
-
-static void add_command_to_history(uint16_t device_id, const char *cmd_name)
-{
-    // Shift history down
-    for (int i = MAX_COMMAND_HISTORY - 1; i > 0; i--) {
-        command_history[i] = command_history[i - 1];
-    }
-
-    // Add new entry at top
-    command_history[0].timestamp_ms = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    command_history[0].device_id    = device_id;
-
-    // Get device name from registry
-    paired_device_t device;
-    if (device_registry_get(device_id, &device) == ESP_OK) {
-        strncpy(command_history[0].device_name, device.device_name, sizeof(command_history[0].device_name) - 1);
-    } else {
-        snprintf(command_history[0].device_name, sizeof(command_history[0].device_name), "LC-%04X", device_id);
-    }
-
-    strncpy(command_history[0].command, cmd_name, sizeof(command_history[0].command) - 1);
-
-    if (command_history_count < MAX_COMMAND_HISTORY) {
-        command_history_count++;
-    }
-}
-
-// Demo AES-256 keys for different devices
-static const uint8_t demo_aes_key_1[32] = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15,
-                                           0x88, 0x09, 0xcf, 0x4f, 0x3c, 0x60, 0x1e, 0xc3, 0x13, 0x77, 0x57,
-                                           0x89, 0xa5, 0xb7, 0xa7, 0xf5, 0x04, 0xbb, 0xf3, 0xd2, 0x28};
 
 #define OTA_BOOT_COUNTER_KEY "ota_boot_cnt"
 #define OTA_ROLLBACK_LOG_KEY "ota_rollback"
@@ -152,51 +107,16 @@ static void ota_validation_timer_cb(TimerHandle_t timer)
     }
 }
 
-static EventGroupHandle_t system_events;
-
-static void update_active_presenter(uint16_t device_id, int16_t rssi)
-{
-    uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    int slot     = -1;
-
-    // Find existing or empty slot
-    for (int i = 0; i < MAX_ACTIVE_PRESENTERS; i++) {
-        if (active_presenters[i].device_id == device_id) {
-            slot = i;
-            break;
-        }
-        if (slot == -1 && active_presenters[i].device_id == 0) {
-            slot = i;
-        }
-    }
-
-    // Expire old entries (>30s)
-    for (int i = 0; i < MAX_ACTIVE_PRESENTERS; i++) {
-        if (active_presenters[i].device_id != 0 && (now - active_presenters[i].last_seen_ms) > 30000) {
-            ESP_LOGI(TAG, "Presenter 0x%04X expired", active_presenters[i].device_id);
-            memset(&active_presenters[i], 0, sizeof(active_presenter_t));
-        }
-    }
-
-    if (slot != -1) {
-        active_presenters[slot].device_id    = device_id;
-        active_presenters[slot].last_rssi    = rssi;
-        active_presenters[slot].last_seen_ms = now;
-        active_presenters[slot].command_count++;
-    }
-}
-
 static void battery_monitor_task(void *pvParameters)
 {
-    oled_status_t *status = (oled_status_t *)pvParameters;
-    uint8_t prev_battery  = 0;
+    uint8_t prev_battery = 0;
 
     while (1) {
         uint8_t current_battery = (uint8_t)(bsp_read_battery() * 100 / 4.2f);
 
         if (current_battery != prev_battery) {
-            status->battery_level = current_battery;
-            xEventGroupSetBits(system_events, (1 << 0)); // Battery event
+            bool is_charging = bsp_battery_is_charging();
+            system_events_post_battery(current_battery, is_charging);
             prev_battery = current_battery;
         }
 
@@ -206,207 +126,50 @@ static void battery_monitor_task(void *pvParameters)
 
 static void usb_monitor_task(void *pvParameters)
 {
-    oled_status_t *status = (oled_status_t *)pvParameters;
-    bool prev_usb         = false;
+    bool prev_usb = false;
 
     while (1) {
         bool current_usb = usb_hid_is_connected();
 
         if (current_usb != prev_usb) {
-            status->usb_connected = current_usb;
-            xEventGroupSetBits(system_events, (1 << 1));
-
-            if (current_device_mode == DEVICE_MODE_PC && !current_usb) {
-                ESP_LOGW(TAG, "PC mode: USB disconnected - cannot send HID events");
-                oled_ui_show_message("PC Mode", "Connect USB Cable", 3000);
-            }
-
+            system_events_post_usb(current_usb);
             prev_usb = current_usb;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
-}
-
-static void pc_mode_update_task(void *pvParameters)
-{
-    oled_status_t *status = (oled_status_t *)pvParameters;
-
-    while (1) {
-        // Only update in PC mode (check global mode instead of NVS)
-        if (current_device_mode == DEVICE_MODE_PC && oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
-            // Update command history timestamps
-            status->command_history_count = command_history_count;
-            for (int i = 0; i < command_history_count && i < 4; i++) {
-                memcpy(&status->command_history[i], &command_history[i], sizeof(command_history_entry_t));
-            }
-            xEventGroupSetBits(system_events, (1 << 4));
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
-
-// Rate limiter for PC mode
-typedef struct {
-    uint32_t last_command_ms;
-    uint32_t command_count_1s;
-} rate_limiter_t;
-
-static rate_limiter_t rate_limiter = {0};
-
-static bool rate_limiter_check(void)
-{
-    uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-
-    if (now - rate_limiter.last_command_ms > 1000) {
-        rate_limiter.command_count_1s = 0;
-    }
-
-    if (rate_limiter.command_count_1s >= 10) {
-        return false;
-    }
-
-    rate_limiter.last_command_ms = now;
-    rate_limiter.command_count_1s++;
-    return true;
 }
 
 // Application layer: LoRa command to USB HID mapping
-static void lora_rx_handler(uint16_t device_id, lora_command_t command, const uint8_t *payload, uint8_t payload_length,
-                            int16_t rssi, void *user_ctx)
+static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_command_t command, const uint8_t *payload,
+                            uint8_t payload_length, int16_t rssi, void *user_ctx)
 {
-    if (current_device_mode == DEVICE_MODE_PRESENTER) {
-        ESP_LOGD(TAG, "Presenter mode: ignoring received LoRa command");
-        return;
-    }
+    general_config_t config;
+    general_config_get(&config);
 
-    ESP_LOGI(TAG, "PC mode RX: device=0x%04X, cmd=0x%02X, rssi=%d dBm", device_id, command, rssi);
-
-    // Device pairing validation
-    if (!device_registry_is_paired(device_id)) {
-        ESP_LOGW(TAG, "Ignoring command from unpaired device 0x%04X", device_id);
-        return;
-    }
-
-    // Update device registry
-    device_registry_update_last_seen(device_id, 0);
-
-    // Track active presenter
-    update_active_presenter(device_id, rssi);
-    total_commands_received++;
-
-    if (!rate_limiter_check()) {
-        ESP_LOGW(TAG, "Rate limit exceeded (>10 cmd/s)");
-        return;
-    }
-
-    if (!usb_hid_is_connected()) {
-        ESP_LOGE(TAG, "USB not connected, cannot send HID");
-        return;
-    }
-
-    usb_hid_keycode_t keycode;
-    const char *cmd_name;
-    switch (command) {
-        case CMD_NEXT_SLIDE:
-            keycode  = HID_KEY_PAGE_DOWN;
-            cmd_name = "NEXT";
-            break;
-        case CMD_PREV_SLIDE:
-            keycode  = HID_KEY_PAGE_UP;
-            cmd_name = "PREV";
-            break;
-        case CMD_BLACK_SCREEN:
-            keycode  = HID_KEY_B;
-            cmd_name = "BLACK";
-            break;
-        case CMD_START_PRESENTATION:
-            keycode  = HID_KEY_F5;
-            cmd_name = "START";
-            break;
-        default:
-            ESP_LOGW(TAG, "Unknown command: 0x%02X", command);
+    // In presenter mode, only accept ACKs
+    if (config.device_mode == DEVICE_MODE_PRESENTER) {
+        if (command == CMD_ACK) {
+            ESP_LOGI(TAG, "Presenter mode: ACK received from 0x%04X (seq=%u)", device_id, sequence_num);
+            // ACK handling is done in lora_protocol layer
             return;
-    }
-
-    usb_hid_send_key(keycode);
-
-    // Add to command history
-    add_command_to_history(device_id, cmd_name);
-
-    // Update status for PC mode screen
-    oled_status_t *status = (oled_status_t *)user_ctx;
-    status->lora_signal   = rssi;
-    strncpy(status->last_command, cmd_name, sizeof(status->last_command) - 1);
-
-    // Update command history in status
-    status->command_history_count = command_history_count;
-    for (int i = 0; i < command_history_count && i < 4; i++) {
-        memcpy(&status->command_history[i], &command_history[i], sizeof(command_history_entry_t));
-    }
-
-    // Update active presenters list
-    status->active_presenter_count = 0;
-    for (int i = 0; i < MAX_ACTIVE_PRESENTERS && i < 4; i++) {
-        if (active_presenters[i].device_id != 0) {
-            status->active_presenters[status->active_presenter_count].device_id = active_presenters[i].device_id;
-            status->active_presenters[status->active_presenter_count].rssi      = active_presenters[i].last_rssi;
-            status->active_presenters[status->active_presenter_count].command_count =
-                active_presenters[i].command_count;
-            status->active_presenter_count++;
         }
-    }
-
-    xEventGroupSetBits(system_events, (1 << 3));
-}
-
-static void lora_state_handler(lora_connection_state_t state, void *user_ctx)
-{
-    oled_status_t *status  = (oled_status_t *)user_ctx;
-    status->lora_connected = (state != LORA_CONNECTION_LOST);
-    status->lora_signal    = (state == LORA_CONNECTION_EXCELLENT) ? 100
-                             : (state == LORA_CONNECTION_GOOD)    ? 75
-                             : (state == LORA_CONNECTION_WEAK)    ? 50
-                                                                  : 25;
-    xEventGroupSetBits(system_events, (1 << 2));
-}
-
-static void button_handler(button_event_type_t event, void *arg)
-{
-    oled_screen_t screen = oled_ui_get_screen();
-
-    // Allow both button press for menu on both MAIN and PC_MODE screens
-    if (screen != OLED_SCREEN_MAIN && screen != OLED_SCREEN_PC_MODE) {
+        ESP_LOGD(TAG, "Presenter mode: ignoring non-ACK command");
         return;
     }
 
-    // In PC mode, only allow menu access (no LoRa commands)
-    if (current_device_mode == DEVICE_MODE_PC) {
-        ESP_LOGD(TAG, "PC mode: buttons disabled for LoRa transmission");
-        return;
-    }
+    // PC mode - delegate to pc_mode_manager
+    pc_mode_manager_process_command(device_id, sequence_num, command, payload, payload_length, rssi);
+}
 
-    lora_command_t cmd;
-    switch (event) {
-        case BUTTON_EVENT_PREV_SHORT:
-            cmd = CMD_PREV_SLIDE;
-            break;
-        case BUTTON_EVENT_NEXT_SHORT:
-            cmd = CMD_NEXT_SLIDE;
-            break;
-        case BUTTON_EVENT_PREV_LONG:
-            cmd = CMD_BLACK_SCREEN;
-            break;
-        case BUTTON_EVENT_NEXT_LONG:
-            cmd = CMD_START_PRESENTATION;
-            break;
-        default:
-            return;
-    }
-
-    ESP_LOGI(TAG, "Presenter mode: sending LoRa command 0x%02X", cmd);
-    lora_comm_send_command_reliable(cmd, NULL, 0);
+static void lora_state_handler(lora_connection_state_t state, const void *user_ctx)
+{
+    bool connected = (state != LORA_CONNECTION_LOST);
+    int8_t signal = (state == LORA_CONNECTION_EXCELLENT) ? 100
+                   : (state == LORA_CONNECTION_GOOD)    ? 75
+                   : (state == LORA_CONNECTION_WEAK)    ? 50
+                                                        : 25;
+    system_events_post_lora_state(connected, signal);
 }
 
 void app_main(void)
@@ -415,6 +178,9 @@ void app_main(void)
     ESP_LOGI(TAG, "Version: %s", LORACUE_VERSION_FULL);
     ESP_LOGI(TAG, "Build: %s (%s)", LORACUE_BUILD_COMMIT_SHORT, LORACUE_BUILD_BRANCH);
     ESP_LOGI(TAG, "Date: %s", LORACUE_BUILD_DATE);
+
+    // Reduce u8g2 HAL logging noise
+    esp_log_level_set("u8g2_hal", ESP_LOG_WARN);
 
     // Check wake cause
     esp_sleep_wakeup_cause_t wake_cause = esp_sleep_get_wakeup_cause();
@@ -430,25 +196,51 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
-    // OTA rollback validation
+    // OTA boot diagnostics
     running_partition = esp_ota_get_running_partition();
-    esp_ota_img_states_t ota_state;
+    ESP_LOGI(TAG, "Running from partition: %s (0x%lx, %lu bytes)", running_partition->label, running_partition->address,
+             running_partition->size);
 
-    // Check boot counter for repeated failures
-    uint32_t boot_counter = ota_get_boot_counter();
-    if (boot_counter >= MAX_BOOT_ATTEMPTS) {
-        ESP_LOGE(TAG, "Max boot attempts reached (%lu), forcing rollback", boot_counter);
-        ota_log_rollback("max_boot_attempts");
-        esp_ota_mark_app_invalid_rollback_and_reboot();
-    }
-
-    if (esp_ota_get_state_partition(running_partition, &ota_state) == ESP_OK) {
-        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
-            ESP_LOGW(TAG, "New firmware pending validation");
-            ota_increment_boot_counter();
+    const esp_partition_t *boot_partition = esp_ota_get_boot_partition();
+    if (boot_partition) {
+        ESP_LOGI(TAG, "Boot partition: %s (0x%lx)", boot_partition->label, boot_partition->address);
+        if (boot_partition != running_partition) {
+            ESP_LOGW(TAG, "WARNING: Boot partition != running partition (rollback occurred?)");
         }
     }
-    ESP_LOGI(TAG, "Running partition: %s (offset 0x%lx)", running_partition->label, running_partition->address);
+
+    esp_ota_img_states_t ota_state;
+    uint32_t boot_counter = ota_get_boot_counter();
+
+    if (esp_ota_get_state_partition(running_partition, &ota_state) == ESP_OK) {
+        const char *state_str = (ota_state == ESP_OTA_IMG_NEW)              ? "NEW"
+                                : (ota_state == ESP_OTA_IMG_PENDING_VERIFY) ? "PENDING_VERIFY"
+                                : (ota_state == ESP_OTA_IMG_VALID)          ? "VALID"
+                                : (ota_state == ESP_OTA_IMG_INVALID)        ? "INVALID"
+                                : (ota_state == ESP_OTA_IMG_ABORTED)        ? "ABORTED"
+                                                                            : "UNKNOWN";
+        ESP_LOGI(TAG, "OTA state: %s, boot counter: %lu", state_str, boot_counter);
+
+        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
+            ESP_LOGW(TAG, "New firmware pending validation (will auto-validate in 60s)");
+            ota_increment_boot_counter();
+
+            if (boot_counter >= MAX_BOOT_ATTEMPTS) {
+                ESP_LOGE(TAG, "Max boot attempts reached (%lu), forcing rollback NOW", boot_counter);
+                ota_log_rollback("max_boot_attempts");
+                esp_ota_mark_app_invalid_rollback_and_reboot();
+            }
+        }
+    } else {
+        ESP_LOGW(TAG, "Could not read OTA state for running partition");
+    }
+
+    // Initialize OTA engine
+    ESP_LOGI(TAG, "Initializing OTA engine...");
+    ret = ota_engine_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "OTA engine initialization failed: %s", esp_err_to_name(ret));
+    }
 
     // Reconfigure watchdog (90s timeout for init + 60s validation)
     esp_task_wdt_config_t wdt_config = {.timeout_ms = 90000, .idle_core_mask = 0, .trigger_panic = true};
@@ -457,33 +249,34 @@ void app_main(void)
 
     // Initialize device configuration
     ESP_LOGI(TAG, "Initializing device configuration system...");
-    ret = device_config_init();
+    ret = general_config_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Device config initialization failed: %s", esp_err_to_name(ret));
         return;
     }
 
     // Get device config for power management settings
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
 
     // Initialize power management with settings from NVS
     ESP_LOGI(TAG, "Initializing power management...");
+    power_mgmt_config_t pwr_cfg;
+    power_mgmt_config_get(&pwr_cfg);
+
     power_config_t power_config = {
-#ifdef SIMULATOR_BUILD
-        .light_sleep_timeout_ms  = 0,
-        .deep_sleep_timeout_ms   = 0,
-        .enable_auto_light_sleep = false,
-        .enable_auto_deep_sleep  = false,
-#else
-        .light_sleep_timeout_ms  = 0, // TODO: Re-enable after I2C restoration
-        .deep_sleep_timeout_ms   = config.auto_sleep_enabled ? config.sleep_timeout_ms : 0,
-        .enable_auto_light_sleep = false, // FIXME: Disabled due to I2C corruption
-        .enable_auto_deep_sleep  = config.auto_sleep_enabled,
-#endif
+        .display_sleep_timeout_ms  = pwr_cfg.display_sleep_timeout_ms,
+        .light_sleep_timeout_ms    = pwr_cfg.light_sleep_timeout_ms,
+        .deep_sleep_timeout_ms     = pwr_cfg.deep_sleep_timeout_ms,
+        .enable_auto_display_sleep = pwr_cfg.display_sleep_enabled,
+        .enable_auto_light_sleep   = pwr_cfg.light_sleep_enabled,
+        .enable_auto_deep_sleep    = pwr_cfg.deep_sleep_enabled,
         .cpu_freq_mhz = 80,
     };
-    ESP_LOGI(TAG, "Power config: deep_sleep=%lums, auto_sleep=%s", power_config.deep_sleep_timeout_ms,
+
+    ESP_LOGI(TAG, "Power config: display_sleep=%s, light_sleep=%s, deep_sleep=%s",
+             power_config.enable_auto_display_sleep ? "enabled" : "disabled",
+             power_config.enable_auto_light_sleep ? "enabled" : "disabled",
              power_config.enable_auto_deep_sleep ? "enabled" : "disabled");
     ret = power_mgmt_init(&power_config);
     if (ret != ESP_OK) {
@@ -491,7 +284,28 @@ void app_main(void)
         return;
     }
 
-    // Initialize BSP
+    // Initialize I2C bus first (needed for I2Console and display)
+    ESP_LOGI(TAG, "Initializing I2C bus...");
+    ret = bsp_i2c_init_default();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "I2C initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+
+    // Check for I2Console device and initialize logging bridge (before display)
+    ESP_LOGI(TAG, "Checking for I2Console device...");
+    vTaskDelay(pdMS_TO_TICKS(100)); // Allow I2Console chip to fully initialize
+    ret = i2console_init(I2CONSOLE_DEFAULT_ADDR);
+    if (ret == ESP_OK) {
+        char version[16];
+        if (i2console_get_version(version) == ESP_OK) {
+            ESP_LOGI(TAG, "I2Console connected: %s", version);
+        }
+    } else {
+        ESP_LOGI(TAG, "I2Console not detected - using UART logging only");
+    }
+
+    // Initialize BSP (will skip I2C init since already done)
     ESP_LOGI(TAG, "Initializing Board Support Package...");
     ret = bsp_init();
     if (ret != ESP_OK) {
@@ -499,9 +313,9 @@ void app_main(void)
         return;
     }
 
-    // Initialize firmware manifest
-    extern void firmware_manifest_init(void);
-    firmware_manifest_init();
+    // Detect board type early
+    const char *board_id = bsp_get_board_id();
+    ESP_LOGI(TAG, "Board: %s", board_id);
 
     // Initialize LED manager and turn on status LED
     ESP_LOGI(TAG, "Initializing LED manager...");
@@ -512,29 +326,46 @@ void app_main(void)
     }
     led_manager_solid(true); // Turn on LED during startup
 
-    // Initialize OLED UI
-    ESP_LOGI(TAG, "Initializing OLED UI...");
-    ret = oled_ui_init();
+    // Initialize system events
+    ESP_LOGI(TAG, "Initializing system events...");
+    ret = system_events_init();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "OLED UI initialization failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "System events initialization failed: %s", esp_err_to_name(ret));
         return;
     }
 
-    // Apply brightness from config (reuse config from power mgmt)
-    device_config_get(&config);
-    extern u8g2_t u8g2;
-    u8g2_SetContrast(&u8g2, config.display_brightness);
-    ESP_LOGI(TAG, "OLED brightness set to %d", config.display_brightness);
-
-    // Show boot logo
-    oled_ui_set_screen(OLED_SCREEN_BOOT);
-    vTaskDelay(pdMS_TO_TICKS(2000));
-
-    // Initialize button manager
+    // Initialize button manager first (before UI registers callbacks)
     ESP_LOGI(TAG, "Initializing button manager...");
     ret = button_manager_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Button manager initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+
+    // Initialize UI (self-contained, creates own task)
+    ESP_LOGI(TAG, "Initializing UI...");
+    ret = ui_compact_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "UI initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+    
+    ESP_LOGI(TAG, "Creating boot screen...");
+    ui_compact_show_boot_screen();
+
+    // Initialize PC mode manager
+    ESP_LOGI(TAG, "Initializing PC mode manager...");
+    ret = pc_mode_manager_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "PC mode manager initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+
+    // Initialize presenter mode manager
+    ESP_LOGI(TAG, "Initializing presenter mode manager...");
+    ret = presenter_mode_manager_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Presenter mode manager initialization failed: %s", esp_err_to_name(ret));
         return;
     }
 
@@ -562,17 +393,21 @@ void app_main(void)
     }
 
     // Get device mode from NVS (reuse config from brightness setting)
-    device_config_get(&config);
-    current_device_mode = config.device_mode;
+    general_config_get(&config);
 
-    // Generate device ID from MAC address (static identity)
-    uint8_t mac[6];
-    esp_read_mac(mac, ESP_MAC_WIFI_STA);
-    uint16_t device_id = (mac[4] << 8) | mac[5]; // Use last 2 bytes of MAC
+    // Get device ID from MAC address (static identity)
+    uint16_t device_id = general_config_get_device_id();
 
     ESP_LOGI(TAG, "Device mode: %s, Static ID: 0x%04X", device_mode_to_string(config.device_mode), device_id);
 
-    ret = lora_protocol_init(device_id, demo_aes_key_1);
+    // Notify UI of initial device mode
+    system_events_post_mode_changed(config.device_mode);
+
+    // Get AES key from LoRa config
+    lora_config_t lora_cfg;
+    lora_get_config(&lora_cfg);
+
+    ret = lora_protocol_init(device_id, lora_cfg.aes_key);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "LoRa protocol initialization failed: %s", esp_err_to_name(ret));
         return;
@@ -580,11 +415,8 @@ void app_main(void)
 
     // Initialize LoRa communication
     ESP_LOGI(TAG, "Initializing LoRa communication...");
-    ret = lora_comm_init();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "LoRa communication initialization failed: %s", esp_err_to_name(ret));
-        return;
-    }
+    // lora_protocol_init is called by lora_driver_init
+    // No separate init needed here
 
     // Initialize USB HID
     ESP_LOGI(TAG, "Initializing USB HID interface...");
@@ -594,13 +426,59 @@ void app_main(void)
         return;
     }
 
-    // Initialize Bluetooth configuration
-    ESP_LOGI(TAG, "Initializing Bluetooth configuration...");
-    ret = bluetooth_config_init();
+    // Register UI button callback (must be after usb_hid to override its callback)
+    ESP_LOGI(TAG, "Registering UI button callback...");
+    ret = ui_compact_register_button_callback();
     if (ret != ESP_OK) {
-        ESP_LOGW(TAG, "Bluetooth initialization failed: %s (continuing without BLE)", esp_err_to_name(ret));
-        // Non-fatal - continue without Bluetooth
+        ESP_LOGE(TAG, "UI button callback registration failed: %s", esp_err_to_name(ret));
+        return;
     }
+
+    // Initialize USB CDC command interface
+    ESP_LOGI(TAG, "Initializing USB CDC command interface...");
+    ret = usb_cdc_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "USB CDC initialization failed: %s", esp_err_to_name(ret));
+        return;
+    }
+
+#if 0  // USB CDC is only for command parser, not console
+    // Wait for USB enumeration before redirecting console
+    ESP_LOGI(TAG, "Waiting for USB enumeration...");
+    vTaskDelay(pdMS_TO_TICKS(2000));
+    
+    // Redirect console to USB CDC (same port as commands)
+    usb_console_init();
+    ESP_LOGI(TAG, "Console redirected to USB CDC");
+#endif
+
+    // Initialize Bluetooth configuration based on settings
+    ESP_LOGI(TAG, "Initializing Bluetooth configuration...");
+    if (config.bluetooth_enabled) {
+        ret = ble_init();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "Bluetooth initialization failed: %s (continuing without BLE)", esp_err_to_name(ret));
+            // Non-fatal - continue without Bluetooth
+        }
+    } else {
+        ESP_LOGI(TAG, "Bluetooth disabled in configuration");
+    }
+
+#ifdef CONFIG_UART_COMMANDS_ENABLED
+    // Initialize UART command interface
+    ESP_LOGI(TAG, "Initializing UART command interface...");
+    ret = uart_commands_init();
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "UART commands initialization failed: %s", esp_err_to_name(ret));
+    } else {
+        ret = uart_commands_start();
+        if (ret != ESP_OK) {
+            ESP_LOGW(TAG, "UART commands start failed: %s", esp_err_to_name(ret));
+        }
+    }
+#else
+    ESP_LOGI(TAG, "UART commands disabled - UART0 used for debug logging");
+#endif
 
     // Validate hardware
     ESP_LOGI(TAG, "Running hardware validation...");
@@ -608,16 +486,6 @@ void app_main(void)
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Hardware validation failed");
     }
-
-    // Create event group for system events
-    system_events = xEventGroupCreate();
-    if (!system_events) {
-        ESP_LOGE(TAG, "Failed to create system event group");
-        return;
-    }
-
-    // Transition to main UI state (adapts to mode automatically)
-    oled_ui_set_screen(OLED_SCREEN_MAIN);
 
     // Start LED fading after initialization complete
     ESP_LOGI(TAG, "Starting LED fade pattern");
@@ -628,10 +496,10 @@ void app_main(void)
 
     // Start LoRa communication task
     ESP_LOGI(TAG, "Starting LoRa communication...");
-    ret = lora_comm_start();
+    ret = lora_protocol_start();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to start LoRa communication: %s", esp_err_to_name(ret));
-        return;
+        ESP_LOGW(TAG, "Failed to start LoRa communication: %s (continuing anyway)", esp_err_to_name(ret));
+        // Continue anyway - UI should still work
     }
 
     // Reset watchdog after successful init
@@ -649,92 +517,23 @@ void app_main(void)
         }
     }
 
-    // Main status update loop
-    g_oled_status.battery_level  = 85;
-    g_oled_status.lora_connected = false;
-    g_oled_status.lora_signal    = 0;
-    g_oled_status.usb_connected  = false;
-    g_oled_status.device_id      = 0x1234;
-
-    // Load device name from config
-    device_config_t dev_config;
-    device_config_get(&dev_config);
-    strncpy(g_oled_status.device_name, dev_config.device_name, sizeof(g_oled_status.device_name) - 1);
-
-    strcpy(g_oled_status.last_command, "");
-
     // Register application callbacks
-    lora_comm_register_rx_callback(lora_rx_handler, &g_oled_status);
-    lora_comm_register_state_callback(lora_state_handler, &g_oled_status);
-    button_manager_register_callback(button_handler, NULL);
+    lora_protocol_register_rx_callback(lora_rx_handler, NULL);
+    lora_protocol_register_state_callback((lora_protocol_state_callback_t)lora_state_handler, NULL);
 
-    // Create event group for system events
-    system_events = xEventGroupCreate();
+    // Start monitoring tasks
+    xTaskCreate(battery_monitor_task, "battery_monitor", 3072, NULL, 5, NULL);
+    xTaskCreate(usb_monitor_task, "usb_monitor", 2048, NULL, 5, NULL);
 
-    // Start periodic tasks
-    xTaskCreate(battery_monitor_task, "battery_monitor", 2048, &g_oled_status, 5, NULL);
-    xTaskCreate(usb_monitor_task, "usb_monitor", 2048, &g_oled_status, 5, NULL);
-    xTaskCreate(pc_mode_update_task, "pc_mode_update", 4096, &g_oled_status, 5, NULL);
+    // Switch to main screen after initialization
+    ESP_LOGI(TAG, "Switching to main screen...");
+    ui_compact_show_main_screen();
 
     // Main task now just handles events
-    ESP_LOGI(TAG, "Main loop starting - should have low CPU usage when idle");
+    ESP_LOGI(TAG, "Main loop starting - watchdog keepalive only");
 
     while (1) {
-        // Reset watchdog
         esp_task_wdt_reset();
-
-        // Wait for any system event
-        EventBits_t events = xEventGroupWaitBits(system_events,
-                                                 0xFF,                  // Wait for any event
-                                                 pdTRUE,                // Clear on exit
-                                                 pdFALSE,               // Wait for any bit
-                                                 pdMS_TO_TICKS(10000)); // 10s timeout
-
-        if (events & (1 << 0)) { // Battery changed
-            oled_ui_update_status(&g_oled_status);
-        }
-
-        if (events & (1 << 1)) { // USB status changed
-            oled_ui_update_status(&g_oled_status);
-        }
-
-        if (events & (1 << 2)) { // LoRa state changed
-            oled_ui_update_status(&g_oled_status);
-        }
-
-        if (events & (1 << 3)) { // Command received
-            oled_ui_update_status(&g_oled_status);
-        }
-
-        if (events & (1 << 4)) { // PC mode periodic update
-            // Just redraw PC mode screen, don't update full status
-            if (oled_ui_get_screen() == OLED_SCREEN_PC_MODE) {
-                extern void pc_mode_screen_draw(const oled_status_t *);
-                pc_mode_screen_draw(&g_oled_status);
-            }
-        }
-
-        if (events & (1 << 5)) { // Device mode changed
-            ESP_LOGI(TAG, "Device mode changed to: %s", device_mode_to_string(current_device_mode));
-
-            // Save to NVS
-            device_config_t cfg;
-            device_config_get(&cfg);
-            cfg.device_mode = current_device_mode;
-            device_config_set(&cfg);
-
-            // Force screen redraw with new mode
-            oled_ui_update_status(&g_oled_status);
-        }
-
-        // Check if device mode changed and persist to NVS (fallback for missed events)
-        device_config_get(&config);
-        if (config.device_mode != current_device_mode) {
-            ESP_LOGI(TAG, "Device mode changed to: %s (fallback)", device_mode_to_string(current_device_mode));
-
-            // Save to NVS
-            config.device_mode = current_device_mode;
-            device_config_set(&config);
-        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

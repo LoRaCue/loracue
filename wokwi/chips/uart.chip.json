@@ -1,0 +1,23 @@
+{
+  "name": "uart",
+  "author": "Fabian Schmieder",
+  "pins": [
+    "RX",
+    "TX"
+  ],
+  "display": {
+    "width": 10,
+    "height": 10,
+    "pins": {
+      "RX": { "x": 0, "y": 2, "signals": [] },
+      "TX": { "x": 0, "y": 8, "signals": [] }
+    }
+  },
+  "attributes": [
+    {
+      "name": "baudrate",
+      "type": "string",
+      "default": "115200"
+    }
+  ]
+}

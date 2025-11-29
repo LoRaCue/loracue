@@ -8,9 +8,9 @@
 #include "cJSON.h"
 #include "class/cdc/cdc_device.h"
 #include "class/hid/hid_device.h"
-#include "device_config.h"
 #include "device_registry.h"
 #include "esp_log.h"
+#include "general_config.h"
 #include "tinyusb.h"
 #include "tusb.h"
 #include "usb_cdc.h"
@@ -30,7 +30,7 @@ static void send_key(uint8_t keycode, uint8_t modifier)
 
     // Send key press
     tud_hid_keyboard_report(0, modifier, keycodes);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(5));
 
     // Send key release
     tud_hid_keyboard_report(0, 0, NULL);
@@ -44,26 +44,30 @@ typedef struct {
     uint8_t modifier;
 } key_mapping_t;
 
-// PC Mode key mappings
+// PC Mode key mappings (one-button UI)
 static const key_mapping_t pc_mode_keys[] = {
-    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},   // Previous slide
-    [BUTTON_EVENT_PREV_LONG]  = {0x29, 0},              // Escape key
-    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0}, // Next slide
-    [BUTTON_EVENT_NEXT_LONG]  = {HID_KEY_F5, 0},        // Start slideshow
+    [BUTTON_EVENT_SHORT]  = {HID_KEY_ARROW_RIGHT, 0}, // Cursor right
+    [BUTTON_EVENT_DOUBLE] = {HID_KEY_ARROW_LEFT, 0},  // Cursor left
+    [BUTTON_EVENT_LONG]   = {HID_KEY_F5, 0},          // (unused - menu handled by UI)
 };
 
-// Presenter Mode key mappings
+// Presenter Mode key mappings (one-button UI)
 static const key_mapping_t presenter_mode_keys[] = {
-    [BUTTON_EVENT_PREV_SHORT] = {HID_KEY_PAGE_UP, 0},   // Previous slide
-    [BUTTON_EVENT_PREV_LONG]  = {HID_KEY_B, 0},         // Blank screen
-    [BUTTON_EVENT_NEXT_SHORT] = {HID_KEY_PAGE_DOWN, 0}, // Next slide
-    [BUTTON_EVENT_NEXT_LONG]  = {0x2C, 0},              // Space key
+    [BUTTON_EVENT_SHORT]  = {HID_KEY_PAGE_DOWN, 0}, // Next slide
+    [BUTTON_EVENT_DOUBLE] = {HID_KEY_PAGE_UP, 0},   // Previous slide
+    [BUTTON_EVENT_LONG]   = {HID_KEY_B, 0},         // Blank screen
 };
 
 static void button_event_handler(button_event_type_t event, void *arg)
 {
-    device_config_t config;
-    device_config_get(&config);
+    general_config_t config;
+    general_config_get(&config);
+    
+    // In PC mode, long press opens menu (handled by UI), not HID
+    if (config.device_mode == DEVICE_MODE_PC && event == BUTTON_EVENT_LONG) {
+        return;
+    }
+    
     const key_mapping_t *key_map = (config.device_mode == DEVICE_MODE_PC) ? pc_mode_keys : presenter_mode_keys;
 
     if (event >= sizeof(pc_mode_keys) / sizeof(key_mapping_t)) {
@@ -75,13 +79,13 @@ static void button_event_handler(button_event_type_t event, void *arg)
     send_key(mapping.keycode, mapping.modifier);
 }
 
-// TinyUSB CDC callbacks
-void tud_cdc_rx_cb(uint8_t itf)
+// TinyUSB HID Callbacks
+uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
 {
-    usb_cdc_process_commands();
+    (void)instance;
+    return hid_keyboard_report_desc;
 }
 
-// TinyUSB HID callbacks
 uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t *buffer,
                                uint16_t reqlen)
 {
@@ -96,19 +100,16 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const *buffer,
                            uint16_t bufsize)
 {
-}
-
-// HID Report Descriptor for keyboard
-static const uint8_t hid_report_descriptor[] = {TUD_HID_REPORT_DESC_KEYBOARD()};
-
-uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance)
-{
-    return hid_report_descriptor;
+    (void)instance;
+    (void)report_id;
+    (void)report_type;
+    (void)buffer;
+    (void)bufsize;
 }
 
 bool usb_hid_is_connected(void)
 {
-    return tud_hid_ready() && tud_cdc_connected();
+    return tud_hid_ready();
 }
 
 esp_err_t usb_hid_send_key(usb_hid_keycode_t keycode)
@@ -121,12 +122,14 @@ esp_err_t usb_hid_init(void)
 {
     ESP_LOGI(TAG, "Initializing USB composite device (HID + CDC)");
 
-    tinyusb_config_t tusb_cfg = {.port       = TINYUSB_PORT_FULL_SPEED_0,
-                                 .phy        = {.skip_setup = false, .self_powered = false},
-                                 .task       = {.size = 4096, .priority = 5, .xCoreID = 0},
-                                 .descriptor = {0},
-                                 .event_cb   = NULL,
-                                 .event_arg  = NULL};
+    // esp_tinyusb 1.7.6+ API
+    tinyusb_config_t tusb_cfg = {
+        .device_descriptor = usb_get_device_descriptor(),
+        .string_descriptor = usb_get_string_descriptors(),
+        .string_descriptor_count = 6,
+        .external_phy = false,
+        .configuration_descriptor = usb_get_config_descriptor()
+    };
 
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 

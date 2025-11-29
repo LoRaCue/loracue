@@ -1,5 +1,6 @@
 # ESP-IDF build artifacts
 build/
+sdkconfig
 sdkconfig.old
 .vscode/
 .devcontainer/
@@ -12,6 +13,7 @@ managed_components/
 *.swp
 *.swo
 *~
+.cache/
 
 # OS files
 .DS_Store
@@ -20,5 +22,20 @@ Thumbs.db
 # Node.js (for commitlint/husky)
 node_modules/
 
-# Simulator artifacts (desktop simulator removed - use Wokwi instead)
-# Wokwi files are kept: wokwi.toml, diagram.json
+# Wokwi simulator log
+wokwi.log
+
+# Amazon Q CLI
+.amazonq/cli-todo-lists/
+.amazonq/.subagents/
+
+# Log files
+*.log
+
+# Firmware signing keys (private key only)
+keys/firmware_private.pem
+
+# Generated LVGL assets
+components/ui_compact/generated/
+components/ui_lvgl/generated/
+keys/*_private*.pem

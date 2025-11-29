@@ -1,0 +1,12 @@
+menu "LoRa Protocol Configuration"
+
+    config LORA_SEND_RELIABLE
+        bool "Enable reliable transmission with ACK"
+        default n
+        help
+            Enable reliable transmission mode in presenter mode.
+            When enabled, presenter waits for ACK from PC with retries.
+            When disabled, presenter sends fire-and-forget for lower latency.
+            PC mode always sends ACKs regardless of this setting.
+
+endmenu

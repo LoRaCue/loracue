@@ -22,10 +22,16 @@ extern "C" {
 typedef enum {
     BSP_BUTTON_PREV = 0, ///< Previous/Back button
     BSP_BUTTON_NEXT = 1, ///< Next/Forward button
-#ifdef SIMULATOR_BUILD
-    BSP_BUTTON_BOTH = 2, ///< Both buttons (Wokwi simulation only)
-#endif
+    BSP_BUTTON_BOTH = 2, ///< Both buttons (Wokwi simulation only, ignored on hardware)
 } bsp_button_t;
+
+/**
+ * @brief Display type enumeration
+ */
+typedef enum {
+    BSP_DISPLAY_TYPE_OLED_SSD1306,  ///< OLED display (SSD1306)
+    BSP_DISPLAY_TYPE_EPAPER_SSD1681 ///< E-Paper display (SSD1681)
+} bsp_display_type_t;
 
 /**
  * @brief Initialize the board support package
@@ -35,6 +41,43 @@ typedef enum {
  * @return ESP_OK on success, error code otherwise
  */
 esp_err_t bsp_init(void);
+
+/**
+ * @brief Get the board name
+ *
+ * @return Pointer to board name string (e.g., "Heltec V3", "LilyGO T3")
+ */
+const char* bsp_get_board_name(void);
+
+/**
+ * @brief Deinitialize BSP and free resources
+ *
+ * Cleans up LVGL, mutexes, and other allocated resources.
+ * Should be called before system shutdown or reset.
+ *
+ * @return ESP_OK on success, error code otherwise
+ */
+esp_err_t bsp_deinit(void);
+
+/**
+ * 
+ * 
+ * @param timeout_ms Timeout in milliseconds (portMAX_DELAY for infinite)
+ * @return true if lock acquired, false on timeout
+ */
+
+/**
+ */
+
+/**
+ * @brief Get UART pins for specified port
+ * 
+ * @param uart_num UART port number (0, 1, or 2)
+ * @param tx_pin Output parameter for TX pin
+ * @param rx_pin Output parameter for RX pin
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG if port not supported
+ */
+esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin);
 
 /**
  * @brief Initialize button GPIO pins
@@ -84,6 +127,13 @@ bool bsp_read_button(bsp_button_t button);
 float bsp_read_battery(void);
 
 /**
+ * @brief Check if battery is currently charging
+ *
+ * @return true if battery is charging, false otherwise (or if hardware doesn't support detection)
+ */
+bool bsp_battery_is_charging(void);
+
+/**
  * @brief Enter deep sleep mode with button wake-up
  *
  * Configures both buttons as wake sources and enters deep sleep.
@@ -92,41 +142,6 @@ float bsp_read_battery(void);
  * @return ESP_OK (should not return in normal operation)
  */
 esp_err_t bsp_enter_sleep(void);
-
-/**
- * @brief Initialize I2C bus for OLED communication
- *
- * Configures I2C0 for SH1106 OLED display with proper timing.
- *
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t bsp_init_i2c(void);
-
-/**
- * @brief Initialize SH1106 OLED display
- *
- * Sends initialization sequence to configure SH1106 display.
- *
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t bsp_oled_init(void);
-
-/**
- * @brief Clear OLED display
- *
- * Clears all pixels on the SH1106 display.
- *
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t bsp_oled_clear(void);
-
-/**
- * @brief Write command to OLED
- *
- * @param cmd Command byte to send
- * @return ESP_OK on success, error code otherwise
- */
-esp_err_t bsp_oled_write_command(uint8_t cmd);
 
 /**
  * @brief Initialize SPI bus for LoRa communication
@@ -164,12 +179,9 @@ esp_err_t bsp_sx1262_reset(void);
 esp_err_t bsp_validate_hardware(void);
 
 /**
- * @brief Initialize u8g2 graphics library with BSP HAL callbacks
  *
- * @param u8g2 Pointer to u8g2 structure to initialize
  * @return ESP_OK on success, error code otherwise
  */
-esp_err_t bsp_u8g2_init(void *u8g2);
 
 /**
  * @brief Get board identifier string
@@ -179,22 +191,203 @@ esp_err_t bsp_u8g2_init(void *u8g2);
  *
  * @return Constant string with board ID (e.g., "heltec_v3", "wokwi_sim")
  */
-const char* bsp_get_board_id(void);
+const char *bsp_get_board_id(void);
+
+/**
+ * @brief Get model name string
+ *
+ * @return Constant string with model name (e.g., "LC-Alpha", "LC-Alpha+", "LC-Beta", "LC-Gamma")
+ */
+const char *bsp_get_model_name(void);
 
 /**
  * @brief USB descriptor configuration
  */
 typedef struct {
-    uint16_t usb_pid;           ///< USB Product ID
-    const char *usb_product;    ///< USB Product string
-} bsp_usb_config_t; // cppcheck-suppress unusedStructMember
+    uint16_t usb_pid;        ///< USB Product ID
+    const char *usb_product; ///< USB Product string
+} bsp_usb_config_t;          // cppcheck-suppress unusedStructMember
+
+/**
+ * @brief LoRa SX126X pin configuration (all fields used in sx126x.c)
+ */
+typedef struct {
+    int miso;
+    int mosi;
+    int sclk;
+    int cs;
+    int rst;
+    int busy;
+    int dio1;
+} bsp_lora_pins_t; // cppcheck-suppress unusedStructMember
 
 /**
  * @brief Get USB configuration for this board
  *
  * @return Pointer to USB configuration structure
  */
-const bsp_usb_config_t* bsp_get_usb_config(void);
+const bsp_usb_config_t *bsp_get_usb_config(void);
+
+/**
+ * @brief Check if USB is connected
+ *
+ * @return true if USB is connected, false otherwise
+ */
+bool bsp_is_usb_connected(void);
+
+/**
+ * @brief Get device serial number (derived from MAC address)
+ * @param serial_number Buffer to store serial number (min 13 bytes)
+ * @param max_len Maximum length of buffer
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len);
+
+/**
+ * @brief Get LoRa pin configuration
+ * @return Pointer to LoRa pin configuration structure
+ */
+const bsp_lora_pins_t *bsp_get_lora_pins(void);
+
+/**
+ * @brief Set display brightness/contrast
+ * @param brightness Brightness level (0-255)
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_set_display_brightness(uint8_t brightness);
+
+/**
+ * @brief Put display into power save mode
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_display_sleep(void);
+
+/**
+ * @brief Wake display from power save mode
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_display_wake(void);
+
+// I2C Bus Management
+#include "driver/i2c_master.h"
+
+/**
+ * @brief Initialize shared I2C bus with board-specific pins
+ *
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_i2c_init_default(void);
+
+/**
+ * @brief Initialize shared I2C bus
+ *
+ * @param sda SDA GPIO pin
+ * @param scl SCL GPIO pin
+ * @param freq_hz I2C frequency in Hz
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_i2c_init(gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz);
+
+/**
+ * @brief Deinitialize I2C bus
+ * 
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_i2c_deinit(void);
+
+/**
+ * @brief Get I2C bus handle for adding devices
+ *
+ * @return I2C bus handle or NULL if not initialized
+ */
+i2c_master_bus_handle_t bsp_i2c_get_bus(void);
+
+/**
+ * @brief Add I2C device to bus
+ *
+ * @param addr 7-bit I2C address
+ * @param freq_hz Device-specific frequency
+ * @param dev_handle Output device handle
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_i2c_add_device(uint8_t addr, uint32_t freq_hz, i2c_master_dev_handle_t *dev_handle);
+
+
+/**
+ */
+
+/**
+ */
+
+/**
+ * @brief Set OLED reset pin
+ *
+ * @param pin Reset GPIO pin
+ */
+void bsp_oled_set_reset_pin(gpio_num_t pin);
+
+/**
+ * @brief Power on E-Paper display (UI_RICH only)
+ *
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_epaper_power_on(void);
+
+/**
+ * @brief Power off E-Paper display (UI_RICH only)
+ *
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_epaper_power_off(void);
+
+/**
+ * @brief Get display type for this board
+ *
+ * @return Display type enumeration
+ */
+bsp_display_type_t bsp_get_display_type(void);
+
+/**
+ * @brief Get I2C bus handle for display
+ *
+ * @return I2C bus handle or NULL if not available
+ */
+i2c_master_bus_handle_t bsp_get_i2c_bus(void);
+
+/**
+ * @brief Get SPI device handle for display
+ *
+ * @return SPI device handle or NULL if not available
+ */
+void *bsp_get_spi_device(void);
+
+/**
+ * @brief Get E-Paper DC pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_dc_pin(void);
+
+/**
+ * @brief Get E-Paper CS pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_cs_pin(void);
+
+/**
+ * @brief Get E-Paper RST pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_rst_pin(void);
+
+/**
+ * @brief Get E-Paper BUSY pin
+ *
+ * @return GPIO pin number or -1 if not available
+ */
+int bsp_get_epaper_busy_pin(void);
 
 #ifdef __cplusplus
 }

@@ -1,4 +1,23 @@
-mode: ContinuousDelivery
+mode: ContinuousDeployment
 tag-prefix: 'v'
-increment: Inherit
-commit-message-incrementing: Enabled
+increment: None
+
+branches:
+  main:
+    label: ''
+    increment: None
+  develop:
+    label: alpha
+    increment: None
+  release:
+    label: beta
+    increment: None
+  hotfix:
+    label: '{BranchName}'
+    increment: None
+  feature:
+    label: '{BranchName}'
+    increment: None
+
+ignore:
+  sha: []

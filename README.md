@@ -11,7 +11,7 @@
 
 Enterprise-grade wireless presentation remote with long-range LoRa communication, featuring sub-50ms latency, hardware-accelerated encryption, and professional build quality. Designed for conference halls, auditoriums, and large presentation venues where traditional RF remotes fail.
 
-## 🎯 **Key Features**
+## 🎯 Key Features
 
 - **🌐 Long-Range Communication**: LoRa SX1262 transceiver with >100m range indoors
 - **⚡ Ultra-Low Latency**: <50ms response time with optimized SF7/BW500kHz configuration  
@@ -22,9 +22,9 @@ Enterprise-grade wireless presentation remote with long-range LoRa communication
 - **🔄 OTA Updates**: Wireless firmware updates with dual-partition safety
 - **🎮 Perfect Simulation**: Full Wokwi simulator support for development
 
-## 🏗️ **Hardware Architecture**
+## 🏗️ Hardware Architecture
 
-### **Current Prototyping Hardware: Heltec LoRa V3**
+### Current Prototyping Hardware: Heltec LoRa V3
 
 ![Heltec LoRa V3](assets/HeltecV3.png)
 
@@ -32,7 +32,7 @@ Enterprise-grade wireless presentation remote with long-range LoRa communication
 - **Heltec WiFi LoRa 32 V3** - Our primary development and prototyping platform
 - **MCU**: ESP32-S3 (Dual-core Xtensa LX7, 240MHz)
 - **LoRa**: SX1262 transceiver (868/915MHz)
-- **Display**: SH1106 OLED (128x64, I2C)
+- **Display**: SSD1306 OLED (128x64, I2C)
 - **Flash**: 8MB SPI Flash with OTA partitioning
 - **Power**: USB-C charging with battery monitoring
 
@@ -44,48 +44,51 @@ Enterprise-grade wireless presentation remote with long-range LoRa communication
 - **Professional Build**: Injection-molded housing with premium materials
 - **Extended Battery**: Longer runtime with optimized power management
 
-### **Wokwi Simulation Setup**
+### Wokwi Simulation Setup
 ![Wokwi Diagram](assets/wokwi_diagramm.png)
 
 The project includes a complete Wokwi simulation environment with:
 - ESP32-S3 microcontroller simulation
-- SSD1306 OLED display (SH1106 compatible)
+- SSD1306 OLED display
 - Interactive buttons and LED feedback
 - Real-time serial monitoring
 - Perfect development workflow integration
 
-## 🛠️ **Development Workflow**
+## 🛠️ Development Workflow
 
-### **BSP (Board Support Package) Architecture**
+### BSP (Board Support Package) Architecture
 
 Our innovative BSP abstraction layer enables seamless development across real hardware and simulation:
 
 ```
 components/bsp/
-├── bsp_heltec_v3.c      # Real hardware (SH1106 OLED)
-├── bsp_wokwi.c          # Wokwi simulation (SSD1306 OLED)  
+├── bsp_heltec_v3.c      # Real hardware
+├── bsp_wokwi.c          # Wokwi simulation
 ├── include/bsp.h        # Hardware-agnostic interface
 └── CMakeLists.txt       # Conditional compilation
 ```
 
 **Automatic BSP Selection**:
-- **Hardware Build**: Uses `bsp_heltec_v3.c` with SH1106 driver
-- **Simulator Build**: Uses `bsp_wokwi.c` with SSD1306 driver
+- **Hardware Build**: Uses `bsp_heltec_v3.c`
+- **Simulator Build**: Uses `bsp_wokwi.c`
 - **Same API**: Application code remains unchanged
 - **Perfect Compatibility**: Identical pinout and behavior
 
-### **Makefile-Driven Development**
+### Makefile-Driven Development
 
 Our comprehensive Makefile provides a streamlined development experience:
 
 ```bash
 # 🔨 Build Commands
-make build          # Build for real hardware (Heltec V3)
-make rebuild        # Clean and rebuild project
-make clean          # Clean build artifacts
-make size           # Show binary size information
-make menuconfig     # Configure ESP-IDF project settings
-make set-target     # Set ESP-IDF target (esp32s3)
+make build              # Build LC-Alpha (default)
+make build MODEL=alpha  # Build LC-Alpha (Heltec V3, 1 button)
+make build MODEL=alpha+ # Build LC-Alpha+ (Heltec V3, 2 buttons)
+make build MODEL=gamma  # Build LC-Gamma (LilyGO T5, E-paper)
+make rebuild            # Clean and rebuild project
+make clean              # Clean build artifacts
+make size               # Show binary size information
+make menuconfig         # Configure ESP-IDF project settings
+make set-target         # Set ESP-IDF target (esp32s3)
 
 # 🎮 Simulation Commands  
 make sim            # Build for Wokwi simulator
@@ -96,10 +99,15 @@ make sim-web        # Run simulation in web browser
 make sim-info       # Show Wokwi simulation information
 
 # 📡 Hardware Commands
-make flash          # Flash firmware to connected device
-make monitor        # Serial monitor for debugging
-make flash-monitor  # Flash and immediately start monitoring
-make erase          # Erase entire flash memory
+make flash              # Flash LC-Alpha (default)
+make flash MODEL=alpha  # Flash LC-Alpha
+make flash MODEL=alpha+ # Flash LC-Alpha+
+make flash MODEL=gamma  # Flash LC-Gamma
+make monitor            # Serial monitor for debugging
+make flash-monitor MODEL=alpha  # Flash and monitor LC-Alpha
+make flash-monitor MODEL=alpha+ # Flash and monitor LC-Alpha+
+make flash-monitor MODEL=gamma  # Flash and monitor LC-Gamma
+make erase              # Erase entire flash memory
 
 # 🌐 Web Interface Commands
 make web-build      # Build web interface for WiFi configuration
@@ -129,16 +137,16 @@ make setup-env      # Setup development environment
 - **CI/CD Ready**: GitHub Actions integration for automated testing
 - **Web Development**: Integrated web interface build system
 
-### **Simulation-First Development**
+### Simulation-First Development
 
 1. **🎮 Develop in Wokwi**: Perfect hardware simulation with instant feedback
 2. **🔄 Iterate Rapidly**: No hardware flashing delays, instant code changes
 3. **🧪 Test Thoroughly**: Interactive buttons, OLED display, LED feedback
 4. **📱 Deploy to Hardware**: Same codebase runs on real Heltec V3 boards
 
-## 🚀 **Quick Start**
+## 🚀 Quick Start
 
-### **Prerequisites**
+### Prerequisites
 
 ```bash
 # Install ESP-IDF v5.5
@@ -152,7 +160,7 @@ npm install -g @commitlint/cli @commitlint/config-conventional
 npm install -g @wokwi/cli
 ```
 
-### **Development Setup**
+### Development Setup
 
 ```bash
 # Clone repository
@@ -166,54 +174,148 @@ npm install
 make sim-run
 ```
 
-### **Hardware Development**
+### Hardware Development
 
 ```bash
 # Build for real hardware
-make build
+make build MODEL=alpha
 
-# Flash to connected Heltec V3
-make flash-monitor
+# Flash to connected device
+make flash-monitor MODEL=alpha
 ```
 
-## 📁 **Project Structure**
+### For End Users
+
+Use **[LoRaCue Manager](https://github.com/LoRaCue/loracue-manager)** to flash firmware to your devices. It provides automatic device detection, one-click updates, and cross-platform support.
+
+## 🏛️ Software Architecture
+
+LoRaCue follows enterprise-grade design principles with complete separation of concerns, thread-safe state management, and event-driven communication.
+
+### Component Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Main Application                         │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │ main.c: Initialization & Coordination (minimal logic)      │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└───────────────┬─────────────────────────────────┬───────────────┘
+                │                                 │
+    ┌───────────▼──────────┐         ┌───────────▼──────────┐
+    │  Presenter Mode      │         │    PC Mode           │
+    │  Manager             │         │    Manager           │
+    ├──────────────────────┤         ├──────────────────────┤
+    │ • Button → LoRa TX   │         │ • LoRa RX → USB HID  │
+    │ • Command mapping    │         │ • Active presenters  │
+    │ • Reliable/unreliable│         │ • Rate limiting      │
+    │ • Thread-safe state  │         │ • Command history    │
+    └──────────┬───────────┘         └───────────┬──────────┘
+               │                                 │
+               │         ┌───────────────────────┘
+               │         │
+    ┌──────────▼─────────▼──────────┐
+    │    System Events               │
+    │  (Event-Driven Communication)  │
+    ├────────────────────────────────┤
+    │ • PC_COMMAND_RECEIVED          │
+    │ • DEVICE_CONFIG_CHANGED        │
+    │ • LORA_COMMAND                 │
+    │ • Thread-safe event posting    │
+    └──────────┬─────────────────────┘
+               │
+    ┌──────────▼─────────────────────┐
+    │       UI Mini                   │
+    │  (Display & User Interface)     │
+    ├─────────────────────────────────┤
+    │ • Encapsulated state (private)  │
+    │ • Thread-safe accessors         │
+    │ • OLED screen management        │
+    │ • Event-driven updates          │
+    └─────────────────────────────────┘
+```
+
+### Design Principles
+
+**1. Separation of Concerns**
+- **Presenter Mode Manager**: Handles button events → LoRa transmission
+- **PC Mode Manager**: Handles LoRa reception → USB HID forwarding
+- **UI Mini**: Manages display state and rendering (no business logic)
+- **Main**: Minimal initialization and coordination only
+
+**2. Thread Safety**
+- All shared state protected by mutexes
+- Thread-safe accessor functions for UI state
+- No global variables exposed externally
+
+**3. Event-Driven Communication**
+- Components communicate via system events
+- Loose coupling between modules
+- Easy to extend with new event types
+
+**4. Encapsulated State**
+- UI state is private to `ui_mini.c`
+- Accessed only via `ui_mini_get_status()` function
+- Runtime state merged with config data dynamically
+
+### Data Flow
+
+**Presenter Mode (Button → LoRa)**
+```
+Button Press → Button Manager → Presenter Mode Manager → LoRa Protocol → Radio TX
+                                        ↓
+                                  System Event → UI Update
+```
+
+**PC Mode (LoRa → USB HID)**
+```
+Radio RX → LoRa Protocol → PC Mode Manager → USB HID → Computer
+                                  ↓
+                            System Event → UI Update
+```
+
+## 📁 Project Structure
 
 ```
 LoRaCue/
-├── 📁 main/                    # Main application
-├── 📁 components/              # Modular components
-│   ├── 📁 bsp/                # Board Support Package
-│   ├── 📁 button_manager/     # Button event handling
-│   ├── 📁 led_manager/        # LED pattern control
-│   ├── 📁 oled_ui/           # Display user interface
-│   ├── 📁 lora/              # LoRa communication
-│   ├── 📁 usb_hid/           # USB keyboard emulation
-│   ├── 📁 power_mgmt/        # Power management
-│   └── 📁 device_registry/   # Secure device pairing
-├── 📁 docs/                   # Documentation
-├── 📁 .github/workflows/     # CI/CD automation
-├── 📄 diagram.json           # Wokwi simulation diagram
-├── 📄 partitions.csv         # Flash memory layout
-├── 📄 Makefile              # Development commands
-└── 📄 README.md             # This file
+├── 📁 main/                          # Main application
+│   └── main.c                        # Initialization only (~50 lines)
+├── 📁 components/                    # Modular components
+│   ├── 📁 bsp/                      # Board Support Package
+│   ├── 📁 button_manager/           # Button event handling
+│   ├── 📁 led_manager/              # LED pattern control
+│   ├── 📁 presenter_mode_manager/   # Button → LoRa TX logic
+│   ├── 📁 pc_mode_manager/          # LoRa RX → USB HID logic
+│   ├── 📁 ui_mini/                  # Display user interface
+│   ├── 📁 lora/                     # LoRa communication
+│   ├── 📁 usb_hid/                  # USB keyboard emulation
+│   ├── 📁 power_mgmt/               # Power management
+│   ├── 📁 system_events/            # Event-driven communication
+│   └── 📁 device_registry/          # Secure device pairing
+├── 📁 docs/                         # Documentation
+├── 📁 .github/workflows/            # CI/CD automation
+├── 📄 diagram.json                  # Wokwi simulation diagram
+├── 📄 partitions.csv                # Flash memory layout
+├── 📄 Makefile                      # Development commands
+└── 📄 README.md                     # This file
 ```
 
-## 🔧 **Technical Specifications**
+## 🔧 Technical Specifications
 
-### **Communication Protocol**
+### Communication Protocol
 - **Frequency**: 868MHz (EU) / 915MHz (US)
 - **Modulation**: LoRa with SF7, BW500kHz for low latency
 - **Range**: >100m indoors, >1km line-of-sight
 - **Encryption**: AES-256 with rolling codes
 - **Pairing**: Secure USB-based device registration
 
-### **Power Management**
+### Power Management
 - **Battery Life**: 2-4 weeks typical usage
 - **Sleep Modes**: Deep sleep <10µA, light sleep <1mA
 - **Charging**: USB-C with battery monitoring
 - **Low Battery**: OLED warnings and graceful shutdown
 
-### **Memory Layout (8MB Flash)**
+### Memory Layout (8MB Flash)
 ```
 ├── Bootloader (32KB)
 ├── Partition Table (4KB)
@@ -225,7 +327,7 @@ LoRaCue/
 └── Coredump (56KB)
 ```
 
-## 🤝 **Contributing**
+## 🤝 Contributing
 
 We welcome contributions! Please follow our development workflow:
 
@@ -237,7 +339,7 @@ We welcome contributions! Please follow our development workflow:
 6. **🚀 Push** to your branch (`git push origin feature/amazing-feature`)
 7. **📬 Open** a Pull Request
 
-### **Commit Convention**
+### Commit Convention
 We use [Conventional Commits](https://www.conventionalcommits.org/):
 - `feat:` New features
 - `fix:` Bug fixes  
@@ -247,7 +349,7 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 - `test:` Adding tests
 - `chore:` Maintenance tasks
 
-## 📋 **Development Roadmap**
+## 📋 Development Roadmap
 
 - [x] **Foundation**: ESP-IDF project structure and BSP abstraction
 - [x] **Simulation**: Complete Wokwi environment with SSD1306 support
@@ -259,8 +361,8 @@ We use [Conventional Commits](https://www.conventionalcommits.org/):
 - [ ] **OTA Updates**: Wireless firmware update system
 - [ ] **Production**: Hardware testing and certification
 
-## 📄 **License**
+## 📄 License
 
 This project is licensed under the **GNU General Public License v3.0** - see the [LICENSE](LICENSE) file for details.
 
-## 🏙️ **Made with ❤️ in Hannover**
+## 🏙️ Made with ❤️ in Hannover 🇩🇪

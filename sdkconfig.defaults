@@ -1,0 +1,54 @@
+# Partition Table
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions.csv"
+
+# TinyUSB Configuration
+CONFIG_TINYUSB_CDC_ENABLED=y
+CONFIG_TINYUSB_HID_COUNT=1
+
+
+# ESP32-S3 Configuration
+CONFIG_IDF_TARGET="esp32s3"
+CONFIG_IDF_TARGET_ESP32S3=y
+
+
+# Bluetooth Configuration - NimBLE BLE 5.0
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+
+# BLE 5.0 Features
+CONFIG_BT_NIMBLE_50_FEATURE_SUPPORT=y
+CONFIG_BT_NIMBLE_EXT_ADV=y
+CONFIG_BT_NIMBLE_ENABLE_CONN_REATTEMPT=y
+
+# LE Secure Connections (BLE 4.2+ security)
+CONFIG_BT_NIMBLE_SM_LEGACY=n
+CONFIG_BT_NIMBLE_SM_SC=y
+CONFIG_BT_NIMBLE_SECURITY_ENABLE=y
+
+# Memory optimization (single connection for OTA)
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
+CONFIG_BT_NIMBLE_TRANSPORT_ACL_FROM_LL_COUNT=12
+CONFIG_BT_NIMBLE_TRANSPORT_ACL_SIZE=255
+
+# Power Management
+CONFIG_PM_ENABLE=y
+
+# Interrupt Watchdog - increase timeout for OTA flash operations
+CONFIG_ESP_INT_WDT_TIMEOUT_MS=1000
+
+# LVGL Configuration (v9)
+CONFIG_LV_COLOR_DEPTH_16=y
+CONFIG_LV_USE_LOG=y
+CONFIG_LV_LOG_LEVEL_WARN=y
+CONFIG_LV_FONT_MONTSERRAT_8=y
+CONFIG_LV_FONT_MONTSERRAT_14=y
+CONFIG_LV_FONT_UNSCII_8=y
+
+# mbedTLS - Disable hardware AES to avoid memory allocation contention
+# TODO: Investigate hardware AES contention issues and re-enable if possible
+# Hardware AES was causing "Failed to allocate memory" errors during LoRa TX
+# Software AES is slower but more reliable for our use case
+CONFIG_MBEDTLS_HARDWARE_AES=n
+CONFIG_MBEDTLS_AES_USE_INTERRUPT=n

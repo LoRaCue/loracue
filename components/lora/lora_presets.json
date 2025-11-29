@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Conference",
+    "description": "100m range - Fast & low latency",
+    "spreading_factor": 7,
+    "bandwidth_khz": 500,
+    "coding_rate": 5,
+    "tx_power_dbm": 14
+  },
+  {
+    "name": "Auditorium",
+    "description": "250m range - Balanced",
+    "spreading_factor": 9,
+    "bandwidth_khz": 125,
+    "coding_rate": 7,
+    "tx_power_dbm": 17
+  },
+  {
+    "name": "Stadium",
+    "description": "500m range - Maximum reliability",
+    "spreading_factor": 10,
+    "bandwidth_khz": 125,
+    "coding_rate": 8,
+    "tx_power_dbm": 20
+  }
+]

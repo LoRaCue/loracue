@@ -1,0 +1,6 @@
+# LC-Alpha+ Model Configuration
+# Enhanced prototype with two separate buttons (prev/next)
+
+CONFIG_MODEL_LC_ALPHA_PLUS=y
+CONFIG_LORACUE_MODEL_NAME="Alpha+"
+

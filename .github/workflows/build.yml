@@ -20,16 +20,21 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         submodules: 'recursive'
         fetch-depth: 0
     
     - name: Setup Node.js
-      uses: actions/setup-node@v5
+      uses: actions/setup-node@v6
       with:
         node-version: '22'
         cache: 'npm'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev
     
     - name: Install dependencies
       run: npm ci
@@ -47,38 +52,49 @@ jobs:
       
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
         
     - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v4.1.0
+      uses: gittools/actions/gitversion/setup@v4.2.0
       with:
         versionSpec: '6.x'
         
     - name: Determine Version
       id: gitversion
-      uses: gittools/actions/gitversion/execute@v4.1.0
+      uses: gittools/actions/gitversion/execute@v4.2.0
       with:
         configFilePath: GitVersion.yml
 
   build-hardware:
     runs-on: ubuntu-latest
     needs: [code-quality, version]
-    name: Build ${{ matrix.board.display_name }}
+    name: Build ${{ matrix.model.display_name }}
     
     strategy:
       fail-fast: false
       matrix:
-        board:
-          - name: "heltec_v3"
-            display_name: "Heltec LoRa V3"
+        model:
+          - name: "alpha"
+            display_name: "LC-Alpha"
             target: "esp32s3"
-            description: "ESP32-S3 with SX1262 LoRa and SH1106 OLED"
+            board: "Heltec V3"
+            sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha"
+          - name: "alpha-plus"
+            display_name: "LC-Alpha+"
+            target: "esp32s3"
+            board: "Heltec V3"
+            sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha_plus"
+          # - name: "gamma"
+          #   display_name: "LC-Gamma"
+          #   target: "esp32s3"
+          #   board: "LilyGO T5 Pro"
+          #   sdkconfig: "sdkconfig.defaults;sdkconfig.lilygo_t5;sdkconfig.model_gamma"
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         submodules: 'recursive'
         fetch-depth: 0
@@ -89,9 +105,9 @@ jobs:
         path: |
           ~/.espressif
           ~/.cache/pip
-        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-${{ hashFiles('**/CMakeLists.txt', 'sdkconfig') }}
+        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-${{ hashFiles('**/CMakeLists.txt', 'sdkconfig.*') }}
         restore-keys: |
-          esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.board.target }}-
+          esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-
           esp-idf-${{ env.ESP_IDF_VERSION }}-
     
     - name: Install GitVersion in build environment
@@ -103,110 +119,85 @@ jobs:
         sudo mv gitversion /usr/local/bin/
         gitversion version
     
-    - name: Verify sdkconfig before build
+    - name: Generate sdkconfig from layered defaults
       shell: bash
       run: |
-        echo "=== Critical SDK Configuration Verification ==="
-        echo "Checking BLE 4.2 settings required for bluetooth_config.c..."
-        
-        grep -E "CONFIG_BT_(GATTS|GATTC|BLE_42)" sdkconfig || {
-          echo "ERROR: Required BLE settings not found in sdkconfig!"
-          exit 1
-        }
-        
-        echo ""
-        echo "=== Full sdkconfig (first 100 lines) ==="
-        head -100 sdkconfig
+        echo "=== Building ${{ matrix.model.display_name }} (${{ matrix.model.board }}) ==="
+        echo "Using layered sdkconfig: ${{ matrix.model.sdkconfig }}"
+        rm -f sdkconfig
     
     - name: Build firmware with ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
-        target: ${{ matrix.board.target }}
-        command: idf.py build
-    
-    - name: Verify sdkconfig after build
-      shell: bash
-      run: |
-        echo "=== Post-Build SDK Configuration Verification ==="
-        echo "Verifying BLE settings were not overwritten during build..."
-        
-        grep "CONFIG_BT_BLE_42_ADV_EN=y" sdkconfig || {
-          echo "ERROR: CONFIG_BT_BLE_42_ADV_EN was overwritten!"
-          exit 1
-        }
-        
-        grep "CONFIG_BT_BLE_42_SCAN_EN=y" sdkconfig || {
-          echo "ERROR: CONFIG_BT_BLE_42_SCAN_EN was overwritten!"
-          exit 1
-        }
-        
-        echo "✓ All critical BLE settings verified"
+        target: ${{ matrix.model.target }}
+        command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
     
     - name: Validate firmware manifest
       run: |
-        echo "=== Firmware Manifest Validation ==="
+        echo "=== Firmware Manifest Validation (esp_app_desc_t) ==="
         python3 << 'EOF'
         import struct
         import sys
         
+        # ESP-IDF app descriptor is at fixed offset 0x20 in the binary
         with open('build/loracue.bin', 'rb') as f:
-            data = f.read()
-            magic = 0x4C524355  # "LRCU"
+            f.seek(0x20)
+            data = f.read(256)
             
-            for i in range(len(data) - 60):
-                if struct.unpack('<I', data[i:i+4])[0] == magic:
-                    manifest_version = data[i+4]
-                    board_id = data[i+8:i+24].decode('utf-8', errors='ignore').rstrip('\x00')
-                    fw_version = data[i+24:i+56].decode('utf-8', errors='ignore').rstrip('\x00')
-                    
-                    print(f"✓ Manifest found at offset 0x{i:08X}")
-                    print(f"  Board ID: {board_id}")
-                    print(f"  Firmware Version: {fw_version}")
-                    print(f"  Manifest Version: {manifest_version}")
-                    
-                    # Validate board_id matches matrix
-                    expected_board = "${{ matrix.board.name }}"
-                    if board_id != expected_board:
-                        print(f"✗ ERROR: Board ID mismatch!")
-                        print(f"  Expected: {expected_board}")
-                        print(f"  Found: {board_id}")
-                        sys.exit(1)
-                    
-                    print(f"✓ Board ID validation passed")
-                    sys.exit(0)
+            # esp_app_desc_t structure offsets
+            magic_word = struct.unpack('<I', data[0:4])[0]
+            secure_version = struct.unpack('<I', data[4:8])[0]
+            version = data[16:48].decode('utf-8', errors='ignore').rstrip('\x00')
+            project_name = data[48:80].decode('utf-8', errors='ignore').rstrip('\x00')
+            time = data[80:96].decode('utf-8', errors='ignore').rstrip('\x00')
+            date = data[96:112].decode('utf-8', errors='ignore').rstrip('\x00')
+            idf_ver = data[112:144].decode('utf-8', errors='ignore').rstrip('\x00')
             
-            print("✗ ERROR: No valid manifest found!")
-            sys.exit(1)
+            print(f"✓ ESP-IDF app descriptor found at 0x20")
+            print(f"  Magic: 0x{magic_word:08X}")
+            print(f"  Project: {project_name}")
+            print(f"  Version: {version}")
+            print(f"  Build: {date} {time}")
+            print(f"  IDF Version: {idf_ver}")
+            
+            # Validate project name
+            if project_name != "loracue":
+                print(f"✗ ERROR: Project name mismatch!")
+                print(f"  Expected: loracue")
+                print(f"  Found: {project_name}")
+                sys.exit(1)
+            
+            print(f"✓ Project name validation passed")
         EOF
     
     - name: Prepare artifacts
       run: |
         VERSION="${{ needs.version.outputs.version }}"
-        BOARD="${{ matrix.board.name }}"
+        MODEL="${{ matrix.model.name }}"
         mkdir -p artifacts
         
         # Copy binaries
-        cp build/loracue.bin "artifacts/loracue-${BOARD}-v${VERSION}.bin"
-        cp build/loracue.elf "artifacts/loracue-${BOARD}-v${VERSION}.elf"
-        cp build/bootloader/bootloader.bin "artifacts/bootloader-${BOARD}.bin"
-        cp build/partition_table/partition-table.bin "artifacts/partition-table-${BOARD}.bin"
+        cp "build/loracue.bin" "artifacts/loracue-${MODEL}-v${VERSION}.bin"
+        cp "build/loracue.elf" "artifacts/loracue-${MODEL}-v${VERSION}.elf"
+        cp build/bootloader/bootloader.bin "artifacts/bootloader-${MODEL}.bin"
+        cp build/partition_table/partition-table.bin "artifacts/partition-table-${MODEL}.bin"
         
         # Generate checksums
         cd artifacts
-        sha256sum "loracue-${BOARD}-v${VERSION}.bin" > "loracue-${BOARD}-v${VERSION}.bin.sha256"
-        sha256sum "bootloader-${BOARD}.bin" > "bootloader-${BOARD}.bin.sha256"
-        sha256sum "partition-table-${BOARD}.bin" > "partition-table-${BOARD}.bin.sha256"
+        sha256sum "loracue-${MODEL}-v${VERSION}.bin" > "loracue-${MODEL}-v${VERSION}.bin.sha256"
+        sha256sum "bootloader-${MODEL}.bin" > "bootloader-${MODEL}.bin.sha256"
+        sha256sum "partition-table-${MODEL}.bin" > "partition-table-${MODEL}.bin.sha256"
         cd ..
         
         # Create metadata
-        cat > "artifacts/metadata-${BOARD}.json" << EOF
+        cat > "artifacts/metadata-${MODEL}.json" << EOF
         {
-          "board": {
-            "id": "${BOARD}",
-            "display_name": "${{ matrix.board.display_name }}",
-            "target": "${{ matrix.board.target }}",
-            "description": "${{ matrix.board.description }}"
+          "model": {
+            "id": "${MODEL}",
+            "display_name": "${{ matrix.model.display_name }}",
+            "target": "${{ matrix.model.target }}",
+            "board": "${{ matrix.model.board }}"
           },
           "firmware": {
             "version": "${VERSION}",
@@ -223,9 +214,9 @@ jobs:
         EOF
     
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
-        name: loracue-${{ matrix.board.name }}-${{ needs.version.outputs.version }}
+        name: loracue-${{ matrix.model.name }}-${{ needs.version.outputs.version }}
         path: artifacts/
         retention-days: 30
 
@@ -236,7 +227,7 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         submodules: 'recursive'
     
@@ -249,7 +240,7 @@ jobs:
         output: 'trivy-results.sarif'
     
     - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@v4
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'

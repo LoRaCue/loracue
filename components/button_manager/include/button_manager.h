@@ -9,23 +9,11 @@
 #pragma once
 
 #include "esp_err.h"
-#include "oled_ui.h"
+#include "common_types.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @brief Button event types for external callbacks
- */
-typedef enum {
-    BUTTON_EVENT_PREV_SHORT = 0,
-    BUTTON_EVENT_PREV_LONG,
-    BUTTON_EVENT_NEXT_SHORT,
-    BUTTON_EVENT_NEXT_LONG,
-    BUTTON_EVENT_BOTH_SHORT,
-    BUTTON_EVENT_BOTH_LONG
-} button_event_type_t;
 
 /**
  * @brief Button event callback function type

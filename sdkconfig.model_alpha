@@ -1,0 +1,5 @@
+# LC-Alpha Model Configuration
+# Prototype with single onboard button (GPIO0)
+
+CONFIG_MODEL_LC_ALPHA=y
+

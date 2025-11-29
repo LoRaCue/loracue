@@ -1,0 +1,18 @@
+menu "Board Support Package (BSP)"
+
+    config BSP_I2C_CLOCK_SPEED_HZ
+        int "I2C Clock Speed (Hz)"
+        default 400000
+        range 100000 1000000
+        help
+            I2C bus clock speed in Hz.
+            
+            Common values:
+            - 100000 (100kHz) - Standard mode
+            - 400000 (400kHz) - Fast mode (recommended)
+            - 1000000 (1MHz) - Fast mode plus (if supported)
+            
+            Note: Higher speeds may not work with all I2C devices.
+            Check your hardware specifications before changing.
+
+endmenu

@@ -1,0 +1,45 @@
+[wokwi]
+version = 1
+firmware = "../../build/lilygo_t5.bin"
+elf = "../../build/lilygo_t5.elf"
+rfc2217ServerPort = 4000
+
+[[net.forward]]
+from = "localhost:8180"
+to = "target:80"
+
+[[chip]]
+name = "uart"
+binary = "../../build/wokwi/chips/uart.chip.wasm"
+
+[[chip]]
+name = "sx1262"
+binary = "../../build/wokwi/chips/sx1262.chip.wasm"
+
+[[chip]]
+name = "pca9535"
+binary = "../../build/wokwi/chips/pca9535.chip.wasm"
+
+[[chip]]
+name = "pcf85063"
+binary = "../../build/wokwi/chips/pcf85063.chip.wasm"
+
+[[chip]]
+name = "bq27220"
+binary = "../../build/wokwi/chips/bq27220.chip.wasm"
+
+[[chip]]
+name = "bq25896"
+binary = "../../build/wokwi/chips/bq25896.chip.wasm"
+
+[[chip]]
+name = "tps65185"
+binary = "../../build/wokwi/chips/tps65185.chip.wasm"
+
+[[chip]]
+name = "gt911"
+binary = "../../build/wokwi/chips/gt911.chip.wasm"
+
+[[chip]]
+name = "ed047tc1"
+binary = "../../build/wokwi/chips/ed047tc1.chip.wasm"

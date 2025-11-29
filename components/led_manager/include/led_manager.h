@@ -63,6 +63,13 @@ esp_err_t led_manager_stop(void);
  */
 led_pattern_t led_manager_get_pattern(void);
 
+/**
+ * @brief Set button feedback override (turns LED off while button pressed)
+ * @param active true = button pressed (LED off), false = button released (restore pattern)
+ * @return ESP_OK on success
+ */
+esp_err_t led_manager_button_feedback(bool active);
+
 #ifdef __cplusplus
 }
 #endif

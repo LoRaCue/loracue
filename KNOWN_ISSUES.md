@@ -5,7 +5,12 @@
 
 ## Current Issues
 
-*No known critical issues at this time.*
+### Implemented But Not Working
+
+- **[HIGH]** BLE configuration connection - Implemented but not working (detection and connect functional)
+- **[HIGH]** BLE firmware upgrade - Implemented but not working (OTA engine and BLE transport exist)
+- **[HIGH]** USB-CDC firmware upgrade - Implemented but not working (XMODEM-1K and command handler exist)
+- **[MEDIUM]** LilyGo T5 Pro support - Implemented but not fully functional (basic firmware works, UX is missing completely, so device is not usable at the moment). This is WIP and will be improved in future releases.
 
 <!-- 
 Example format:

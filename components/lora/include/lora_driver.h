@@ -27,6 +27,8 @@ typedef struct {
     uint16_t bandwidth;       ///< 500kHz for low latency
     uint8_t coding_rate;      ///< 4/5 for minimal overhead
     int8_t tx_power;          ///< TX power in dBm
+    char band_id[16];         ///< Hardware band ID (e.g., "HW_868")
+    uint8_t aes_key[32];      ///< AES-256 encryption key
 } lora_config_t;
 
 /**
@@ -101,29 +103,6 @@ esp_err_t lora_set_config(const lora_config_t *config);
  * @return ESP_OK on success
  */
 esp_err_t lora_set_receive_mode(void);
-
-#ifdef SIMULATOR_BUILD
-/**
- * @brief Disable LoRa WiFi simulation (for config mode)
- *
- * @return ESP_OK on success
- */
-esp_err_t lora_driver_disable_sim_wifi(void);
-
-/**
- * @brief Enable LoRa WiFi simulation (after config mode)
- *
- * @return ESP_OK on success
- */
-esp_err_t lora_driver_enable_sim_wifi(void);
-
-/**
- * @brief Check if LoRa WiFi simulation is enabled
- *
- * @return true if enabled, false otherwise
- */
-bool lora_driver_is_sim_wifi_enabled(void);
-#endif
 
 #ifdef __cplusplus
 }

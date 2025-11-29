@@ -1,20 +1,23 @@
 #include "config_wifi_server.h"
 #include "cJSON.h"
-#include "device_config.h"
+#include "commands.h"
 #include "device_registry.h"
 #include "esp_app_format.h"
 #include "esp_crc.h"
 #include "esp_event.h"
 #include "esp_http_server.h"
+#include "esp_littlefs.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
-#include "esp_spiffs.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
+#include "general_config.h"
 #include "lora_driver.h"
+#include "ota_engine.h"
+#include "power_mgmt_config.h"
 #include "version.h"
 #include <string.h>
 #include <sys/stat.h>
@@ -25,11 +28,44 @@ static httpd_handle_t server = NULL;
 static esp_netif_t *ap_netif = NULL;
 static bool server_running   = false;
 
-// OTA update state
-static esp_ota_handle_t ota_handle          = 0;
-static const esp_partition_t *ota_partition = NULL;
-static size_t ota_received_bytes            = 0;
-static size_t ota_total_size                = 0;
+// Commands API bridge
+static httpd_req_t *s_current_req = NULL;
+
+static void http_response_callback(const char *response)
+{
+    if (!s_current_req || !response)
+        return;
+    httpd_resp_sendstr(s_current_req, response);
+}
+
+static esp_err_t commands_api_handle_get(httpd_req_t *req, const char *command)
+{
+    httpd_resp_set_type(req, "application/json");
+    s_current_req = req;
+    commands_execute(command, http_response_callback);
+    s_current_req = NULL;
+    return ESP_OK;
+}
+
+static esp_err_t commands_api_handle_post(httpd_req_t *req, const char *command_fmt)
+{
+    char content[16384];
+    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
+    if (ret <= 0) {
+        httpd_resp_send_500(req);
+        return ESP_FAIL;
+    }
+    content[ret] = '\0';
+
+    char command[16512];
+    snprintf(command, sizeof(command), command_fmt, content);
+
+    httpd_resp_set_type(req, "application/json");
+    s_current_req = req;
+    commands_execute(command, http_response_callback);
+    s_current_req = NULL;
+    return ESP_OK;
+}
 
 // Generate WiFi credentials from MAC address
 static void generate_wifi_credentials(char *ssid, size_t ssid_len, char *password, size_t pass_len)
@@ -38,7 +74,8 @@ static void generate_wifi_credentials(char *ssid, size_t ssid_len, char *passwor
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
 
     // Generate SSID: LoRaCue-XXXX
-    snprintf(ssid, ssid_len, "LoRaCue-%02X%02X", mac[4], mac[5]);
+    uint16_t device_id = general_config_get_device_id();
+    snprintf(ssid, ssid_len, "LoRaCue-%04X", device_id);
 
     // Generate password from MAC CRC32
     uint32_t crc        = esp_crc32_le(0, mac, 6);
@@ -50,11 +87,29 @@ static void generate_wifi_credentials(char *ssid, size_t ssid_len, char *passwor
     password[8] = '\0';
 }
 
-// Serve static files from SPIFFS
+// Serve static files from LittleFS
 static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
 {
+    ESP_LOGI(TAG, "Attempting to serve: %s", filepath);
     FILE *file = fopen(filepath, "r");
+
+    // If file not found and path doesn't end with .html/.js/.css, try index.html
     if (!file) {
+        const char *ext = strrchr(filepath, '.');
+        if (!ext || (strcmp(ext, ".html") != 0 && strcmp(ext, ".js") != 0 && strcmp(ext, ".css") != 0 &&
+                     strcmp(ext, ".json") != 0)) {
+            char index_path[512];
+            snprintf(index_path, sizeof(index_path), "%s%sindex.html", filepath,
+                     (filepath[strlen(filepath) - 1] == '/') ? "" : "/");
+            file = fopen(index_path, "r");
+            if (file) {
+                ESP_LOGI(TAG, "Serving index: %s", index_path);
+            }
+        }
+    }
+
+    if (!file) {
+        ESP_LOGW(TAG, "File not found: %s", filepath);
         httpd_resp_send_404(req);
         return ESP_FAIL;
     }
@@ -83,53 +138,65 @@ static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
 }
 
 // HTTP handlers
-static esp_err_t root_handler(httpd_req_t *req)
-{
-    return serve_static_file(req, "/spiffs/index.html");
-}
-
 static esp_err_t static_handler(httpd_req_t *req)
 {
     char filepath[512];
+
+    // If root is requested, serve index.html
+    if (strcmp(req->uri, "/") == 0) {
+        return serve_static_file(req, "/storage/index.html");
+    }
+
     if (strlen(req->uri) > 500) {
         httpd_resp_send_404(req);
         return ESP_FAIL;
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wformat-truncation"
-    snprintf(filepath, sizeof(filepath), "/spiffs%s", req->uri);
+    snprintf(filepath, sizeof(filepath), "/storage%s", req->uri);
 #pragma GCC diagnostic pop
     return serve_static_file(req, filepath);
 }
 
-static esp_err_t device_settings_get_handler(httpd_req_t *req)
+// New API handlers using commands_api
+static esp_err_t api_general_get_handler(httpd_req_t *req)
 {
-    device_config_t config;
-    if (device_config_get(&config) != ESP_OK) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    cJSON *json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "name", config.device_name);
-    cJSON_AddStringToObject(json, "mode", device_mode_to_string(config.device_mode));
-    cJSON_AddNumberToObject(json, "sleepTimeout", config.sleep_timeout_ms);
-    cJSON_AddBoolToObject(json, "autoSleep", config.auto_sleep_enabled);
-    cJSON_AddNumberToObject(json, "brightness", config.display_brightness);
-    cJSON_AddBoolToObject(json, "bluetooth", config.bluetooth_enabled);
-
-    char *json_string = cJSON_Print(json);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, json_string, strlen(json_string));
-
-    free(json_string);
-    cJSON_Delete(json);
-    return ESP_OK;
+    return commands_api_handle_get(req, "GET_GENERAL");
 }
 
-static esp_err_t device_settings_post_handler(httpd_req_t *req)
+static esp_err_t api_general_post_handler(httpd_req_t *req)
 {
-    char content[512];
+    return commands_api_handle_post(req, "SET_GENERAL %s");
+}
+
+static esp_err_t api_power_get_handler(httpd_req_t *req)
+{
+    return commands_api_handle_get(req, "GET_POWER_MANAGEMENT");
+}
+
+static esp_err_t api_power_post_handler(httpd_req_t *req)
+{
+    return commands_api_handle_post(req, "SET_POWER_MANAGEMENT %s");
+}
+
+static esp_err_t api_lora_get_handler(httpd_req_t *req)
+{
+    return commands_api_handle_get(req, "GET_LORA");
+}
+
+static esp_err_t api_lora_post_handler(httpd_req_t *req)
+{
+    return commands_api_handle_post(req, "SET_LORA %s");
+}
+
+static esp_err_t api_devices_get_handler(httpd_req_t *req)
+{
+    return commands_api_handle_get(req, "GET_PAIRED_DEVICES");
+}
+
+static esp_err_t api_devices_post_handler(httpd_req_t *req)
+{
+    char content[16384];
     int ret = httpd_req_recv(req, content, sizeof(content) - 1);
     if (ret <= 0) {
         httpd_resp_send_500(req);
@@ -137,450 +204,135 @@ static esp_err_t device_settings_post_handler(httpd_req_t *req)
     }
     content[ret] = '\0';
 
+    // Parse JSON to check if device exists (determine PAIR vs UPDATE)
     cJSON *json = cJSON_Parse(content);
     if (!json) {
         httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
         return ESP_FAIL;
     }
 
-    device_config_t config;
-    device_config_get(&config);
+    const cJSON *mac = cJSON_GetObjectItem(json, "mac");
+    bool is_update   = false;
 
-    cJSON *name = cJSON_GetObjectItem(json, "name");
-    if (name && cJSON_IsString(name)) {
-        strncpy(config.device_name, name->valuestring, sizeof(config.device_name) - 1);
-    }
-
-    cJSON *mode = cJSON_GetObjectItem(json, "mode");
-    if (mode && cJSON_IsString(mode)) {
-        if (strcmp(mode->valuestring, "presenter") == 0) {
-            config.device_mode = DEVICE_MODE_PRESENTER;
-        } else if (strcmp(mode->valuestring, "pc") == 0) {
-            config.device_mode = DEVICE_MODE_PC;
+    if (mac && cJSON_IsString(mac)) {
+        // Parse MAC to get device_id
+        uint8_t mac_bytes[6];
+        if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
+                   &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) == 6) {
+            uint16_t device_id = general_config_get_device_id();
+            paired_device_t existing;
+            is_update = (device_registry_get(device_id, &existing) == ESP_OK);
         }
     }
 
-    cJSON *sleepTimeout = cJSON_GetObjectItem(json, "sleepTimeout");
-    if (sleepTimeout && cJSON_IsNumber(sleepTimeout)) {
-        config.sleep_timeout_ms = sleepTimeout->valueint;
-    }
-
-    cJSON *autoSleep = cJSON_GetObjectItem(json, "autoSleep");
-    if (autoSleep && cJSON_IsBool(autoSleep)) {
-        config.auto_sleep_enabled = cJSON_IsTrue(autoSleep);
-    }
-
-    cJSON *brightness = cJSON_GetObjectItem(json, "brightness");
-    if (brightness && cJSON_IsNumber(brightness)) {
-        config.display_brightness = brightness->valueint;
-    }
-
-    cJSON *bluetooth = cJSON_GetObjectItem(json, "bluetooth");
-    if (bluetooth && cJSON_IsBool(bluetooth)) {
-        config.bluetooth_enabled = cJSON_IsTrue(bluetooth);
-    }
-
-    esp_err_t err = device_config_set(&config);
     cJSON_Delete(json);
 
-    if (err != ESP_OK) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
+    // Use appropriate command
+    char command[16512];
+    snprintf(command, sizeof(command), is_update ? "UPDATE_PAIRED_DEVICE %s" : "PAIR_DEVICE %s", content);
 
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\"}", 16);
+    s_current_req = req;
+    commands_execute(command, http_response_callback);
+    s_current_req = NULL;
     return ESP_OK;
 }
 
-static esp_err_t lora_settings_get_handler(httpd_req_t *req)
-{
-    lora_config_t config;
-    if (lora_get_config(&config) != ESP_OK) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    cJSON *json = cJSON_CreateObject();
-    cJSON_AddNumberToObject(json, "frequency", config.frequency);
-    cJSON_AddNumberToObject(json, "spreadingFactor", config.spreading_factor);
-    cJSON_AddNumberToObject(json, "bandwidth", config.bandwidth);
-    cJSON_AddNumberToObject(json, "codingRate", config.coding_rate);
-    cJSON_AddNumberToObject(json, "txPower", config.tx_power);
-
-    char *json_string = cJSON_Print(json);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, json_string, strlen(json_string));
-
-    free(json_string);
-    cJSON_Delete(json);
-    return ESP_OK;
-}
-
-static esp_err_t lora_settings_post_handler(httpd_req_t *req)
+static esp_err_t api_devices_delete_handler(httpd_req_t *req)
 {
     char content[512];
     int ret = httpd_req_recv(req, content, sizeof(content) - 1);
     if (ret <= 0) {
-        httpd_resp_send_500(req);
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing MAC address");
         return ESP_FAIL;
     }
     content[ret] = '\0';
 
-    cJSON *json = cJSON_Parse(content);
-    if (!json) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
-        return ESP_FAIL;
-    }
-
-    lora_config_t config;
-    lora_get_config(&config);
-
-    cJSON *freq = cJSON_GetObjectItem(json, "frequency");
-    if (freq && cJSON_IsNumber(freq))
-        config.frequency = freq->valueint;
-
-    cJSON *sf = cJSON_GetObjectItem(json, "spreadingFactor");
-    if (sf && cJSON_IsNumber(sf))
-        config.spreading_factor = sf->valueint;
-
-    cJSON *bw = cJSON_GetObjectItem(json, "bandwidth");
-    if (bw && cJSON_IsNumber(bw))
-        config.bandwidth = bw->valueint;
-
-    cJSON *cr = cJSON_GetObjectItem(json, "codingRate");
-    if (cr && cJSON_IsNumber(cr))
-        config.coding_rate = cr->valueint;
-
-    cJSON *power = cJSON_GetObjectItem(json, "txPower");
-    if (power && cJSON_IsNumber(power))
-        config.tx_power = power->valueint;
-
-    esp_err_t err = lora_set_config(&config);
-    cJSON_Delete(json);
-
-    if (err != ESP_OK) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
+    char command[768];
+    snprintf(command, sizeof(command), "UNPAIR_DEVICE %s", content);
 
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\"}", 16);
+    s_current_req = req;
+    commands_execute(command, http_response_callback);
+    s_current_req = NULL;
     return ESP_OK;
 }
 
-static esp_err_t firmware_start_handler(httpd_req_t *req)
+// Streaming firmware upload handler (OTA engine)
+static esp_err_t api_firmware_upload_handler(httpd_req_t *req)
 {
-    char content[512];
-    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
-    if (ret <= 0) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-    content[ret] = '\0';
+    size_t content_length = req->content_len;
 
-    cJSON *json = cJSON_Parse(content);
-    if (!json) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+    if (content_length == 0) {
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No content");
         return ESP_FAIL;
     }
 
-    cJSON *size = cJSON_GetObjectItem(json, "size");
-    if (!cJSON_IsNumber(size)) {
-        cJSON_Delete(json);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing size parameter");
+    esp_err_t ret = ota_engine_start(content_length);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "OTA start failed: %s", esp_err_to_name(ret));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "OTA start failed");
         return ESP_FAIL;
     }
 
-    // Clean up any existing OTA session
-    if (ota_handle) {
-        esp_ota_abort(ota_handle);
-        ota_handle = 0;
-    }
+    uint8_t buffer[4096];
+    size_t received = 0;
 
-    ota_total_size     = size->valueint;
-    ota_received_bytes = 0;
-
-    // Get next OTA partition
-    ota_partition = esp_ota_get_next_update_partition(NULL);
-    if (!ota_partition) {
-        cJSON_Delete(json);
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    // Begin OTA update
-    esp_err_t err = esp_ota_begin(ota_partition, ota_total_size, &ota_handle);
-    if (err != ESP_OK) {
-        cJSON_Delete(json);
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    cJSON_Delete(json);
-
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Ready for firmware data\"}", 50);
-
-    return ESP_OK;
-}
-
-static esp_err_t firmware_data_handler(httpd_req_t *req)
-{
-    if (!ota_handle) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No active OTA session");
-        return ESP_FAIL;
-    }
-
-    char content[2048];
-    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
-    if (ret <= 0) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-    content[ret] = '\0';
-
-    // Parse hex data from JSON
-    cJSON *json = cJSON_Parse(content);
-    if (!json) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
-        return ESP_FAIL;
-    }
-
-    cJSON *data_item = cJSON_GetObjectItem(json, "data");
-    if (!cJSON_IsString(data_item)) {
-        cJSON_Delete(json);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing data parameter");
-        return ESP_FAIL;
-    }
-
-    const char *hex_data = data_item->valuestring;
-    size_t hex_len       = strlen(hex_data);
-
-    if (hex_len % 2 != 0) {
-        cJSON_Delete(json);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid hex data length");
-        return ESP_FAIL;
-    }
-
-    size_t data_len      = hex_len / 2;
-    uint8_t *binary_data = malloc(data_len);
-    if (!binary_data) {
-        cJSON_Delete(json);
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    // Convert hex to binary
-    for (size_t i = 0; i < data_len; i++) {
-        if (sscanf(hex_data + i * 2, "%02hhx", &binary_data[i]) != 1) {
-            free(binary_data);
-            cJSON_Delete(json);
-            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid hex data");
+    while (received < content_length) {
+        int len = httpd_req_recv(req, (char *)buffer, sizeof(buffer));
+        if (len <= 0) {
+            if (len == HTTPD_SOCK_ERR_TIMEOUT) {
+                continue;
+            }
+            ESP_LOGE(TAG, "Receive failed");
+            ota_engine_abort();
             return ESP_FAIL;
         }
+
+        ret = ota_engine_write(buffer, len);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "OTA write failed: %s", esp_err_to_name(ret));
+            ota_engine_abort();
+            httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Write failed");
+            return ESP_FAIL;
+        }
+
+        received += len;
     }
 
-    esp_err_t err = esp_ota_write(ota_handle, binary_data, data_len);
-    free(binary_data);
-    cJSON_Delete(json);
-
-    if (err != ESP_OK) {
-        httpd_resp_send_500(req);
+    ret = ota_engine_finish();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "OTA finish failed: %s", esp_err_to_name(ret));
+        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Validation failed");
         return ESP_FAIL;
     }
 
-    ota_received_bytes += data_len;
+    httpd_resp_sendstr(req, "{\"status\":\"success\"}");
 
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Data written\"}", 40);
-
-    return ESP_OK;
-}
-
-static esp_err_t firmware_verify_handler(httpd_req_t *req)
-{
-    if (!ota_handle) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No active OTA session");
-        return ESP_FAIL;
-    }
-
-    esp_err_t err = esp_ota_end(ota_handle);
-    if (err != ESP_OK) {
-        ota_handle = 0;
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Firmware verified\"}", 47);
-
-    return ESP_OK;
-}
-
-static esp_err_t firmware_commit_handler(httpd_req_t *req)
-{
-    if (!ota_partition) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "No OTA partition to commit");
-        return ESP_FAIL;
-    }
-
-    esp_err_t err = esp_ota_set_boot_partition(ota_partition);
-    if (err != ESP_OK) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Firmware committed - rebooting\"}", 60);
-
-    // Clean up
-    ota_handle         = 0;
-    ota_partition      = NULL;
-    ota_received_bytes = 0;
-    ota_total_size     = 0;
-
-    // Restart after a short delay
-    vTaskDelay(pdMS_TO_TICKS(2000));
+    vTaskDelay(pdMS_TO_TICKS(500));
     esp_restart();
-}
-
-static esp_err_t devices_list_handler(httpd_req_t *req)
-{
-    cJSON *devices_array = cJSON_CreateArray();
-
-    for (uint16_t i = 0; i < 0xFFFF; i++) {
-        paired_device_t device;
-        if (device_registry_get(i, &device) == ESP_OK) {
-            cJSON *device_obj = cJSON_CreateObject();
-            cJSON_AddNumberToObject(device_obj, "id", device.device_id);
-            cJSON_AddStringToObject(device_obj, "name", device.device_name);
-
-            char mac_str[18];
-            snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x", device.mac_address[0],
-                     device.mac_address[1], device.mac_address[2], device.mac_address[3], device.mac_address[4],
-                     device.mac_address[5]);
-            cJSON_AddStringToObject(device_obj, "mac", mac_str);
-            cJSON_AddBoolToObject(device_obj, "active", device.is_active);
-
-            cJSON_AddItemToArray(devices_array, device_obj);
-        }
-    }
-
-    char *json_string = cJSON_Print(devices_array);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, json_string, strlen(json_string));
-    free(json_string);
-    cJSON_Delete(devices_array);
-    return ESP_OK;
-}
-
-static esp_err_t devices_add_handler(httpd_req_t *req)
-{
-    char content[512];
-    int ret = httpd_req_recv(req, content, sizeof(content) - 1);
-    if (ret <= 0) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-    content[ret] = '\0';
-
-    cJSON *json = cJSON_Parse(content);
-    if (!json) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
-        return ESP_FAIL;
-    }
-
-    cJSON *name       = cJSON_GetObjectItem(json, "name");
-    const cJSON *mac  = cJSON_GetObjectItem(json, "mac");
-    const cJSON *key  = cJSON_GetObjectItem(json, "key");
-
-    if (!name || !mac || !key) {
-        cJSON_Delete(json);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing parameters");
-        return ESP_FAIL;
-    }
-
-    uint8_t mac_bytes[6];
-    if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
-               &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
-        cJSON_Delete(json);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid MAC");
-        return ESP_FAIL;
-    }
-
-    uint8_t aes_key[32];
-    const char *key_str = key->valuestring;
-    if (strlen(key_str) != 64) {
-        cJSON_Delete(json);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid key length");
-        return ESP_FAIL;
-    }
-
-    for (int i = 0; i < 32; i++) {
-        if (sscanf(key_str + i * 2, "%02hhx", &aes_key[i]) != 1) {
-            cJSON_Delete(json);
-            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid key format");
-            return ESP_FAIL;
-        }
-    }
-
-    uint16_t device_id = (mac_bytes[4] << 8) | mac_bytes[5];
-    esp_err_t err      = device_registry_add(device_id, name->valuestring, mac_bytes, aes_key);
-    cJSON_Delete(json);
-
-    if (err != ESP_OK) {
-        httpd_resp_send_500(req);
-        return ESP_FAIL;
-    }
-
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\"}", 16);
-    return ESP_OK;
-}
-
-static esp_err_t devices_delete_handler(httpd_req_t *req)
-{
-    const char *id_str = strrchr(req->uri, '/');
-    if (!id_str) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing device ID");
-        return ESP_FAIL;
-    }
-
-    uint16_t device_id = (uint16_t)strtol(id_str + 1, NULL, 10);
-    esp_err_t err      = device_registry_remove(device_id);
-
-    if (err != ESP_OK) {
-        httpd_resp_send_404(req);
-        return ESP_FAIL;
-    }
-
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, "{\"status\":\"ok\"}", 16);
-    return ESP_OK;
 
     return ESP_OK;
 }
 
-static esp_err_t system_info_handler(httpd_req_t *req)
+// OTA progress endpoint
+static esp_err_t api_firmware_progress_handler(httpd_req_t *req)
 {
-    cJSON *json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "version", LORACUE_VERSION_FULL);
-    cJSON_AddStringToObject(json, "commit", LORACUE_BUILD_COMMIT_SHORT);
-    cJSON_AddStringToObject(json, "branch", LORACUE_BUILD_BRANCH);
-    cJSON_AddStringToObject(json, "buildDate", LORACUE_BUILD_DATE);
-    cJSON_AddNumberToObject(json, "uptime", esp_timer_get_time() / 1000000);
-    cJSON_AddNumberToObject(json, "freeHeap", esp_get_free_heap_size());
-
-    const esp_partition_t *running = esp_ota_get_running_partition();
-    cJSON_AddStringToObject(json, "partition", running->label);
-
-    char *json_string = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, json_string, strlen(json_string));
-    free(json_string);
-    cJSON_Delete(json);
+
+    size_t progress   = ota_engine_get_progress();
+    ota_state_t state = ota_engine_get_state();
+
+    char response[128];
+    snprintf(response, sizeof(response), "{\"progress\":%zu,\"state\":%d}", progress, state);
+
+    httpd_resp_sendstr(req, response);
     return ESP_OK;
+}
+
+static esp_err_t api_device_info_handler(httpd_req_t *req)
+{
+    return commands_api_handle_get(req, "GET_DEVICE_INFO");
 }
 
 static esp_err_t factory_reset_handler(httpd_req_t *req)
@@ -588,8 +340,8 @@ static esp_err_t factory_reset_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Factory reset initiated\"}", 52);
 
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    device_config_factory_reset();
+    vTaskDelay(pdMS_TO_TICKS(500));
+    general_config_factory_reset();
     return ESP_OK;
 }
 
@@ -601,10 +353,19 @@ esp_err_t config_wifi_server_start(void)
 
     ESP_LOGI(TAG, "Starting WiFi AP and web server");
 
-    // Initialize SPIFFS
-    esp_vfs_spiffs_conf_t spiffs_conf = {
-        .base_path = "/spiffs", .partition_label = NULL, .max_files = 20, .format_if_mount_failed = true};
-    esp_vfs_spiffs_register(&spiffs_conf);
+    // Initialize LittleFS
+    esp_vfs_littlefs_conf_t littlefs_conf = {
+        .base_path = "/storage", .partition_label = "storage", .format_if_mount_failed = true, .dont_mount = false};
+    esp_err_t ret = esp_vfs_littlefs_register(&littlefs_conf);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to mount LittleFS: %s", esp_err_to_name(ret));
+    } else {
+        size_t total = 0, used = 0;
+        ret = esp_littlefs_info("storage", &total, &used);
+        if (ret == ESP_OK) {
+            ESP_LOGI(TAG, "LittleFS: %zu KB total, %zu KB used", total / 1024, used / 1024);
+        }
+    }
 
     // Initialize WiFi
     ESP_ERROR_CHECK(esp_netif_init());
@@ -636,67 +397,65 @@ esp_err_t config_wifi_server_start(void)
     // Start HTTP server
     httpd_config_t config   = HTTPD_DEFAULT_CONFIG();
     config.server_port      = 80;
-    config.max_uri_handlers = 16;
+    config.max_uri_handlers = 32;
+    config.uri_match_fn     = httpd_uri_match_wildcard; // Enable wildcard matching
+    config.stack_size       = 12288;                    // Increase to 12KB for file serving + WiFi operations
 
     if (httpd_start(&server, &config) == ESP_OK) {
-        // Static file handlers
-        httpd_uri_t root_uri = {.uri = "/", .method = HTTP_GET, .handler = root_handler};
-        httpd_register_uri_handler(server, &root_uri);
+        // API endpoints first (specific routes)
+        httpd_uri_t api_general_get = {.uri = "/api/general", .method = HTTP_GET, .handler = api_general_get_handler};
+        httpd_register_uri_handler(server, &api_general_get);
 
-        httpd_uri_t static_uri = {.uri = "/*", .method = HTTP_GET, .handler = static_handler};
-        httpd_register_uri_handler(server, &static_uri);
+        httpd_uri_t api_general_post = {
+            .uri = "/api/general", .method = HTTP_POST, .handler = api_general_post_handler};
+        httpd_register_uri_handler(server, &api_general_post);
 
-        // API handlers
-        httpd_uri_t device_get_uri = {
-            .uri = "/api/device/settings", .method = HTTP_GET, .handler = device_settings_get_handler};
-        httpd_register_uri_handler(server, &device_get_uri);
+        httpd_uri_t api_power_get = {
+            .uri = "/api/power-management", .method = HTTP_GET, .handler = api_power_get_handler};
+        httpd_register_uri_handler(server, &api_power_get);
 
-        httpd_uri_t device_post_uri = {
-            .uri = "/api/device/settings", .method = HTTP_POST, .handler = device_settings_post_handler};
-        httpd_register_uri_handler(server, &device_post_uri);
+        httpd_uri_t api_power_post = {
+            .uri = "/api/power-management", .method = HTTP_POST, .handler = api_power_post_handler};
+        httpd_register_uri_handler(server, &api_power_post);
 
-        httpd_uri_t lora_get_uri = {
-            .uri = "/api/lora/settings", .method = HTTP_GET, .handler = lora_settings_get_handler};
-        httpd_register_uri_handler(server, &lora_get_uri);
+        httpd_uri_t api_lora_get = {.uri = "/api/lora*", .method = HTTP_GET, .handler = api_lora_get_handler};
+        httpd_register_uri_handler(server, &api_lora_get);
 
-        httpd_uri_t lora_post_uri = {
-            .uri = "/api/lora/settings", .method = HTTP_POST, .handler = lora_settings_post_handler};
-        httpd_register_uri_handler(server, &lora_post_uri);
+        httpd_uri_t api_lora_post = {.uri = "/api/lora*", .method = HTTP_POST, .handler = api_lora_post_handler};
+        httpd_register_uri_handler(server, &api_lora_post);
 
-        // Firmware update API endpoints
-        httpd_uri_t fw_start_uri = {
-            .uri = "/api/firmware/start", .method = HTTP_POST, .handler = firmware_start_handler};
-        httpd_register_uri_handler(server, &fw_start_uri);
+        httpd_uri_t api_devices_get = {.uri = "/api/devices", .method = HTTP_GET, .handler = api_devices_get_handler};
+        httpd_register_uri_handler(server, &api_devices_get);
 
-        httpd_uri_t fw_data_uri = {.uri = "/api/firmware/data", .method = HTTP_POST, .handler = firmware_data_handler};
-        httpd_register_uri_handler(server, &fw_data_uri);
+        httpd_uri_t api_devices_post = {
+            .uri = "/api/devices", .method = HTTP_POST, .handler = api_devices_post_handler};
+        httpd_register_uri_handler(server, &api_devices_post);
 
-        httpd_uri_t fw_verify_uri = {
-            .uri = "/api/firmware/verify", .method = HTTP_POST, .handler = firmware_verify_handler};
-        httpd_register_uri_handler(server, &fw_verify_uri);
+        httpd_uri_t api_devices_delete = {
+            .uri = "/api/devices/*", .method = HTTP_DELETE, .handler = api_devices_delete_handler};
+        httpd_register_uri_handler(server, &api_devices_delete);
 
-        httpd_uri_t fw_commit_uri = {
-            .uri = "/api/firmware/commit", .method = HTTP_POST, .handler = firmware_commit_handler};
-        httpd_register_uri_handler(server, &fw_commit_uri);
+        httpd_uri_t api_device_info = {
+            .uri = "/api/device/info", .method = HTTP_GET, .handler = api_device_info_handler};
+        httpd_register_uri_handler(server, &api_device_info);
 
-        // Device registry API endpoints
-        httpd_uri_t devices_list_uri = {.uri = "/api/devices", .method = HTTP_GET, .handler = devices_list_handler};
-        httpd_register_uri_handler(server, &devices_list_uri);
+        // Streaming firmware upload (OTA engine)
+        httpd_uri_t fw_upload_uri = {
+            .uri = "/api/firmware/upload", .method = HTTP_POST, .handler = api_firmware_upload_handler};
+        httpd_register_uri_handler(server, &fw_upload_uri);
 
-        httpd_uri_t devices_add_uri = {.uri = "/api/devices", .method = HTTP_POST, .handler = devices_add_handler};
-        httpd_register_uri_handler(server, &devices_add_uri);
-
-        httpd_uri_t devices_delete_uri = {
-            .uri = "/api/devices/*", .method = HTTP_DELETE, .handler = devices_delete_handler};
-        httpd_register_uri_handler(server, &devices_delete_uri);
+        httpd_uri_t fw_progress_uri = {
+            .uri = "/api/firmware/progress", .method = HTTP_GET, .handler = api_firmware_progress_handler};
+        httpd_register_uri_handler(server, &fw_progress_uri);
 
         // System API endpoints
-        httpd_uri_t system_info_uri = {.uri = "/api/system/info", .method = HTTP_GET, .handler = system_info_handler};
-        httpd_register_uri_handler(server, &system_info_uri);
-
         httpd_uri_t factory_reset_uri = {
             .uri = "/api/system/factory-reset", .method = HTTP_POST, .handler = factory_reset_handler};
         httpd_register_uri_handler(server, &factory_reset_uri);
+
+        // Static file handler LAST - catch-all for everything else
+        httpd_uri_t static_files = {.uri = "/*", .method = HTTP_GET, .handler = static_handler};
+        httpd_register_uri_handler(server, &static_files);
 
         server_running = true;
         ESP_LOGI(TAG, "WiFi AP started: %s / %s", ssid, password);
@@ -737,14 +496,12 @@ esp_err_t config_wifi_server_stop(void)
         ap_netif = NULL;
     }
 
-    // Unmount SPIFFS
-    esp_vfs_spiffs_unregister(NULL);
+    // Unmount LittleFS
+    esp_vfs_littlefs_unregister("storage");
 
-#ifndef SIMULATOR_BUILD
     // Only disable WiFi on real hardware for power saving
     esp_event_loop_delete_default();
     esp_netif_deinit();
-#endif
 
     server_running = false;
     ESP_LOGI(TAG, "WiFi AP and web server stopped");

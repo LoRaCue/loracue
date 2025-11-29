@@ -1,14 +1,29 @@
-# Conditional BSP compilation based on build target
-if(CMAKE_C_FLAGS MATCHES "SIMULATOR_BUILD" OR SIMULATOR_BUILD)
-    set(BSP_SRCS "bsp_wokwi.c")
-    message(STATUS "Building with Wokwi BSP (SSD1306)")
-else()
-    set(BSP_SRCS "bsp_heltec_v3.c")
-    message(STATUS "Building with Heltec V3 BSP (SH1106)")
+# Conditional BSP compilation based on board selection
+if(NOT BOARD_ID OR BOARD_ID STREQUAL "")
+    set(BOARD_ID "heltec_v3")
 endif()
 
+if(BOARD_ID STREQUAL "lilygo_t5")
+    set(BSP_SRCS "bsp_lilygo_t5.c")
+    message(STATUS "Building BSP for LilyGO T5 4.7\" E-Paper (UI_RICH)")
+elseif(BOARD_ID STREQUAL "lilygo_t3")
+    set(BSP_SRCS "bsp_lilygo_t3.c")
+    message(STATUS "Building BSP for LilyGO T3-S3 2.13\" E-Paper (UI_MINI)")
+elseif(BOARD_ID STREQUAL "heltec_v3")
+    set(BSP_SRCS "bsp_heltec_v3.c" "bsp_i2c.c")
+    message(STATUS "Building BSP for Heltec V3 (UI_COMPACT)")
+elseif(DEFINED ENV{WOKWI_BUILD})
+    set(BSP_SRCS "bsp_wokwi.c" "bsp_i2c.c")
+    message(STATUS "Building BSP for Wokwi Simulator (UI_COMPACT)")
+else()
+    set(BSP_SRCS "bsp_heltec_v3.c" "bsp_i2c.c")
+    message(STATUS "Building BSP for Heltec V3 (default)")
+endif()
+
+# Include all possible requirements - unused ones won't be linked
 idf_component_register(
     SRCS ${BSP_SRCS}
     INCLUDE_DIRS "include"
-    REQUIRES driver esp_adc esp_driver_spi esp_driver_i2c spi_flash u8g2 u8g2-hal-esp-idf
+    REQUIRES driver esp_adc esp_driver_spi esp_driver_i2c spi_flash esp_timer efuse
+             lvgl pca9535 tps65185 gt911 bq25896 bq27220 pcf85063 display
 )

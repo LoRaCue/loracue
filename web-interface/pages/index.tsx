@@ -5,24 +5,24 @@ import { Save, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 interface DeviceSettings {
   name: string
   mode: string
-  sleepTimeout: number
-  autoSleep: boolean
   brightness: number
+  slot_id: number
+  bluetooth: boolean
 }
 
 export default function DevicePage() {
   const [settings, setSettings] = useState<DeviceSettings>({
     name: '',
     mode: 'presenter',
-    sleepTimeout: 300000,
-    autoSleep: true,
-    brightness: 128
+    brightness: 128,
+    slot_id: 1,
+    bluetooth: true
   })
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
   useEffect(() => {
-    fetch('/api/device/settings')
+    fetch('/api/general')
       .then(res => res.json())
       .then(data => setSettings(data))
       .catch(() => {})
@@ -33,7 +33,7 @@ export default function DevicePage() {
     setStatus('idle')
     
     try {
-      const response = await fetch('/api/device/settings', {
+      const response = await fetch('/api/general', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
@@ -56,7 +56,7 @@ export default function DevicePage() {
     <Layout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Device Settings</h1>
+          <h1 className="text-3xl font-bold mb-2">General Settings</h1>
           <p className="text-gray-600 dark:text-gray-400">
             Configure device name, mode, power management, and display
           </p>
@@ -65,8 +65,9 @@ export default function DevicePage() {
         <div className="card p-8">
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium mb-2">Device Name</label>
+              <label htmlFor="device-name" className="block text-sm font-medium mb-2">Device Name</label>
               <input
+                id="device-name"
                 type="text"
                 value={settings.name}
                 onChange={(e) => setSettings({ ...settings, name: e.target.value })}
@@ -104,33 +105,47 @@ export default function DevicePage() {
                 max="255"
                 value={settings.brightness}
                 onChange={(e) => setSettings({ ...settings, brightness: parseInt(e.target.value) })}
-                className="w-full"
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
               />
             </div>
 
-            <div>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={settings.autoSleep}
-                  onChange={(e) => setSettings({ ...settings, autoSleep: e.target.checked })}
-                  className="rounded"
-                />
-                <span className="text-sm font-medium">Enable Auto Sleep</span>
-              </label>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="slot-id" className="block text-sm font-medium mb-2">Slot ID (Multi-PC Routing)</label>
+                <select
+                  id="slot-id"
+                  value={settings.slot_id}
+                  onChange={(e) => setSettings({ ...settings, slot_id: parseInt(e.target.value) })}
+                  className="input"
+                >
+                  {Array.from({ length: 16 }, (_, i) => i + 1).map(slot => (
+                    <option key={slot} value={slot}>Slot {slot}</option>
+                  ))}
+                </select>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Select which PC is controlled or events are received for
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Bluetooth Configuration</label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.bluetooth}
+                      onChange={(e) => setSettings({...settings, bluetooth: e.target.checked})}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-hidden peer-focus:ring peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Enable Bluetooth for wireless configuration
+                </p>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Sleep Timeout (seconds)</label>
-              <input
-                type="number"
-                value={settings.sleepTimeout / 1000}
-                onChange={(e) => setSettings({ ...settings, sleepTimeout: parseInt(e.target.value) * 1000 })}
-                className="input"
-                min="10"
-                max="3600"
-              />
-            </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center space-x-2">

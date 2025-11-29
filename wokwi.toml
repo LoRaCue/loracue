@@ -1,4 +1,0 @@
-[wokwi]
-version = 1
-firmware = "build/loracue.bin"
-elf = "build/loracue.elf"
