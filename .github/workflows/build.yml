@@ -133,6 +133,12 @@ jobs:
         npm install -g lv_font_conv
         cargo install png2lvgl
     
+    - name: Setup ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
+        target: ${{ matrix.model.target }}
+    
     - name: Build firmware with make
       shell: bash
       env:
