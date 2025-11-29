@@ -4,44 +4,11 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "bsp.h"
-#include "lvgl.h"
 
 static const char *TAG = "display_ssd1681";
 
 // Forward declaration from display.c
 extern esp_err_t display_panel_common_init(esp_lcd_panel_handle_t panel);
-
-// Helper: Convert LVGL area (inclusive) to esp_lcd coords (exclusive)
-static inline void area_to_lcd_coords(const lv_area_t *area, int *x1, int *y1, int *x2, int *y2) {
-    *x1 = area->x1;
-    *y1 = area->y1;
-    *x2 = area->x2 + 1;
-    *y2 = area->y2 + 1;
-}
-
-static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
-    display_config_t *config = lv_display_get_user_data(disp);
-    if (!config || !config->panel) {
-        lv_display_flush_ready(disp);
-        return;
-    }
-
-    int x1, y1, x2, y2;
-    area_to_lcd_coords(area, &x1, &y1, &x2, &y2);
-    esp_lcd_panel_draw_bitmap(config->panel, x1, y1, x2, y2, px_map);
-
-    // Auto-switch to full refresh every N partial refreshes
-    if (config->epaper_state && config->epaper_state->refresh_mode == DISPLAY_REFRESH_PARTIAL) {
-        config->epaper_state->partial_refresh_count++;
-        if (config->epaper_state->partial_refresh_count >= EPAPER_PARTIAL_REFRESH_CYCLE) {
-            ESP_LOGI(TAG, "Triggering full refresh to prevent ghosting");
-            config->epaper_state->refresh_mode = DISPLAY_REFRESH_FULL;
-            config->epaper_state->partial_refresh_count = 0;
-        }
-    }
-    
-    lv_display_flush_ready(disp);
-}
 
 esp_err_t display_ssd1681_init(display_config_t *config) {
     ESP_LOGI(TAG, "Initializing SSD1681 E-Paper display");
@@ -52,42 +19,47 @@ esp_err_t display_ssd1681_init(display_config_t *config) {
         return ESP_FAIL;
     }
 
+    const bsp_epaper_pins_t *pins = bsp_get_epaper_pins();
+    if (!pins) {
+        ESP_LOGE(TAG, "Failed to get E-Paper pins from BSP");
+        return ESP_FAIL;
+    }
+
     esp_lcd_panel_io_spi_config_t io_config = {
-        .dc_gpio_num = bsp_get_epaper_dc_pin(),
-        .cs_gpio_num = bsp_get_epaper_cs_pin(),
+        .dc_gpio_num = pins->dc,
+        .cs_gpio_num = pins->cs,
         .pclk_hz = DISPLAY_SSD1681_SPI_SPEED,
-        .lcd_cmd_bits = 8,
-        .lcd_param_bits = 8,
-        .spi_mode = 0,
+        .lcd_cmd_bits = LCD_CMD_BITS,
+        .lcd_param_bits = LCD_PARAM_BITS,
+        .spi_mode = SPI_MODE,
     };
     
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)spi_device, &io_config, &config->io_handle));
+    esp_err_t ret = esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)spi_device, &io_config, &config->io_handle);
+    if (ret != ESP_OK) {
+        return ret;
+    }
 
     esp_lcd_panel_dev_config_t panel_config = {
-        .reset_gpio_num = bsp_get_epaper_rst_pin(),
+        .reset_gpio_num = pins->rst,
         .bits_per_pixel = 1,
     };
     
-    esp_err_t ret = esp_lcd_new_panel_ssd1681(config->io_handle, &panel_config, &config->panel);
+    ret = esp_lcd_new_panel_ssd1681(config->io_handle, &panel_config, &config->panel);
     if (ret != ESP_OK) {
-        esp_lcd_panel_io_del(config->io_handle);
-        return ret;
+        goto cleanup_io;
     }
     
     ret = display_panel_common_init(config->panel);
     if (ret != ESP_OK) {
-        esp_lcd_panel_del(config->panel);
-        esp_lcd_panel_io_del(config->io_handle);
-        return ret;
+        goto cleanup_panel;
     }
 
     // Allocate E-Paper state
     config->epaper_state = calloc(1, sizeof(epaper_state_t));
     if (!config->epaper_state) {
         ESP_LOGE(TAG, "Failed to allocate E-Paper state");
-        esp_lcd_panel_del(config->panel);
-        esp_lcd_panel_io_del(config->io_handle);
-        return ESP_ERR_NO_MEM;
+        ret = ESP_ERR_NO_MEM;
+        goto cleanup_panel;
     }
     config->epaper_state->refresh_mode = DISPLAY_REFRESH_PARTIAL;
 
@@ -96,6 +68,12 @@ esp_err_t display_ssd1681_init(display_config_t *config) {
 
     ESP_LOGI(TAG, "SSD1681 initialized: %dx%d", config->width, config->height);
     return ESP_OK;
+
+cleanup_panel:
+    esp_lcd_panel_del(config->panel);
+cleanup_io:
+    esp_lcd_panel_io_del(config->io_handle);
+    return ret;
 }
 
 esp_err_t display_ssd1681_set_refresh_mode(display_config_t *config, display_refresh_mode_t mode) {

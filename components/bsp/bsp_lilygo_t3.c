@@ -98,22 +98,6 @@ const bsp_epaper_pins_t *bsp_get_epaper_pins(void) {
     return &pins;
 }
 
-int bsp_get_epaper_dc_pin(void) {
-    return PIN_EPAPER_DC;
-}
-
-int bsp_get_epaper_cs_pin(void) {
-    return PIN_EPAPER_CS;
-}
-
-int bsp_get_epaper_rst_pin(void) {
-    return PIN_EPAPER_RST;
-}
-
-int bsp_get_epaper_busy_pin(void) {
-    return PIN_EPAPER_BUSY;
-}
-
 i2c_master_bus_handle_t bsp_get_i2c_bus(void) {
     return NULL; // No I2C on T3-S3
 }
@@ -158,12 +142,7 @@ BSP_STUB_RETURN(bsp_get_board_name, const char*, "LilyGO T3", void)
 BSP_STUB_OK(bsp_validate_hardware, void)
 BSP_STUB_RETURN(bsp_get_usb_config, const bsp_usb_config_t*, NULL, void)
 BSP_STUB_RETURN(bsp_is_usb_connected, bool, false, void)
-
-esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len) { 
-    snprintf(serial_number, max_len, "%s-000000", BSP_STUB_SERIAL_PREFIX);
-    return ESP_OK;
-}
-
+BSP_STUB_SERIAL_NUMBER(bsp_get_serial_number)
 BSP_STUB_OK(bsp_set_display_brightness, uint8_t brightness)
 BSP_STUB_OK(bsp_display_sleep, void)
 BSP_STUB_OK(bsp_display_wake, void)

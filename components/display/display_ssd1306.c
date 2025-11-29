@@ -4,43 +4,11 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "bsp.h"
-#include "lvgl.h"
 
 static const char *TAG = "display_ssd1306";
 
 // Forward declaration from display.c
 extern esp_err_t display_panel_common_init(esp_lcd_panel_handle_t panel);
-
-// Helper: Convert LVGL area (inclusive) to esp_lcd coords (exclusive)
-static inline void area_to_lcd_coords(const lv_area_t *area, int *x1, int *y1, int *x2, int *y2) {
-    *x1 = area->x1;
-    *y1 = area->y1;
-    *x2 = area->x2 + 1;
-    *y2 = area->y2 + 1;
-}
-
-static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
-    display_config_t *config = lv_display_get_user_data(disp);
-    if (!config || !config->panel) {
-        ESP_LOGE(TAG, "Flush called but no config/panel!");
-        lv_display_flush_ready(disp);
-        return;
-    }
-
-    ESP_LOGI(TAG, "Flush area: (%d,%d) to (%d,%d), first bytes: %02x %02x %02x %02x", 
-             area->x1, area->y1, area->x2, area->y2,
-             px_map[0], px_map[1], px_map[2], px_map[3]);
-
-    int x1, y1, x2, y2;
-    area_to_lcd_coords(area, &x1, &y1, &x2, &y2);
-    esp_err_t ret = esp_lcd_panel_draw_bitmap(config->panel, x1, y1, x2, y2, px_map);
-    
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Draw failed: %s", esp_err_to_name(ret));
-    }
-    
-    lv_display_flush_ready(disp);
-}
 
 esp_err_t display_ssd1306_init(display_config_t *config) {
     ESP_LOGI(TAG, "Initializing SSD1306 OLED display");
@@ -54,10 +22,10 @@ esp_err_t display_ssd1306_init(display_config_t *config) {
     esp_lcd_panel_io_i2c_config_t io_config = {
         .dev_addr = DISPLAY_SSD1306_I2C_ADDR,
         .scl_speed_hz = DISPLAY_SSD1306_I2C_SPEED,
-        .control_phase_bytes = 1,
-        .dc_bit_offset = 6,
-        .lcd_cmd_bits = 8,
-        .lcd_param_bits = 8,
+        .control_phase_bytes = I2C_CONTROL_PHASE_BYTES,
+        .dc_bit_offset = I2C_DC_BIT_OFFSET,
+        .lcd_cmd_bits = LCD_CMD_BITS,
+        .lcd_param_bits = LCD_PARAM_BITS,
     };
     
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c(i2c_bus, &io_config, &config->io_handle));

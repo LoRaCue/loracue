@@ -4,6 +4,7 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
+#include "lvgl.h"
 #include "sdkconfig.h"
 
 #ifdef __cplusplus
@@ -39,6 +40,21 @@ extern "C" {
 // BSP stub constants
 #define BSP_STUB_BATTERY_VOLTAGE    4.2f
 #define BSP_STUB_SERIAL_PREFIX      "STUB"
+
+// I2C/SPI configuration constants
+#define LCD_CMD_BITS                8
+#define LCD_PARAM_BITS              8
+#define I2C_CONTROL_PHASE_BYTES     1
+#define I2C_DC_BIT_OFFSET           6
+#define SPI_MODE                    0
+
+// Helper: Convert LVGL area (inclusive) to esp_lcd coords (exclusive)
+static inline void area_to_lcd_coords(const lv_area_t *area, int *x1, int *y1, int *x2, int *y2) {
+    *x1 = area->x1;
+    *y1 = area->y1;
+    *x2 = area->x2 + 1;
+    *y2 = area->y2 + 1;
+}
 
 // Board type helper macro
 #if defined(CONFIG_BOARD_LILYGO_T5) || defined(CONFIG_BOARD_LILYGO_T3)
@@ -82,6 +98,15 @@ typedef struct {
     esp_lcd_panel_io_handle_t io_handle;  ///< Panel I/O handle (for LVGL callbacks)
     epaper_state_t *epaper_state;         // cppcheck-suppress unusedStructMember
 } display_config_t;
+
+/**
+ * @brief Common LVGL flush callback for all display types
+ * 
+ * @param disp LVGL display object
+ * @param area Area to flush
+ * @param px_map Pixel data
+ */
+void display_lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
 
 /**
  * @brief Initialize display subsystem

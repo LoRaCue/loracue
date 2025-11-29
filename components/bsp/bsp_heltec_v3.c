@@ -50,6 +50,12 @@ static const char *TAG = "BSP_HELTEC_V3";
 #define ADC_BITWIDTH            ADC_BITWIDTH_12
 #define ADC_ATTENUATION         ADC_ATTEN_DB_12
 
+// Battery monitoring constants
+#define ADC_MAX_VALUE           4095.0f
+#define ADC_VREF                3.3f
+#define BATTERY_VOLTAGE_DIVIDER 4.9f
+#define BATTERY_ADC_SAMPLES     8
+
 // Static handles
 static adc_oneshot_unit_handle_t adc_handle = NULL;
 static spi_device_handle_t spi_handle       = NULL;
@@ -352,10 +358,9 @@ float bsp_read_battery(void)
     vTaskDelay(pdMS_TO_TICKS(10)); // Wait for stabilization
 
     // Take multiple readings and average
-    int adc_sum           = 0;
-    const int num_samples = 8;
+    int adc_sum = 0;
 
-    for (int i = 0; i < num_samples; i++) {
+    for (int i = 0; i < BATTERY_ADC_SAMPLES; i++) {
         int adc_raw;
         esp_err_t ret = adc_oneshot_read(adc_handle, ADC_CHANNEL_0, &adc_raw);
         if (ret == ESP_OK) {
@@ -367,10 +372,9 @@ float bsp_read_battery(void)
     // Disable voltage divider to save power
     gpio_set_level(BATTERY_CTRL_PIN, 0);
 
-    // Calculate voltage: ADC_raw/4095 * 3.3V * voltage_divider_ratio
-    // Voltage divider: 390kΩ + 100kΩ = 4.9x multiplier
-    float adc_avg = (float)adc_sum / num_samples;
-    float voltage = (adc_avg / 4095.0f) * 3.3f * 4.9f;
+    // Calculate voltage: ADC_raw/ADC_MAX * VREF * voltage_divider_ratio
+    float adc_avg = (float)adc_sum / BATTERY_ADC_SAMPLES;
+    float voltage = (adc_avg / ADC_MAX_VALUE) * ADC_VREF * BATTERY_VOLTAGE_DIVIDER;
 
     ESP_LOGD(TAG, "Battery voltage: %.2fV (ADC: %.0f)", voltage, adc_avg);
     return voltage;
@@ -531,24 +535,4 @@ void *bsp_get_spi_device(void)
 const bsp_epaper_pins_t *bsp_get_epaper_pins(void)
 {
     return NULL; // Not applicable for OLED
-}
-
-int bsp_get_epaper_dc_pin(void)
-{
-    return GPIO_NUM_NC;
-}
-
-int bsp_get_epaper_cs_pin(void)
-{
-    return GPIO_NUM_NC;
-}
-
-int bsp_get_epaper_rst_pin(void)
-{
-    return GPIO_NUM_NC;
-}
-
-int bsp_get_epaper_busy_pin(void)
-{
-    return GPIO_NUM_NC;
 }

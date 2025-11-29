@@ -266,6 +266,12 @@ typedef struct {
 #define BSP_STUB_RETURN(name, ret_type, ret_val, ...) \
     ret_type name(__VA_ARGS__) { return ret_val; }
 
+#define BSP_STUB_SERIAL_NUMBER(name) \
+    esp_err_t name(char *serial_number, size_t max_len) { \
+        snprintf(serial_number, max_len, "%s-000000", BSP_STUB_SERIAL_PREFIX); \
+        return ESP_OK; \
+    }
+
 /**
  * @brief Get USB configuration for this board
  *
@@ -392,34 +398,6 @@ i2c_master_bus_handle_t bsp_get_i2c_bus(void);
  * @return SPI device handle or NULL if not available
  */
 void *bsp_get_spi_device(void);
-
-/**
- * @brief Get E-Paper DC pin
- *
- * @return GPIO pin number or -1 if not available
- */
-int bsp_get_epaper_dc_pin(void);
-
-/**
- * @brief Get E-Paper CS pin
- *
- * @return GPIO pin number or -1 if not available
- */
-int bsp_get_epaper_cs_pin(void);
-
-/**
- * @brief Get E-Paper RST pin
- *
- * @return GPIO pin number or -1 if not available
- */
-int bsp_get_epaper_rst_pin(void);
-
-/**
- * @brief Get E-Paper BUSY pin
- *
- * @return GPIO pin number or -1 if not available
- */
-int bsp_get_epaper_busy_pin(void);
 
 #ifdef __cplusplus
 }
