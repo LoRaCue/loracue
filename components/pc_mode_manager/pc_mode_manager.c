@@ -4,6 +4,7 @@
  */
 
 #include "pc_mode_manager.h"
+#include "common_types.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -13,6 +14,10 @@
 #include <string.h>
 
 static const char *TAG = "PC_MODE_MGR";
+
+// Rate limiter and presenter tracking constants
+#define RATE_LIMIT_MAX_COMMANDS_PER_SEC 10
+#define PRESENTER_EXPIRY_TIMEOUT_MS     30000  // 30 seconds
 
 // Active presenter tracking
 typedef struct {
@@ -42,7 +47,7 @@ static bool rate_limiter_check(void)
         rate_limiter.command_count_1s = 0;
     }
 
-    if (rate_limiter.command_count_1s >= 10) {
+    if (rate_limiter.command_count_1s >= RATE_LIMIT_MAX_COMMANDS_PER_SEC) {
         return false;
     }
 
@@ -70,7 +75,7 @@ static void update_active_presenter(uint16_t device_id, int16_t rssi)
     // Expire old entries (>30s)
     for (int i = 0; i < MAX_ACTIVE_PRESENTERS; i++) {
         if (active_presenters[i].device_id != 0 && 
-            (now - active_presenters[i].last_seen_ms) > 30000) {
+            (now - active_presenters[i].last_seen_ms) > PRESENTER_EXPIRY_TIMEOUT_MS) {
             ESP_LOGI(TAG, "Presenter 0x%04X expired", active_presenters[i].device_id);
             memset(&active_presenters[i], 0, sizeof(active_presenter_t));
         }
@@ -86,10 +91,7 @@ static void update_active_presenter(uint16_t device_id, int16_t rssi)
 
 esp_err_t pc_mode_manager_init(void)
 {
-    state_mutex = xSemaphoreCreateMutex();
-    if (!state_mutex) {
-        return ESP_ERR_NO_MEM;
-    }
+    CREATE_MUTEX_OR_FAIL(state_mutex);
     
     ESP_LOGI(TAG, "PC mode manager initialized");
     return ESP_OK;

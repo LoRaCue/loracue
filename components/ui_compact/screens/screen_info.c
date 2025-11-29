@@ -130,15 +130,8 @@ void screen_device_info_create(lv_obj_t *parent)
         }
 
         // Battery info
-        float voltage = bsp_read_battery();
-        uint8_t percentage;
-        if (voltage >= 4.2f) {
-            percentage = 100;
-        } else if (voltage <= 3.0f) {
-            percentage = 0;
-        } else {
-            percentage = (uint8_t)((voltage - 3.0f) / 1.2f * 100);
-        }
+        float voltage      = bsp_read_battery();
+        uint8_t percentage = bsp_battery_voltage_to_percentage(voltage);
         snprintf(device_lines_buffer[idx], 64, "Battery: %u%% (%.1fV)", percentage, voltage);
         device_lines[idx] = device_lines_buffer[idx];
         idx++;
@@ -170,15 +163,8 @@ void screen_battery_status_create(lv_obj_t *parent)
     lv_obj_set_style_bg_color(parent, lv_color_black(), 0);
 
     if (!battery_viewer) {
-        float voltage = bsp_read_battery();
-        uint8_t percentage;
-        if (voltage >= 4.2f) {
-            percentage = 100;
-        } else if (voltage <= 3.0f) {
-            percentage = 0;
-        } else {
-            percentage = (uint8_t)((voltage - 3.0f) / 1.2f * 100);
-        }
+        float voltage      = bsp_read_battery();
+        uint8_t percentage = bsp_battery_voltage_to_percentage(voltage);
 
         const char *health = voltage < 3.2f ? "Critical" : voltage < 3.5f ? "Low" : "Good";
 

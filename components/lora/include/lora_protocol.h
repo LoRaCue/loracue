@@ -23,6 +23,12 @@ extern "C" {
 #define LORA_PAYLOAD_MAX_SIZE 7
 #define LORA_MAC_SIZE 4
 
+// Connection monitoring constants
+#define LORA_CONNECTION_TIMEOUT_US      30000000  ///< 30 seconds without packets = connection lost
+#define LORA_RSSI_EXCELLENT_THRESHOLD   -70       ///< RSSI > -70 dBm = excellent
+#define LORA_RSSI_GOOD_THRESHOLD        -85       ///< RSSI > -85 dBm = good
+#define LORA_RSSI_WEAK_THRESHOLD        -100      ///< RSSI > -100 dBm = weak
+
 // Protocol macros
 #define LORA_PROTOCOL_VERSION 0x01
 #define LORA_DEFAULT_SLOT 1
@@ -169,6 +175,37 @@ typedef enum {
     LORA_CONNECTION_LOST      = 4  ///< No packets received recently
 } lora_connection_state_t;
 
+// Forward declaration for signal_strength_t (defined in ui_compact_statusbar.h)
+// Include ui_compact_statusbar.h if you need to use lora_connection_to_signal_strength()
+#ifndef SIGNAL_STRENGTH_T_DEFINED
+typedef enum {
+    SIGNAL_NONE   = 0,
+    SIGNAL_WEAK   = 1,
+    SIGNAL_FAIR   = 2,
+    SIGNAL_GOOD   = 3,
+    SIGNAL_STRONG = 4
+} signal_strength_t;
+#define SIGNAL_STRENGTH_T_DEFINED
+#endif
+
+/**
+ * @brief Convert LoRa connection state to signal strength
+ *
+ * @param state LoRa connection state
+ * @return Signal strength for UI display
+ */
+static inline signal_strength_t lora_connection_to_signal_strength(lora_connection_state_t state)
+{
+    switch (state) {
+        case LORA_CONNECTION_EXCELLENT: return SIGNAL_STRONG;
+        case LORA_CONNECTION_GOOD:      return SIGNAL_GOOD;
+        case LORA_CONNECTION_WEAK:      return SIGNAL_FAIR;
+        case LORA_CONNECTION_POOR:      return SIGNAL_WEAK;
+        case LORA_CONNECTION_LOST:
+        default:                        return SIGNAL_NONE;
+    }
+}
+
 /**
  * @brief LoRa connection state callback
  * @param state New connection state
@@ -189,13 +226,6 @@ lora_connection_state_t lora_protocol_get_connection_state(void);
  * @return RSSI in dBm, or 0 if no recent packets
  */
 int16_t lora_protocol_get_last_rssi(void);
-
-/**
- * @brief Start RSSI monitoring task
- *
- * @return ESP_OK on success
- */
-esp_err_t lora_protocol_start_rssi_monitor(void);
 
 /**
  * @brief Connection statistics

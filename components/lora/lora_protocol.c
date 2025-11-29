@@ -7,6 +7,7 @@
  */
 
 #include "lora_protocol.h"
+#include "common_types.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "esp_random.h"
@@ -19,6 +20,7 @@
 #include "mbedtls/aes.h"
 #include "mbedtls/md.h"
 #include "power_mgmt.h"
+#include "task_config.h"
 #include <string.h>
 
 static const char *TAG = "LORA_PROTOCOL";
@@ -35,11 +37,9 @@ static uint16_t local_device_id  = 0;
 static uint16_t sequence_counter = 0;
 static uint8_t local_device_key[32]; // Local device's AES-256 key
 
-// RSSI monitoring variables
-static int16_t last_rssi                     = 0;
-static uint64_t last_packet_time             = 0;
-static TaskHandle_t rssi_monitor_task_handle = NULL;
-static bool rssi_monitor_running             = false;
+// RSSI monitoring variables (event-driven, updated on packet reception)
+static int16_t last_rssi         = 0;
+static uint64_t last_packet_time = 0;
 
 // Connection statistics
 static lora_connection_stats_t connection_stats = {0};
@@ -165,10 +165,7 @@ static esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_
 
 esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_t keycode)
 {
-    if (!protocol_initialized) {
-        ESP_LOGE(TAG, "Protocol not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
 
     ESP_LOGI(TAG, "Sending keyboard (unreliable): slot=%d mod=0x%02X key=0x%02X", slot_id, modifiers, keycode);
 
@@ -187,10 +184,7 @@ esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_
 esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifiers, uint8_t keycode, uint32_t timeout_ms,
                                                uint8_t max_retries)
 {
-    if (!protocol_initialized) {
-        ESP_LOGE(TAG, "Protocol not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
 
     ESP_LOGI(TAG, "Sending keyboard (reliable): slot=%d mod=0x%02X key=0x%02X timeout=%lums retries=%d", 
              slot_id, modifiers, keycode, timeout_ms, max_retries);
@@ -211,10 +205,7 @@ esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifier
 esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
                                       uint32_t timeout_ms, uint8_t max_retries)
 {
-    if (!protocol_initialized) {
-        ESP_LOGE(TAG, "Protocol not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
 
     for (uint8_t attempt = 0; attempt <= max_retries; attempt++) {
         // Capture sequence number that will be sent
@@ -267,10 +258,7 @@ esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *pay
 
 esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t timeout_ms)
 {
-    if (!protocol_initialized) {
-        ESP_LOGE(TAG, "Protocol not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
 
     uint8_t rx_buffer[LORA_PACKET_MAX_SIZE];
     size_t received_length;
@@ -298,15 +286,6 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
     }
 
     ESP_LOGI(TAG, "Device 0x%04X found in registry: %s", packet->device_id, sender_device.device_name);
-    ESP_LOGI(TAG, "AES Key: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-             sender_device.aes_key[0], sender_device.aes_key[1], sender_device.aes_key[2], sender_device.aes_key[3],
-             sender_device.aes_key[4], sender_device.aes_key[5], sender_device.aes_key[6], sender_device.aes_key[7],
-             sender_device.aes_key[8], sender_device.aes_key[9], sender_device.aes_key[10], sender_device.aes_key[11],
-             sender_device.aes_key[12], sender_device.aes_key[13], sender_device.aes_key[14], sender_device.aes_key[15],
-             sender_device.aes_key[16], sender_device.aes_key[17], sender_device.aes_key[18], sender_device.aes_key[19],
-             sender_device.aes_key[20], sender_device.aes_key[21], sender_device.aes_key[22], sender_device.aes_key[23],
-             sender_device.aes_key[24], sender_device.aes_key[25], sender_device.aes_key[26], sender_device.aes_key[27],
-             sender_device.aes_key[28], sender_device.aes_key[29], sender_device.aes_key[30], sender_device.aes_key[31]);
 
     // Verify MAC using sender's key
     uint8_t mac_data[18]; // 2 + 16 bytes
@@ -391,7 +370,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
         ESP_LOGW(TAG, "Duplicate packet from 0x%04X: seq %d", packet_data->device_id, packet_data->sequence_num);
         return ESP_ERR_INVALID_STATE;
 
-    } else if (seq_diff > -64) {
+    } else if (seq_diff > -32) {
         // Within recent window (out-of-order packet)
         uint8_t bit_pos = -seq_diff;
         if (sender_device.recent_bitmap & (1ULL << bit_pos)) {
@@ -405,7 +384,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
                  packet_data->sequence_num);
 
     } else {
-        // Too old (>64 packets behind), likely reboot or major packet loss
+        // Too old (>32 packets behind), likely reboot or major packet loss
         ESP_LOGI(TAG, "Very old packet from 0x%04X (seq %d vs %d), accepting as reboot", packet_data->device_id,
                  packet_data->sequence_num, sender_device.highest_sequence);
         sender_device.highest_sequence = packet_data->sequence_num;
@@ -461,17 +440,17 @@ lora_connection_state_t lora_protocol_get_connection_state(void)
     uint64_t now                    = esp_timer_get_time();
     uint64_t time_since_last_packet = now - last_packet_time;
 
-    // Connection lost if no packets for 30 seconds
-    if (time_since_last_packet > 30000000) {
+    // Connection lost if no packets for configured timeout
+    if (time_since_last_packet > LORA_CONNECTION_TIMEOUT_US) {
         return LORA_CONNECTION_LOST;
     }
 
     // Evaluate based on RSSI
-    if (last_rssi > -70) {
+    if (last_rssi > LORA_RSSI_EXCELLENT_THRESHOLD) {
         return LORA_CONNECTION_EXCELLENT;
-    } else if (last_rssi > -85) {
+    } else if (last_rssi > LORA_RSSI_GOOD_THRESHOLD) {
         return LORA_CONNECTION_GOOD;
-    } else if (last_rssi > -100) {
+    } else if (last_rssi > LORA_RSSI_WEAK_THRESHOLD) {
         return LORA_CONNECTION_WEAK;
     } else {
         return LORA_CONNECTION_POOR;
@@ -481,47 +460,6 @@ lora_connection_state_t lora_protocol_get_connection_state(void)
 int16_t lora_protocol_get_last_rssi(void)
 {
     return last_rssi;
-}
-
-static void rssi_monitor_task(void *pvParameters)
-{
-    ESP_LOGI(TAG, "RSSI monitor task started");
-
-    while (rssi_monitor_running) {
-        lora_connection_state_t state = lora_protocol_get_connection_state();
-
-        // Log connection quality changes
-        static lora_connection_state_t last_state = LORA_CONNECTION_LOST;
-        if (state != last_state) {
-            const char *state_names[] = {"EXCELLENT", "GOOD", "WEAK", "POOR", "LOST"};
-            ESP_LOGI(TAG, "Connection state: %s (RSSI: %d dBm)", state_names[state], last_rssi);
-            last_state = state;
-        }
-
-        vTaskDelay(pdMS_TO_TICKS(5000)); // Check every 5 seconds
-    }
-
-    ESP_LOGI(TAG, "RSSI monitor task stopped");
-    vTaskDelete(NULL);
-}
-
-esp_err_t lora_protocol_start_rssi_monitor(void)
-{
-    if (rssi_monitor_running) {
-        return ESP_OK;
-    }
-
-    rssi_monitor_running = true;
-    BaseType_t ret       = xTaskCreate(rssi_monitor_task, "lora_rssi", 3072, NULL, 3, &rssi_monitor_task_handle);
-
-    if (ret != pdPASS) {
-        ESP_LOGE(TAG, "Failed to create RSSI monitor task");
-        rssi_monitor_running = false;
-        return ESP_FAIL;
-    }
-
-    ESP_LOGI(TAG, "RSSI monitor started");
-    return ESP_OK;
 }
 
 esp_err_t lora_protocol_get_stats(lora_connection_stats_t *stats)
@@ -598,7 +536,9 @@ static void protocol_rx_task(void *arg)
                 ESP_LOGD(TAG, "RX task: callback completed");
             }
             
-            // Check for state change
+            // Event-driven connection state monitoring (replaces polling task)
+            // RSSI and last_packet_time are updated in lora_protocol_receive_packet()
+            // State callback is invoked immediately when connection quality changes
             lora_connection_state_t state = lora_protocol_get_connection_state();
             if (state != last_connection_state) {
                 last_connection_state = state;
@@ -632,9 +572,9 @@ esp_err_t lora_protocol_start(void)
     BaseType_t ret = xTaskCreate(
         protocol_rx_task,
         "protocol_rx",
-        3072,
+        TASK_STACK_SIZE_MEDIUM,
         NULL,
-        5,
+        TASK_PRIORITY_NORMAL,
         &protocol_rx_task_handle
     );
     

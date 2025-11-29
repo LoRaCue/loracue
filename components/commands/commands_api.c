@@ -13,7 +13,7 @@
 static const char *TAG = "CMD_API";
 
 // External dependency (weakly linked or header included)
-extern esp_err_t ui_data_provider_reload_config(void);
+extern esp_err_t ui_data_provider_reload_config(void) __attribute__((weak));
 
 esp_err_t cmd_get_general_config(general_config_t *config) {
     return general_config_get(config);
@@ -119,6 +119,10 @@ esp_err_t cmd_set_lora_config(const lora_config_t *config) {
 }
 
 esp_err_t cmd_set_lora_key(const uint8_t key[32]) {
+    if (!key) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
     lora_config_t config;
     esp_err_t ret = lora_get_config(&config);
     if (ret != ESP_OK) return ret;
@@ -128,11 +132,19 @@ esp_err_t cmd_set_lora_key(const uint8_t key[32]) {
 }
 
 esp_err_t cmd_pair_device(const char *name, const uint8_t mac[6], const uint8_t aes_key[32]) {
+    if (!name || !mac || !aes_key) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
     uint16_t device_id = (mac[4] << 8) | mac[5];
     return device_registry_add(device_id, name, mac, aes_key);
 }
 
 esp_err_t cmd_unpair_device(const uint8_t mac[6]) {
+    if (!mac) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    
     uint16_t device_id = (mac[4] << 8) | mac[5];
     return device_registry_remove(device_id);
 }

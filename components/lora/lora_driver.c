@@ -17,6 +17,7 @@
 #include "lora_bands.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "task_config.h"
 #include <string.h>
 #include "sx126x.h"
 
@@ -53,6 +54,28 @@ static lora_config_t current_config = {
     .tx_power         = 14,        // 14dBm
     .band_id          = "HW_868"   // Default to 868 MHz band
 };
+
+/**
+ * @brief Convert bandwidth kHz value to SX1262 register value
+ * @param bandwidth Bandwidth in kHz
+ * @return SX1262 register value
+ */
+static uint8_t lora_bandwidth_to_register(uint16_t bandwidth)
+{
+    switch (bandwidth) {
+        case 7:   return 0x00;  // 7.8 kHz
+        case 10:  return 0x08;  // 10.4 kHz
+        case 15:  return 0x01;  // 15.6 kHz
+        case 20:  return 0x09;  // 20.8 kHz
+        case 31:  return 0x02;  // 31.25 kHz
+        case 41:  return 0x0A;  // 41.7 kHz
+        case 62:  return 0x03;  // 62.5 kHz
+        case 125: return 0x04;  // 125.0 kHz
+        case 250: return 0x05;  // 250.0 kHz
+        case 500: return 0x06;  // 500.0 kHz
+        default:  return 0x04;  // Default to 125 kHz
+    }
+}
 
 // TX task - processes queue and transmits packets
 static void lora_tx_task(void *arg)
@@ -155,20 +178,7 @@ esp_err_t lora_driver_init(void)
     }
 
     // Convert bandwidth kHz to SX1262 register value
-    uint8_t bw_reg;
-    switch (current_config.bandwidth) {
-        case 7:   bw_reg = 0x00; break;  // 7.8 kHz
-        case 10:  bw_reg = 0x08; break;  // 10.4 kHz
-        case 15:  bw_reg = 0x01; break;  // 15.6 kHz
-        case 20:  bw_reg = 0x09; break;  // 20.8 kHz
-        case 31:  bw_reg = 0x02; break;  // 31.25 kHz
-        case 41:  bw_reg = 0x0A; break;  // 41.7 kHz
-        case 62:  bw_reg = 0x03; break;  // 62.5 kHz
-        case 125: bw_reg = 0x04; break;  // 125.0 kHz
-        case 250: bw_reg = 0x05; break;  // 250.0 kHz
-        case 500: bw_reg = 0x06; break;  // 500.0 kHz
-        default:  bw_reg = 0x04; break;  // Default to 125 kHz
-    }
+    uint8_t bw_reg = lora_bandwidth_to_register(current_config.bandwidth);
 
     // Configure LoRa parameters
     ret = sx126x_config(current_config.spreading_factor, // Spreading factor
@@ -185,12 +195,12 @@ esp_err_t lora_driver_init(void)
         return ret;
     }
 
-    // Set private network sync word (0x1424)
-    SetSyncWord(0x1424);
+    // Set private network sync word
+    SetSyncWord(LORA_PRIVATE_SYNC_WORD);
 
     // Create TX task
-    BaseType_t task_ret = xTaskCreate(lora_tx_task, "lora_tx", 3072, NULL,
-                                      5, // Priority
+    BaseType_t task_ret = xTaskCreate(lora_tx_task, "lora_tx", TASK_STACK_SIZE_MEDIUM, NULL,
+                                      TASK_PRIORITY_NORMAL,
                                       &tx_task_handle);
 
     if (task_ret != pdPASS) {
@@ -199,8 +209,8 @@ esp_err_t lora_driver_init(void)
     }
 
     // Create RX task
-    task_ret = xTaskCreate(lora_rx_task, "lora_rx", 3072, NULL,
-                           5, // Priority
+    task_ret = xTaskCreate(lora_rx_task, "lora_rx", TASK_STACK_SIZE_MEDIUM, NULL,
+                           TASK_PRIORITY_NORMAL,
                            &rx_task_handle);
 
     if (task_ret != pdPASS) {
@@ -362,20 +372,7 @@ esp_err_t lora_set_config(const lora_config_t *config)
     }
 
     // Convert bandwidth kHz to SX1262 register value
-    uint8_t bw_reg;
-    switch (config->bandwidth) {
-        case 7:   bw_reg = 0x00; break;  // 7.8 kHz
-        case 10:  bw_reg = 0x08; break;  // 10.4 kHz
-        case 15:  bw_reg = 0x01; break;  // 15.6 kHz
-        case 20:  bw_reg = 0x09; break;  // 20.8 kHz
-        case 31:  bw_reg = 0x02; break;  // 31.25 kHz
-        case 41:  bw_reg = 0x0A; break;  // 41.7 kHz
-        case 62:  bw_reg = 0x03; break;  // 62.5 kHz
-        case 125: bw_reg = 0x04; break;  // 125.0 kHz
-        case 250: bw_reg = 0x05; break;  // 250.0 kHz
-        case 500: bw_reg = 0x06; break;  // 500.0 kHz
-        default:  bw_reg = 0x04; break;  // Default to 125 kHz
-    }
+    uint8_t bw_reg = lora_bandwidth_to_register(config->bandwidth);
 
     // Update LoRa parameters
     init_ret = sx126x_config(config->spreading_factor, // Spreading factor
@@ -392,8 +389,8 @@ esp_err_t lora_set_config(const lora_config_t *config)
         return init_ret;
     }
 
-    // Set private network sync word (0x1424)
-    SetSyncWord(0x1424);
+    // Set private network sync word
+    SetSyncWord(LORA_PRIVATE_SYNC_WORD);
 
     // Return to receive mode
     SetRx(0);

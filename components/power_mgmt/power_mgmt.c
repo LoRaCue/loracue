@@ -31,19 +31,21 @@ static uint64_t last_activity_time   = 0;
 static uint64_t session_start_time   = 0;
 static bool display_sleeping         = false;
 
+// Default timeout constants
+#define POWER_MGMT_DEFAULT_DISPLAY_SLEEP_MS  10000   // 10 seconds
+#define POWER_MGMT_DEFAULT_LIGHT_SLEEP_MS    30000   // 30 seconds
+#define POWER_MGMT_DEFAULT_DEEP_SLEEP_MS     300000  // 5 minutes
+
 // Default configuration
 static const power_config_t default_config = {
-    .display_sleep_timeout_ms  = 10000,  // 10 seconds
-    .light_sleep_timeout_ms    = 30000,  // 30 seconds
-    .deep_sleep_timeout_ms     = 300000, // 5 minutes
+    .display_sleep_timeout_ms  = POWER_MGMT_DEFAULT_DISPLAY_SLEEP_MS,
+    .light_sleep_timeout_ms    = POWER_MGMT_DEFAULT_LIGHT_SLEEP_MS,
+    .deep_sleep_timeout_ms     = POWER_MGMT_DEFAULT_DEEP_SLEEP_MS,
     .enable_auto_display_sleep = true,
     .enable_auto_light_sleep   = true,
     .enable_auto_deep_sleep    = true,
     .cpu_freq_mhz              = 80, // 80MHz for power efficiency
 };
-
-// GPIO pins for wake (button)
-#define WAKE_GPIO_BUTTON 0 // User button on Heltec V3
 
 esp_err_t power_mgmt_init(const power_config_t *config)
 {
@@ -75,11 +77,11 @@ esp_err_t power_mgmt_init(const power_config_t *config)
     }
 
     // Configure GPIO wake sources (button)
-    esp_sleep_enable_ext0_wakeup(WAKE_GPIO_BUTTON, 0); // Wake on LOW (button pressed)
+    esp_sleep_enable_ext0_wakeup(BSP_GPIO_BUTTON_WAKE, 0); // Wake on LOW (button pressed)
 
     // Configure GPIO pin for wake
     gpio_config_t wake_gpio_config = {
-        .pin_bit_mask = (1ULL << WAKE_GPIO_BUTTON),
+        .pin_bit_mask = (1ULL << BSP_GPIO_BUTTON_WAKE),
         .mode         = GPIO_MODE_INPUT,
         .pull_up_en   = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -156,8 +158,8 @@ esp_err_t power_mgmt_light_sleep(uint32_t timeout_ms)
         esp_sleep_enable_timer_wakeup(timeout_ms * 1000ULL);
     }
     
-    // Enable button wake (GPIO0)
-    esp_sleep_enable_ext0_wakeup(WAKE_GPIO_BUTTON, 0);
+    // Enable button wake
+    esp_sleep_enable_ext0_wakeup(BSP_GPIO_BUTTON_WAKE, 0);
     
     // Enable UART wake
     esp_sleep_enable_uart_wakeup(UART_NUM_0);
@@ -198,8 +200,8 @@ esp_err_t power_mgmt_deep_sleep(uint32_t timeout_ms)
         esp_sleep_enable_timer_wakeup(timeout_ms * 1000ULL);
     }
     
-    // Enable button wake (GPIO0)
-    esp_sleep_enable_ext0_wakeup(WAKE_GPIO_BUTTON, 0);
+    // Enable button wake
+    esp_sleep_enable_ext0_wakeup(BSP_GPIO_BUTTON_WAKE, 0);
 
     // Enter deep sleep (function doesn't return)
     esp_deep_sleep_start();

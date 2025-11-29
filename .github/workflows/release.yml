@@ -453,7 +453,7 @@ jobs:
         OTHER=$(git log $COMMIT_RANGE --pretty=format:"%s" --no-merges | grep -vE "^(feat|fix|docs|perf|refactor)(\(.+\))?:" | sed 's/^/- /' || echo "")
         
         # Detect breaking changes (BREAKING CHANGE: or ! in commit)
-        BREAKING=$(git log $COMMIT_RANGE --pretty=format:"%s%n%b" --no-merges | grep -A 10 -E "(^[a-z]+(\(.+\))?!:|BREAKING CHANGE:)" | grep -v "^--$" | sed 's/^/- /' || echo "")
+        BREAKING=$(git log $COMMIT_RANGE --pretty=format:"%s%n%b" --no-merges | grep -A 10 -E "(^[a-z]+(\(.+\))?!:|BREAKING CHANGE:)" | grep -v "^--$" || echo "")
         
         # Build changelog
         CHANGELOG=""
@@ -598,13 +598,13 @@ jobs:
         name: LoRaCue v${{ needs.version.outputs.version }}
         body: |
           ${{ needs.generate-changelog.outputs.breaking_changes != '' && format('# ⚠️ BREAKING CHANGES
-
+          
           {0}
-
+          
           ', needs.generate-changelog.outputs.breaking_changes) || '' }}${{ needs.generate-changelog.outputs.known_issues != '' && format('# 🐛 Known Issues
-
+          
           {0}
-
+          
           ', needs.generate-changelog.outputs.known_issues) || '' }}
           # 📦 Product Models
           

@@ -31,34 +31,11 @@ void ui_compact_get_status(statusbar_data_t *status)
 
     // Get LoRa signal strength
     lora_connection_state_t conn_state = lora_protocol_get_connection_state();
-    switch (conn_state) {
-        case LORA_CONNECTION_EXCELLENT:
-            status->signal_strength = SIGNAL_STRONG;
-            break;
-        case LORA_CONNECTION_GOOD:
-            status->signal_strength = SIGNAL_GOOD;
-            break;
-        case LORA_CONNECTION_WEAK:
-            status->signal_strength = SIGNAL_FAIR;
-            break;
-        case LORA_CONNECTION_POOR:
-            status->signal_strength = SIGNAL_WEAK;
-            break;
-        case LORA_CONNECTION_LOST:
-        default:
-            status->signal_strength = SIGNAL_NONE;
-            break;
-    }
+    status->signal_strength            = lora_connection_to_signal_strength(conn_state);
 
     // Get battery level from BSP (convert voltage to percentage)
-    float battery_voltage = bsp_read_battery();
-    if (battery_voltage >= 4.2f) {
-        status->battery_level = 100;
-    } else if (battery_voltage <= 3.0f) {
-        status->battery_level = 0;
-    } else {
-        status->battery_level = (uint8_t)((battery_voltage - 3.0f) / 1.2f * 100);
-    }
+    float battery_voltage     = bsp_read_battery();
+    status->battery_level = bsp_battery_voltage_to_percentage(battery_voltage);
 
     status->device_name = cached_config.device_name;
 }
@@ -110,29 +87,38 @@ esp_err_t ui_compact_init(void)
     ui_navigator_set_screen_change_callback(on_navigator_screen_change);
 
     // Register Screens
-    ui_navigator_register_screen(UI_SCREEN_BOOT, screen_boot_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_MAIN, screen_main_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_PC_MODE, screen_pc_mode_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_MENU, screen_menu_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_PAIRING, screen_pairing_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_DEVICE_REGISTRY, screen_device_registry_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_CONFIG_MODE, screen_config_mode_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_DEVICE_INFO, screen_device_info_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_SYSTEM_INFO, screen_system_info_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_BATTERY, screen_battery_status_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_BLUETOOTH, screen_bluetooth_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_BRIGHTNESS, screen_brightness_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_SLOT, screen_slot_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_DEVICE_MODE, screen_device_mode_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_FACTORY_RESET, screen_factory_reset_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_LORA_FREQUENCY, screen_lora_frequency_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_LORA_BW, screen_lora_bw_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_LORA_CR, screen_lora_cr_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_LORA_TXPOWER, screen_lora_txpower_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_LORA_BAND, screen_lora_band_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_LORA_PRESETS, screen_lora_presets_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_LORA_SF, screen_lora_sf_get_interface());
-    ui_navigator_register_screen(UI_SCREEN_LORA_SUBMENU, screen_lora_submenu_get_interface());
+    static const struct {
+        ui_screen_type_t type;
+        ui_screen_t *(*getter)(void);
+    } screen_registry[] = {
+        {UI_SCREEN_BOOT, screen_boot_get_interface},
+        {UI_SCREEN_MAIN, screen_main_get_interface},
+        {UI_SCREEN_PC_MODE, screen_pc_mode_get_interface},
+        {UI_SCREEN_MENU, screen_menu_get_interface},
+        {UI_SCREEN_PAIRING, screen_pairing_get_interface},
+        {UI_SCREEN_DEVICE_REGISTRY, screen_device_registry_get_interface},
+        {UI_SCREEN_CONFIG_MODE, screen_config_mode_get_interface},
+        {UI_SCREEN_DEVICE_INFO, screen_device_info_get_interface},
+        {UI_SCREEN_SYSTEM_INFO, screen_system_info_get_interface},
+        {UI_SCREEN_BATTERY, screen_battery_status_get_interface},
+        {UI_SCREEN_BLUETOOTH, screen_bluetooth_get_interface},
+        {UI_SCREEN_BRIGHTNESS, screen_brightness_get_interface},
+        {UI_SCREEN_SLOT, screen_slot_get_interface},
+        {UI_SCREEN_DEVICE_MODE, screen_device_mode_get_interface},
+        {UI_SCREEN_FACTORY_RESET, screen_factory_reset_get_interface},
+        {UI_SCREEN_LORA_FREQUENCY, screen_lora_frequency_get_interface},
+        {UI_SCREEN_LORA_BW, screen_lora_bw_get_interface},
+        {UI_SCREEN_LORA_CR, screen_lora_cr_get_interface},
+        {UI_SCREEN_LORA_TXPOWER, screen_lora_txpower_get_interface},
+        {UI_SCREEN_LORA_BAND, screen_lora_band_get_interface},
+        {UI_SCREEN_LORA_PRESETS, screen_lora_presets_get_interface},
+        {UI_SCREEN_LORA_SF, screen_lora_sf_get_interface},
+        {UI_SCREEN_LORA_SUBMENU, screen_lora_submenu_get_interface},
+    };
+
+    for (size_t i = 0; i < sizeof(screen_registry) / sizeof(screen_registry[0]); i++) {
+        ui_navigator_register_screen(screen_registry[i].type, screen_registry[i].getter());
+    }
 
     ESP_LOGI(TAG, "Compact UI initialized");
     return ESP_OK;

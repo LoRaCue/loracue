@@ -26,6 +26,14 @@ typedef enum {
 } bsp_button_t;
 
 /**
+ * @brief Wake source GPIO pin
+ * 
+ * This GPIO is used for waking from light/deep sleep modes.
+ * Typically mapped to the primary user button.
+ */
+#define BSP_GPIO_BUTTON_WAKE  0  ///< GPIO0 - User button (wake source)
+
+/**
  * @brief Display type enumeration
  */
 typedef enum {
@@ -125,6 +133,23 @@ bool bsp_read_button(bsp_button_t button);
  * @return Battery voltage in volts, or -1.0 on error
  */
 float bsp_read_battery(void);
+
+/**
+ * @brief Convert battery voltage to percentage
+ *
+ * @param voltage Battery voltage in volts
+ * @return Battery percentage (0-100)
+ */
+static inline uint8_t bsp_battery_voltage_to_percentage(float voltage)
+{
+    const float BATTERY_VOLTAGE_MAX   = 4.2f;
+    const float BATTERY_VOLTAGE_MIN   = 3.0f;
+    const float BATTERY_VOLTAGE_RANGE = 1.2f;
+
+    if (voltage >= BATTERY_VOLTAGE_MAX) return 100;
+    if (voltage <= BATTERY_VOLTAGE_MIN) return 0;
+    return (uint8_t)((voltage - BATTERY_VOLTAGE_MIN) / BATTERY_VOLTAGE_RANGE * 100);
+}
 
 /**
  * @brief Check if battery is currently charging

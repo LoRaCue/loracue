@@ -14,16 +14,18 @@
 #include "freertos/task.h"
 #include "led_manager.h"
 #include "power_mgmt.h"
+#include "task_config.h"
 #include <string.h>
 
 static const char *TAG = "BUTTON_MGR";
 
 // Timing constants (in milliseconds)
-#define DEBOUNCE_TIME_MS 50
-#define SHORT_PRESS_MAX_MS 500
+#define DEBOUNCE_TIME_MS       50
+#define SHORT_PRESS_MAX_MS     500
 #define DOUBLE_CLICK_WINDOW_MS 200
-#define LONG_PRESS_TIME_MS 1500
-#define INACTIVITY_TIMEOUT_MS 300000 // 5 minutes
+#define LONG_PRESS_TIME_MS     1500
+#define INACTIVITY_TIMEOUT_MS  300000  // 5 minutes
+#define LED_FADE_DURATION_MS   3000
 
 // Button manager state
 static TaskHandle_t button_task_handle = NULL;
@@ -63,7 +65,7 @@ static void button_manager_task(void *pvParameters)
         if (btn_pressed && !was_pressed) {
             led_manager_solid(true);
         } else if (!btn_pressed && was_pressed) {
-            led_manager_fade(3000);
+            led_manager_fade(LED_FADE_DURATION_MS);
         }
         was_pressed = btn_pressed;
 
@@ -189,9 +191,9 @@ esp_err_t button_manager_start(void)
     manager_running = true;
 
     BaseType_t ret = xTaskCreate(button_manager_task, "button_mgr",
-                                 4096, // Increased from 2048 to prevent stack overflow
+                                 TASK_STACK_SIZE_LARGE,  // UI task with power management logic
                                  NULL,
-                                 5, // Priority
+                                 TASK_PRIORITY_NORMAL,
                                  &button_task_handle);
 
     if (ret != pdPASS) {

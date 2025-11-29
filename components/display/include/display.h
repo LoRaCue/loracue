@@ -4,9 +4,17 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
+#include "sdkconfig.h"
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+// Board type helper macro
+#if defined(CONFIG_BOARD_LILYGO_T5) || defined(CONFIG_BOARD_LILYGO_T3)
+    #define IS_EPAPER_BOARD 1
+#else
+    #define IS_EPAPER_BOARD 0
 #endif
 
 /**

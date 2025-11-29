@@ -140,7 +140,7 @@ esp_err_t ota_engine_start(size_t firmware_size)
         return ESP_ERR_INVALID_STATE;
     }
 
-    if (firmware_size == 0 || firmware_size > 4 * 1024 * 1024) {
+    if (firmware_size == 0) {
         xSemaphoreGive(ota_mutex);
         return ESP_ERR_INVALID_SIZE;
     }
@@ -255,7 +255,7 @@ esp_err_t ota_engine_finish(void)
         // Convert calculated hash to hex string
         char calculated_hex[65];
         for (int i = 0; i < 32; i++) {
-            sprintf(&calculated_hex[i * 2], "%02x", calculated_hash[i]);
+            snprintf(&calculated_hex[i * 2], 3, "%02x", calculated_hash[i]);
         }
         calculated_hex[64] = '\0';
 
