@@ -37,13 +37,6 @@ python3 scripts/sign_firmware.py build/loracue.bin keys/firmware_private_ed25519
 python3 scripts/test_ed25519_signing.py
 ```
 
-## RSA-4096 Keys (Legacy)
-
-**Deprecated:** Replaced by Ed25519 for better performance and smaller signatures.
-
-- `firmware_public.pem` - RSA-4096 public key (512 bytes)
-- `firmware_private.pem` - RSA-4096 private key (gitignored)
-
 ## GitHub Secrets
 
 Store the private key in GitHub repository secrets:
@@ -60,5 +53,5 @@ The CI/CD workflow will use this to sign releases.
 - Public key is embedded in firmware at build time
 - Signatures are verified during OTA updates
 - Ed25519 provides 128-bit security (equivalent to RSA-3072)
-- Signature size: 64 bytes (vs 512 bytes for RSA-4096)
-- Verification time: ~0.5ms (vs ~50ms for RSA-4096)
+- Signature size: 64 bytes
+- Verification time: ~0.5ms
