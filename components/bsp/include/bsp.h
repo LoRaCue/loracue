@@ -26,6 +26,14 @@ typedef enum {
 } bsp_button_t;
 
 /**
+ * @brief Wake source GPIO pin
+ * 
+ * This GPIO is used for waking from light/deep sleep modes.
+ * Typically mapped to the primary user button.
+ */
+#define BSP_GPIO_BUTTON_WAKE  0  ///< GPIO0 - User button (wake source)
+
+/**
  * @brief Display type enumeration
  */
 typedef enum {

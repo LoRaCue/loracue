@@ -14,6 +14,7 @@
 #include "freertos/task.h"
 #include "led_manager.h"
 #include "power_mgmt.h"
+#include "task_config.h"
 #include <string.h>
 
 static const char *TAG = "BUTTON_MGR";
@@ -189,9 +190,9 @@ esp_err_t button_manager_start(void)
     manager_running = true;
 
     BaseType_t ret = xTaskCreate(button_manager_task, "button_mgr",
-                                 4096, // Increased from 2048 to prevent stack overflow
+                                 TASK_STACK_SIZE_LARGE,  // UI task with power management logic
                                  NULL,
-                                 5, // Priority
+                                 TASK_PRIORITY_NORMAL,
                                  &button_task_handle);
 
     if (ret != pdPASS) {

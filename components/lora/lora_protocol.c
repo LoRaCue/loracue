@@ -19,6 +19,7 @@
 #include "mbedtls/aes.h"
 #include "mbedtls/md.h"
 #include "power_mgmt.h"
+#include "task_config.h"
 #include <string.h>
 
 static const char *TAG = "LORA_PROTOCOL";
@@ -503,7 +504,8 @@ esp_err_t lora_protocol_start_rssi_monitor(void)
     }
 
     rssi_monitor_running = true;
-    BaseType_t ret       = xTaskCreate(rssi_monitor_task, "lora_rssi", 3072, NULL, 3, &rssi_monitor_task_handle);
+    BaseType_t ret = xTaskCreate(rssi_monitor_task, "lora_rssi", TASK_STACK_SIZE_MEDIUM, NULL,
+                                 TASK_PRIORITY_LOW, &rssi_monitor_task_handle);
 
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create RSSI monitor task");
@@ -623,9 +625,9 @@ esp_err_t lora_protocol_start(void)
     BaseType_t ret = xTaskCreate(
         protocol_rx_task,
         "protocol_rx",
-        3072,
+        TASK_STACK_SIZE_MEDIUM,
         NULL,
-        5,
+        TASK_PRIORITY_NORMAL,
         &protocol_rx_task_handle
     );
     

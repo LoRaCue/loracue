@@ -17,6 +17,7 @@
 #include "lora_bands.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "task_config.h"
 #include <string.h>
 #include "sx126x.h"
 
@@ -198,8 +199,8 @@ esp_err_t lora_driver_init(void)
     SetSyncWord(LORA_PRIVATE_SYNC_WORD);
 
     // Create TX task
-    BaseType_t task_ret = xTaskCreate(lora_tx_task, "lora_tx", 3072, NULL,
-                                      5, // Priority
+    BaseType_t task_ret = xTaskCreate(lora_tx_task, "lora_tx", TASK_STACK_SIZE_MEDIUM, NULL,
+                                      TASK_PRIORITY_NORMAL,
                                       &tx_task_handle);
 
     if (task_ret != pdPASS) {
@@ -208,8 +209,8 @@ esp_err_t lora_driver_init(void)
     }
 
     // Create RX task
-    task_ret = xTaskCreate(lora_rx_task, "lora_rx", 3072, NULL,
-                           5, // Priority
+    task_ret = xTaskCreate(lora_rx_task, "lora_rx", TASK_STACK_SIZE_MEDIUM, NULL,
+                           TASK_PRIORITY_NORMAL,
                            &rx_task_handle);
 
     if (task_ret != pdPASS) {
