@@ -138,6 +138,7 @@ jobs:
       with:
         esp_idf_version: ${{ env.ESP_IDF_VERSION }}
         target: ${{ matrix.model.target }}
+        command: echo "ESP-IDF environment ready"
     
     - name: Build firmware with make
       shell: bash
