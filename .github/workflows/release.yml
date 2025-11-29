@@ -127,15 +127,13 @@ jobs:
             target: "esp32s3"
             description: "Prototype with single onboard button"
             flash_size: "8MB"
-            sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha"
-          - name: "alpha-plus"
+          - name: "alpha+"
             display_name: "LC-Alpha+"
             board: "heltec_v3"
             board_name: "Heltec LoRa V3"
             target: "esp32s3"
             description: "Enhanced prototype with two separate buttons"
             flash_size: "8MB"
-            sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha_plus"
           # TODO: Enable when ui_rich component is complete
           # - name: "gamma"
           #   display_name: "LC-Gamma"
@@ -144,7 +142,6 @@ jobs:
           #   target: "esp32s3"
           #   description: "Professional with 4.7\" E-paper display and touch"
           #   flash_size: "16MB"
-          #   sdkconfig: "sdkconfig.defaults;sdkconfig.lilygo_t5;sdkconfig.model_gamma"
     
     name: Build ${{ matrix.model.display_name }}
     
@@ -155,16 +152,6 @@ jobs:
         submodules: 'recursive'
         fetch-depth: 0
     
-    - name: Cache ESP-IDF
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.espressif
-          ~/.cache/pip
-        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-${{ hashFiles('**/CMakeLists.txt') }}
-        restore-keys: |
-          esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-
-    
     - name: Install GitVersion in build environment
       shell: bash
       run: |
@@ -174,49 +161,74 @@ jobs:
         sudo mv gitversion /usr/local/bin/
         gitversion version
     
-    - name: Install Python dependencies
-      run: pip install cryptography
-    
-    - name: Build firmware with ESP-IDF
-      uses: espressif/esp-idf-ci-action@v1
+    - name: Cache ESP-IDF
+      uses: actions/cache@v4
       with:
-        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
-        target: ${{ matrix.model.target }}
-        command: |
-          # Install Node.js 20 and npm for WebUI build
-          apt-get update && apt-get install -y curl
-          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-          apt-get install -y nodejs
-          
-          # Install mklittlefs inside container
-          echo "📥 Installing mklittlefs..."
-          curl -L -o mklittlefs.tar.gz https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
-          tar -xzf mklittlefs.tar.gz
-          find . -name "mklittlefs" -type f -executable
-          chmod +x */mklittlefs
-          cp */mklittlefs /usr/local/bin/mklittlefs
-          which mklittlefs
-          mklittlefs --version || echo "mklittlefs installed"
-          
-          # Build WebUI first
-          echo "🌐 Building WebUI..."
-          cd web-interface && npm install && npm run build && cd ..
-          
-          # Create LittleFS image
-          echo "📦 Creating LittleFS image..."
-          mkdir -p build
-          /usr/local/bin/mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
-          ls -la build/webui-littlefs.bin
-          echo "✅ WebUI LittleFS image created: build/webui-littlefs.bin"
-          
-          # Build firmware
-          idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
+        path: |
+          ~/.espressif
+          ~/esp/esp-idf
+        key: esp-idf-${{ env.ESP_IDF_VERSION }}
+    
+    - name: Install build dependencies
+      shell: bash
+      run: |
+        echo "📦 Installing build dependencies..."
+        npm install -g lv_font_conv
+        cargo install png2lvgl
+        pip install cryptography
+    
+    - name: Install ESP-IDF
+      shell: bash
+      run: |
+        if [ ! -d "$HOME/esp/esp-idf" ]; then
+          echo "📥 Installing ESP-IDF ${{ env.ESP_IDF_VERSION }}..."
+          mkdir -p ~/esp
+          cd ~/esp
+          git clone --recursive --branch ${{ env.ESP_IDF_VERSION }} --depth 1 https://github.com/espressif/esp-idf.git
+          cd esp-idf
+          ./install.sh esp32s3
+        else
+          echo "✅ ESP-IDF already installed (from cache)"
+        fi
+        echo "ESP_IDF=$HOME/esp/esp-idf" >> $GITHUB_ENV
+    
+    - name: Install mklittlefs
+      shell: bash
+      run: |
+        echo "📥 Installing mklittlefs..."
+        curl -L -o mklittlefs.tar.gz https://github.com/earlephilhower/mklittlefs/releases/download/4.0.1/x86_64-linux-gnu-mklittlefs-cc32c94.tar.gz
+        tar -xzf mklittlefs.tar.gz
+        chmod +x */mklittlefs
+        sudo cp */mklittlefs /usr/local/bin/mklittlefs
+        mklittlefs --version || echo "✅ mklittlefs installed"
     
     - name: Build WebUI
-      env:
-        PATH: "$HOME/bin:/usr/local/bin:$PATH"
+      shell: bash
       run: |
-        echo "🌐 WebUI build completed inside ESP-IDF container"
+        echo "🌐 Building WebUI..."
+        cd web-interface
+        npm install
+        npm run build
+        cd ..
+        echo "✅ WebUI built"
+    
+    - name: Create LittleFS image
+      shell: bash
+      run: |
+        echo "📦 Creating LittleFS image..."
+        mkdir -p build
+        mklittlefs -c web-interface/out -b 4096 -p 256 -s 0x1C0000 build/webui-littlefs.bin
+        ls -lh build/webui-littlefs.bin
+        echo "✅ WebUI LittleFS image created"
+    
+    - name: Build firmware with make
+      shell: bash
+      env:
+        CI: true
+      run: |
+        echo "🔨 Building ${{ matrix.model.display_name }}..."
+        source $ESP_IDF/export.sh
+        make build MODEL=${{ matrix.model.name }}
     
     - name: Extract and validate firmware manifest
       id: manifest
@@ -540,7 +552,7 @@ jobs:
         # Map display names to artifact names (from matrix.model.name)
         model_name_map = {
             "LC-Alpha": "alpha",
-            "LC-Alpha+": "alpha-plus",
+            "LC-Alpha+": "alpha+",
             "LC-Gamma": "gamma"
         }
         
@@ -659,15 +671,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Notify release.loracue.com
-      run: |
-        curl -X POST \
-          -H "Accept: application/vnd.github+json" \
-          -H "Authorization: Bearer ${{ secrets.RELEASE_SITE_TOKEN }}" \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          https://api.github.com/repos/LoRaCue/release.loracue.com/dispatches \
-          -d '{"event_type":"new_release","client_payload":{"version":"${{ needs.version.outputs.version }}","tag":"${{ needs.version.outputs.tag_name }}"}}'
-    
-    - name: Trigger release index update
       run: |
         curl -X POST \
           -H "Accept: application/vnd.github+json" \
