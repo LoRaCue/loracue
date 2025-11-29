@@ -239,7 +239,11 @@ else
 $(error Invalid MODEL=$(MODEL). Use: alpha, alpha+, beta, or gamma)
 endif
 
+ifdef CI
+build: check-idf fonts-1bpp ui_compact_assets
+else
 build: check-idf fonts-1bpp ui_compact_assets chips
+endif
 	@echo "🔨 Building $(MODEL_NAME) ($(BOARD_NAME))..."
 	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" -D BOARD_ID="$(BOARD_ID)" build
