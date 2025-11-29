@@ -47,6 +47,7 @@ UI_COMPACT_PNGS := $(wildcard $(UI_COMPACT_ASSETS_DIR)/*.png)
 UI_COMPACT_GENERATED := $(patsubst $(UI_COMPACT_ASSETS_DIR)/%.png,$(UI_COMPACT_GENERATED_DIR)/%.c,$(UI_COMPACT_PNGS))
 
 check-png2lvgl:
+ifndef CI
 ifneq ($(UI_COMPACT_PNGS),)
 	@command -v png2lvgl >/dev/null 2>&1 || { \
 		echo "❌ png2lvgl not found!"; \
@@ -58,6 +59,7 @@ ifneq ($(UI_COMPACT_PNGS),)
 		echo "Or visit: https://github.com/metaneutrons/png2lvgl"; \
 		exit 1; \
 	}
+endif
 endif
 
 $(UI_COMPACT_GENERATED_DIR)/%.c: $(UI_COMPACT_ASSETS_DIR)/%.png
