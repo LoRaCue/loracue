@@ -132,9 +132,8 @@ jobs:
         path: |
           ~/.espressif
           ~/esp/esp-idf
-        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-${{ hashFiles('**/CMakeLists.txt', 'sdkconfig.*') }}
+        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}
         restore-keys: |
-          esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-
           esp-idf-${{ env.ESP_IDF_VERSION }}-
     
     - name: Install build dependencies
