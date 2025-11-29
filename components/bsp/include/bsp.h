@@ -229,22 +229,22 @@ const char *bsp_get_model_name(void);
  * @brief USB descriptor configuration
  */
 typedef struct {
-    uint16_t usb_pid;        ///< USB Product ID
-    const char *usb_product; ///< USB Product string
-} bsp_usb_config_t;          // cppcheck-suppress unusedStructMember
+    uint16_t usb_pid;        // cppcheck-suppress unusedStructMember
+    const char *usb_product; // cppcheck-suppress unusedStructMember
+} bsp_usb_config_t;
 
 /**
  * @brief LoRa SX126X pin configuration (all fields used in sx126x.c)
  */
 typedef struct {
-    int miso;
-    int mosi;
-    int sclk;
-    int cs;
-    int rst;
-    int busy;
-    int dio1;
-} bsp_lora_pins_t; // cppcheck-suppress unusedStructMember
+    int miso;  // cppcheck-suppress unusedStructMember
+    int mosi;  // cppcheck-suppress unusedStructMember
+    int sclk;  // cppcheck-suppress unusedStructMember
+    int cs;    // cppcheck-suppress unusedStructMember
+    int rst;   // cppcheck-suppress unusedStructMember
+    int busy;  // cppcheck-suppress unusedStructMember
+    int dio1;  // cppcheck-suppress unusedStructMember
+} bsp_lora_pins_t;
 
 /**
  * @brief Get USB configuration for this board
