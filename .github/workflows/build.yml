@@ -126,12 +126,12 @@ jobs:
         echo "Using layered sdkconfig: ${{ matrix.model.sdkconfig }}"
         rm -f sdkconfig
     
-    - name: Generate LVGL fonts
+    - name: Generate LVGL fonts and UI assets
       shell: bash
       run: |
-        echo "🔤 Generating LVGL fonts..."
+        echo "🔤 Generating LVGL fonts and UI assets..."
         npm install -g lv_font_conv
-        make fonts-1bpp
+        make fonts-1bpp ui_compact_assets chips
     
     - name: Build firmware with ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
