@@ -81,7 +81,7 @@ esp_err_t display_ssd1306_init(display_config_t *config) {
     return ESP_OK;
 }
 
-void *display_ssd1306_lvgl_flush_cb(display_config_t *config) {
+void *display_ssd1306_lvgl_flush_cb(const display_config_t *config) {
     return (void *)lvgl_flush_cb;
 }
 

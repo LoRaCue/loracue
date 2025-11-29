@@ -67,20 +67,20 @@ typedef enum {
  * @brief E-Paper driver state
  */
 typedef struct {
-    display_refresh_mode_t refresh_mode;
-    uint8_t partial_refresh_count;
+    display_refresh_mode_t refresh_mode;  // cppcheck-suppress unusedStructMember
+    uint8_t partial_refresh_count;        // cppcheck-suppress unusedStructMember
 } epaper_state_t;
 
 /**
  * @brief Display configuration structure
  */
 typedef struct {
-    display_type_t type;                ///< Display type
-    int width;                          ///< Display width in pixels
-    int height;                         ///< Display height in pixels
-    esp_lcd_panel_handle_t panel;       ///< LCD panel handle
-    esp_lcd_panel_io_handle_t io_handle; ///< Panel I/O handle (for LVGL callbacks)
-    epaper_state_t *epaper_state;       ///< E-Paper state (NULL for OLED)
+    display_type_t type;                  // cppcheck-suppress unusedStructMember
+    int width;                            // cppcheck-suppress unusedStructMember
+    int height;                           // cppcheck-suppress unusedStructMember
+    esp_lcd_panel_handle_t panel;         ///< LCD panel handle
+    esp_lcd_panel_io_handle_t io_handle;  ///< Panel I/O handle (for LVGL callbacks)
+    epaper_state_t *epaper_state;         // cppcheck-suppress unusedStructMember
 } display_config_t;
 
 /**
@@ -97,7 +97,7 @@ esp_err_t display_init(display_config_t *config);
  * @param config Display configuration
  * @return void* Pointer to LVGL flush callback function
  */
-void *display_lvgl_flush_cb(display_config_t *config);
+void *display_lvgl_flush_cb(const display_config_t *config);
 
 /**
  * @brief Set E-Paper refresh mode (E-Paper displays only)

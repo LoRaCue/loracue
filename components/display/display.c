@@ -8,15 +8,15 @@ static const char *TAG = "display";
 
 // Forward declarations (needed for dispatch macro)
 esp_err_t display_ssd1306_init(display_config_t *config);
-void *display_ssd1306_lvgl_flush_cb(display_config_t *config);
+void *display_ssd1306_lvgl_flush_cb(const display_config_t *config);
 esp_err_t display_ssd1306_sleep(display_config_t *config);
 esp_err_t display_ssd1306_wake(display_config_t *config);
 esp_err_t display_ssd1306_set_brightness(display_config_t *config, uint8_t brightness);
 
 esp_err_t display_ssd1681_init(display_config_t *config);
-void *display_ssd1681_lvgl_flush_cb(display_config_t *config);
-esp_err_t display_ssd1681_sleep(display_config_t *config);
-esp_err_t display_ssd1681_wake(display_config_t *config);
+void *display_ssd1681_lvgl_flush_cb(const display_config_t *config);
+esp_err_t display_ssd1681_sleep(const display_config_t *config);
+esp_err_t display_ssd1681_wake(const display_config_t *config);
 esp_err_t display_ssd1681_set_refresh_mode(display_config_t *config, display_refresh_mode_t mode);
 
 // Display driver dispatch macro
@@ -42,7 +42,7 @@ esp_err_t display_init(display_config_t *config) {
     return DISPLAY_DISPATCH(init, config);
 }
 
-void *display_lvgl_flush_cb(display_config_t *config) {
+void *display_lvgl_flush_cb(const display_config_t *config) {
     if (!config) {
         return NULL;
     }
@@ -54,6 +54,8 @@ esp_err_t display_epaper_set_refresh_mode(display_config_t *config, display_refr
     VALIDATE_ARG(config);
     return display_ssd1681_set_refresh_mode(config, mode);
 #else
+    (void)config;
+    (void)mode;
     return ESP_ERR_NOT_SUPPORTED;
 #endif
 }
@@ -84,6 +86,8 @@ esp_err_t display_wake(display_config_t *config) {
 
 esp_err_t display_set_brightness(display_config_t *config, uint8_t brightness) {
 #if IS_EPAPER_BOARD
+    (void)config;
+    (void)brightness;
     return ESP_ERR_NOT_SUPPORTED;
 #else
     VALIDATE_CONFIG(config);
