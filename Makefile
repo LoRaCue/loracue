@@ -374,9 +374,10 @@ test-build: check-idf
 WOKWI_BOARD ?= heltec_v3
 WOKWI_DIR = wokwi/$(WOKWI_BOARD)
 
+ifdef CI
 sim: check-idf
-ifndef CI
-sim: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
+else
+sim: check-idf build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
 endif
 ifndef WOKWI_CLI
 	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
