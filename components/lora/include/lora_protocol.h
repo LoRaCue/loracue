@@ -23,6 +23,12 @@ extern "C" {
 #define LORA_PAYLOAD_MAX_SIZE 7
 #define LORA_MAC_SIZE 4
 
+// Connection monitoring constants
+#define LORA_CONNECTION_TIMEOUT_US      30000000  ///< 30 seconds without packets = connection lost
+#define LORA_RSSI_EXCELLENT_THRESHOLD   -70       ///< RSSI > -70 dBm = excellent
+#define LORA_RSSI_GOOD_THRESHOLD        -85       ///< RSSI > -85 dBm = good
+#define LORA_RSSI_WEAK_THRESHOLD        -100      ///< RSSI > -100 dBm = weak
+
 // Protocol macros
 #define LORA_PROTOCOL_VERSION 0x01
 #define LORA_DEFAULT_SLOT 1

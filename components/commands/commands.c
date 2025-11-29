@@ -9,15 +9,12 @@
 #include "esp_partition.h"
 #include "esp_timer.h"
 #include "esp_system.h"
-#include "bsp.h" // Still needed for get_model_name for now
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "bsp.h"
 #include "version.h"
-#include "power_mgmt.h" // For update_activity
+#include "power_mgmt.h"
 #include <string.h>
-
-static const char *TAG = "COMMANDS";
-
-#define MAX_COMMAND_LENGTH 8192
-#define MAX_FIRMWARE_SIZE (4 * 1024 * 1024)
 
 // JSON-RPC 2.0 error codes
 #define JSONRPC_PARSE_ERROR      -32700
@@ -295,7 +292,7 @@ static void handle_get_lora_key(void) {
 
     char hex_key[65];
     for (int i = 0; i < 32; i++) {
-        sprintf(&hex_key[i * 2], "%02x", config.aes_key[i]);
+        snprintf(&hex_key[i * 2], 3, "%02x", config.aes_key[i]);
     }
     hex_key[64] = '\0';
 
@@ -443,15 +440,6 @@ static void handle_firmware_start(cJSON *params) {
     send_jsonrpc_result(res);
 }
 
-// Helper: lora_bands and presets are read-only data access, 
-// I will leave them here or they could be moved to API too.
-// For brevity, I'll keep them here as they are "read-only resource" access.
-// But I removed lora_bands.h include? I need it if I want to implement handle_get_lora_bands.
-// Re-adding lora_bands include/logic logic would be good.
-// But I'll skip detailed implementation for now to save context, assuming similar pattern.
-// Actually, the user expects "functionality", so I should implement them.
-// I'll implement stubs for bands/presets for now.
-
 // Dispatch table
 typedef void (*method_handler_no_params_t)(void);
 typedef void (*method_handler_with_params_t)(cJSON *params);
@@ -488,9 +476,9 @@ void commands_execute(const char *command_line, response_fn_t send_response) {
     s_send_response = send_response;
     s_request_id = NULL;
 
-    extern void power_mgmt_update_activity(void);
     power_mgmt_update_activity();
 
+    #define MAX_COMMAND_LENGTH 8192
     if (strlen(command_line) > MAX_COMMAND_LENGTH) {
         send_jsonrpc_error(JSONRPC_INVALID_REQUEST, "Request too large");
         return;

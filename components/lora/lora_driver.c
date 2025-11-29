@@ -185,8 +185,8 @@ esp_err_t lora_driver_init(void)
         return ret;
     }
 
-    // Set private network sync word (0x1424)
-    SetSyncWord(0x1424);
+    // Set private network sync word
+    SetSyncWord(LORA_PRIVATE_SYNC_WORD);
 
     // Create TX task
     BaseType_t task_ret = xTaskCreate(lora_tx_task, "lora_tx", 3072, NULL,
@@ -392,8 +392,8 @@ esp_err_t lora_set_config(const lora_config_t *config)
         return init_ret;
     }
 
-    // Set private network sync word (0x1424)
-    SetSyncWord(0x1424);
+    // Set private network sync word
+    SetSyncWord(LORA_PRIVATE_SYNC_WORD);
 
     // Return to receive mode
     SetRx(0);

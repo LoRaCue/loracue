@@ -18,6 +18,9 @@
 extern "C" {
 #endif
 
+// LoRa network configuration
+#define LORA_PRIVATE_SYNC_WORD  0x1424  ///< Private network sync word (prevents public network interference)
+
 /**
  * @brief LoRa configuration for low latency
  */

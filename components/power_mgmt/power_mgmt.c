@@ -31,11 +31,16 @@ static uint64_t last_activity_time   = 0;
 static uint64_t session_start_time   = 0;
 static bool display_sleeping         = false;
 
+// Default timeout constants
+#define POWER_MGMT_DEFAULT_DISPLAY_SLEEP_MS  10000   // 10 seconds
+#define POWER_MGMT_DEFAULT_LIGHT_SLEEP_MS    30000   // 30 seconds
+#define POWER_MGMT_DEFAULT_DEEP_SLEEP_MS     300000  // 5 minutes
+
 // Default configuration
 static const power_config_t default_config = {
-    .display_sleep_timeout_ms  = 10000,  // 10 seconds
-    .light_sleep_timeout_ms    = 30000,  // 30 seconds
-    .deep_sleep_timeout_ms     = 300000, // 5 minutes
+    .display_sleep_timeout_ms  = POWER_MGMT_DEFAULT_DISPLAY_SLEEP_MS,
+    .light_sleep_timeout_ms    = POWER_MGMT_DEFAULT_LIGHT_SLEEP_MS,
+    .deep_sleep_timeout_ms     = POWER_MGMT_DEFAULT_DEEP_SLEEP_MS,
     .enable_auto_display_sleep = true,
     .enable_auto_light_sleep   = true,
     .enable_auto_deep_sleep    = true,

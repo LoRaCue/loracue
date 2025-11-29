@@ -298,15 +298,6 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
     }
 
     ESP_LOGI(TAG, "Device 0x%04X found in registry: %s", packet->device_id, sender_device.device_name);
-    ESP_LOGI(TAG, "AES Key: %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-             sender_device.aes_key[0], sender_device.aes_key[1], sender_device.aes_key[2], sender_device.aes_key[3],
-             sender_device.aes_key[4], sender_device.aes_key[5], sender_device.aes_key[6], sender_device.aes_key[7],
-             sender_device.aes_key[8], sender_device.aes_key[9], sender_device.aes_key[10], sender_device.aes_key[11],
-             sender_device.aes_key[12], sender_device.aes_key[13], sender_device.aes_key[14], sender_device.aes_key[15],
-             sender_device.aes_key[16], sender_device.aes_key[17], sender_device.aes_key[18], sender_device.aes_key[19],
-             sender_device.aes_key[20], sender_device.aes_key[21], sender_device.aes_key[22], sender_device.aes_key[23],
-             sender_device.aes_key[24], sender_device.aes_key[25], sender_device.aes_key[26], sender_device.aes_key[27],
-             sender_device.aes_key[28], sender_device.aes_key[29], sender_device.aes_key[30], sender_device.aes_key[31]);
 
     // Verify MAC using sender's key
     uint8_t mac_data[18]; // 2 + 16 bytes
@@ -391,7 +382,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
         ESP_LOGW(TAG, "Duplicate packet from 0x%04X: seq %d", packet_data->device_id, packet_data->sequence_num);
         return ESP_ERR_INVALID_STATE;
 
-    } else if (seq_diff > -64) {
+    } else if (seq_diff > -32) {
         // Within recent window (out-of-order packet)
         uint8_t bit_pos = -seq_diff;
         if (sender_device.recent_bitmap & (1ULL << bit_pos)) {
@@ -405,7 +396,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
                  packet_data->sequence_num);
 
     } else {
-        // Too old (>64 packets behind), likely reboot or major packet loss
+        // Too old (>32 packets behind), likely reboot or major packet loss
         ESP_LOGI(TAG, "Very old packet from 0x%04X (seq %d vs %d), accepting as reboot", packet_data->device_id,
                  packet_data->sequence_num, sender_device.highest_sequence);
         sender_device.highest_sequence = packet_data->sequence_num;
@@ -461,17 +452,17 @@ lora_connection_state_t lora_protocol_get_connection_state(void)
     uint64_t now                    = esp_timer_get_time();
     uint64_t time_since_last_packet = now - last_packet_time;
 
-    // Connection lost if no packets for 30 seconds
-    if (time_since_last_packet > 30000000) {
+    // Connection lost if no packets for configured timeout
+    if (time_since_last_packet > LORA_CONNECTION_TIMEOUT_US) {
         return LORA_CONNECTION_LOST;
     }
 
     // Evaluate based on RSSI
-    if (last_rssi > -70) {
+    if (last_rssi > LORA_RSSI_EXCELLENT_THRESHOLD) {
         return LORA_CONNECTION_EXCELLENT;
-    } else if (last_rssi > -85) {
+    } else if (last_rssi > LORA_RSSI_GOOD_THRESHOLD) {
         return LORA_CONNECTION_GOOD;
-    } else if (last_rssi > -100) {
+    } else if (last_rssi > LORA_RSSI_WEAK_THRESHOLD) {
         return LORA_CONNECTION_WEAK;
     } else {
         return LORA_CONNECTION_POOR;

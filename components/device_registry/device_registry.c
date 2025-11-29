@@ -92,6 +92,11 @@ esp_err_t device_registry_init(void)
 esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const uint8_t *mac_address,
                               const uint8_t *aes_key)
 {
+    if (!device_name || !mac_address || !aes_key) {
+        ESP_LOGE(TAG, "Invalid parameters: null pointer");
+        return ESP_ERR_INVALID_ARG;
+    }
+    
     if (!registry_initialized) {
         ESP_LOGE(TAG, "Registry not initialized");
         return ESP_ERR_INVALID_STATE;
