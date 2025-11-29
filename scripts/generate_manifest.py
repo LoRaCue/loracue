@@ -23,6 +23,8 @@ def calculate_sha256(file_path: Path) -> str:
 
 def sign_data(data: str, private_key_path: Path) -> str:
     """Sign data's SHA256 hash and return base64-encoded signature."""
+    from cryptography.hazmat.primitives.asymmetric import rsa, ed25519
+    
     with open(private_key_path, 'rb') as f:
         private_key = serialization.load_pem_private_key(
             f.read(),
@@ -30,18 +32,24 @@ def sign_data(data: str, private_key_path: Path) -> str:
             backend=default_backend()
         )
     
-    # Calculate SHA256 hash of the data
     data_bytes = data.encode('utf-8')
-    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
-    digest.update(data_bytes)
-    data_hash = digest.finalize()
     
-    # Sign the hash instead of raw data
-    signature = private_key.sign(
-        data_hash,
-        padding.PKCS1v15(),
-        hashes.SHA256()
-    )
+    # Check key type and sign accordingly
+    if isinstance(private_key, ed25519.Ed25519PrivateKey):
+        # Ed25519 signs the data directly (no padding/hash algorithm needed)
+        signature = private_key.sign(data_bytes)
+    elif isinstance(private_key, rsa.RSAPrivateKey):
+        # RSA requires padding and hash algorithm
+        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+        digest.update(data_bytes)
+        data_hash = digest.finalize()
+        signature = private_key.sign(
+            data_hash,
+            padding.PKCS1v15(),
+            hashes.SHA256()
+        )
+    else:
+        raise ValueError(f"Unsupported key type: {type(private_key)}")
     
     return base64.b64encode(signature).decode('ascii')
 

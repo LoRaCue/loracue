@@ -9,7 +9,10 @@ from cryptography.hazmat.backends import default_backend
 
 
 def sign_file(file_path: Path, private_key_path: Path) -> str:
-    """Sign a file's SHA256 hash with Ed25519 and return hex-encoded signature."""
+    """Sign a file's SHA256 hash and return hex-encoded signature."""
+    from cryptography.hazmat.primitives.asymmetric import rsa, ed25519, padding
+    from cryptography.hazmat.primitives import hashes
+    
     with open(private_key_path, 'rb') as f:
         private_key = serialization.load_pem_private_key(
             f.read(),
@@ -23,8 +26,19 @@ def sign_file(file_path: Path, private_key_path: Path) -> str:
     
     file_hash = hashlib.sha256(data).digest()
     
-    # Sign the hash with Ed25519 (signs the raw hash, not double-hashed)
-    signature = private_key.sign(file_hash)
+    # Check key type and sign accordingly
+    if isinstance(private_key, ed25519.Ed25519PrivateKey):
+        # Ed25519 signs the hash directly
+        signature = private_key.sign(file_hash)
+    elif isinstance(private_key, rsa.RSAPrivateKey):
+        # RSA requires padding and hash algorithm
+        signature = private_key.sign(
+            file_hash,
+            padding.PKCS1v15(),
+            hashes.SHA256()
+        )
+    else:
+        raise ValueError(f"Unsupported key type: {type(private_key)}")
     
     return signature.hex()
 
