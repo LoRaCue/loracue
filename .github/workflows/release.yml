@@ -396,7 +396,7 @@ jobs:
         - \`webui-littlefs.bin\` - Web UI filesystem image
         - \`manifest.json\` - Firmware manifest with metadata
         - \`*.sha256\` - SHA256 checksums for verification
-        - \`*.sig\` - RSA-4096 signatures for authenticity verification
+        - \`*.sig\` - Ed25519 signatures for authenticity verification
         
         ## 📚 Documentation
         
