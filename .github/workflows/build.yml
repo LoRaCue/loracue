@@ -81,7 +81,7 @@ jobs:
             target: "esp32s3"
             board: "Heltec V3"
             sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha"
-          - name: "alpha-plus"
+          - name: "alpha+"
             display_name: "LC-Alpha+"
             target: "esp32s3"
             board: "Heltec V3"
