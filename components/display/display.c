@@ -8,13 +8,11 @@ static const char *TAG = "display";
 
 // Forward declarations (needed for dispatch macro)
 esp_err_t display_ssd1306_init(display_config_t *config);
-void *display_ssd1306_lvgl_flush_cb(const display_config_t *config);
 esp_err_t display_ssd1306_sleep(display_config_t *config);
 esp_err_t display_ssd1306_wake(display_config_t *config);
 esp_err_t display_ssd1306_set_brightness(display_config_t *config, uint8_t brightness);
 
 esp_err_t display_ssd1681_init(display_config_t *config);
-void *display_ssd1681_lvgl_flush_cb(const display_config_t *config);
 esp_err_t display_ssd1681_sleep(const display_config_t *config);
 esp_err_t display_ssd1681_wake(const display_config_t *config);
 esp_err_t display_ssd1681_set_refresh_mode(display_config_t *config, display_refresh_mode_t mode);
@@ -40,13 +38,6 @@ esp_err_t display_init(display_config_t *config) {
 #endif
     
     return DISPLAY_DISPATCH(init, config);
-}
-
-void *display_lvgl_flush_cb(const display_config_t *config) {
-    if (!config) {
-        return NULL;
-    }
-    return DISPLAY_DISPATCH(lvgl_flush_cb, config);
 }
 
 esp_err_t display_epaper_set_refresh_mode(display_config_t *config, display_refresh_mode_t mode) {

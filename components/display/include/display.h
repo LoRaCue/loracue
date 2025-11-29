@@ -92,14 +92,6 @@ typedef struct {
 esp_err_t display_init(display_config_t *config);
 
 /**
- * @brief Get LVGL flush callback for display
- * 
- * @param config Display configuration
- * @return void* Pointer to LVGL flush callback function
- */
-void *display_lvgl_flush_cb(const display_config_t *config);
-
-/**
  * @brief Set E-Paper refresh mode (E-Paper displays only)
  * 
  * @param config Display configuration

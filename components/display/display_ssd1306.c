@@ -81,10 +81,6 @@ esp_err_t display_ssd1306_init(display_config_t *config) {
     return ESP_OK;
 }
 
-void *display_ssd1306_lvgl_flush_cb(const display_config_t *config) {
-    return (void *)lvgl_flush_cb;
-}
-
 esp_err_t display_ssd1306_sleep(display_config_t *config) {
     VALIDATE_CONFIG(config);
     return esp_lcd_panel_disp_on_off(config->panel, false);

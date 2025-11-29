@@ -98,10 +98,6 @@ esp_err_t display_ssd1681_init(display_config_t *config) {
     return ESP_OK;
 }
 
-void *display_ssd1681_lvgl_flush_cb(const display_config_t *config) {
-    return (void *)lvgl_flush_cb;
-}
-
 esp_err_t display_ssd1681_set_refresh_mode(display_config_t *config, display_refresh_mode_t mode) {
     VALIDATE_CONFIG(config);
     VALIDATE_ARG(config->epaper_state);
