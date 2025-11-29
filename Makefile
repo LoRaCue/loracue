@@ -194,6 +194,7 @@ all: build
 
 # Internal: Check ESP-IDF installation
 check-idf:
+ifndef CI
 ifndef IDF_PY_IN_PATH
 ifndef IDF_PATH_FOUND
 	@echo "❌ ESP-IDF not found!"
@@ -203,6 +204,7 @@ ifndef IDF_PATH_FOUND
 	@echo "  cd ~/esp-idf-v5.5 && ./install.sh esp32s3"
 	@echo "  source ~/esp-idf-v5.5/export.sh"
 	@false
+endif
 endif
 endif
 

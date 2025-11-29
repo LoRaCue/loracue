@@ -126,10 +126,12 @@ jobs:
         echo "Using layered sdkconfig: ${{ matrix.model.sdkconfig }}"
         rm -f sdkconfig
     
-    - name: Build firmware
+    - name: Build firmware with make
       shell: bash
+      env:
+        CI: true
       run: |
-        echo "🔨 Building firmware with make..."
+        echo "🔨 Building ${{ matrix.model.display_name }}..."
         npm install -g lv_font_conv
         make build MODEL=${{ matrix.model.name }}
     
