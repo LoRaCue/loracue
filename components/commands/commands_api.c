@@ -1,5 +1,6 @@
 #include "commands_api.h"
 #include "bsp.h"
+#include "lv_port_disp.h"
 #include "system_events.h"
 #include "ble.h"
 #include "ota_engine.h"
@@ -12,7 +13,7 @@
 
 static const char *TAG = "CMD_API";
 
-// External dependency (weakly linked or header included)
+// External dependency
 extern esp_err_t ui_data_provider_reload_config(void) __attribute__((weak));
 
 esp_err_t cmd_get_general_config(general_config_t *config) {
@@ -31,7 +32,7 @@ esp_err_t cmd_set_general_config(const general_config_t *new_config) {
 
     // Check for brightness change
     if (current_config.display_brightness != new_config->display_brightness) {
-        bsp_set_display_brightness(new_config->display_brightness);
+        display_safe_set_brightness(new_config->display_brightness);
     }
 
     // Check for Bluetooth change

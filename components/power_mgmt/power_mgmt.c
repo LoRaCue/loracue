@@ -9,6 +9,7 @@
 #include "power_mgmt.h"
 #include "usb_hid.h"
 #include "bsp.h"
+#include "lv_port_disp.h"
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
 #include "driver/spi_master.h"
@@ -134,8 +135,7 @@ esp_err_t power_mgmt_display_sleep(void)
         uint64_t current_time = esp_timer_get_time();
         power_stats.display_sleep_time_ms += (current_time - last_activity_time) / 1000;
         
-        // Turn off display backlight
-        bsp_display_sleep();
+        display_safe_sleep();
     }
 
     return ESP_OK;
@@ -219,7 +219,7 @@ esp_err_t power_mgmt_update_activity(void)
 
     if (display_sleeping) {
         display_sleeping = false;
-        bsp_display_wake();
+        display_safe_wake();
     }
 
     return ESP_OK;

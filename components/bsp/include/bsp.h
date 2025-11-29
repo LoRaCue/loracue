@@ -247,6 +247,26 @@ typedef struct {
 } bsp_lora_pins_t;
 
 /**
+ * @brief E-Paper display pin configuration
+ */
+typedef struct {
+    int dc;    // cppcheck-suppress unusedStructMember
+    int cs;    // cppcheck-suppress unusedStructMember
+    int rst;   // cppcheck-suppress unusedStructMember
+    int busy;  // cppcheck-suppress unusedStructMember
+} bsp_epaper_pins_t;
+
+// BSP stub macros for minimal implementations
+#define BSP_STUB_OK(name, ...) \
+    esp_err_t name(__VA_ARGS__) { return ESP_OK; }
+
+#define BSP_STUB_VOID(name, ...) \
+    void name(__VA_ARGS__) { }
+
+#define BSP_STUB_RETURN(name, ret_type, ret_val, ...) \
+    ret_type name(__VA_ARGS__) { return ret_val; }
+
+/**
  * @brief Get USB configuration for this board
  *
  * @return Pointer to USB configuration structure
@@ -275,23 +295,10 @@ esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len);
 const bsp_lora_pins_t *bsp_get_lora_pins(void);
 
 /**
- * @brief Set display brightness/contrast
- * @param brightness Brightness level (0-255)
- * @return ESP_OK on success
+ * @brief Get E-Paper pin configuration
+ * @return Pointer to E-Paper pin configuration structure, or NULL if not applicable
  */
-esp_err_t bsp_set_display_brightness(uint8_t brightness);
-
-/**
- * @brief Put display into power save mode
- * @return ESP_OK on success
- */
-esp_err_t bsp_display_sleep(void);
-
-/**
- * @brief Wake display from power save mode
- * @return ESP_OK on success
- */
-esp_err_t bsp_display_wake(void);
+const bsp_epaper_pins_t *bsp_get_epaper_pins(void);
 
 // I2C Bus Management
 #include "driver/i2c_master.h"

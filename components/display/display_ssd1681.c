@@ -8,13 +8,16 @@
 
 static const char *TAG = "display_ssd1681";
 
-#define EPAPER_WIDTH  250
-#define EPAPER_HEIGHT 122
+// Forward declaration from display.c
+extern esp_err_t display_panel_common_init(esp_lcd_panel_handle_t panel);
 
-typedef struct {
-    display_refresh_mode_t refresh_mode;
-    uint8_t partial_refresh_count;
-} epaper_state_t;
+// Helper: Convert LVGL area (inclusive) to esp_lcd coords (exclusive)
+static inline void area_to_lcd_coords(const lv_area_t *area, int *x1, int *y1, int *x2, int *y2) {
+    *x1 = area->x1;
+    *y1 = area->y1;
+    *x2 = area->x2 + 1;
+    *y2 = area->y2 + 1;
+}
 
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {
     display_config_t *config = lv_display_get_user_data(disp);
@@ -23,19 +26,17 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
         return;
     }
 
-    epaper_state_t *state = (epaper_state_t *)config->user_data;
-    
-    // Draw bitmap to display
-    esp_lcd_panel_draw_bitmap(config->panel, area->x1, area->y1, 
-                              area->x2 + 1, area->y2 + 1, px_map);
+    int x1, y1, x2, y2;
+    area_to_lcd_coords(area, &x1, &y1, &x2, &y2);
+    esp_lcd_panel_draw_bitmap(config->panel, x1, y1, x2, y2, px_map);
 
-    // Auto-switch to full refresh every 10 partial refreshes
-    if (state && state->refresh_mode == DISPLAY_REFRESH_PARTIAL) {
-        state->partial_refresh_count++;
-        if (state->partial_refresh_count >= 10) {
+    // Auto-switch to full refresh every N partial refreshes
+    if (config->epaper_state && config->epaper_state->refresh_mode == DISPLAY_REFRESH_PARTIAL) {
+        config->epaper_state->partial_refresh_count++;
+        if (config->epaper_state->partial_refresh_count >= EPAPER_PARTIAL_REFRESH_CYCLE) {
             ESP_LOGI(TAG, "Triggering full refresh to prevent ghosting");
-            state->refresh_mode = DISPLAY_REFRESH_FULL;
-            state->partial_refresh_count = 0;
+            config->epaper_state->refresh_mode = DISPLAY_REFRESH_FULL;
+            config->epaper_state->partial_refresh_count = 0;
         }
     }
     
@@ -45,49 +46,53 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
 esp_err_t display_ssd1681_init(display_config_t *config) {
     ESP_LOGI(TAG, "Initializing SSD1681 E-Paper display");
 
-    // Get SPI bus handle from BSP
     spi_device_handle_t spi_device = bsp_get_spi_device();
     if (!spi_device) {
         ESP_LOGE(TAG, "Failed to get SPI device from BSP");
         return ESP_FAIL;
     }
 
-    // Create SPI panel IO
-    esp_lcd_panel_io_handle_t io_handle = NULL;
     esp_lcd_panel_io_spi_config_t io_config = {
         .dc_gpio_num = bsp_get_epaper_dc_pin(),
         .cs_gpio_num = bsp_get_epaper_cs_pin(),
-        .pclk_hz = 4 * 1000 * 1000,
+        .pclk_hz = DISPLAY_SSD1681_SPI_SPEED,
         .lcd_cmd_bits = 8,
         .lcd_param_bits = 8,
         .spi_mode = 0,
     };
     
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)spi_device, &io_config, &io_handle));
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)spi_device, &io_config, &config->io_handle));
 
-    // Create SSD1681 panel
     esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = bsp_get_epaper_rst_pin(),
         .bits_per_pixel = 1,
     };
     
-    ESP_ERROR_CHECK(esp_lcd_new_panel_ssd1681(io_handle, &panel_config, &config->panel));
-    ESP_ERROR_CHECK(esp_lcd_panel_reset(config->panel));
-    ESP_ERROR_CHECK(esp_lcd_panel_init(config->panel));
-    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(config->panel, true));
+    esp_err_t ret = esp_lcd_new_panel_ssd1681(config->io_handle, &panel_config, &config->panel);
+    if (ret != ESP_OK) {
+        esp_lcd_panel_io_del(config->io_handle);
+        return ret;
+    }
+    
+    ret = display_panel_common_init(config->panel);
+    if (ret != ESP_OK) {
+        esp_lcd_panel_del(config->panel);
+        esp_lcd_panel_io_del(config->io_handle);
+        return ret;
+    }
 
     // Allocate E-Paper state
-    epaper_state_t *state = calloc(1, sizeof(epaper_state_t));
-    if (!state) {
+    config->epaper_state = calloc(1, sizeof(epaper_state_t));
+    if (!config->epaper_state) {
         ESP_LOGE(TAG, "Failed to allocate E-Paper state");
+        esp_lcd_panel_del(config->panel);
+        esp_lcd_panel_io_del(config->io_handle);
         return ESP_ERR_NO_MEM;
     }
-    state->refresh_mode = DISPLAY_REFRESH_PARTIAL;
-    state->partial_refresh_count = 0;
+    config->epaper_state->refresh_mode = DISPLAY_REFRESH_PARTIAL;
 
-    config->width = EPAPER_WIDTH;
-    config->height = EPAPER_HEIGHT;
-    config->user_data = state;
+    config->width = DISPLAY_SSD1681_WIDTH;
+    config->height = DISPLAY_SSD1681_HEIGHT;
 
     ESP_LOGI(TAG, "SSD1681 initialized: %dx%d", config->width, config->height);
     return ESP_OK;
@@ -98,15 +103,13 @@ void *display_ssd1681_lvgl_flush_cb(display_config_t *config) {
 }
 
 esp_err_t display_ssd1681_set_refresh_mode(display_config_t *config, display_refresh_mode_t mode) {
-    if (!config || !config->user_data) {
-        return ESP_ERR_INVALID_ARG;
-    }
+    VALIDATE_CONFIG(config);
+    VALIDATE_ARG(config->epaper_state);
 
-    epaper_state_t *state = (epaper_state_t *)config->user_data;
-    state->refresh_mode = mode;
+    config->epaper_state->refresh_mode = mode;
     
     if (mode == DISPLAY_REFRESH_FULL) {
-        state->partial_refresh_count = 0;
+        config->epaper_state->partial_refresh_count = 0;
     }
 
     ESP_LOGI(TAG, "Refresh mode set to: %s", 

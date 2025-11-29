@@ -10,6 +10,36 @@
 extern "C" {
 #endif
 
+// Validation macros
+#define VALIDATE_ARG(arg) do { \
+    if (!(arg)) return ESP_ERR_INVALID_ARG; \
+} while(0)
+
+#define VALIDATE_CONFIG(cfg) do { \
+    if (!(cfg) || !(cfg)->panel) return ESP_ERR_INVALID_ARG; \
+} while(0)
+
+// Display hardware constants
+#define DISPLAY_SSD1306_WIDTH       128
+#define DISPLAY_SSD1306_HEIGHT      64
+#define DISPLAY_SSD1306_I2C_ADDR    0x3C
+#define DISPLAY_SSD1306_I2C_SPEED   400000
+#define DISPLAY_SSD1306_CMD_CONTRAST 0x81
+
+#define DISPLAY_SSD1681_WIDTH       250
+#define DISPLAY_SSD1681_HEIGHT      122
+#define DISPLAY_SSD1681_SPI_SPEED   (4 * 1000 * 1000)
+
+#define EPAPER_PARTIAL_REFRESH_CYCLE 10
+
+// SPI transfer sizes
+#define SPI_TRANSFER_SIZE_LORA      256
+#define SPI_TRANSFER_SIZE_EPAPER    4096
+
+// BSP stub constants
+#define BSP_STUB_BATTERY_VOLTAGE    4.2f
+#define BSP_STUB_SERIAL_PREFIX      "STUB"
+
 // Board type helper macro
 #if defined(CONFIG_BOARD_LILYGO_T5) || defined(CONFIG_BOARD_LILYGO_T3)
     #define IS_EPAPER_BOARD 1
@@ -34,14 +64,23 @@ typedef enum {
 } display_refresh_mode_t;
 
 /**
+ * @brief E-Paper driver state
+ */
+typedef struct {
+    display_refresh_mode_t refresh_mode;
+    uint8_t partial_refresh_count;
+} epaper_state_t;
+
+/**
  * @brief Display configuration structure
  */
 typedef struct {
-    display_type_t type;           ///< Display type
-    int width;                     ///< Display width in pixels
-    int height;                    ///< Display height in pixels
-    esp_lcd_panel_handle_t panel;  ///< LCD panel handle
-    void *user_data;               ///< User data for driver-specific state
+    display_type_t type;                ///< Display type
+    int width;                          ///< Display width in pixels
+    int height;                         ///< Display height in pixels
+    esp_lcd_panel_handle_t panel;       ///< LCD panel handle
+    esp_lcd_panel_io_handle_t io_handle; ///< Panel I/O handle (for LVGL callbacks)
+    epaper_state_t *epaper_state;       ///< E-Paper state (NULL for OLED)
 } display_config_t;
 
 /**

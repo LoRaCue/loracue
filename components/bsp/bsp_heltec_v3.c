@@ -64,9 +64,9 @@ esp_err_t bsp_init_spi(void)
         .mosi_io_num     = LORA_MOSI_PIN,
         .miso_io_num     = LORA_MISO_PIN,
         .sclk_io_num     = LORA_SCK_PIN,
-        .quadwp_io_num   = -1,
-        .quadhd_io_num   = -1,
-        .max_transfer_sz = 256,
+        .quadwp_io_num   = GPIO_NUM_NC,
+        .quadhd_io_num   = GPIO_NUM_NC,
+        .max_transfer_sz = SPI_TRANSFER_SIZE_LORA,
     };
 
     esp_err_t ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
@@ -491,36 +491,7 @@ const bsp_lora_pins_t *bsp_get_lora_pins(void)
     return &lora_pins;
 }
 
-esp_err_t bsp_set_display_brightness(uint8_t brightness)
-{
-    extern display_config_t *ui_lvgl_get_display_config(void);
-    display_config_t *config = ui_lvgl_get_display_config();
-    if (!config) {
-        ESP_LOGW(TAG, "Display not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
-    return display_set_brightness(config, brightness);
-}
-
-esp_err_t bsp_display_sleep(void)
-{
-    extern display_config_t *ui_lvgl_get_display_config(void);
-    display_config_t *config = ui_lvgl_get_display_config();
-    if (config) {
-        return display_sleep(config);
-    }
-    return ESP_ERR_INVALID_STATE;
-}
-
-esp_err_t bsp_display_wake(void)
-{
-    extern display_config_t *ui_lvgl_get_display_config(void);
-    display_config_t *config = ui_lvgl_get_display_config();
-    if (config) {
-        return display_wake(config);
-    }
-    return ESP_ERR_INVALID_STATE;
-}
+// Display control functions removed - use display.h API directly with display_config_t
 
 esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin)
 {
@@ -557,22 +528,27 @@ void *bsp_get_spi_device(void)
     return NULL; // Heltec V3 uses I2C for display
 }
 
+const bsp_epaper_pins_t *bsp_get_epaper_pins(void)
+{
+    return NULL; // Not applicable for OLED
+}
+
 int bsp_get_epaper_dc_pin(void)
 {
-    return -1; // Not applicable for OLED
+    return GPIO_NUM_NC;
 }
 
 int bsp_get_epaper_cs_pin(void)
 {
-    return -1; // Not applicable for OLED
+    return GPIO_NUM_NC;
 }
 
 int bsp_get_epaper_rst_pin(void)
 {
-    return -1; // Not applicable for OLED
+    return GPIO_NUM_NC;
 }
 
 int bsp_get_epaper_busy_pin(void)
 {
-    return -1; // Not applicable for OLED
+    return GPIO_NUM_NC;
 }

@@ -29,18 +29,15 @@ lv_display_t *lv_port_disp_init(void) {
         return NULL;
     }
 
-    // Get I/O handle from display config (stored in user_data)
-    esp_lcd_panel_io_handle_t io_handle = (esp_lcd_panel_io_handle_t)display_config.user_data;
-
     // Configure LVGL port for monochrome display
     const lvgl_port_display_cfg_t disp_cfg = {
-        .io_handle = io_handle,
+        .io_handle = display_config.io_handle,
         .panel_handle = display_config.panel,
-        .buffer_size = display_config.width * display_config.height,  // Full buffer for monochrome
+        .buffer_size = display_config.width * display_config.height,
         .double_buffer = true,
         .hres = display_config.width,
         .vres = display_config.height,
-        .monochrome = true,  // CRITICAL: Tell LVGL this is monochrome
+        .monochrome = true,
         .rotation = {
             .swap_xy = false,
             .mirror_x = true,
@@ -58,7 +55,7 @@ lv_display_t *lv_port_disp_init(void) {
     const esp_lcd_panel_io_callbacks_t cbs = {
         .on_color_trans_done = notify_lvgl_flush_ready,
     };
-    esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, disp);
+    esp_lcd_panel_io_register_event_callbacks(display_config.io_handle, &cbs, disp);
 
     ESP_LOGI(TAG, "LVGL display initialized: %dx%d (monochrome)", 
              display_config.width, display_config.height);
@@ -71,4 +68,19 @@ void lv_port_disp_deinit(void) {
         disp = NULL;
     }
     display_deinit(&display_config);
+}
+
+esp_err_t display_safe_set_brightness(uint8_t brightness) {
+    display_config_t *cfg = ui_lvgl_get_display_config();
+    return cfg ? display_set_brightness(cfg, brightness) : ESP_ERR_INVALID_STATE;
+}
+
+esp_err_t display_safe_sleep(void) {
+    display_config_t *cfg = ui_lvgl_get_display_config();
+    return cfg ? display_sleep(cfg) : ESP_ERR_INVALID_STATE;
+}
+
+esp_err_t display_safe_wake(void) {
+    display_config_t *cfg = ui_lvgl_get_display_config();
+    return cfg ? display_wake(cfg) : ESP_ERR_INVALID_STATE;
 }

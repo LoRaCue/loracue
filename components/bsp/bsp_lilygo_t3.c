@@ -1,4 +1,5 @@
 #include "bsp.h"
+#include "display.h"
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "driver/spi_master.h"
@@ -39,16 +40,16 @@ esp_err_t bsp_init(void) {
     // Initialize SPI for E-Paper
     spi_bus_config_t buscfg = {
         .mosi_io_num = PIN_EPAPER_MOSI,
-        .miso_io_num = -1,
+        .miso_io_num = GPIO_NUM_NC,
         .sclk_io_num = PIN_EPAPER_CLK,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-        .max_transfer_sz = 4096,
+        .quadwp_io_num = GPIO_NUM_NC,
+        .quadhd_io_num = GPIO_NUM_NC,
+        .max_transfer_sz = SPI_TRANSFER_SIZE_EPAPER,
     };
     ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO));
     
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 4 * 1000 * 1000,
+        .clock_speed_hz = DISPLAY_SSD1681_SPI_SPEED,
         .mode = 0,
         .spics_io_num = PIN_EPAPER_CS,
         .queue_size = 1,
@@ -85,6 +86,16 @@ bsp_display_type_t bsp_get_display_type(void) {
 
 void *bsp_get_spi_device(void) {
     return spi_epaper;
+}
+
+const bsp_epaper_pins_t *bsp_get_epaper_pins(void) {
+    static const bsp_epaper_pins_t pins = {
+        .dc = PIN_EPAPER_DC,
+        .cs = PIN_EPAPER_CS,
+        .rst = PIN_EPAPER_RST,
+        .busy = PIN_EPAPER_BUSY
+    };
+    return &pins;
 }
 
 int bsp_get_epaper_dc_pin(void) {
@@ -133,27 +144,28 @@ const bsp_lora_pins_t *bsp_get_lora_pins(void) {
     return &lora_pins;
 }
 
+// cppcheck-suppress unknownMacro
 // Stub implementations for unused features
-esp_err_t bsp_init_battery(void) { return ESP_OK; }
-float bsp_read_battery(void) { return 4.2f; }
-void bsp_set_led(bool state) { (void)state; }
-void bsp_toggle_led(void) {}
-esp_err_t bsp_enter_sleep(void) { return ESP_OK; }
-esp_err_t bsp_init_spi(void) { return ESP_OK; }
-uint8_t bsp_sx1262_read_register(uint16_t reg) { (void)reg; return 0; }
-esp_err_t bsp_sx1262_reset(void) { return ESP_OK; }
-const char* bsp_get_board_name(void) { return "LilyGO T3"; }
-esp_err_t bsp_validate_hardware(void) { return ESP_OK; }
-const bsp_usb_config_t *bsp_get_usb_config(void) { return NULL; }
-bool bsp_is_usb_connected(void) { return false; }
+BSP_STUB_OK(bsp_init_battery, void)
+BSP_STUB_RETURN(bsp_read_battery, float, BSP_STUB_BATTERY_VOLTAGE, void)
+BSP_STUB_VOID(bsp_set_led, bool state)
+BSP_STUB_VOID(bsp_toggle_led, void)
+BSP_STUB_OK(bsp_enter_sleep, void)
+BSP_STUB_OK(bsp_init_spi, void)
+BSP_STUB_RETURN(bsp_sx1262_read_register, uint8_t, 0, uint16_t reg)
+BSP_STUB_OK(bsp_sx1262_reset, void)
+BSP_STUB_RETURN(bsp_get_board_name, const char*, "LilyGO T3", void)
+BSP_STUB_OK(bsp_validate_hardware, void)
+BSP_STUB_RETURN(bsp_get_usb_config, const bsp_usb_config_t*, NULL, void)
+BSP_STUB_RETURN(bsp_is_usb_connected, bool, false, void)
+
 esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len) { 
-    snprintf(serial_number, max_len, "T3S3-000000");
+    snprintf(serial_number, max_len, "%s-000000", BSP_STUB_SERIAL_PREFIX);
     return ESP_OK;
 }
-esp_err_t bsp_set_display_brightness(uint8_t brightness) { (void)brightness; return ESP_OK; }
-esp_err_t bsp_display_sleep(void) { return ESP_OK; }
-esp_err_t bsp_display_wake(void) { return ESP_OK; }
-esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin) {
-    (void)uart_num; (void)tx_pin; (void)rx_pin;
-    return ESP_ERR_NOT_SUPPORTED;
-}
+
+BSP_STUB_OK(bsp_set_display_brightness, uint8_t brightness)
+BSP_STUB_OK(bsp_display_sleep, void)
+BSP_STUB_OK(bsp_display_wake, void)
+BSP_STUB_RETURN(bsp_get_uart_pins, esp_err_t, ESP_ERR_NOT_SUPPORTED, int uart_num, int *tx_pin, int *rx_pin)
+

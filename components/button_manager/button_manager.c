@@ -9,6 +9,7 @@
 #include "button_manager.h"
 #include "system_events.h"
 #include "bsp.h"
+#include "lv_port_disp.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -78,7 +79,7 @@ static void button_manager_task(void *pvParameters)
             display_sleep_active    = false;  // Wake from display sleep
             led_manager_button_feedback(true);
 
-            bsp_display_wake();
+            display_safe_wake();
             power_mgmt_update_activity();
 
             ESP_LOGD(TAG, "Button pressed");

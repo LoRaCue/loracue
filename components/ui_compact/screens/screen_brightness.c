@@ -1,4 +1,5 @@
 #include "bsp.h"
+#include "lv_port_disp.h"
 #include "esp_log.h"
 #include "general_config.h"
 #include "lvgl.h"
@@ -45,7 +46,7 @@ void screen_brightness_navigate_down(void)
     } else {
         brightness_value = 255;
     }
-    bsp_set_display_brightness(brightness_value);
+    display_safe_set_brightness(brightness_value);
 }
 
 void screen_brightness_navigate_up(void)
@@ -58,7 +59,7 @@ void screen_brightness_navigate_up(void)
     } else {
         brightness_value = 0;
     }
-    bsp_set_display_brightness(brightness_value);
+    display_safe_set_brightness(brightness_value);
 }
 
 void screen_brightness_select(void)
@@ -71,7 +72,7 @@ void screen_brightness_select(void)
         general_config_get(&config);
         config.display_brightness = brightness_value;
         general_config_set(&config);
-        bsp_set_display_brightness(brightness_value);
+        display_safe_set_brightness(brightness_value);
         ESP_LOGI(TAG, "Brightness saved: %d", brightness_value);
         screen->edit_mode = false;
     } else {
