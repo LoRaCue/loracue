@@ -175,6 +175,37 @@ typedef enum {
     LORA_CONNECTION_LOST      = 4  ///< No packets received recently
 } lora_connection_state_t;
 
+// Forward declaration for signal_strength_t (defined in ui_compact_statusbar.h)
+// Include ui_compact_statusbar.h if you need to use lora_connection_to_signal_strength()
+#ifndef SIGNAL_STRENGTH_T_DEFINED
+typedef enum {
+    SIGNAL_NONE   = 0,
+    SIGNAL_WEAK   = 1,
+    SIGNAL_FAIR   = 2,
+    SIGNAL_GOOD   = 3,
+    SIGNAL_STRONG = 4
+} signal_strength_t;
+#define SIGNAL_STRENGTH_T_DEFINED
+#endif
+
+/**
+ * @brief Convert LoRa connection state to signal strength
+ *
+ * @param state LoRa connection state
+ * @return Signal strength for UI display
+ */
+static inline signal_strength_t lora_connection_to_signal_strength(lora_connection_state_t state)
+{
+    switch (state) {
+        case LORA_CONNECTION_EXCELLENT: return SIGNAL_STRONG;
+        case LORA_CONNECTION_GOOD:      return SIGNAL_GOOD;
+        case LORA_CONNECTION_WEAK:      return SIGNAL_FAIR;
+        case LORA_CONNECTION_POOR:      return SIGNAL_WEAK;
+        case LORA_CONNECTION_LOST:
+        default:                        return SIGNAL_NONE;
+    }
+}
+
 /**
  * @brief LoRa connection state callback
  * @param state New connection state

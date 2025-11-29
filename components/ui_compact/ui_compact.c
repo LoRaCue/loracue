@@ -31,34 +31,11 @@ void ui_compact_get_status(statusbar_data_t *status)
 
     // Get LoRa signal strength
     lora_connection_state_t conn_state = lora_protocol_get_connection_state();
-    switch (conn_state) {
-        case LORA_CONNECTION_EXCELLENT:
-            status->signal_strength = SIGNAL_STRONG;
-            break;
-        case LORA_CONNECTION_GOOD:
-            status->signal_strength = SIGNAL_GOOD;
-            break;
-        case LORA_CONNECTION_WEAK:
-            status->signal_strength = SIGNAL_FAIR;
-            break;
-        case LORA_CONNECTION_POOR:
-            status->signal_strength = SIGNAL_WEAK;
-            break;
-        case LORA_CONNECTION_LOST:
-        default:
-            status->signal_strength = SIGNAL_NONE;
-            break;
-    }
+    status->signal_strength            = lora_connection_to_signal_strength(conn_state);
 
     // Get battery level from BSP (convert voltage to percentage)
-    float battery_voltage = bsp_read_battery();
-    if (battery_voltage >= 4.2f) {
-        status->battery_level = 100;
-    } else if (battery_voltage <= 3.0f) {
-        status->battery_level = 0;
-    } else {
-        status->battery_level = (uint8_t)((battery_voltage - 3.0f) / 1.2f * 100);
-    }
+    float battery_voltage     = bsp_read_battery();
+    status->battery_level = bsp_battery_voltage_to_percentage(battery_voltage);
 
     status->device_name = cached_config.device_name;
 }

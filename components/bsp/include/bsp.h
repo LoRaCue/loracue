@@ -135,6 +135,23 @@ bool bsp_read_button(bsp_button_t button);
 float bsp_read_battery(void);
 
 /**
+ * @brief Convert battery voltage to percentage
+ *
+ * @param voltage Battery voltage in volts
+ * @return Battery percentage (0-100)
+ */
+static inline uint8_t bsp_battery_voltage_to_percentage(float voltage)
+{
+    const float BATTERY_VOLTAGE_MAX   = 4.2f;
+    const float BATTERY_VOLTAGE_MIN   = 3.0f;
+    const float BATTERY_VOLTAGE_RANGE = 1.2f;
+
+    if (voltage >= BATTERY_VOLTAGE_MAX) return 100;
+    if (voltage <= BATTERY_VOLTAGE_MIN) return 0;
+    return (uint8_t)((voltage - BATTERY_VOLTAGE_MIN) / BATTERY_VOLTAGE_RANGE * 100);
+}
+
+/**
  * @brief Check if battery is currently charging
  *
  * @return true if battery is charging, false otherwise (or if hardware doesn't support detection)

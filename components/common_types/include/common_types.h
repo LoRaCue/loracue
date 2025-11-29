@@ -1,10 +1,50 @@
 #pragma once
 
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @brief Create mutex or fail with error
+ * 
+ * Usage: CREATE_MUTEX_OR_FAIL(state_mutex);
+ */
+#define CREATE_MUTEX_OR_FAIL(mutex_var)                      \
+    do {                                                     \
+        (mutex_var) = xSemaphoreCreateMutex();              \
+        if (!(mutex_var)) {                                 \
+            ESP_LOGE(TAG, "Failed to create mutex: " #mutex_var); \
+            return ESP_ERR_NO_MEM;                          \
+        }                                                    \
+    } while (0)
+
+/**
+ * @brief Check if component is initialized
+ * 
+ * Usage: CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
+ */
+#define CHECK_INITIALIZED(flag, component_name)              \
+    do {                                                     \
+        if (!(flag)) {                                      \
+            ESP_LOGE(TAG, component_name " not initialized"); \
+            return ESP_ERR_INVALID_STATE;                   \
+        }                                                    \
+    } while (0)
+
+/**
+ * @brief Get current time in milliseconds
+ * 
+ * @return Current time in milliseconds
+ */
+static inline uint32_t get_time_ms(void)
+{
+    return xTaskGetTickCount() * portTICK_PERIOD_MS;
+}
 
 /**
  * @brief Button event types for one-button UI

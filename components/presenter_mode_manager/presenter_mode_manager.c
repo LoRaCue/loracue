@@ -4,6 +4,7 @@
  */
 
 #include "presenter_mode_manager.h"
+#include "common_types.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
@@ -13,12 +14,13 @@
 static const char *TAG = "PRESENTER_MGR";
 static SemaphoreHandle_t state_mutex = NULL;
 
+// LoRa reliable transmission constants
+#define LORA_RELIABLE_TIMEOUT_MS  2000
+#define LORA_RELIABLE_MAX_RETRIES 3
+
 esp_err_t presenter_mode_manager_init(void)
 {
-    state_mutex = xSemaphoreCreateMutex();
-    if (!state_mutex) {
-        return ESP_ERR_NO_MEM;
-    }
+    CREATE_MUTEX_OR_FAIL(state_mutex);
     
     ESP_LOGI(TAG, "Presenter mode manager initialized");
     return ESP_OK;
@@ -42,7 +44,9 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
         case BUTTON_EVENT_SHORT:
             ESP_LOGI(TAG, "Short press - sending Cursor Right");
 #ifdef CONFIG_LORA_SEND_RELIABLE
-            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4F, 2000, 3);
+            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x4F, 
+                                                       LORA_RELIABLE_TIMEOUT_MS, 
+                                                       LORA_RELIABLE_MAX_RETRIES);
 #else
             ret = lora_protocol_send_keyboard(config.slot_id, 0, 0x4F);
 #endif
@@ -56,7 +60,9 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
         case BUTTON_EVENT_DOUBLE:
             ESP_LOGI(TAG, "Double press - sending Cursor Left");
 #ifdef CONFIG_LORA_SEND_RELIABLE
-            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x50, 2000, 3);
+            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, 0x50, 
+                                                       LORA_RELIABLE_TIMEOUT_MS, 
+                                                       LORA_RELIABLE_MAX_RETRIES);
 #else
             ret = lora_protocol_send_keyboard(config.slot_id, 0, 0x50);
 #endif

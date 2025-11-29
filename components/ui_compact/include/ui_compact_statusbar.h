@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifndef SIGNAL_STRENGTH_T_DEFINED
 typedef enum {
     SIGNAL_NONE   = 0,
     SIGNAL_WEAK   = 1,
@@ -11,6 +12,8 @@ typedef enum {
     SIGNAL_GOOD   = 3,
     SIGNAL_STRONG = 4
 } signal_strength_t;
+#define SIGNAL_STRENGTH_T_DEFINED
+#endif
 
 typedef struct {
     bool usb_connected;

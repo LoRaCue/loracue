@@ -7,6 +7,7 @@
  */
 
 #include "lora_protocol.h"
+#include "common_types.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "esp_random.h"
@@ -164,10 +165,7 @@ static esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_
 
 esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_t keycode)
 {
-    if (!protocol_initialized) {
-        ESP_LOGE(TAG, "Protocol not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
 
     ESP_LOGI(TAG, "Sending keyboard (unreliable): slot=%d mod=0x%02X key=0x%02X", slot_id, modifiers, keycode);
 
@@ -186,10 +184,7 @@ esp_err_t lora_protocol_send_keyboard(uint8_t slot_id, uint8_t modifiers, uint8_
 esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifiers, uint8_t keycode, uint32_t timeout_ms,
                                                uint8_t max_retries)
 {
-    if (!protocol_initialized) {
-        ESP_LOGE(TAG, "Protocol not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
 
     ESP_LOGI(TAG, "Sending keyboard (reliable): slot=%d mod=0x%02X key=0x%02X timeout=%lums retries=%d", 
              slot_id, modifiers, keycode, timeout_ms, max_retries);
@@ -210,10 +205,7 @@ esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifier
 esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
                                       uint32_t timeout_ms, uint8_t max_retries)
 {
-    if (!protocol_initialized) {
-        ESP_LOGE(TAG, "Protocol not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
 
     for (uint8_t attempt = 0; attempt <= max_retries; attempt++) {
         // Capture sequence number that will be sent
@@ -266,10 +258,7 @@ esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *pay
 
 esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t timeout_ms)
 {
-    if (!protocol_initialized) {
-        ESP_LOGE(TAG, "Protocol not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
 
     uint8_t rx_buffer[LORA_PACKET_MAX_SIZE];
     size_t received_length;
