@@ -1,5 +1,10 @@
 file(GLOB GENERATED_SOURCES "generated/*.c")
 
+set(INCLUDE_DIRS "include")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated")
+    list(APPEND INCLUDE_DIRS "generated")
+endif()
+
 idf_component_register(
     SRCS 
         "ui_compact.c"
@@ -29,8 +34,7 @@ idf_component_register(
         "screens/screen_lora_band.c"
         ${GENERATED_SOURCES}
     INCLUDE_DIRS 
-        "include"
-        "generated"
+        ${INCLUDE_DIRS}
     REQUIRES 
         ui_lvgl
         button_manager
