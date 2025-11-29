@@ -108,13 +108,6 @@ jobs:
         sudo mv gitversion /usr/local/bin/
         gitversion version
     
-    - name: Generate sdkconfig from layered defaults
-      shell: bash
-      run: |
-        echo "=== Building ${{ matrix.model.display_name }} (${{ matrix.model.board }}) ==="
-        echo "Using layered sdkconfig: ${{ matrix.model.sdkconfig }}"
-        rm -f sdkconfig
-    
     - name: Cache ESP-IDF
       uses: actions/cache@v4
       with:
