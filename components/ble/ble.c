@@ -727,6 +727,34 @@ bool ble_is_connected(void)
     return connected;
 }
 
+static void ble_send_long_notification(uint16_t conn_handle, uint16_t attr_handle, const char *data, size_t len, uint16_t mtu)
+{
+    size_t chunk_size = mtu - 3; // ATT overhead
+    size_t offset = 0;
+
+    while (offset < len) {
+        size_t to_send = (len - offset > chunk_size) ? chunk_size : (len - offset);
+
+        struct os_mbuf *om = ble_hs_mbuf_from_flat(data + offset, to_send);
+        if (!om) {
+            ESP_LOGE(TAG, "Failed to allocate mbuf");
+            return;
+        }
+
+        int rc = ble_gattc_notify_custom(conn_handle, attr_handle, om);
+        if (rc != 0) {
+            ESP_LOGE(TAG, "Failed to send notification: %d", rc);
+            return;
+        }
+
+        offset += to_send;
+
+        if (offset < len) {
+            vTaskDelay(pdMS_TO_TICKS(10)); // Small delay between chunks
+        }
+    }
+}
+
 void ble_send_response(const char *response)
 {
     if (!response || strlen(response) == 0) {
@@ -749,31 +777,7 @@ void ble_send_response(const char *response)
         return;
     }
 
-    size_t len        = strlen(response);
-    size_t chunk_size = mtu - 3; // ATT overhead
-    size_t offset     = 0;
-
-    while (offset < len) {
-        size_t to_send = (len - offset > chunk_size) ? chunk_size : (len - offset);
-
-        struct os_mbuf *om = ble_hs_mbuf_from_flat(response + offset, to_send);
-        if (!om) {
-            ESP_LOGE(TAG, "Failed to allocate mbuf");
-            return;
-        }
-
-        int rc = ble_gattc_notify_custom(conn_handle, s_nus_tx_handle, om);
-        if (rc != 0) {
-            ESP_LOGE(TAG, "Failed to send notification: %d", rc);
-            return;
-        }
-
-        offset += to_send;
-
-        if (offset < len) {
-            vTaskDelay(pdMS_TO_TICKS(10)); // Small delay between chunks
-        }
-    }
+    ble_send_long_notification(conn_handle, s_nus_tx_handle, response, strlen(response), mtu);
 }
 
 esp_err_t ble_set_enabled(bool enabled)
