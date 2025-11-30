@@ -117,6 +117,12 @@ void bsp_set_led(bool state);
 void bsp_toggle_led(void);
 
 /**
+ * @brief Get the status LED GPIO number
+ * @return GPIO number, or GPIO_NUM_NC if not available
+ */
+gpio_num_t bsp_get_led_gpio(void);
+
+/**
  * @brief Read button state
  *
  * @param button Button to read (BSP_BUTTON_PREV or BSP_BUTTON_NEXT)

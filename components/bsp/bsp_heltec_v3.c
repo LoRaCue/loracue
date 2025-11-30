@@ -68,13 +68,15 @@ esp_err_t bsp_init_spi(void)
     ESP_LOGD(TAG, "Initializing SPI bus for SX1262 LoRa (MOSI=%d, MISO=%d, SCK=%d, CS=%d)", LORA_MOSI_PIN,
              LORA_MISO_PIN, LORA_SCK_PIN, LORA_CS_PIN);
 
-    esp_err_t ret = bsp_spi_init_bus(BSP_LORA_SPI_HOST, LORA_MOSI_PIN, LORA_MISO_PIN, LORA_SCK_PIN, SPI_TRANSFER_SIZE_LORA);
+    esp_err_t ret =
+        bsp_spi_init_bus(BSP_LORA_SPI_HOST, LORA_MOSI_PIN, LORA_MISO_PIN, LORA_SCK_PIN, SPI_TRANSFER_SIZE_LORA);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    ret = bsp_spi_add_device(BSP_LORA_SPI_HOST, LORA_CS_PIN, SPI_CLOCK_SPEED_HZ, SPI_MODE_DEFAULT, SPI_QUEUE_SIZE, &spi_handle);
+    ret = bsp_spi_add_device(BSP_LORA_SPI_HOST, LORA_CS_PIN, SPI_CLOCK_SPEED_HZ, SPI_MODE_DEFAULT, SPI_QUEUE_SIZE,
+                             &spi_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to add SPI device: %s", esp_err_to_name(ret));
         spi_bus_free(BSP_LORA_SPI_HOST);
@@ -304,6 +306,11 @@ void bsp_toggle_led(void)
     static bool led_state = false;
     led_state             = !led_state;
     bsp_set_led(led_state);
+}
+
+gpio_num_t bsp_get_led_gpio(void)
+{
+    return STATUS_LED_PIN;
 }
 
 bool bsp_read_button(bsp_button_t button)
