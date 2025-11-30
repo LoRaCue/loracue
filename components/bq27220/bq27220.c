@@ -4,9 +4,9 @@
 static const char *TAG = "bq27220";
 static i2c_port_t bq_i2c_port;
 
-#define BQ27220_CMD_SOC         0x1C
-#define BQ27220_CMD_VOLTAGE     0x04
-#define BQ27220_CMD_CURRENT     0x10
+#define BQ27220_CMD_SOC 0x1C
+#define BQ27220_CMD_VOLTAGE 0x04
+#define BQ27220_CMD_CURRENT 0x10
 
 static esp_err_t bq27220_read_word(uint8_t cmd, uint16_t *value)
 {
