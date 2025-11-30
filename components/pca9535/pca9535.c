@@ -44,7 +44,7 @@ esp_err_t pca9535_init(uint8_t addr)
     }
 
     // Set all pins as outputs initially
-    esp_err_t ret = pca9535_write_reg(PCA9535_CONFIG_PORT0, 0x00);
+    ret = pca9535_write_reg(PCA9535_CONFIG_PORT0, 0x00);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize PCA9535");
         return ret;

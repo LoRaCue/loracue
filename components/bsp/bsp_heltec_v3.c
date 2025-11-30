@@ -187,7 +187,7 @@ esp_err_t bsp_init(void)
 
     // Initialize I2C bus for OLED and future I2C devices (if not already initialized)
     if (bsp_i2c_get_bus() == NULL) {
-        ret = bsp_i2c_init(OLED_SDA_PIN, OLED_SCL_PIN, I2C_CLOCK_SPEED_HZ);
+        ret = bsp_i2c_init(I2C_NUM_0, OLED_SDA_PIN, OLED_SCL_PIN, I2C_CLOCK_SPEED_HZ);
         if (ret != ESP_OK) {
             ESP_LOGE(TAG, "Failed to initialize I2C: %s", esp_err_to_name(ret));
             goto cleanup;
