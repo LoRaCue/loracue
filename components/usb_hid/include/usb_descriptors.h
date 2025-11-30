@@ -5,9 +5,9 @@
 
 #pragma once
 
-#include "tusb.h"
-#include "class/hid/hid_device.h"
 #include "class/cdc/cdc_device.h"
+#include "class/hid/hid_device.h"
+#include "tusb.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -4,10 +4,10 @@
  */
 
 #include "usb_console.h"
+#include "driver/gpio.h"
 #include "esp_log.h"
 #include "tinyusb.h"
-#include "tusb_cdc_acm.h"  // Renamed in esp_tinyusb 1.7.6+
-#include "driver/gpio.h"
+#include "tusb_cdc_acm.h" // Renamed in esp_tinyusb 1.7.6+
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -29,17 +29,17 @@ static int usb_console_vprintf(const char *fmt, va_list args)
             tud_cdc_write_flush();
         }
     }
-    
+
     return 0;
 }
 
 esp_err_t usb_console_init(void)
 {
     ESP_LOGI(TAG, "Redirecting console to USB CDC port 0");
-    
+
     // Save original vprintf (UART output)
     original_vprintf = esp_log_set_vprintf(usb_console_vprintf);
-    
+
     return ESP_OK;
 }
 
