@@ -1,4 +1,4 @@
-name: Build LoRaCue Firmware
+name: LoRaCue CI
 
 on:
   push:
@@ -116,13 +116,6 @@ jobs:
           ~/esp/esp-idf
         key: esp-idf-${{ env.ESP_IDF_VERSION }}
     
-    - name: Install build dependencies
-      shell: bash
-      run: |
-        echo "📦 Installing build dependencies..."
-        npm install -g lv_font_conv
-        cargo install png2lvgl
-    
     - name: Install ESP-IDF
       shell: bash
       run: |
@@ -137,6 +130,14 @@ jobs:
           echo "✅ ESP-IDF already installed (from cache)"
         fi
         echo "ESP_IDF=$HOME/esp/esp-idf" >> $GITHUB_ENV
+    
+    - name: Install build dependencies
+      shell: bash
+      run: |
+        echo "📦 Installing build dependencies..."
+        npm install -g lv_font_conv
+        cargo install png2lvgl
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     
     - name: Build firmware with make
       shell: bash
@@ -259,9 +260,29 @@ jobs:
       with:
         sarif_file: 'trivy-results.sarif'
 
+  host-tests:
+    runs-on: ubuntu-latest
+    needs: code-quality
+    name: Host Unit Tests
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v6
+    
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.0'
+        bundler-cache: true
+        working-directory: tests/host
+    
+    - name: Run Ceedling tests
+      working-directory: tests/host
+      run: bundle exec ceedling test:all
+
   summary:
     runs-on: ubuntu-latest
-    needs: [version, build-hardware]
+    needs: [version, build-hardware, host-tests]
     if: always()
     name: Build Summary
     
@@ -276,6 +297,7 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Build Status" >> $GITHUB_STEP_SUMMARY
         echo "- Hardware Build: ${{ needs.build-hardware.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Host Tests: ${{ needs.host-tests.result }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "## Artifacts" >> $GITHUB_STEP_SUMMARY
         echo "- Heltec LoRa V3: \`loracue-heltec_v3-${{ needs.version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY

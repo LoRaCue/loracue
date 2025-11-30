@@ -4,7 +4,7 @@
   :use_test_preprocessor: TRUE
   :use_auxiliary_dependencies: TRUE
   :build_root: build
-  :release_build: TRUE
+  :release_build: FALSE
   :test_file_prefix: test_
   :which_ceedling: gem
   :ceedling_version: 0.31.1
@@ -16,38 +16,50 @@
     - +:test/**
     - -:test/support
   :source:
-    - ../../components/**/src/**
-    - ../../components/**/include/**
-    - ../../main/**
+    - ../../components/lora/**
+    - ../../components/common_types/include/**
   :support:
     - test/support
+  :include:
+    - ../../components/lora/include
+    - ../../components/common_types/include
+    - mocks
+    - .
 
 :defines:
-  :common: &common_defines []
+  :common: &common_defines
+    - TEST
   :test:
     - *common_defines
-    - TEST
   :test_preprocess:
     - *common_defines
-    - TEST
 
 :cmock:
   :mock_prefix: mock_
+  :mock_path: mocks
   :when_no_prototypes: :warn
-  :enforce_strict_ordering: TRUE
+  :enforce_strict_ordering: FALSE
   :plugins:
     - :ignore
     - :callback
+    - :return_thru_ptr
   :treat_as:
     uint8:    HEX8
     uint16:   HEX16
     uint32:   UINT32
     int8:     INT8
     bool:     UINT8
+  :includes:
+    - esp_err.h
+  :strippables:
+    - '(?:__attribute__\s*\(\s*\(.*?\)\s*\))'
 
 :gcov:
   :reports:
     - HtmlDetailed
+  :gcovr:
+    :html_medium_threshold: 75
+    :html_high_threshold: 90
 
 :tools:
   :test_compiler:
@@ -55,7 +67,26 @@
     :name: 'gcc'
     :arguments:
       - -I"$": COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR
-      - -I"../../components/common_types/include"  # Explicitly include common types
+      - -I"$": COLLECTION_PATHS_INCLUDE
       - -DTEST
+      - -std=c11
+      - -Wall
+      - -Wextra
+      - -Werror
       - -c "${1}"
       - -o "${2}"
+  :test_linker:
+    :executable: gcc
+    :name: 'gcc'
+    :arguments:
+      - -lm
+      - "${1}"
+      - -o "${2}"
+
+:plugins:
+  :load_paths:
+    - "#{Ceedling.load_path}"
+  :enabled:
+    - stdout_pretty_tests_report
+    - module_generator
+    - gcov

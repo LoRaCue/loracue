@@ -39,3 +39,9 @@ wokwi.log
 # Generated LVGL assets
 components/ui_compact/generated/
 components/ui_lvgl/generated/
+
+# Test artifacts
+tests/host/build/
+tests/host/vendor/
+tests/host/.bundle/
+tests/host/Gemfile.lock

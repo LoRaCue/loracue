@@ -39,16 +39,24 @@ python3 test_jsonrpc_protocol.py /dev/ttyACM0
 
 ## Host Tests (`host/`)
 
-Tests that run on the host PC without hardware.
+Ceedling/Unity/CMock tests that run on the host PC without hardware.
+
+**Framework:**
+- Unity (test assertions)
+- CMock (auto-generated mocks)
+- Ceedling (build system)
 
 **Contents:**
-- `test_lora_host.c` - LoRa protocol tests with mocked hardware
+- `test/test_lora_protocol.c` - LoRa protocol unit tests
+- `mocks/` - CMock-generated mocks
+- `project.yml` - Ceedling configuration
 
 **Run:**
 ```bash
 cd tests/host
-gcc -o test_lora_host test_lora_host.c
-./test_lora_host
+bundle install          # First time only
+bundle exec ceedling test:all
+bundle exec ceedling gcov:all  # With coverage
 ```
 
 ## Coverage

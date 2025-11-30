@@ -169,14 +169,6 @@ jobs:
           ~/esp/esp-idf
         key: esp-idf-${{ env.ESP_IDF_VERSION }}
     
-    - name: Install build dependencies
-      shell: bash
-      run: |
-        echo "📦 Installing build dependencies..."
-        npm install -g lv_font_conv
-        cargo install png2lvgl
-        pip install cryptography
-    
     - name: Install ESP-IDF
       shell: bash
       run: |
@@ -191,6 +183,15 @@ jobs:
           echo "✅ ESP-IDF already installed (from cache)"
         fi
         echo "ESP_IDF=$HOME/esp/esp-idf" >> $GITHUB_ENV
+    
+    - name: Install build dependencies
+      shell: bash
+      run: |
+        echo "📦 Installing build dependencies..."
+        npm install -g lv_font_conv
+        cargo install png2lvgl
+        pip install cryptography
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
     
     - name: Install mklittlefs
       shell: bash

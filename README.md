@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![ESP-IDF](https://img.shields.io/badge/ESP--IDF-v5.5-red.svg)](https://github.com/espressif/esp-idf)
 [![Platform](https://img.shields.io/badge/Platform-ESP32--S3-green.svg)](https://www.espressif.com/en/products/socs/esp32-s3)
-[![Build](https://github.com/LoRaCue/loracue/actions/workflows/build.yml/badge.svg)](https://github.com/LoRaCue/loracue/actions/workflows/build.yml)
+[![Build](https://github.com/LoRaCue/loracue/actions/workflows/ci.yml/badge.svg)](https://github.com/LoRaCue/loracue/actions/workflows/ci.yml)
 [![Wokwi Simulation](https://img.shields.io/badge/Wokwi-Simulation%20Ready-orange.svg)](https://wokwi.com/)
 [![Made with ❤️ in Hannover](https://img.shields.io/badge/Made%20with%20❤️%20in-Hannover-green.svg)](https://hannover.de)
 
