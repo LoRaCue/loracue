@@ -32,7 +32,7 @@
 // Main screen layout
 #define PRESENTER_TEXT_Y 27
 #define BUTTON_HINTS_Y 39
-#define BUTTON_TEXT_Y 38  // LVGL uses top position, not baseline
+#define BUTTON_TEXT_Y 38 // LVGL uses top position, not baseline
 
 // Bottom bar
 #define BOTTOM_BAR_Y 54
