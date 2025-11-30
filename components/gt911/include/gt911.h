@@ -1,8 +1,8 @@
 #pragma once
 
-#include "esp_err.h"
-#include "driver/i2c.h"
 #include "driver/gpio.h"
+#include "driver/i2c.h"
+#include "esp_err.h"
 
 #ifdef __cplusplus
 extern "C" {

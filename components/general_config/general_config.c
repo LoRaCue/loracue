@@ -20,12 +20,12 @@ static const char *TAG = "DEVICE_CONFIG";
 
 // Default device configuration
 static const general_config_t default_config = {
-    .device_name        = "LoRaCue-Device",
-    .device_mode        = DEVICE_MODE_PRESENTER,
-    .display_brightness = 128,
-    .bluetooth_enabled  = true,
+    .device_name               = "LoRaCue-Device",
+    .device_mode               = DEVICE_MODE_PRESENTER,
+    .display_brightness        = 128,
+    .bluetooth_enabled         = true,
     .bluetooth_pairing_enabled = false,
-    .slot_id            = 1,
+    .slot_id                   = 1,
 };
 
 // Cached configuration
