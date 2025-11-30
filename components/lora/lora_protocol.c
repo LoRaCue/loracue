@@ -13,8 +13,8 @@
 #include "esp_random.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/task.h"
 #include "general_config.h"
 #include "lora_driver.h"
 #include "mbedtls/aes.h"
@@ -28,8 +28,8 @@ static const char *TAG = "LORA_PROTOCOL";
 // ACK handling
 #define ACK_RECEIVED_BIT (1 << 0)
 static EventGroupHandle_t ack_event_group = NULL;
-static uint16_t pending_ack_sequence = 0;
-static SemaphoreHandle_t ack_mutex = NULL;
+static uint16_t pending_ack_sequence      = 0;
+static SemaphoreHandle_t ack_mutex        = NULL;
 
 // Protocol state
 static bool protocol_initialized = false;
@@ -48,12 +48,12 @@ static mbedtls_md_context_t hmac_ctx;
 static const mbedtls_md_info_t *hmac_md_info = NULL;
 
 // Callback state
-static lora_protocol_rx_callback_t rx_callback = NULL;
-static void *rx_callback_ctx = NULL;
+static lora_protocol_rx_callback_t rx_callback       = NULL;
+static void *rx_callback_ctx                         = NULL;
 static lora_protocol_state_callback_t state_callback = NULL;
-static void *state_callback_ctx = NULL;
-static TaskHandle_t protocol_rx_task_handle = NULL;
-static bool protocol_rx_task_running = false;
+static void *state_callback_ctx                      = NULL;
+static TaskHandle_t protocol_rx_task_handle          = NULL;
+static bool protocol_rx_task_running                 = false;
 static lora_connection_state_t last_connection_state = LORA_CONNECTION_LOST;
 
 esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
@@ -88,7 +88,7 @@ esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
             return ESP_ERR_NO_MEM;
         }
     }
-    
+
     if (ack_mutex == NULL) {
         ack_mutex = xSemaphoreCreateMutex();
         if (ack_mutex == NULL) {
@@ -186,8 +186,8 @@ esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifier
 {
     CHECK_INITIALIZED(protocol_initialized, "LoRa protocol");
 
-    ESP_LOGI(TAG, "Sending keyboard (reliable): slot=%d mod=0x%02X key=0x%02X timeout=%lums retries=%d", 
-             slot_id, modifiers, keycode, timeout_ms, max_retries);
+    ESP_LOGI(TAG, "Sending keyboard (reliable): slot=%d mod=0x%02X key=0x%02X timeout=%lums retries=%d", slot_id,
+             modifiers, keycode, timeout_ms, max_retries);
 
     lora_payload_t payload;
     payload.version_slot                   = LORA_MAKE_VS(LORA_PROTOCOL_VERSION, slot_id);
@@ -198,8 +198,8 @@ esp_err_t lora_protocol_send_keyboard_reliable(uint8_t slot_id, uint8_t modifier
     payload.hid_report.keyboard.keycode[2] = 0;
     payload.hid_report.keyboard.keycode[3] = 0;
 
-    return lora_protocol_send_reliable(CMD_HID_REPORT, (const uint8_t *)&payload, sizeof(lora_payload_t),
-                                       timeout_ms, max_retries);
+    return lora_protocol_send_reliable(CMD_HID_REPORT, (const uint8_t *)&payload, sizeof(lora_payload_t), timeout_ms,
+                                       max_retries);
 }
 
 esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *payload, uint8_t payload_length,
@@ -210,10 +210,10 @@ esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *pay
     for (uint8_t attempt = 0; attempt <= max_retries; attempt++) {
         // Capture sequence number that will be sent
         uint16_t expected_ack_seq = sequence_counter;
-        
+
         // Clear any pending ACK event
         xEventGroupClearBits(ack_event_group, ACK_RECEIVED_BIT);
-        
+
         // Send command
         esp_err_t ret = lora_protocol_send_command(command, payload, payload_length);
         if (ret != ESP_OK) {
@@ -229,12 +229,11 @@ esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *pay
         }
 
         // Wait for ACK event
-        EventBits_t bits = xEventGroupWaitBits(ack_event_group, 
-                                               ACK_RECEIVED_BIT,
+        EventBits_t bits = xEventGroupWaitBits(ack_event_group, ACK_RECEIVED_BIT,
                                                pdTRUE,  // Clear on exit
                                                pdFALSE, // Wait for any bit
                                                pdMS_TO_TICKS(timeout_ms));
-        
+
         if (bits & ACK_RECEIVED_BIT) {
             // Check if ACK matches expected sequence
             if (xSemaphoreTake(ack_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -294,9 +293,9 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
     memcpy(&mac_data[2], packet->encrypted_data, 16);
 
     ESP_LOGI(TAG, "Raw Packet: %02X%02X %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-             mac_data[0], mac_data[1], mac_data[2], mac_data[3], mac_data[4], mac_data[5],
-             mac_data[6], mac_data[7], mac_data[8], mac_data[9], mac_data[10], mac_data[11],
-             mac_data[12], mac_data[13], mac_data[14], mac_data[15], mac_data[16], mac_data[17]);
+             mac_data[0], mac_data[1], mac_data[2], mac_data[3], mac_data[4], mac_data[5], mac_data[6], mac_data[7],
+             mac_data[8], mac_data[9], mac_data[10], mac_data[11], mac_data[12], mac_data[13], mac_data[14],
+             mac_data[15], mac_data[16], mac_data[17]);
 
     uint8_t calculated_mac[LORA_MAC_SIZE];
     ret = calculate_mac(mac_data, 18, sender_device.aes_key, calculated_mac);
@@ -306,9 +305,8 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
         return ESP_FAIL;
     }
 
-    ESP_LOGI(TAG, "MAC: RX=%02X%02X%02X%02X  Calc=%02X%02X%02X%02X", 
-             packet->mac[0], packet->mac[1], packet->mac[2], packet->mac[3],
-             calculated_mac[0], calculated_mac[1], calculated_mac[2], calculated_mac[3]);
+    ESP_LOGI(TAG, "MAC: RX=%02X%02X%02X%02X  Calc=%02X%02X%02X%02X", packet->mac[0], packet->mac[1], packet->mac[2],
+             packet->mac[3], calculated_mac[0], calculated_mac[1], calculated_mac[2], calculated_mac[3]);
 
     if (memcmp(packet->mac, calculated_mac, LORA_MAC_SIZE) != 0) {
         ESP_LOGW(TAG, "MAC verification failed for device 0x%04X", packet->device_id);
@@ -488,31 +486,31 @@ void lora_protocol_reset_stats(void)
 
 void lora_protocol_register_rx_callback(lora_protocol_rx_callback_t callback, void *user_ctx)
 {
-    rx_callback = callback;
+    rx_callback     = callback;
     rx_callback_ctx = user_ctx;
 }
 
 void lora_protocol_register_state_callback(lora_protocol_state_callback_t callback, void *user_ctx)
 {
-    state_callback = callback;
+    state_callback     = callback;
     state_callback_ctx = user_ctx;
 }
 
 static void protocol_rx_task(void *arg)
 {
     ESP_LOGI(TAG, "Protocol RX task started");
-    
+
     while (protocol_rx_task_running) {
         lora_packet_data_t packet_data;
         esp_err_t ret = lora_protocol_receive_packet(&packet_data, 1000);
-        
+
         if (ret == ESP_OK) {
             ESP_LOGD(TAG, "RX task: packet received, processing");
-            
+
             // Handle ACK packets - signal waiting send_reliable()
             if (packet_data.command == CMD_ACK && packet_data.payload_length == 2) {
                 uint16_t ack_seq = (packet_data.payload[0] << 8) | packet_data.payload[1];
-                
+
                 if (xSemaphoreTake(ack_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
                     pending_ack_sequence = ack_seq;
                     xEventGroupSetBits(ack_event_group, ACK_RECEIVED_BIT);
@@ -521,21 +519,21 @@ static void protocol_rx_task(void *arg)
                 ESP_LOGD(TAG, "RX task: ACK processed, continuing");
                 continue;
             }
-            
+
             // Update activity for display sleep (PC mode only)
             general_config_t config;
             if (general_config_get(&config) == ESP_OK && config.device_mode == DEVICE_MODE_PC) {
                 power_mgmt_update_activity();
             }
-            
+
             // Invoke RX callback
             if (rx_callback) {
                 ESP_LOGD(TAG, "RX task: invoking callback");
-                rx_callback(packet_data.device_id, packet_data.sequence_num, packet_data.command,
-                           packet_data.payload, packet_data.payload_length, last_rssi, rx_callback_ctx);
+                rx_callback(packet_data.device_id, packet_data.sequence_num, packet_data.command, packet_data.payload,
+                            packet_data.payload_length, last_rssi, rx_callback_ctx);
                 ESP_LOGD(TAG, "RX task: callback completed");
             }
-            
+
             // Event-driven connection state monitoring (replaces polling task)
             // RSSI and last_packet_time are updated in lora_protocol_receive_packet()
             // State callback is invoked immediately when connection quality changes
@@ -549,10 +547,10 @@ static void protocol_rx_task(void *arg)
         } else if (ret != ESP_ERR_TIMEOUT) {
             ESP_LOGD(TAG, "RX task: receive error: %s", esp_err_to_name(ret));
         }
-        
+
         vTaskDelay(pdMS_TO_TICKS(5));
     }
-    
+
     ESP_LOGI(TAG, "Protocol RX task stopped");
     vTaskDelete(NULL);
 }
@@ -563,27 +561,21 @@ esp_err_t lora_protocol_start(void)
         ESP_LOGW(TAG, "Protocol RX task already running");
         return ESP_OK;
     }
-    
+
     protocol_rx_task_running = true;
-    
+
     // Log heap before task creation
     ESP_LOGI(TAG, "Free heap before RX task creation: %lu bytes", esp_get_free_heap_size());
-    
-    BaseType_t ret = xTaskCreate(
-        protocol_rx_task,
-        "protocol_rx",
-        TASK_STACK_SIZE_MEDIUM,
-        NULL,
-        TASK_PRIORITY_NORMAL,
-        &protocol_rx_task_handle
-    );
-    
+
+    BaseType_t ret = xTaskCreate(protocol_rx_task, "protocol_rx", TASK_STACK_SIZE_MEDIUM, NULL, TASK_PRIORITY_NORMAL,
+                                 &protocol_rx_task_handle);
+
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create protocol RX task (heap: %lu bytes)", esp_get_free_heap_size());
         protocol_rx_task_running = false;
         return ESP_FAIL;
     }
-    
+
     ESP_LOGI(TAG, "Protocol RX task created");
     return ESP_OK;
 }

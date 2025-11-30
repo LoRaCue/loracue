@@ -24,10 +24,10 @@ extern "C" {
 #define LORA_MAC_SIZE 4
 
 // Connection monitoring constants
-#define LORA_CONNECTION_TIMEOUT_US      30000000  ///< 30 seconds without packets = connection lost
-#define LORA_RSSI_EXCELLENT_THRESHOLD   -70       ///< RSSI > -70 dBm = excellent
-#define LORA_RSSI_GOOD_THRESHOLD        -85       ///< RSSI > -85 dBm = good
-#define LORA_RSSI_WEAK_THRESHOLD        -100      ///< RSSI > -100 dBm = weak
+#define LORA_CONNECTION_TIMEOUT_US 30000000 ///< 30 seconds without packets = connection lost
+#define LORA_RSSI_EXCELLENT_THRESHOLD -70   ///< RSSI > -70 dBm = excellent
+#define LORA_RSSI_GOOD_THRESHOLD -85        ///< RSSI > -85 dBm = good
+#define LORA_RSSI_WEAK_THRESHOLD -100       ///< RSSI > -100 dBm = weak
 
 // Protocol macros
 #define LORA_PROTOCOL_VERSION 0x01
@@ -45,9 +45,9 @@ extern "C" {
 
 // Flag bits (Byte 1, bits [3:0])
 #define LORA_FLAG_ACK_REQUEST 0x01 // Bit 0: Request ACK from receiver
-#define LORA_FLAG_RESERVED_1  0x02 // Bit 1: Reserved
-#define LORA_FLAG_RESERVED_2  0x04 // Bit 2: Reserved
-#define LORA_FLAG_RESERVED_3  0x08 // Bit 3: Reserved
+#define LORA_FLAG_RESERVED_1 0x02  // Bit 1: Reserved
+#define LORA_FLAG_RESERVED_2 0x04  // Bit 2: Reserved
+#define LORA_FLAG_RESERVED_3 0x08  // Bit 3: Reserved
 
 /**
  * @brief LoRa command types
@@ -197,12 +197,17 @@ typedef enum {
 static inline signal_strength_t lora_connection_to_signal_strength(lora_connection_state_t state)
 {
     switch (state) {
-        case LORA_CONNECTION_EXCELLENT: return SIGNAL_STRONG;
-        case LORA_CONNECTION_GOOD:      return SIGNAL_GOOD;
-        case LORA_CONNECTION_WEAK:      return SIGNAL_FAIR;
-        case LORA_CONNECTION_POOR:      return SIGNAL_WEAK;
+        case LORA_CONNECTION_EXCELLENT:
+            return SIGNAL_STRONG;
+        case LORA_CONNECTION_GOOD:
+            return SIGNAL_GOOD;
+        case LORA_CONNECTION_WEAK:
+            return SIGNAL_FAIR;
+        case LORA_CONNECTION_POOR:
+            return SIGNAL_WEAK;
         case LORA_CONNECTION_LOST:
-        default:                        return SIGNAL_NONE;
+        default:
+            return SIGNAL_NONE;
     }
 }
 
