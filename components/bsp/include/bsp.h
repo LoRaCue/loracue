@@ -10,6 +10,8 @@
 #pragma once
 
 #include "esp_err.h"
+#include "driver/gpio.h"
+#include "driver/i2c.h"
 #include <stdbool.h>
 
 #ifdef __cplusplus
