@@ -6,8 +6,14 @@ static i2c_port_t rtc_i2c_port;
 
 #define PCF85063_REG_SECONDS 0x04
 
-static uint8_t bcd_to_dec(uint8_t val) { return (val >> 4) * 10 + (val & 0x0F); }
-static uint8_t dec_to_bcd(uint8_t val) { return ((val / 10) << 4) | (val % 10); }
+static uint8_t bcd_to_dec(uint8_t val)
+{
+    return (val >> 4) * 10 + (val & 0x0F);
+}
+static uint8_t dec_to_bcd(uint8_t val)
+{
+    return ((val / 10) << 4) | (val % 10);
+}
 
 static esp_err_t pcf85063_write_regs(uint8_t reg, uint8_t *data, size_t len)
 {
@@ -47,12 +53,12 @@ esp_err_t pcf85063_get_time(struct tm *time)
     uint8_t data[7];
     esp_err_t ret = pcf85063_read_regs(PCF85063_REG_SECONDS, data, 7);
     if (ret == ESP_OK) {
-        time->tm_sec = bcd_to_dec(data[0] & 0x7F);
-        time->tm_min = bcd_to_dec(data[1] & 0x7F);
+        time->tm_sec  = bcd_to_dec(data[0] & 0x7F);
+        time->tm_min  = bcd_to_dec(data[1] & 0x7F);
         time->tm_hour = bcd_to_dec(data[2] & 0x3F);
         time->tm_mday = bcd_to_dec(data[3] & 0x3F);
         time->tm_wday = data[4] & 0x07;
-        time->tm_mon = bcd_to_dec(data[5] & 0x1F) - 1;
+        time->tm_mon  = bcd_to_dec(data[5] & 0x1F) - 1;
         time->tm_year = bcd_to_dec(data[6]) + 100;
     }
     return ret;

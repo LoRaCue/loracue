@@ -17,7 +17,7 @@ static const char *TAG = "PC_MODE_MGR";
 
 // Rate limiter and presenter tracking constants
 #define RATE_LIMIT_MAX_COMMANDS_PER_SEC 10
-#define PRESENTER_EXPIRY_TIMEOUT_MS     30000  // 30 seconds
+#define PRESENTER_EXPIRY_TIMEOUT_MS 30000 // 30 seconds
 
 // Active presenter tracking
 typedef struct {
@@ -36,7 +36,7 @@ typedef struct {
     uint32_t command_count_1s;
 } rate_limiter_t;
 
-static rate_limiter_t rate_limiter = {0};
+static rate_limiter_t rate_limiter   = {0};
 static SemaphoreHandle_t state_mutex = NULL;
 
 static bool rate_limiter_check(void)
@@ -59,7 +59,7 @@ static bool rate_limiter_check(void)
 static void update_active_presenter(uint16_t device_id, int16_t rssi)
 {
     uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    int slot = -1;
+    int slot     = -1;
 
     // Find existing or empty slot
     for (int i = 0; i < MAX_ACTIVE_PRESENTERS; i++) {
@@ -74,7 +74,7 @@ static void update_active_presenter(uint16_t device_id, int16_t rssi)
 
     // Expire old entries (>30s)
     for (int i = 0; i < MAX_ACTIVE_PRESENTERS; i++) {
-        if (active_presenters[i].device_id != 0 && 
+        if (active_presenters[i].device_id != 0 &&
             (now - active_presenters[i].last_seen_ms) > PRESENTER_EXPIRY_TIMEOUT_MS) {
             ESP_LOGI(TAG, "Presenter 0x%04X expired", active_presenters[i].device_id);
             memset(&active_presenters[i], 0, sizeof(active_presenter_t));
@@ -82,8 +82,8 @@ static void update_active_presenter(uint16_t device_id, int16_t rssi)
     }
 
     if (slot != -1) {
-        active_presenters[slot].device_id = device_id;
-        active_presenters[slot].last_rssi = rssi;
+        active_presenters[slot].device_id    = device_id;
+        active_presenters[slot].last_rssi    = rssi;
         active_presenters[slot].last_seen_ms = now;
         active_presenters[slot].command_count++;
     }
@@ -92,14 +92,13 @@ static void update_active_presenter(uint16_t device_id, int16_t rssi)
 esp_err_t pc_mode_manager_init(void)
 {
     CREATE_MUTEX_OR_FAIL(state_mutex);
-    
+
     ESP_LOGI(TAG, "PC mode manager initialized");
     return ESP_OK;
 }
 
-esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_num,
-                                          lora_command_t command, const uint8_t *payload,
-                                          uint8_t payload_length, int16_t rssi)
+esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_num, lora_command_t command,
+                                          const uint8_t *payload, uint8_t payload_length, int16_t rssi)
 {
     if (!state_mutex) {
         return ESP_ERR_INVALID_STATE;
@@ -107,8 +106,7 @@ esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_
 
     xSemaphoreTake(state_mutex, portMAX_DELAY);
 
-    ESP_LOGI(TAG, "Processing: device=0x%04X, seq=%u, cmd=0x%02X, rssi=%d dBm",
-             device_id, sequence_num, command, rssi);
+    ESP_LOGI(TAG, "Processing: device=0x%04X, seq=%u, cmd=0x%02X, rssi=%d dBm", device_id, sequence_num, command, rssi);
 
     // Device pairing validation
     if (!device_registry_is_paired(device_id)) {
@@ -128,15 +126,15 @@ esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_
     }
 
     usb_hid_keycode_t keycode = 0;
-    uint8_t modifiers = 0;
+    uint8_t modifiers         = 0;
 
     // Parse HID report from payload
     if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_t)) {
         const lora_payload_t *pkt = (const lora_payload_t *)payload;
-        uint8_t hid_type = LORA_HID_TYPE(pkt->type_flags);
+        uint8_t hid_type          = LORA_HID_TYPE(pkt->type_flags);
 
         if (hid_type == HID_TYPE_KEYBOARD) {
-            keycode = pkt->hid_report.keyboard.keycode[0];
+            keycode   = pkt->hid_report.keyboard.keycode[0];
             modifiers = pkt->hid_report.keyboard.modifiers;
         }
 
@@ -148,18 +146,13 @@ esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_
 
         // Post HID command event for UI
         system_event_hid_command_t hid_evt = {
-            .device_id = device_id,
-            .hid_type = hid_type,
-            .hid_report = {
-                pkt->hid_report.keyboard.modifiers,
-                pkt->hid_report.keyboard.keycode[0],
-                pkt->hid_report.keyboard.keycode[1],
-                pkt->hid_report.keyboard.keycode[2],
-                pkt->hid_report.keyboard.keycode[3]
-            },
-            .flags = LORA_FLAGS(pkt->type_flags),
-            .rssi = rssi
-        };
+            .device_id  = device_id,
+            .hid_type   = hid_type,
+            .hid_report = {pkt->hid_report.keyboard.modifiers, pkt->hid_report.keyboard.keycode[0],
+                           pkt->hid_report.keyboard.keycode[1], pkt->hid_report.keyboard.keycode[2],
+                           pkt->hid_report.keyboard.keycode[3]},
+            .flags      = LORA_FLAGS(pkt->type_flags),
+            .rssi       = rssi};
         system_events_post_hid_command(&hid_evt);
     }
 
