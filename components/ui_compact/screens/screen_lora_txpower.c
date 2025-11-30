@@ -6,8 +6,8 @@
 static const char *TAG           = "lora_txpower";
 static ui_numeric_input_t *input = NULL;
 
-static float current_tx_power = 0;
-static bool is_editing        = false;
+static float current_tx_power   = 0;
+static bool is_editing          = false;
 static bool preserved_edit_mode = false;
 
 void screen_lora_txpower_on_enter(void)

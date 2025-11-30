@@ -7,7 +7,7 @@
 
 static const char *TAG          = "lora_presets";
 static ui_radio_select_t *radio = NULL;
-static int preserved_index = -1;
+static int preserved_index      = -1;
 
 typedef enum { PRESET_CONFERENCE = 0, PRESET_AUDITORIUM, PRESET_STADIUM, PRESET_COUNT } lora_preset_t;
 

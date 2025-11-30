@@ -1,0 +1,73 @@
+name: LoRaCue CI
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  lint:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck clang-format
+
+      - name: Check Formatting
+        run: make format-check
+
+      - name: Run Cppcheck
+        run: make lint
+
+  build:
+    name: Build Firmware
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5
+    strategy:
+      matrix:
+        model: [alpha, beta, gamma]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build ${{ matrix.model }}
+        run: |
+          . $IDF_PATH/export.sh
+          make set-target
+          make build MODEL=${{ matrix.model }}
+
+  test_host:
+    name: Host Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0'
+          bundler-cache: true
+          working-directory: tests/host
+
+      - name: Install Ceedling
+        working-directory: tests/host
+        run: bundle install
+
+      - name: Run Tests
+        working-directory: tests/host
+        run: bundle exec ceedling test:all

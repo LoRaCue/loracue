@@ -194,6 +194,7 @@ all: build
 
 # Internal: Check ESP-IDF installation
 check-idf:
+ifndef CI
 ifndef IDF_PY_IN_PATH
 ifndef IDF_PATH_FOUND
 	@echo "❌ ESP-IDF not found!"
@@ -203,6 +204,7 @@ ifndef IDF_PATH_FOUND
 	@echo "  cd ~/esp-idf-v5.5 && ./install.sh esp32s3"
 	@echo "  source ~/esp-idf-v5.5/export.sh"
 	@false
+endif
 endif
 endif
 
@@ -237,7 +239,11 @@ else
 $(error Invalid MODEL=$(MODEL). Use: alpha, alpha+, beta, or gamma)
 endif
 
+ifdef CI
+build: check-idf fonts-1bpp ui_compact_assets
+else
 build: check-idf fonts-1bpp ui_compact_assets chips
+endif
 	@echo "🔨 Building $(MODEL_NAME) ($(BOARD_NAME))..."
 	@rm -f sdkconfig
 	$(IDF_SETUP) idf.py -D SDKCONFIG_DEFAULTS="$(SDKCONFIG)" -D BOARD_ID="$(BOARD_ID)" build
@@ -372,7 +378,11 @@ test-build: check-idf
 WOKWI_BOARD ?= heltec_v3
 WOKWI_DIR = wokwi/$(WOKWI_BOARD)
 
+ifdef CI
+sim: check-idf
+else
 sim: check-idf build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
+endif
 ifndef WOKWI_CLI
 	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
 	@false

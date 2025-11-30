@@ -62,12 +62,12 @@ static void button_event_handler(button_event_type_t event, void *arg)
 {
     general_config_t config;
     general_config_get(&config);
-    
+
     // In PC mode, long press opens menu (handled by UI), not HID
     if (config.device_mode == DEVICE_MODE_PC && event == BUTTON_EVENT_LONG) {
         return;
     }
-    
+
     const key_mapping_t *key_map = (config.device_mode == DEVICE_MODE_PC) ? pc_mode_keys : presenter_mode_keys;
 
     if (event >= sizeof(pc_mode_keys) / sizeof(key_mapping_t)) {
@@ -123,13 +123,11 @@ esp_err_t usb_hid_init(void)
     ESP_LOGI(TAG, "Initializing USB composite device (HID + CDC)");
 
     // esp_tinyusb 1.7.6+ API
-    tinyusb_config_t tusb_cfg = {
-        .device_descriptor = usb_get_device_descriptor(),
-        .string_descriptor = usb_get_string_descriptors(),
-        .string_descriptor_count = 6,
-        .external_phy = false,
-        .configuration_descriptor = usb_get_config_descriptor()
-    };
+    tinyusb_config_t tusb_cfg = {.device_descriptor        = usb_get_device_descriptor(),
+                                 .string_descriptor        = usb_get_string_descriptors(),
+                                 .string_descriptor_count  = 6,
+                                 .external_phy             = false,
+                                 .configuration_descriptor = usb_get_config_descriptor()};
 
     ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
 

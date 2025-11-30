@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "esp_err.h"
 #include "common_types.h"
+#include "esp_err.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,14 +17,14 @@ extern "C" {
 
 /**
  * @brief Initialize presenter mode manager
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t presenter_mode_manager_init(void);
 
 /**
  * @brief Handle button event in presenter mode
- * 
+ *
  * @param button_type Type of button event
  * @return ESP_OK if handled
  */

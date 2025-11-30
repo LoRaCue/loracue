@@ -1,18 +1,18 @@
 #include "usb_cdc.h"
+#include "class/cdc/cdc_device.h"
 #include "commands.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
 #include "tinyusb.h"
 #include "tusb.h"
-#include "class/cdc/cdc_device.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
 #include <string.h>
 
 static const char *TAG = "USB_CDC";
 
 #define CDC_RX_QUEUE_SIZE 10
-#define CDC_TASK_STACK_SIZE 6144  // 2KB buffer + cJSON operations
+#define CDC_TASK_STACK_SIZE 6144 // 2KB buffer + cJSON operations
 #define CDC_TASK_PRIORITY 5
 #define CMD_MAX_LENGTH 2048
 
@@ -21,7 +21,7 @@ typedef struct {
     size_t len;
 } cdc_rx_msg_t;
 
-static QueueHandle_t cdc_rx_queue = NULL;
+static QueueHandle_t cdc_rx_queue   = NULL;
 static TaskHandle_t cdc_task_handle = NULL;
 static char rx_buffer[CMD_MAX_LENGTH];
 static size_t rx_len = 0;
@@ -39,7 +39,7 @@ static void process_command(const char *command_line)
 {
     ESP_LOGI(TAG, "Processing command: '%s' (len=%d)", command_line, strlen(command_line));
     for (int i = 0; command_line[i] != '\0'; i++) {
-        ESP_LOGI(TAG, "  [%d] = 0x%02X ('%c')", i, (unsigned char)command_line[i], 
+        ESP_LOGI(TAG, "  [%d] = 0x%02X ('%c')", i, (unsigned char)command_line[i],
                  command_line[i] >= 32 && command_line[i] < 127 ? command_line[i] : '.');
     }
     commands_execute(command_line, send_response);
@@ -49,7 +49,7 @@ static void cdc_task(void *arg)
 {
     ESP_LOGI(TAG, "CDC task started");
     cdc_rx_msg_t msg;
-    
+
     while (1) {
         if (xQueueReceive(cdc_rx_queue, &msg, portMAX_DELAY) == pdTRUE) {
             msg.data[msg.len] = '\0';
@@ -73,7 +73,7 @@ void tud_cdc_rx_cb(uint8_t itf)
                 cdc_rx_msg_t msg;
                 msg.len = rx_len;
                 memcpy(msg.data, rx_buffer, rx_len);
-                
+
                 if (xQueueSend(cdc_rx_queue, &msg, 0) != pdTRUE) {
                     ESP_LOGW(TAG, "CDC RX queue full, dropping command");
                 }
@@ -97,25 +97,24 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts)
 esp_err_t usb_cdc_init(void)
 {
     ESP_LOGI(TAG, "Initializing USB CDC command interface");
-    
+
     // Create RX queue
     cdc_rx_queue = xQueueCreate(CDC_RX_QUEUE_SIZE, sizeof(cdc_rx_msg_t));
     if (!cdc_rx_queue) {
         ESP_LOGE(TAG, "Failed to create CDC RX queue");
         return ESP_ERR_NO_MEM;
     }
-    
+
     // Create CDC task
-    BaseType_t ret = xTaskCreate(cdc_task, "cdc", CDC_TASK_STACK_SIZE, NULL, 
-                                  CDC_TASK_PRIORITY, &cdc_task_handle);
+    BaseType_t ret = xTaskCreate(cdc_task, "cdc", CDC_TASK_STACK_SIZE, NULL, CDC_TASK_PRIORITY, &cdc_task_handle);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create CDC task");
         vQueueDelete(cdc_rx_queue);
         cdc_rx_queue = NULL;
         return ESP_FAIL;
     }
-    
-    ESP_LOGI(TAG, "USB CDC initialized (queue=%d, stack=%d, priority=%d)",
-             CDC_RX_QUEUE_SIZE, CDC_TASK_STACK_SIZE, CDC_TASK_PRIORITY);
+
+    ESP_LOGI(TAG, "USB CDC initialized (queue=%d, stack=%d, priority=%d)", CDC_RX_QUEUE_SIZE, CDC_TASK_STACK_SIZE,
+             CDC_TASK_PRIORITY);
     return ESP_OK;
 }

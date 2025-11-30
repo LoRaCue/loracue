@@ -9,10 +9,10 @@
 #include "ui_lvgl_config.h"
 #include "ui_navigator.h"
 
-static const char *TAG        = "screen_main";
-static lv_obj_t *statusbar    = NULL;
-static lv_obj_t *mode_label   = NULL;
-static lv_group_t *group      = NULL;
+static const char *TAG      = "screen_main";
+static lv_obj_t *statusbar  = NULL;
+static lv_obj_t *mode_label = NULL;
+static lv_group_t *group    = NULL;
 
 // External declarations for generated button icons
 LV_IMG_DECLARE(button_short_press);
@@ -42,7 +42,7 @@ void screen_main_create(lv_obj_t *parent, const statusbar_data_t *initial_status
 
     // Create main screen layout (mode label, bottom bar with device name and menu)
     const char *device_name = (initial_status && initial_status->device_name) ? initial_status->device_name : "LC-????";
-    mode_label = ui_create_main_screen_layout(parent, "PRESENTER", device_name);
+    mode_label              = ui_create_main_screen_layout(parent, "PRESENTER", device_name);
     ESP_LOGI(TAG, "Device name: %s", device_name);
 
     // Button hints: Double-press icon + "PREV" on left
@@ -110,9 +110,9 @@ static void screen_main_destroy(void)
 {
     // Clean up any specific resources if needed
     // LVGL objects are deleted by parent deletion
-    group        = NULL;
-    statusbar    = NULL;
-    mode_label   = NULL;
+    group      = NULL;
+    statusbar  = NULL;
+    mode_label = NULL;
 }
 
 static void handle_input(button_event_type_t event)

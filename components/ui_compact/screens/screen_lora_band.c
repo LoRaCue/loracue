@@ -6,7 +6,7 @@
 
 static const char *TAG          = "lora_band";
 static ui_radio_select_t *radio = NULL;
-static int preserved_index = -1;
+static int preserved_index      = -1;
 static const char **band_names  = NULL;
 static int band_count           = 0;
 

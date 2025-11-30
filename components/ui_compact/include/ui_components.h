@@ -22,8 +22,10 @@
 // Menu constants
 #define UI_MENU_ITEM_HEIGHT 13
 #define UI_MENU_BOTTOM_BAR_HEIGHT 11
-#define UI_MENU_VISIBLE_ITEMS (SEPARATOR_Y_BOTTOM / UI_MENU_ITEM_HEIGHT)  // Menu without heading: 4 items on 64px (53/13=4)
-#define UI_RADIO_VISIBLE_ITEMS ((SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP - 2) / UI_MENU_ITEM_HEIGHT)  // With heading: 3 items on 64px
+#define UI_MENU_VISIBLE_ITEMS                                                                                          \
+    (SEPARATOR_Y_BOTTOM / UI_MENU_ITEM_HEIGHT) // Menu without heading: 4 items on 64px (53/13=4)
+#define UI_RADIO_VISIBLE_ITEMS                                                                                         \
+    ((SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP - 2) / UI_MENU_ITEM_HEIGHT) // With heading: 3 items on 64px
 #define UI_MENU_ARROW_Y_UP 3
 #define UI_MENU_ARROW_Y_DOWN (SEPARATOR_Y_BOTTOM - 7)
 
@@ -40,11 +42,7 @@ extern lv_style_t style_small;
 void ui_components_init(void);
 
 // Icon + text helper
-typedef enum {
-    UI_ALIGN_LEFT,
-    UI_ALIGN_CENTER,
-    UI_ALIGN_RIGHT
-} ui_align_t;
+typedef enum { UI_ALIGN_LEFT, UI_ALIGN_CENTER, UI_ALIGN_RIGHT } ui_align_t;
 
 int ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, int x, int y, ui_align_t align);
 
@@ -77,7 +75,8 @@ typedef struct {
 } ui_edit_screen_t;
 
 ui_edit_screen_t *ui_edit_screen_create(const char *title);
-void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, const char *title, const char *value, int current, int max);
+void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, const char *title, const char *value,
+                           int current, int max);
 
 // Numeric input screen
 typedef struct {
@@ -95,15 +94,12 @@ void ui_numeric_input_increment(ui_numeric_input_t *input);
 void ui_numeric_input_decrement(ui_numeric_input_t *input);
 
 // Radio select screen (single or multi selection)
-typedef enum {
-    UI_RADIO_SINGLE,
-    UI_RADIO_MULTI
-} ui_radio_mode_t;
+typedef enum { UI_RADIO_SINGLE, UI_RADIO_MULTI } ui_radio_mode_t;
 
 typedef struct {
     lv_obj_t *screen;
     int selected_index;
-    bool *selected_items;  // For multi-select
+    bool *selected_items; // For multi-select
     int item_count;
     int scroll_offset;
     ui_radio_mode_t mode;
@@ -131,9 +127,9 @@ bool ui_confirmation_check_hold(ui_confirmation_t *confirm, bool button_pressed,
 
 // Text viewer component
 typedef struct {
-    const char **lines;  // cppcheck-suppress unusedStructMember
-    uint8_t line_count;  // cppcheck-suppress unusedStructMember
-    uint8_t scroll_pos;  // cppcheck-suppress unusedStructMember
+    const char **lines; // cppcheck-suppress unusedStructMember
+    uint8_t line_count; // cppcheck-suppress unusedStructMember
+    uint8_t scroll_pos; // cppcheck-suppress unusedStructMember
 } ui_text_viewer_t;
 
 ui_text_viewer_t *ui_text_viewer_create(const char **lines, uint8_t line_count);

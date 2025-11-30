@@ -26,14 +26,14 @@
 #include "lora_protocol.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include "ui_compact.h"
-#include "system_events.h"
 #include "ota_engine.h"
 #include "pc_mode_manager.h"
 #include "power_mgmt.h"
 #include "power_mgmt_config.h"
 #include "presenter_mode_manager.h"
+#include "system_events.h"
 #include "uart_commands.h"
+#include "ui_compact.h"
 #include "usb_cdc.h"
 #include "usb_console.h"
 #include "usb_hid.h"
@@ -41,7 +41,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static const char *TAG            = "LORACUE_MAIN";
+static const char *TAG                          = "LORACUE_MAIN";
 static const esp_partition_t *running_partition = NULL;
 static TimerHandle_t ota_validation_timer       = NULL;
 
@@ -165,10 +165,10 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
 static void lora_state_handler(lora_connection_state_t state, const void *user_ctx)
 {
     bool connected = (state != LORA_CONNECTION_LOST);
-    int8_t signal = (state == LORA_CONNECTION_EXCELLENT) ? 100
-                   : (state == LORA_CONNECTION_GOOD)    ? 75
-                   : (state == LORA_CONNECTION_WEAK)    ? 50
-                                                        : 25;
+    int8_t signal  = (state == LORA_CONNECTION_EXCELLENT) ? 100
+                     : (state == LORA_CONNECTION_GOOD)    ? 75
+                     : (state == LORA_CONNECTION_WEAK)    ? 50
+                                                          : 25;
     system_events_post_lora_state(connected, signal);
 }
 
@@ -271,7 +271,7 @@ void app_main(void)
         .enable_auto_display_sleep = pwr_cfg.display_sleep_enabled,
         .enable_auto_light_sleep   = pwr_cfg.light_sleep_enabled,
         .enable_auto_deep_sleep    = pwr_cfg.deep_sleep_enabled,
-        .cpu_freq_mhz = 80,
+        .cpu_freq_mhz              = 80,
     };
 
     ESP_LOGI(TAG, "Power config: display_sleep=%s, light_sleep=%s, deep_sleep=%s",
@@ -349,7 +349,7 @@ void app_main(void)
         ESP_LOGE(TAG, "UI initialization failed: %s", esp_err_to_name(ret));
         return;
     }
-    
+
     ESP_LOGI(TAG, "Creating boot screen...");
     ui_compact_show_boot_screen();
 
@@ -442,7 +442,7 @@ void app_main(void)
         return;
     }
 
-#if 0  // USB CDC is only for command parser, not console
+#if 0 // USB CDC is only for command parser, not console
     // Wait for USB enumeration before redirecting console
     ESP_LOGI(TAG, "Waiting for USB enumeration...");
     vTaskDelay(pdMS_TO_TICKS(2000));

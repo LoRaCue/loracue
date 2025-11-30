@@ -1,5 +1,10 @@
 file(GLOB FONT_SOURCES "generated/lv_font_*.c")
 
+set(INCLUDE_DIRS "include")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated")
+    list(APPEND INCLUDE_DIRS "generated")
+endif()
+
 idf_component_register(
     SRCS 
         "ui_lvgl.c"
@@ -7,8 +12,7 @@ idf_component_register(
         "lv_port_indev.c"
         ${FONT_SOURCES}
     INCLUDE_DIRS 
-        "include"
-        "generated"
+        ${INCLUDE_DIRS}
     REQUIRES 
         bsp
         display

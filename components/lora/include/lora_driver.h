@@ -18,6 +18,25 @@
 extern "C" {
 #endif
 
+// LoRa network configuration
+#define LORA_PRIVATE_SYNC_WORD 0x1424 ///< Private network sync word (prevents public network interference)
+
+/**
+ * @brief LoRa bandwidth options (kHz)
+ */
+typedef enum {
+    LORA_BW_7_8KHZ   = 7,   ///< 7.8 kHz
+    LORA_BW_10_4KHZ  = 10,  ///< 10.4 kHz
+    LORA_BW_15_6KHZ  = 15,  ///< 15.6 kHz
+    LORA_BW_20_8KHZ  = 20,  ///< 20.8 kHz
+    LORA_BW_31_25KHZ = 31,  ///< 31.25 kHz
+    LORA_BW_41_7KHZ  = 41,  ///< 41.7 kHz
+    LORA_BW_62_5KHZ  = 62,  ///< 62.5 kHz
+    LORA_BW_125KHZ   = 125, ///< 125 kHz
+    LORA_BW_250KHZ   = 250, ///< 250 kHz
+    LORA_BW_500KHZ   = 500  ///< 500 kHz (low latency)
+} lora_bandwidth_t;
+
 /**
  * @brief LoRa configuration for low latency
  */

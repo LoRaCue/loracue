@@ -7,8 +7,8 @@ import hashlib
 import base64
 from pathlib import Path
 from datetime import datetime, timezone
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.backends import default_backend
 
 
@@ -22,7 +22,7 @@ def calculate_sha256(file_path: Path) -> str:
 
 
 def sign_data(data: str, private_key_path: Path) -> str:
-    """Sign data's SHA256 hash and return base64-encoded signature."""
+    """Sign data with Ed25519 and return base64-encoded signature."""
     with open(private_key_path, 'rb') as f:
         private_key = serialization.load_pem_private_key(
             f.read(),
@@ -30,18 +30,11 @@ def sign_data(data: str, private_key_path: Path) -> str:
             backend=default_backend()
         )
     
-    # Calculate SHA256 hash of the data
-    data_bytes = data.encode('utf-8')
-    digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
-    digest.update(data_bytes)
-    data_hash = digest.finalize()
+    if not isinstance(private_key, ed25519.Ed25519PrivateKey):
+        raise ValueError(f"Expected Ed25519 key, got {type(private_key).__name__}")
     
-    # Sign the hash instead of raw data
-    signature = private_key.sign(
-        data_hash,
-        padding.PKCS1v15(),
-        hashes.SHA256()
-    )
+    data_bytes = data.encode('utf-8')
+    signature = private_key.sign(data_bytes)
     
     return base64.b64encode(signature).decode('ascii')
 

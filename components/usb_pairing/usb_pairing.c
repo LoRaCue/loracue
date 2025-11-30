@@ -99,14 +99,14 @@ static esp_err_t switch_to_host_mode(void)
     ESP_LOGW(TAG, "=== Uninstalling TinyUSB device mode ===");
     esp_err_t deinit_ret = tinyusb_driver_uninstall();
     ESP_LOGW(TAG, "TinyUSB uninstall result: %s (0x%x)", esp_err_to_name(deinit_ret), deinit_ret);
-    
+
     // Wait longer for USB PHY to be fully released
     ESP_LOGW(TAG, "=== Waiting 500ms for USB PHY release ===");
     vTaskDelay(pdMS_TO_TICKS(500));
 
     ESP_LOGW(TAG, "=== Installing USB host mode ===");
     const usb_host_config_t host_config = {
-        .skip_phy_setup = false,  // Let USB host reconfigure PHY for host mode
+        .skip_phy_setup = false, // Let USB host reconfigure PHY for host mode
         .intr_flags     = ESP_INTR_FLAG_LEVEL1,
     };
 
@@ -127,7 +127,7 @@ static esp_err_t switch_to_host_mode(void)
 
     ESP_LOGW(TAG, "=== Registering USB host client ===");
     const usb_host_client_config_t client_config = {
-        .is_synchronous    = true,  // Use synchronous mode (no callback needed)
+        .is_synchronous    = true, // Use synchronous mode (no callback needed)
         .max_num_event_msg = 5,
         .async             = {.client_event_callback = NULL, .callback_arg = NULL},
     };
@@ -189,7 +189,7 @@ static esp_err_t switch_to_device_mode(void)
 
     ESP_LOGW(TAG, "Uninstalling USB host");
     usb_host_uninstall();
-    
+
     // Wait for USB PHY to be fully released
     ESP_LOGW(TAG, "Waiting 500ms for USB PHY release");
     vTaskDelay(pdMS_TO_TICKS(500));
@@ -197,17 +197,17 @@ static esp_err_t switch_to_device_mode(void)
     // esp_tinyusb 1.7.6+ API
     ESP_LOGW(TAG, "Reinstalling TinyUSB device mode");
     tinyusb_config_t tusb_cfg = {
-        .device_descriptor = NULL,  // Use default
-        .string_descriptor = NULL,  // Use default
-        .string_descriptor_count = 0,
-        .external_phy = false,
-        .configuration_descriptor = NULL  // Use default
+        .device_descriptor        = NULL, // Use default
+        .string_descriptor        = NULL, // Use default
+        .string_descriptor_count  = 0,
+        .external_phy             = false,
+        .configuration_descriptor = NULL // Use default
     };
 
     esp_err_t ret = tinyusb_driver_install(&tusb_cfg);
     if (ret == ESP_ERR_INVALID_STATE) {
         ESP_LOGW(TAG, "TinyUSB already installed or PHY still in use - this is expected in some cases");
-        ret = ESP_OK;  // Treat as success since device mode will work eventually
+        ret = ESP_OK; // Treat as success since device mode will work eventually
     }
     ESP_LOGW(TAG, "tinyusb_driver_install result: %s (0x%x)", esp_err_to_name(ret), ret);
     ESP_LOGW(TAG, "=== USB device mode restored ===");
@@ -269,8 +269,8 @@ static void pairing_task(void *arg)
         vTaskDelete(NULL);
         return;
     }
-    
-    size_t len = strlen(json_string);
+
+    size_t len    = strlen(json_string);
     char *command = malloc(len + 2);
     if (!command) {
         free(json_string);
@@ -282,7 +282,7 @@ static void pairing_task(void *arg)
         vTaskDelete(NULL);
         return;
     }
-    
+
     snprintf(command, len + 2, "%s\n", json_string);
 
     esp_err_t ret = cdc_acm_host_data_tx_blocking(cdc_device, (uint8_t *)command, strlen(command), 1000);
@@ -347,9 +347,9 @@ esp_err_t usb_pairing_stop(void)
 {
     ESP_LOGW(TAG, "=== usb_pairing_stop called ===");
     ESP_LOGW(TAG, "pairing_active=%d, host_mode_active=%d", pairing_active, host_mode_active);
-    
+
     pairing_active = false;
-    
+
     if (host_mode_active) {
         ESP_LOGW(TAG, "Host mode active, switching to device mode");
         switch_to_device_mode();

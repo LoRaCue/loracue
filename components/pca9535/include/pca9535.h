@@ -1,7 +1,7 @@
 #pragma once
 
+#include "driver/i2c_master.h"
 #include "esp_err.h"
-#include "driver/i2c.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,11 +29,10 @@ typedef enum {
 
 /**
  * @brief Initialize PCA9535 GPIO expander
- * @param i2c_port I2C port number
  * @param addr I2C address (typically 0x20)
  * @return ESP_OK on success
  */
-esp_err_t pca9535_init(i2c_port_t i2c_port, uint8_t addr);
+esp_err_t pca9535_init(uint8_t addr);
 
 /**
  * @brief Set pin direction

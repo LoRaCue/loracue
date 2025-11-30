@@ -1,22 +1,25 @@
 #include "bq25896.h"
+#include "bsp.h"
 #include "esp_log.h"
 
-static const char *TAG = "bq25896";
-static i2c_port_t bq_i2c_port;
+static const char *TAG                   = "bq25896";
+static i2c_master_dev_handle_t bq_handle = NULL;
 
-#define BQ25896_REG_STATUS  0x0B
-#define BQ25896_REG_VBUS    0x11
+#define BQ25896_REG_STATUS 0x0B
+#define BQ25896_REG_VBUS 0x11
 
 static esp_err_t bq25896_read_reg(uint8_t reg, uint8_t *value)
 {
-    return i2c_master_write_read_device(bq_i2c_port, BQ25896_ADDR, &reg, 1, value, 1, pdMS_TO_TICKS(100));
+    if (!bq_handle)
+        return ESP_ERR_INVALID_STATE;
+    return i2c_master_transmit_receive(bq_handle, &reg, 1, value, 1, 100);
 }
 
-esp_err_t bq25896_init(i2c_port_t i2c_port)
+esp_err_t bq25896_init(void)
 {
-    bq_i2c_port = i2c_port;
     ESP_LOGI(TAG, "Initializing BQ25896 battery charger");
-    return ESP_OK;
+    // Default to 400kHz
+    return bsp_i2c_add_device(BQ25896_ADDR, 400000, &bq_handle);
 }
 
 bool bq25896_is_charging(void)

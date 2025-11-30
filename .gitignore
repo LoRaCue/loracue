@@ -32,10 +32,10 @@ wokwi.log
 # Log files
 *.log
 
-# Firmware signing keys (private key only)
-keys/firmware_private.pem
+# Private keys (any location, any extension)
+*_private*.*
+**/private_key*.*
 
 # Generated LVGL assets
 components/ui_compact/generated/
 components/ui_lvgl/generated/
-keys/*_private*.pem

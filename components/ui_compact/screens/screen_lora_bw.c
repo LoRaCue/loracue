@@ -5,15 +5,15 @@
 #include "ui_navigator.h"
 #include "ui_screen_interface.h"
 
-static const char *TAG = "lora_bw";
+static const char *TAG          = "lora_bw";
 static ui_radio_select_t *radio = NULL;
 
-static const char *bw_options[] = {"125 kHz", "250 kHz", "500 kHz"};
+static const char *bw_options[]   = {"125 kHz", "250 kHz", "500 kHz"};
 static const uint32_t bw_values[] = {125000, 250000, 500000};
 #define BW_OPTION_COUNT 3
 
 static int current_bw_index = 0;
-static int preserved_index = -1;
+static int preserved_index  = -1;
 
 void screen_lora_bw_on_enter(void)
 {
@@ -31,9 +31,9 @@ void screen_lora_bw_on_enter(void)
 void screen_lora_bw_init(void)
 {
     if (!radio) {
-        radio = ui_radio_select_create(BW_OPTION_COUNT, UI_RADIO_SINGLE);
+        radio                 = ui_radio_select_create(BW_OPTION_COUNT, UI_RADIO_SINGLE);
         radio->selected_index = preserved_index >= 0 ? preserved_index : current_bw_index;
-        
+
         if (radio->selected_items) {
             ((int *)radio->selected_items)[0] = current_bw_index;
         }
@@ -63,7 +63,7 @@ void screen_lora_bw_select(void)
     config.bandwidth = bw_values[radio->selected_index];
     lora_set_config(&config);
     ESP_LOGI(TAG, "BW saved: %lu Hz", config.bandwidth);
-    
+
     if (radio->selected_items) {
         ((int *)radio->selected_items)[0] = radio->selected_index;
     }

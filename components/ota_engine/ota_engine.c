@@ -17,12 +17,12 @@ static size_t ota_total_size                = 0;
 static ota_state_t ota_state                = OTA_STATE_IDLE;
 static TickType_t ota_last_write_time       = 0;
 static mbedtls_sha256_context sha256_ctx;
-static char expected_sha256[65]             = {0}; // 64 hex chars + null terminator
-static bool sha256_verification_enabled     = false;
-static uint8_t public_key[32]               = {0}; // Ed25519 public key (32 bytes)
-static bool public_key_set                  = false;
-static char expected_signature[129]         = {0}; // 128 hex chars + null terminator
-static bool signature_verification_enabled  = false;
+static char expected_sha256[65]            = {0}; // 64 hex chars + null terminator
+static bool sha256_verification_enabled    = false;
+static uint8_t public_key[32]              = {0}; // Ed25519 public key (32 bytes)
+static bool public_key_set                 = false;
+static char expected_signature[129]        = {0}; // 128 hex chars + null terminator
+static bool signature_verification_enabled = false;
 
 #define OTA_TIMEOUT_MS 30000
 
@@ -40,33 +40,39 @@ esp_err_t ota_engine_init(void)
     return ESP_OK;
 }
 
+static bool validate_hex_string(const char *hex, size_t expected_len)
+{
+    if (!hex)
+        return false;
+    if (strlen(hex) != expected_len)
+        return false;
+
+    for (size_t i = 0; i < expected_len; i++) {
+        char c = hex[i];
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
+            return false;
+        }
+    }
+    return true;
+}
+
 esp_err_t ota_engine_set_expected_sha256(const char *sha256_hex)
 {
     if (!sha256_hex) {
         sha256_verification_enabled = false;
-        expected_sha256[0] = '\0';
+        expected_sha256[0]          = '\0';
         return ESP_OK;
     }
 
-    // Validate format: 64 hex characters
-    size_t len = strlen(sha256_hex);
-    if (len != 64) {
-        ESP_LOGE(TAG, "Invalid SHA256 length: %zu (expected 64)", len);
+    if (!validate_hex_string(sha256_hex, 64)) {
+        ESP_LOGE(TAG, "Invalid SHA256 format (expected 64 hex chars)");
         return ESP_ERR_INVALID_ARG;
     }
 
-    for (size_t i = 0; i < 64; i++) {
-        char c = sha256_hex[i];
-        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
-            ESP_LOGE(TAG, "Invalid SHA256 character at position %zu: '%c'", i, c);
-            return ESP_ERR_INVALID_ARG;
-        }
-    }
-
     strncpy(expected_sha256, sha256_hex, sizeof(expected_sha256) - 1);
-    expected_sha256[64] = '\0';
+    expected_sha256[64]         = '\0';
     sha256_verification_enabled = true;
-    
+
     ESP_LOGI(TAG, "Expected SHA256 set: %.16s...", expected_sha256);
     return ESP_OK;
 }
@@ -88,27 +94,17 @@ esp_err_t ota_engine_verify_signature(const char *signature_hex)
 {
     if (!signature_hex) {
         signature_verification_enabled = false;
-        expected_signature[0] = '\0';
+        expected_signature[0]          = '\0';
         return ESP_OK;
     }
 
-    // Validate format: 128 hex characters (64 bytes)
-    size_t len = strlen(signature_hex);
-    if (len != 128) {
-        ESP_LOGE(TAG, "Invalid signature length: %zu (expected 128)", len);
+    if (!validate_hex_string(signature_hex, 128)) {
+        ESP_LOGE(TAG, "Invalid signature format (expected 128 hex chars)");
         return ESP_ERR_INVALID_ARG;
     }
 
-    for (size_t i = 0; i < 128; i++) {
-        char c = signature_hex[i];
-        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))) {
-            ESP_LOGE(TAG, "Invalid signature character at position %zu: '%c'", i, c);
-            return ESP_ERR_INVALID_ARG;
-        }
-    }
-
     strncpy(expected_signature, signature_hex, sizeof(expected_signature) - 1);
-    expected_signature[128] = '\0';
+    expected_signature[128]        = '\0';
     signature_verification_enabled = true;
 
     // Use embedded public key if not set
@@ -140,7 +136,7 @@ esp_err_t ota_engine_start(size_t firmware_size)
         return ESP_ERR_INVALID_STATE;
     }
 
-    if (firmware_size == 0 || firmware_size > 4 * 1024 * 1024) {
+    if (firmware_size == 0) {
         xSemaphoreGive(ota_mutex);
         return ESP_ERR_INVALID_SIZE;
     }
@@ -213,7 +209,7 @@ esp_err_t ota_engine_write(const uint8_t *data, size_t len)
     if (ret == ESP_OK) {
         ota_received_bytes += len;
         ota_last_write_time = now;
-        
+
         // Update SHA256 hash if verification is enabled
         if (sha256_verification_enabled) {
             mbedtls_sha256_update(&sha256_ctx, data, len);
@@ -255,7 +251,7 @@ esp_err_t ota_engine_finish(void)
         // Convert calculated hash to hex string
         char calculated_hex[65];
         for (int i = 0; i < 32; i++) {
-            sprintf(&calculated_hex[i * 2], "%02x", calculated_hash[i]);
+            snprintf(&calculated_hex[i * 2], 3, "%02x", calculated_hash[i]);
         }
         calculated_hex[64] = '\0';
 
@@ -264,8 +260,8 @@ esp_err_t ota_engine_finish(void)
             ESP_LOGE(TAG, "SHA256 mismatch!");
             ESP_LOGE(TAG, "Expected:   %s", expected_sha256);
             ESP_LOGE(TAG, "Calculated: %s", calculated_hex);
-            ota_handle = 0;
-            ota_state = OTA_STATE_IDLE;
+            ota_handle                  = 0;
+            ota_state                   = OTA_STATE_IDLE;
             sha256_verification_enabled = false;
             xSemaphoreGive(ota_mutex);
             return ESP_ERR_INVALID_CRC;
@@ -279,7 +275,7 @@ esp_err_t ota_engine_finish(void)
             // Convert signature from hex to binary
             uint8_t signature_bin[64];
             for (int i = 0; i < 64; i++) {
-                char hex[3] = {expected_signature[i * 2], expected_signature[i * 2 + 1], '\0'};
+                char hex[3]      = {expected_signature[i * 2], expected_signature[i * 2 + 1], '\0'};
                 signature_bin[i] = (uint8_t)strtol(hex, NULL, 16);
             }
 
@@ -296,15 +292,15 @@ esp_err_t ota_engine_finish(void)
             uint8_t signed_message[96]; // 64 bytes signature + 32 bytes hash
             memcpy(signed_message, signature_bin, 64);
             memcpy(signed_message + 64, hash_bin, 32);
-            
+
             unsigned long long message_len;
             uint8_t message_out[32];
-            
+
             if (crypto_sign_open(message_out, &message_len, signed_message, 96, public_key) != 0) {
                 ESP_LOGE(TAG, "Ed25519 signature verification FAILED!");
                 ESP_LOGE(TAG, "Firmware is NOT authentic - rejecting OTA");
-                ota_handle = 0;
-                ota_state = OTA_STATE_IDLE;
+                ota_handle                     = 0;
+                ota_state                      = OTA_STATE_IDLE;
                 signature_verification_enabled = false;
                 xSemaphoreGive(ota_mutex);
                 return ESP_ERR_INVALID_RESPONSE;

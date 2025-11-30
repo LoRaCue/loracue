@@ -9,9 +9,9 @@ static ui_numeric_input_t *input = NULL;
 static uint32_t min_freq_khz     = 863000;
 static uint32_t max_freq_khz     = 870000;
 
-static float current_freq_mhz = 0;
-static bool is_editing        = false;
-static bool preserved_edit_mode = false;  // Preserve edit mode across recreations
+static float current_freq_mhz   = 0;
+static bool is_editing          = false;
+static bool preserved_edit_mode = false; // Preserve edit mode across recreations
 
 void screen_lora_frequency_on_enter(void)
 {
@@ -25,7 +25,7 @@ void screen_lora_frequency_init(void)
 {
     lora_config_t config;
     lora_get_config(&config);
-    
+
     // Initialize current frequency from config
     current_freq_mhz = config.frequency / 1000000.0f;
 
@@ -126,7 +126,7 @@ static void screen_lora_frequency_handle_input(button_event_type_t event)
 void screen_lora_frequency_reset(void)
 {
     if (input) {
-        preserved_edit_mode = input->edit_mode;  // Save before destroying
+        preserved_edit_mode = input->edit_mode; // Save before destroying
         free(input);
         input = NULL;
     }

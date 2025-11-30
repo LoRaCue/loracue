@@ -7,13 +7,15 @@
  */
 
 #include "button_manager.h"
-#include "system_events.h"
 #include "bsp.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "led_manager.h"
+#include "lv_port_disp.h"
 #include "power_mgmt.h"
+#include "system_events.h"
+#include "task_config.h"
 #include <string.h>
 
 static const char *TAG = "BUTTON_MGR";
@@ -24,6 +26,7 @@ static const char *TAG = "BUTTON_MGR";
 #define DOUBLE_CLICK_WINDOW_MS 200
 #define LONG_PRESS_TIME_MS 1500
 #define INACTIVITY_TIMEOUT_MS 300000 // 5 minutes
+#define LED_FADE_DURATION_MS 3000
 
 // Button manager state
 static TaskHandle_t button_task_handle = NULL;
@@ -63,7 +66,7 @@ static void button_manager_task(void *pvParameters)
         if (btn_pressed && !was_pressed) {
             led_manager_solid(true);
         } else if (!btn_pressed && was_pressed) {
-            led_manager_fade(3000);
+            led_manager_fade(LED_FADE_DURATION_MS);
         }
         was_pressed = btn_pressed;
 
@@ -73,10 +76,10 @@ static void button_manager_task(void *pvParameters)
             button.press_start_time = current_time;
             button.long_press_sent  = false;
             last_activity_time      = current_time;
-            display_sleep_active    = false;  // Wake from display sleep
+            display_sleep_active    = false; // Wake from display sleep
             led_manager_button_feedback(true);
 
-            bsp_display_wake();
+            display_safe_wake();
             power_mgmt_update_activity();
 
             ESP_LOGD(TAG, "Button pressed");
@@ -189,10 +192,8 @@ esp_err_t button_manager_start(void)
     manager_running = true;
 
     BaseType_t ret = xTaskCreate(button_manager_task, "button_mgr",
-                                 4096, // Increased from 2048 to prevent stack overflow
-                                 NULL,
-                                 5, // Priority
-                                 &button_task_handle);
+                                 TASK_STACK_SIZE_LARGE, // UI task with power management logic
+                                 NULL, TASK_PRIORITY_NORMAL, &button_task_handle);
 
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create button manager task");

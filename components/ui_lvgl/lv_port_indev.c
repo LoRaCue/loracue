@@ -4,7 +4,8 @@
 
 static const char *TAG = "lv_port_indev";
 
-static void button_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
+static void button_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
     static bool prev_pressed = false;
     static bool next_pressed = false;
 
@@ -14,10 +15,10 @@ static void button_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
 
     // Simple button to key mapping
     if (prev_now && !prev_pressed) {
-        data->key = LV_KEY_LEFT;
+        data->key   = LV_KEY_LEFT;
         data->state = LV_INDEV_STATE_PRESSED;
     } else if (next_now && !next_pressed) {
-        data->key = LV_KEY_RIGHT;
+        data->key   = LV_KEY_RIGHT;
         data->state = LV_INDEV_STATE_PRESSED;
     } else {
         data->state = LV_INDEV_STATE_RELEASED;
@@ -27,7 +28,8 @@ static void button_read_cb(lv_indev_t *indev, lv_indev_data_t *data) {
     next_pressed = next_now;
 }
 
-lv_indev_t *lv_port_indev_init(void) {
+lv_indev_t *lv_port_indev_init(void)
+{
     // Create button input device
     lv_indev_t *indev = lv_indev_create();
     if (!indev) {
@@ -42,7 +44,8 @@ lv_indev_t *lv_port_indev_init(void) {
     return indev;
 }
 
-void lv_port_indev_deinit(lv_indev_t *indev) {
+void lv_port_indev_deinit(lv_indev_t *indev)
+{
     if (indev) {
         lv_indev_delete(indev);
     }

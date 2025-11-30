@@ -15,12 +15,12 @@ void screen_slot_create(lv_obj_t *parent)
     lv_obj_set_style_bg_color(parent, lv_color_black(), 0);
 
     if (!screen) {
-        screen = ui_edit_screen_create("SLOT");
+        screen            = ui_edit_screen_create("SLOT");
         screen->edit_mode = preserved_edit_mode;
     }
 
     ESP_LOGI(TAG, "Creating slot screen: edit_mode=%d, selected_slot=%d", screen->edit_mode, selected_slot);
-    
+
     char value_text[32];
     snprintf(value_text, sizeof(value_text), "Slot %d", selected_slot + 1);
     ui_edit_screen_render(screen, parent, "SLOT", value_text, selected_slot, 15);

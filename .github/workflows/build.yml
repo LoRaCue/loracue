@@ -81,7 +81,7 @@ jobs:
             target: "esp32s3"
             board: "Heltec V3"
             sdkconfig: "sdkconfig.defaults;sdkconfig.heltec_v3;sdkconfig.model_alpha"
-          - name: "alpha-plus"
+          - name: "alpha+"
             display_name: "LC-Alpha+"
             target: "esp32s3"
             board: "Heltec V3"
@@ -99,17 +99,6 @@ jobs:
         submodules: 'recursive'
         fetch-depth: 0
     
-    - name: Cache ESP-IDF
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.espressif
-          ~/.cache/pip
-        key: esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-${{ hashFiles('**/CMakeLists.txt', 'sdkconfig.*') }}
-        restore-keys: |
-          esp-idf-${{ env.ESP_IDF_VERSION }}-${{ matrix.model.target }}-
-          esp-idf-${{ env.ESP_IDF_VERSION }}-
-    
     - name: Install GitVersion in build environment
       shell: bash
       run: |
@@ -119,19 +108,44 @@ jobs:
         sudo mv gitversion /usr/local/bin/
         gitversion version
     
-    - name: Generate sdkconfig from layered defaults
+    - name: Cache ESP-IDF
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.espressif
+          ~/esp/esp-idf
+        key: esp-idf-${{ env.ESP_IDF_VERSION }}
+    
+    - name: Install build dependencies
       shell: bash
       run: |
-        echo "=== Building ${{ matrix.model.display_name }} (${{ matrix.model.board }}) ==="
-        echo "Using layered sdkconfig: ${{ matrix.model.sdkconfig }}"
-        rm -f sdkconfig
+        echo "📦 Installing build dependencies..."
+        npm install -g lv_font_conv
+        cargo install png2lvgl
     
-    - name: Build firmware with ESP-IDF
-      uses: espressif/esp-idf-ci-action@v1
-      with:
-        esp_idf_version: ${{ env.ESP_IDF_VERSION }}
-        target: ${{ matrix.model.target }}
-        command: idf.py -D SDKCONFIG_DEFAULTS="${{ matrix.model.sdkconfig }}" build
+    - name: Install ESP-IDF
+      shell: bash
+      run: |
+        if [ ! -d "$HOME/esp/esp-idf" ]; then
+          echo "📥 Installing ESP-IDF ${{ env.ESP_IDF_VERSION }}..."
+          mkdir -p ~/esp
+          cd ~/esp
+          git clone --recursive --branch ${{ env.ESP_IDF_VERSION }} --depth 1 https://github.com/espressif/esp-idf.git
+          cd esp-idf
+          ./install.sh esp32s3
+        else
+          echo "✅ ESP-IDF already installed (from cache)"
+        fi
+        echo "ESP_IDF=$HOME/esp/esp-idf" >> $GITHUB_ENV
+    
+    - name: Build firmware with make
+      shell: bash
+      env:
+        CI: true
+      run: |
+        echo "🔨 Building ${{ matrix.model.display_name }}..."
+        source $ESP_IDF/export.sh
+        make build MODEL=${{ matrix.model.name }}
     
     - name: Validate firmware manifest
       run: |

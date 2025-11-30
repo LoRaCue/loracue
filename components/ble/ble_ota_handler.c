@@ -1,13 +1,15 @@
 /**
  * @file ble_ota_handler.c
  * @brief BLE OTA handler with streaming firmware update
- * 
+ *
  * Security model:
  * - Requires bonded/paired connection
  * - BLE pairing provides transport security
  * - Only accepts OTA from authenticated devices
  */
 
+#include "ble_ota.h"
+#include "bsp.h"
 #include "esp_log.h"
 #include "esp_ota_ops.h"
 #include "esp_system.h"
@@ -15,13 +17,11 @@
 #include "freertos/ringbuf.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
-#include "ble_ota.h"
-#include "bsp.h"
 #include "host/ble_gap.h"
 
 #ifdef CONFIG_UI_MINI
-#include "ui_mini.h"
 #include "ui_data_update_task.h"
+#include "ui_mini.h"
 #endif
 
 #ifdef CONFIG_UI_RICH
@@ -31,12 +31,12 @@
 #define OTA_RINGBUF_SIZE 4096
 #define OTA_TASK_SIZE 8192
 
-static const char *TAG = "ble_ota";
+static const char *TAG           = "ble_ota";
 static RingbufHandle_t s_ringbuf = NULL;
-SemaphoreHandle_t notify_sem = NULL;  // Global - required by BLE OTA library
+SemaphoreHandle_t notify_sem     = NULL; // Global - required by BLE OTA library
 static esp_ota_handle_t out_handle;
 static TaskHandle_t s_ota_task_handle = NULL;
-static uint16_t s_ota_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+static uint16_t s_ota_conn_handle     = BLE_HS_CONN_HANDLE_NONE;
 
 // Forward declaration
 static void ota_task(void *arg);
@@ -68,7 +68,7 @@ void ota_recv_fw_cb(uint8_t *buf, uint32_t length)
             return;
         }
     }
-    
+
     // Create OTA task on first data reception
     if (s_ota_task_handle == NULL) {
         ESP_LOGI(TAG, "OTA transfer started from bonded device");
@@ -82,14 +82,14 @@ static void ota_task(void *arg)
     esp_partition_t *partition_ptr = NULL;
     esp_partition_t partition;
     const esp_partition_t *next_partition = NULL;
-    uint32_t recv_len = 0;
-    uint8_t *data = NULL;
-    size_t item_size = 0;
+    uint32_t recv_len                     = 0;
+    uint8_t *data                         = NULL;
+    size_t item_size                      = 0;
     uint32_t fw_length;
     uint8_t last_progress = 0;
 
     ESP_LOGI(TAG, "OTA task started");
-    
+
     // Suspend UI update tasks to prevent display conflicts
 #ifdef CONFIG_UI_MINI
     ESP_LOGI(TAG, "Suspending UI update tasks");
@@ -100,7 +100,7 @@ static void ota_task(void *arg)
 #ifdef CONFIG_UI_RICH
     ui_rich_show_ota_update();
 #endif
-    
+
     notify_sem = xSemaphoreCreateCounting(100, 0);
     xSemaphoreGive(notify_sem);
 
@@ -118,12 +118,12 @@ static void ota_task(void *arg)
     if (partition_ptr->subtype == ESP_PARTITION_SUBTYPE_APP_FACTORY) {
         partition.subtype = ESP_PARTITION_SUBTYPE_APP_OTA_0;
     } else {
-        next_partition = esp_ota_get_next_update_partition(partition_ptr);
+        next_partition    = esp_ota_get_next_update_partition(partition_ptr);
         partition.subtype = next_partition ? next_partition->subtype : ESP_PARTITION_SUBTYPE_APP_OTA_0;
     }
 
     partition.type = ESP_PARTITION_TYPE_APP;
-    partition_ptr = (esp_partition_t *)esp_partition_find_first(partition.type, partition.subtype, NULL);
+    partition_ptr  = (esp_partition_t *)esp_partition_find_first(partition.type, partition.subtype, NULL);
     if (partition_ptr == NULL) {
         ESP_LOGE(TAG, "OTA partition not found");
         goto OTA_ERROR;
@@ -191,7 +191,7 @@ static void ota_task(void *arg)
     ESP_LOGI(TAG, "  OTA Update Successful!");
     ESP_LOGI(TAG, "  Rebooting in 2 seconds...");
     ESP_LOGI(TAG, "========================================");
-    
+
     vSemaphoreDelete(notify_sem);
     vTaskDelay(pdMS_TO_TICKS(2000));
     esp_restart();
@@ -200,7 +200,10 @@ OTA_ERROR:
     ESP_LOGE(TAG, "========================================");
     ESP_LOGE(TAG, "  OTA Update Failed!");
     ESP_LOGE(TAG, "========================================");
-    if (notify_sem) vSemaphoreDelete(notify_sem);
+    if (notify_sem)
+        vSemaphoreDelete(notify_sem);
+
+    s_ota_task_handle = NULL;
     vTaskDelete(NULL);
 }
 
@@ -213,9 +216,9 @@ esp_err_t ble_ota_handler_init(void)
 
     // Register callback - task will be created when OTA transfer starts
     esp_ble_ota_recv_fw_data_callback(ota_recv_fw_cb);
-    
+
     ESP_LOGI(TAG, "BLE OTA handler initialized (task starts on transfer)");
-    
+
     return ESP_OK;
 }
 
