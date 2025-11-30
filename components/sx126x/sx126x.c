@@ -883,20 +883,18 @@ uint8_t ReadBuffer(uint8_t *rxData, int16_t rxDataLen)
     WaitForIdle(BUSY_WAIT, "start ReadBuffer", true);
 
     // start transfer
-    uint8_t *buf;
-    buf = malloc(payloadLength + 3);
-    if (buf != NULL) {
-        buf[0] = SX126X_CMD_READ_BUFFER; // 0x1E
-        buf[1] = offset;                 // offset in rx fifo
-        buf[2] = SX126X_CMD_NOP;
-        memset(&buf[3], SX126X_CMD_NOP, payloadLength);
-        spi_read_byte(buf, buf, payloadLength + 3);
-        memcpy(rxData, &buf[3], payloadLength);
-        free(buf);
-    } else {
-        ESP_LOGE(TAG, "ReadBuffer malloc fail");
-        payloadLength = 0;
+    uint8_t buf[260]; // Max payload 255 + 3 command/nop bytes
+    if (payloadLength + 3 > sizeof(buf)) {
+        ESP_LOGE(TAG, "ReadBuffer overflow");
+        return 0;
     }
+
+    buf[0] = SX126X_CMD_READ_BUFFER; // 0x1E
+    buf[1] = offset;                 // offset in rx fifo
+    buf[2] = SX126X_CMD_NOP;
+    memset(&buf[3], SX126X_CMD_NOP, payloadLength);
+    spi_read_byte(buf, buf, payloadLength + 3);
+    memcpy(rxData, &buf[3], payloadLength);
 
     // wait for BUSY to go low
     WaitForIdle(BUSY_WAIT, "end ReadBuffer", false);
@@ -910,17 +908,16 @@ void WriteBuffer(const uint8_t *txData, int16_t txDataLen)
     WaitForIdle(BUSY_WAIT, "start WriteBuffer", true);
 
     // start transfer
-    uint8_t *buf;
-    buf = malloc(txDataLen + 2);
-    if (buf != NULL) {
-        buf[0] = SX126X_CMD_WRITE_BUFFER; // 0x0E
-        buf[1] = 0;                       // offset in tx fifo
-        memcpy(&buf[2], txData, txDataLen);
-        spi_write_byte(buf, txDataLen + 2);
-        free(buf);
-    } else {
-        ESP_LOGE(TAG, "WriteBuffer malloc fail");
+    uint8_t buf[260];
+    if (txDataLen + 2 > sizeof(buf)) {
+        ESP_LOGE(TAG, "WriteBuffer overflow");
+        return;
     }
+
+    buf[0] = SX126X_CMD_WRITE_BUFFER; // 0x0E
+    buf[1] = 0;                       // offset in tx fifo
+    memcpy(&buf[2], txData, txDataLen);
+    spi_write_byte(buf, txDataLen + 2);
 
     // wait for BUSY to go low
     WaitForIdle(BUSY_WAIT, "end WriteBuffer", false);
