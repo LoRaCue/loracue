@@ -1,4 +1,5 @@
 #include "pca9535.h"
+#include "bsp.h" // For bsp_i2c_add_device
 #include "esp_log.h"
 
 static const char *TAG = "pca9535";
@@ -13,28 +14,34 @@ static const char *TAG = "pca9535";
 #define PCA9535_CONFIG_PORT0 0x06
 #define PCA9535_CONFIG_PORT1 0x07
 
-static i2c_port_t pca_i2c_port;
-static uint8_t pca_addr;
+static i2c_master_dev_handle_t pca_handle = NULL;
+static uint8_t pca_addr; // Stored for use by other functions
 static uint16_t output_state    = 0;
 static uint16_t direction_state = 0xFFFF; // All inputs by default
 
 static esp_err_t pca9535_write_reg(uint8_t reg, uint8_t value)
 {
+    if (!pca_handle) return ESP_ERR_INVALID_STATE;
     uint8_t data[2] = {reg, value};
-    return i2c_master_write_to_device(pca_i2c_port, pca_addr, data, 2, pdMS_TO_TICKS(100));
+    return i2c_master_transmit(pca_handle, data, 2, 100);
 }
 
 static esp_err_t pca9535_read_reg(uint8_t reg, uint8_t *value)
 {
-    return i2c_master_write_read_device(pca_i2c_port, pca_addr, &reg, 1, value, 1, pdMS_TO_TICKS(100));
+    if (!pca_handle) return ESP_ERR_INVALID_STATE;
+    return i2c_master_transmit_receive(pca_handle, &reg, 1, value, 1, 100);
 }
 
-esp_err_t pca9535_init(i2c_port_t i2c_port, uint8_t addr)
+esp_err_t pca9535_init(uint8_t addr)
 {
-    pca_i2c_port = i2c_port;
-    pca_addr     = addr;
+    pca_addr     = addr; // Store address for use in helper functions
 
     ESP_LOGI(TAG, "Initializing PCA9535 at 0x%02X", addr);
+    esp_err_t ret = bsp_i2c_add_device(pca_addr, 400000, &pca_handle); // Default to 400kHz
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to add PCA9535 I2C device: %s", esp_err_to_name(ret));
+        return ret;
+    }
 
     // Set all pins as outputs initially
     esp_err_t ret = pca9535_write_reg(PCA9535_CONFIG_PORT0, 0x00);

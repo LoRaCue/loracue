@@ -178,7 +178,7 @@ esp_err_t bsp_init(void)
     }
 
     // Initialize PCA9535 GPIO expander
-    ESP_ERROR_CHECK(pca9535_init(BOARD_I2C_PORT, PCA9535_ADDR));
+    ESP_ERROR_CHECK(pca9535_init(PCA9535_ADDR));
 
     // Initialize TPS65185 E-Paper power driver
     ESP_ERROR_CHECK(tps65185_init(BOARD_I2C_PORT));
