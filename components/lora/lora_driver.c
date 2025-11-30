@@ -17,9 +17,9 @@
 #include "lora_bands.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "sx126x.h"
 #include "task_config.h"
 #include <string.h>
-#include "sx126x.h"
 
 static const char *TAG = "LORA_DRIVER";
 
@@ -62,19 +62,28 @@ static lora_config_t current_config = {
  */
 static uint8_t lora_bandwidth_to_register(uint16_t bandwidth)
 {
-    switch (bandwidth) {
-        case 7:   return 0x00;  // 7.8 kHz
-        case 10:  return 0x08;  // 10.4 kHz
-        case 15:  return 0x01;  // 15.6 kHz
-        case 20:  return 0x09;  // 20.8 kHz
-        case 31:  return 0x02;  // 31.25 kHz
-        case 41:  return 0x0A;  // 41.7 kHz
-        case 62:  return 0x03;  // 62.5 kHz
-        case 125: return 0x04;  // 125.0 kHz
-        case 250: return 0x05;  // 250.0 kHz
-        case 500: return 0x06;  // 500.0 kHz
-        default:  return 0x04;  // Default to 125 kHz
+    static const struct {
+        uint16_t bw;
+        uint8_t reg;
+    } bw_table[] = {
+        {7, 0x00},   // 7.8 kHz
+        {10, 0x08},  // 10.4 kHz
+        {15, 0x01},  // 15.6 kHz
+        {20, 0x09},  // 20.8 kHz
+        {31, 0x02},  // 31.25 kHz
+        {41, 0x0A},  // 41.7 kHz
+        {62, 0x03},  // 62.5 kHz
+        {125, 0x04}, // 125.0 kHz
+        {250, 0x05}, // 250.0 kHz
+        {500, 0x06}  // 500.0 kHz
+    };
+
+    for (size_t i = 0; i < sizeof(bw_table) / sizeof(bw_table[0]); i++) {
+        if (bw_table[i].bw == bandwidth) {
+            return bw_table[i].reg;
+        }
     }
+    return 0x04; // Default to 125 kHz
 }
 
 // TX task - processes queue and transmits packets
@@ -106,7 +115,7 @@ static void lora_rx_task(void *arg)
     while (1) {
         // Check for TX completion (for interrupt-driven TX)
         sx126x_check_tx_done();
-        
+
         esp_err_t ret = sx126x_receive(rx_buffer, MAX_PACKET_SIZE, &bytes_received);
 
         if (ret == ESP_OK && bytes_received > 0) {
@@ -199,9 +208,8 @@ esp_err_t lora_driver_init(void)
     SetSyncWord(LORA_PRIVATE_SYNC_WORD);
 
     // Create TX task
-    BaseType_t task_ret = xTaskCreate(lora_tx_task, "lora_tx", TASK_STACK_SIZE_MEDIUM, NULL,
-                                      TASK_PRIORITY_NORMAL,
-                                      &tx_task_handle);
+    BaseType_t task_ret =
+        xTaskCreate(lora_tx_task, "lora_tx", TASK_STACK_SIZE_MEDIUM, NULL, TASK_PRIORITY_NORMAL, &tx_task_handle);
 
     if (task_ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create TX task");
@@ -209,9 +217,8 @@ esp_err_t lora_driver_init(void)
     }
 
     // Create RX task
-    task_ret = xTaskCreate(lora_rx_task, "lora_rx", TASK_STACK_SIZE_MEDIUM, NULL,
-                           TASK_PRIORITY_NORMAL,
-                           &rx_task_handle);
+    task_ret =
+        xTaskCreate(lora_rx_task, "lora_rx", TASK_STACK_SIZE_MEDIUM, NULL, TASK_PRIORITY_NORMAL, &rx_task_handle);
 
     if (task_ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create RX task");
@@ -276,7 +283,7 @@ int16_t lora_get_rssi(void)
 {
     // Read actual RSSI from SX126x chip
     int8_t rssi_packet = 0;
-    int8_t snr_packet = 0;
+    int8_t snr_packet  = 0;
     GetPacketStatus(&rssi_packet, &snr_packet);
     return (int16_t)rssi_packet;
 }
