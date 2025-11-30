@@ -4,21 +4,21 @@
 static const char *TAG = "tps65185";
 static i2c_port_t tps_i2c_port;
 
-#define TPS65185_REG_TMST_VALUE  0x00
-#define TPS65185_REG_ENABLE      0x01
-#define TPS65185_REG_VADJ        0x02
-#define TPS65185_REG_VCOM1       0x03
-#define TPS65185_REG_VCOM2       0x04
-#define TPS65185_REG_INT_EN1     0x05
-#define TPS65185_REG_INT_EN2     0x06
-#define TPS65185_REG_INT1        0x07
-#define TPS65185_REG_INT2        0x08
-#define TPS65185_REG_UPSEQ0      0x09
-#define TPS65185_REG_UPSEQ1      0x0A
-#define TPS65185_REG_DWNSEQ0     0x0B
-#define TPS65185_REG_DWNSEQ1     0x0C
-#define TPS65185_REG_TMST1       0x0D
-#define TPS65185_REG_TMST2       0x0E
+#define TPS65185_REG_TMST_VALUE 0x00
+#define TPS65185_REG_ENABLE 0x01
+#define TPS65185_REG_VADJ 0x02
+#define TPS65185_REG_VCOM1 0x03
+#define TPS65185_REG_VCOM2 0x04
+#define TPS65185_REG_INT_EN1 0x05
+#define TPS65185_REG_INT_EN2 0x06
+#define TPS65185_REG_INT1 0x07
+#define TPS65185_REG_INT2 0x08
+#define TPS65185_REG_UPSEQ0 0x09
+#define TPS65185_REG_UPSEQ1 0x0A
+#define TPS65185_REG_DWNSEQ0 0x0B
+#define TPS65185_REG_DWNSEQ1 0x0C
+#define TPS65185_REG_TMST1 0x0D
+#define TPS65185_REG_TMST2 0x0E
 
 static esp_err_t tps65185_write_reg(uint8_t reg, uint8_t value)
 {
@@ -35,10 +35,10 @@ esp_err_t tps65185_init(i2c_port_t i2c_port)
 {
     tps_i2c_port = i2c_port;
     ESP_LOGI(TAG, "Initializing TPS65185");
-    
+
     // Set default VCOM
     tps65185_set_vcom(-2500);
-    
+
     return ESP_OK;
 }
 

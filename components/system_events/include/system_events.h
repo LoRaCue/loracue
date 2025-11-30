@@ -1,11 +1,11 @@
 #pragma once
 
+#include "common_types.h"
 #include "esp_err.h"
 #include "esp_event.h"
-#include "common_types.h"
-#include "general_config.h"  // For device_mode_t
-#include <stdint.h>
+#include "general_config.h" // For device_mode_t
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,11 +58,11 @@ typedef struct {
 } system_event_mode_t;
 
 typedef struct {
-    uint16_t device_id;        // Source device
-    uint8_t hid_type;          // HID device type (0x1=keyboard, 0x2=mouse, 0x3=media)
-    uint8_t hid_report[5];     // Raw HID report data (protocol format)
-    uint8_t flags;             // Protocol flags (ACK_REQUEST, etc)
-    int8_t rssi;               // Signal strength (RX only, valid in PC mode)
+    uint16_t device_id;    // Source device
+    uint8_t hid_type;      // HID device type (0x1=keyboard, 0x2=mouse, 0x3=media)
+    uint8_t hid_report[5]; // Raw HID report data (protocol format)
+    uint8_t flags;         // Protocol flags (ACK_REQUEST, etc)
+    int8_t rssi;           // Signal strength (RX only, valid in PC mode)
 } system_event_hid_command_t;
 
 typedef struct {
@@ -126,14 +126,14 @@ esp_err_t system_events_post_hid_command(const system_event_hid_command_t *hid_c
  * @param modifiers Output: modifier keys (Ctrl, Shift, Alt, GUI)
  * @param keycode Output: first keycode
  */
-static inline void system_event_get_keyboard_data(
-    const system_event_hid_command_t *evt,
-    uint8_t *modifiers,
-    uint8_t *keycode)
+static inline void system_event_get_keyboard_data(const system_event_hid_command_t *evt, uint8_t *modifiers,
+                                                  uint8_t *keycode)
 {
-    if (evt && evt->hid_type == 0x1) {  // Keyboard
-        if (modifiers) *modifiers = evt->hid_report[0];
-        if (keycode) *keycode = evt->hid_report[1];
+    if (evt && evt->hid_type == 0x1) { // Keyboard
+        if (modifiers)
+            *modifiers = evt->hid_report[0];
+        if (keycode)
+            *keycode = evt->hid_report[1];
     }
 }
 

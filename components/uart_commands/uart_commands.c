@@ -21,7 +21,7 @@ static const char *TAG = "UART_CMD";
 #ifdef CONFIG_UART_COMMANDS_PORT_NUM
 #define UART_PORT_NUM CONFIG_UART_COMMANDS_PORT_NUM
 #else
-#define UART_PORT_NUM 1  // Default to UART1 if not configured
+#define UART_PORT_NUM 1 // Default to UART1 if not configured
 #endif
 
 #define UART_BAUD_RATE 460800
@@ -127,8 +127,8 @@ esp_err_t uart_commands_init(void)
         return ret;
     }
 
-    ESP_LOGI(TAG, "Initializing UART%d command interface (TX=%d, RX=%d, %d baud)",
-             UART_PORT_NUM, tx_pin, rx_pin, UART_BAUD_RATE);
+    ESP_LOGI(TAG, "Initializing UART%d command interface (TX=%d, RX=%d, %d baud)", UART_PORT_NUM, tx_pin, rx_pin,
+             UART_BAUD_RATE);
 
     // Create TX mutex for thread-safe HAL writes
     uart_tx_mutex = xSemaphoreCreateMutex();
