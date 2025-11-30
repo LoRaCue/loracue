@@ -1,8 +1,9 @@
 #include "bq27220.h"
+#include "bsp.h" // For bsp_i2c_add_device
 #include "esp_log.h"
 
 static const char *TAG = "bq27220";
-static i2c_port_t bq_i2c_port;
+static i2c_master_dev_handle_t bq_handle = NULL;
 
 #define BQ27220_CMD_SOC 0x1C
 #define BQ27220_CMD_VOLTAGE 0x04
@@ -10,19 +11,21 @@ static i2c_port_t bq_i2c_port;
 
 static esp_err_t bq27220_read_word(uint8_t cmd, uint16_t *value)
 {
+    if (!bq_handle) return ESP_ERR_INVALID_STATE;
     uint8_t data[2];
-    esp_err_t ret = i2c_master_write_read_device(bq_i2c_port, BQ27220_ADDR, &cmd, 1, data, 2, pdMS_TO_TICKS(100));
+    // Need to use transmit_receive to send command and read response
+    esp_err_t ret = i2c_master_transmit_receive(bq_handle, &cmd, 1, data, 2, 100);
     if (ret == ESP_OK) {
         *value = data[0] | (data[1] << 8);
     }
     return ret;
 }
 
-esp_err_t bq27220_init(i2c_port_t i2c_port)
+esp_err_t bq27220_init(void)
 {
-    bq_i2c_port = i2c_port;
     ESP_LOGI(TAG, "Initializing BQ27220 fuel gauge");
-    return ESP_OK;
+    // Default to 400kHz
+    return bsp_i2c_add_device(BQ27220_ADDR, 400000, &bq_handle);
 }
 
 uint8_t bq27220_get_soc(void)
