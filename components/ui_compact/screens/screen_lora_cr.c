@@ -5,15 +5,15 @@
 #include "ui_navigator.h"
 #include "ui_screen_interface.h"
 
-static const char *TAG = "lora_cr";
+static const char *TAG          = "lora_cr";
 static ui_radio_select_t *radio = NULL;
 
-static const char *cr_options[] = {"4/5", "4/6", "4/7", "4/8"};
+static const char *cr_options[]  = {"4/5", "4/6", "4/7", "4/8"};
 static const uint8_t cr_values[] = {5, 6, 7, 8};
 #define CR_OPTION_COUNT 4
 
 static int current_cr_index = 0;
-static int preserved_index = -1;
+static int preserved_index  = -1;
 
 void screen_lora_cr_on_enter(void)
 {
@@ -31,9 +31,9 @@ void screen_lora_cr_on_enter(void)
 void screen_lora_cr_init(void)
 {
     if (!radio) {
-        radio = ui_radio_select_create(CR_OPTION_COUNT, UI_RADIO_SINGLE);
+        radio                 = ui_radio_select_create(CR_OPTION_COUNT, UI_RADIO_SINGLE);
         radio->selected_index = preserved_index >= 0 ? preserved_index : current_cr_index;
-        
+
         if (radio->selected_items) {
             ((int *)radio->selected_items)[0] = current_cr_index;
         }
@@ -63,7 +63,7 @@ void screen_lora_cr_select(void)
     config.coding_rate = cr_values[radio->selected_index];
     lora_set_config(&config);
     ESP_LOGI(TAG, "CR saved: 4/%d", config.coding_rate);
-    
+
     if (radio->selected_items) {
         ((int *)radio->selected_items)[0] = radio->selected_index;
     }

@@ -8,7 +8,7 @@
 
 static const char *TAG          = "device_mode";
 static ui_radio_select_t *radio = NULL;
-static int preserved_index      = -1;  // Preserve selection across screen recreations
+static int preserved_index      = -1; // Preserve selection across screen recreations
 
 static const char *mode_items[] = {"PRESENTER", "PC"};
 #define MODE_COUNT 2
@@ -78,7 +78,7 @@ void screen_device_mode_select(void)
 void screen_device_mode_reset(void)
 {
     if (radio) {
-        preserved_index = radio->selected_index;  // Save before destroying
+        preserved_index = radio->selected_index; // Save before destroying
         if (radio->selected_items) {
             free(radio->selected_items);
         }

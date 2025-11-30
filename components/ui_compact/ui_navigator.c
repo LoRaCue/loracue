@@ -50,7 +50,6 @@ esp_err_t ui_navigator_switch_to(ui_screen_type_t screen_type)
         return ESP_ERR_NOT_FOUND;
     }
 
-
     ui_lvgl_lock();
 
     const ui_screen_t *next_screen = screen_registry[screen_type];

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "lvgl.h"
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifndef SIGNAL_STRENGTH_T_DEFINED
 typedef enum {

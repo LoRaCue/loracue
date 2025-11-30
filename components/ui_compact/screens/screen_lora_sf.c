@@ -5,14 +5,14 @@
 #include "ui_navigator.h"
 #include "ui_screen_interface.h"
 
-static const char *TAG = "lora_sf";
+static const char *TAG          = "lora_sf";
 static ui_radio_select_t *radio = NULL;
 
 static const char *sf_options[] = {"SF7", "SF8", "SF9", "SF10", "SF11", "SF12"};
 #define SF_OPTION_COUNT 6
 
 static int current_sf_index = 0;
-static int preserved_index = -1;
+static int preserved_index  = -1;
 
 void screen_lora_sf_on_enter(void)
 {
@@ -28,9 +28,9 @@ void screen_lora_sf_on_enter(void)
 void screen_lora_sf_init(void)
 {
     if (!radio) {
-        radio = ui_radio_select_create(SF_OPTION_COUNT, UI_RADIO_SINGLE);
+        radio                 = ui_radio_select_create(SF_OPTION_COUNT, UI_RADIO_SINGLE);
         radio->selected_index = preserved_index >= 0 ? preserved_index : current_sf_index;
-        
+
         if (radio->selected_items) {
             ((int *)radio->selected_items)[0] = current_sf_index;
         }
@@ -60,7 +60,7 @@ void screen_lora_sf_select(void)
     config.spreading_factor = 7 + radio->selected_index;
     lora_set_config(&config);
     ESP_LOGI(TAG, "SF saved: SF%d", config.spreading_factor);
-    
+
     if (radio->selected_items) {
         ((int *)radio->selected_items)[0] = radio->selected_index;
     }

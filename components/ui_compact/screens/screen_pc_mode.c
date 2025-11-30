@@ -76,19 +76,19 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
 
     // Create main screen layout (mode label, bottom bar with device name and menu)
     const char *device_name = (initial_status && initial_status->device_name) ? initial_status->device_name : "LC-????";
-    mode_label = ui_create_main_screen_layout(parent, "PC MODE", device_name);
+    mode_label              = ui_create_main_screen_layout(parent, "PC MODE", device_name);
 
     // Waiting text - centered in content area, 10px down
-    int content_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
-    int content_center_y = SEPARATOR_Y_TOP + (content_height / 2) + 10;  // +10px down
-    
+    int content_height   = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
+    int content_center_y = SEPARATOR_Y_TOP + (content_height / 2) + 10; // +10px down
+
     waiting_label1 = lv_label_create(parent);
     lv_label_set_text(waiting_label1, "Waiting for commands...");
     lv_obj_set_style_text_color(waiting_label1, lv_color_white(), 0);
     lv_obj_set_style_text_font(waiting_label1, &lv_font_pixolletta_10, 0);
     lv_obj_set_style_text_align(waiting_label1, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(waiting_label1, DISPLAY_WIDTH);
-    lv_obj_set_pos(waiting_label1, 0, content_center_y - 5);  // -5 to center 10px font
+    lv_obj_set_pos(waiting_label1, 0, content_center_y - 5); // -5 to center 10px font
 
     waiting_label2 = NULL;
 

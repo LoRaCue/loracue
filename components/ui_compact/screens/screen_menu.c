@@ -6,11 +6,11 @@
 static ui_menu_t *menu = NULL;
 
 const char *MAIN_MENU_ITEMS[MAIN_MENU_COUNT] = {
-    [MAIN_MENU_DEVICE_MODE] = "Device Mode",   [MAIN_MENU_SLOT] = "Slot",
-    [MAIN_MENU_LORA] = "LoRa Settings",        [MAIN_MENU_PAIRING] = "Device Pairing",
-    [MAIN_MENU_REGISTRY] = "Device Registry",  [MAIN_MENU_BRIGHTNESS] = "Display Brightness",
-    [MAIN_MENU_BLUETOOTH] = "Bluetooth",       [MAIN_MENU_CONFIG] = "Configuration Mode",
-    [MAIN_MENU_DEVICE_INFO] = "Device Info",   [MAIN_MENU_SYSTEM_INFO] = "System Info",
+    [MAIN_MENU_DEVICE_MODE] = "Device Mode",    [MAIN_MENU_SLOT] = "Slot",
+    [MAIN_MENU_LORA] = "LoRa Settings",         [MAIN_MENU_PAIRING] = "Device Pairing",
+    [MAIN_MENU_REGISTRY] = "Device Registry",   [MAIN_MENU_BRIGHTNESS] = "Display Brightness",
+    [MAIN_MENU_BLUETOOTH] = "Bluetooth",        [MAIN_MENU_CONFIG] = "Configuration Mode",
+    [MAIN_MENU_DEVICE_INFO] = "Device Info",    [MAIN_MENU_SYSTEM_INFO] = "System Info",
     [MAIN_MENU_FACTORY_RESET] = "Factory Reset"};
 
 void screen_menu_create(lv_obj_t *parent)

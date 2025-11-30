@@ -1,7 +1,7 @@
 #include "bsp.h"
-#include "lv_port_disp.h"
 #include "esp_log.h"
 #include "general_config.h"
+#include "lv_port_disp.h"
 #include "lvgl.h"
 #include "screens.h"
 #include "ui_components.h"
@@ -17,7 +17,7 @@ void screen_brightness_create(lv_obj_t *parent)
     lv_obj_set_style_bg_color(parent, lv_color_black(), 0);
 
     if (!screen) {
-        screen = ui_edit_screen_create("BRIGHTNESS");
+        screen            = ui_edit_screen_create("BRIGHTNESS");
         screen->edit_mode = preserved_edit_mode;
     }
 
