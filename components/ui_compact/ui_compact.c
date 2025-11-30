@@ -35,14 +35,14 @@ void ui_compact_get_status(statusbar_data_t *status)
 
     // Get battery level with caching (update every 5 seconds)
     static uint32_t last_battery_update = 0;
-    static float cached_voltage = 0.0f;
-    
+    static float cached_voltage         = 0.0f;
+
     uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
     if (now - last_battery_update > 5000 || last_battery_update == 0) {
-        cached_voltage = bsp_read_battery();
+        cached_voltage      = bsp_read_battery();
         last_battery_update = now;
     }
-    
+
     status->battery_level = bsp_battery_voltage_to_percentage(cached_voltage);
 
     status->device_name = cached_config.device_name;

@@ -86,7 +86,7 @@ esp_err_t cmd_set_lora_config(const lora_config_t *config)
     // Validation logic moved here
     // Validate bandwidth
     static const int valid_bandwidths[] = {7, 10, 15, 20, 31, 41, 62, 125, 250, 500};
-    bool bw_valid = false;
+    bool bw_valid                       = false;
     for (size_t i = 0; i < sizeof(valid_bandwidths) / sizeof(valid_bandwidths[0]); i++) {
         if (config->bandwidth == valid_bandwidths[i]) {
             bw_valid = true;

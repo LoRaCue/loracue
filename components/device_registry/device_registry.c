@@ -191,9 +191,9 @@ esp_err_t device_registry_get(uint16_t device_id, paired_device_t *device)
 esp_err_t device_registry_update_sequence(uint16_t device_id, uint16_t highest_sequence, uint64_t recent_bitmap)
 {
     // Update cache only (RAM-only, not persisted to NVS)
-    // SECURITY NOTE: Replay protection state is lost on reboot. 
+    // SECURITY NOTE: Replay protection state is lost on reboot.
     // While not ideal, persisting every sequence update to NVS would wear out flash memory rapidly.
-    // The risk is mitigated by the fact that an attacker would need to capture a valid packet 
+    // The risk is mitigated by the fact that an attacker would need to capture a valid packet
     // and replay it AFTER a reboot but BEFORE the legitimate device sends a new packet with a higher sequence number.
     for (size_t i = 0; i < cached_device_count; i++) {
         if (device_cache[i].device_id == device_id) {

@@ -15,23 +15,17 @@ static const char *TAG = "PRESENTER_MGR";
 
 static SemaphoreHandle_t state_mutex = NULL;
 
-
-
 // LoRa reliable transmission constants
 
-#define LORA_RELIABLE_TIMEOUT_MS  2000
+#define LORA_RELIABLE_TIMEOUT_MS 2000
 
 #define LORA_RELIABLE_MAX_RETRIES 3
-
-
 
 // HID Keycodes (Standard Usage ID)
 
 #define HID_KEY_ARROW_RIGHT 0x4F
 
-#define HID_KEY_ARROW_LEFT  0x50
-
-
+#define HID_KEY_ARROW_LEFT 0x50
 
 esp_err_t presenter_mode_manager_init(void)
 
@@ -39,15 +33,10 @@ esp_err_t presenter_mode_manager_init(void)
 
     CREATE_MUTEX_OR_FAIL(state_mutex);
 
-    
-
     ESP_LOGI(TAG, "Presenter mode manager initialized");
 
     return ESP_OK;
-
 }
-
-
 
 esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
 
@@ -56,14 +45,9 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
     if (!state_mutex) {
 
         return ESP_ERR_INVALID_STATE;
-
     }
 
-
-
     xSemaphoreTake(state_mutex, portMAX_DELAY);
-
-
 
     // Get configuration
 
@@ -71,11 +55,7 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
 
     general_config_get(&config);
 
-
-
     esp_err_t ret = ESP_OK;
-
-
 
     switch (button_type) {
 
@@ -85,9 +65,9 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
 
 #ifdef CONFIG_LORA_SEND_RELIABLE
 
-            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, HID_KEY_ARROW_RIGHT, 
+            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, HID_KEY_ARROW_RIGHT,
 
-                                                       LORA_RELIABLE_TIMEOUT_MS, 
+                                                       LORA_RELIABLE_TIMEOUT_MS,
 
                                                        LORA_RELIABLE_MAX_RETRIES);
 
@@ -99,8 +79,6 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
 
             break;
 
-
-
         case BUTTON_EVENT_LONG:
 
             ESP_LOGI(TAG, "Long press - entering menu mode");
@@ -109,17 +87,15 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
 
             break;
 
-
-
         case BUTTON_EVENT_DOUBLE:
 
             ESP_LOGI(TAG, "Double press - sending Cursor Left");
 
 #ifdef CONFIG_LORA_SEND_RELIABLE
 
-            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, HID_KEY_ARROW_LEFT, 
+            ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, HID_KEY_ARROW_LEFT,
 
-                                                       LORA_RELIABLE_TIMEOUT_MS, 
+                                                       LORA_RELIABLE_TIMEOUT_MS,
 
                                                        LORA_RELIABLE_MAX_RETRIES);
 

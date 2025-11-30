@@ -42,8 +42,10 @@ esp_err_t ota_engine_init(void)
 
 static bool validate_hex_string(const char *hex, size_t expected_len)
 {
-    if (!hex) return false;
-    if (strlen(hex) != expected_len) return false;
+    if (!hex)
+        return false;
+    if (strlen(hex) != expected_len)
+        return false;
 
     for (size_t i = 0; i < expected_len; i++) {
         char c = hex[i];
