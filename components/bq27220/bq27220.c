@@ -2,7 +2,7 @@
 #include "bsp.h" // For bsp_i2c_add_device
 #include "esp_log.h"
 
-static const char *TAG = "bq27220";
+static const char *TAG                   = "bq27220";
 static i2c_master_dev_handle_t bq_handle = NULL;
 
 #define BQ27220_CMD_SOC 0x1C
@@ -11,7 +11,8 @@ static i2c_master_dev_handle_t bq_handle = NULL;
 
 static esp_err_t bq27220_read_word(uint8_t cmd, uint16_t *value)
 {
-    if (!bq_handle) return ESP_ERR_INVALID_STATE;
+    if (!bq_handle)
+        return ESP_ERR_INVALID_STATE;
     uint8_t data[2];
     // Need to use transmit_receive to send command and read response
     esp_err_t ret = i2c_master_transmit_receive(bq_handle, &cmd, 1, data, 2, 100);

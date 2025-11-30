@@ -2,7 +2,7 @@
 #include "bsp.h"
 #include "esp_log.h"
 
-static const char *TAG = "bq25896";
+static const char *TAG                   = "bq25896";
 static i2c_master_dev_handle_t bq_handle = NULL;
 
 #define BQ25896_REG_STATUS 0x0B
@@ -10,7 +10,8 @@ static i2c_master_dev_handle_t bq_handle = NULL;
 
 static esp_err_t bq25896_read_reg(uint8_t reg, uint8_t *value)
 {
-    if (!bq_handle) return ESP_ERR_INVALID_STATE;
+    if (!bq_handle)
+        return ESP_ERR_INVALID_STATE;
     return i2c_master_transmit_receive(bq_handle, &reg, 1, value, 1, 100);
 }
 
