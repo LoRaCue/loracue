@@ -191,7 +191,7 @@ esp_err_t bsp_init(void)
     bq27220_init(BOARD_I2C_PORT);
 
     // Initialize RTC
-    pcf85063_init(BOARD_I2C_PORT);
+    pcf85063_init();
 
     // Configure PCA9535 pins for E-Paper
     pca9535_set_direction(PCA_EP_OE, true);
