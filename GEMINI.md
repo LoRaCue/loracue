@@ -68,3 +68,7 @@
 * **No String Parsing in Logic:** All parsing happens at the edge (Adapter). Logic functions take C structs.
 * **Thread Safety:** UI functions must be thread-safe or called from the UI task. System events are safe.
 * **Component Deps:** Use `REQUIRES` in `idf_component_register` carefully. Don't link E-Paper drivers if building for OLED.
+
+### CI Workflow Trigger
+
+This line added to trigger a new CI workflow run after submodule fix.
