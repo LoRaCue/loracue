@@ -202,7 +202,7 @@ OTA_ERROR:
     ESP_LOGE(TAG, "========================================");
     if (notify_sem)
         vSemaphoreDelete(notify_sem);
-    
+
     s_ota_task_handle = NULL;
     vTaskDelete(NULL);
 }

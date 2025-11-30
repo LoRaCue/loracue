@@ -65,7 +65,7 @@ static const ble_uuid128_t NUS_CHR_TX_UUID =
 //==============================================================================
 
 #define BLE_CMD_QUEUE_SIZE 10
-#define BLE_CMD_TASK_STACK_SIZE         4096
+#define BLE_CMD_TASK_STACK_SIZE 4096
 #define BLE_CMD_TASK_PRIORITY 5
 #define BLE_CMD_MAX_LENGTH 2048
 #define BLE_RESPONSE_MAX_LENGTH 2048
@@ -727,10 +727,11 @@ bool ble_is_connected(void)
     return connected;
 }
 
-static void ble_send_long_notification(uint16_t conn_handle, uint16_t attr_handle, const char *data, size_t len, uint16_t mtu)
+static void ble_send_long_notification(uint16_t conn_handle, uint16_t attr_handle, const char *data, size_t len,
+                                       uint16_t mtu)
 {
     size_t chunk_size = mtu - 3; // ATT overhead
-    size_t offset = 0;
+    size_t offset     = 0;
 
     while (offset < len) {
         size_t to_send = (len - offset > chunk_size) ? chunk_size : (len - offset);
