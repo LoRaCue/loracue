@@ -31,7 +31,7 @@ esp_err_t display_ssd1681_init(display_config_t *config) {
         .pclk_hz = DISPLAY_SSD1681_SPI_SPEED,
         .lcd_cmd_bits = LCD_CMD_BITS,
         .lcd_param_bits = LCD_PARAM_BITS,
-        .spi_mode = SPI_MODE,
+        .spi_mode = SPI_MODE_DEFAULT,
     };
     
     esp_err_t ret = esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)spi_device, &io_config, &config->io_handle);
@@ -41,7 +41,7 @@ esp_err_t display_ssd1681_init(display_config_t *config) {
 
     esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = pins->rst,
-        .bits_per_pixel = 1,
+        .bits_per_pixel = DISPLAY_BITS_PER_PIXEL_MONO,
     };
     
     ret = esp_lcd_new_panel_ssd1681(config->io_handle, &panel_config, &config->panel);
@@ -63,8 +63,7 @@ esp_err_t display_ssd1681_init(display_config_t *config) {
     }
     config->epaper_state->refresh_mode = DISPLAY_REFRESH_PARTIAL;
 
-    config->width = DISPLAY_SSD1681_WIDTH;
-    config->height = DISPLAY_SSD1681_HEIGHT;
+    display_set_dimensions(config, DISPLAY_SSD1681_WIDTH, DISPLAY_SSD1681_HEIGHT);
 
     ESP_LOGI(TAG, "SSD1681 initialized: %dx%d", config->width, config->height);
     return ESP_OK;
@@ -93,11 +92,13 @@ esp_err_t display_ssd1681_set_refresh_mode(display_config_t *config, display_ref
 }
 
 esp_err_t display_ssd1681_sleep(const display_config_t *config) {
+    (void)config;
     // E-Paper doesn't need sleep mode - it retains image without power
     return ESP_OK;
 }
 
 esp_err_t display_ssd1681_wake(const display_config_t *config) {
+    (void)config;
     // E-Paper doesn't need wake - always ready
     return ESP_OK;
 }

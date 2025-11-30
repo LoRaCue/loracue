@@ -272,6 +272,38 @@ typedef struct {
         return ESP_OK; \
     }
 
+// GPIO configuration helper macros
+#define GPIO_CONFIG_INPUT_PULLUP(pin) { \
+    .pin_bit_mask = (1ULL << (pin)), \
+    .mode = GPIO_MODE_INPUT, \
+    .pull_up_en = GPIO_PULLUP_ENABLE, \
+    .pull_down_en = GPIO_PULLDOWN_DISABLE, \
+    .intr_type = GPIO_INTR_DISABLE \
+}
+
+#define GPIO_CONFIG_OUTPUT(pin) { \
+    .pin_bit_mask = (1ULL << (pin)), \
+    .mode = GPIO_MODE_OUTPUT, \
+    .pull_up_en = GPIO_PULLUP_DISABLE, \
+    .pull_down_en = GPIO_PULLDOWN_DISABLE, \
+    .intr_type = GPIO_INTR_DISABLE \
+}
+
+// LoRa pins struct definition macro
+#define BSP_DEFINE_LORA_PINS(miso_pin, mosi_pin, sclk_pin, cs_pin, rst_pin, busy_pin, dio1_pin) \
+    const bsp_lora_pins_t *bsp_get_lora_pins(void) { \
+        static const bsp_lora_pins_t lora_pins = { \
+            .miso = miso_pin, \
+            .mosi = mosi_pin, \
+            .sclk = sclk_pin, \
+            .cs = cs_pin, \
+            .rst = rst_pin, \
+            .busy = busy_pin, \
+            .dio1 = dio1_pin \
+        }; \
+        return &lora_pins; \
+    }
+
 /**
  * @brief Get USB configuration for this board
  *
@@ -308,6 +340,33 @@ const bsp_epaper_pins_t *bsp_get_epaper_pins(void);
 
 // I2C Bus Management
 #include "driver/i2c_master.h"
+#include "driver/spi_master.h"
+
+/**
+ * @brief Initialize SPI bus
+ * 
+ * @param host SPI host (SPI2_HOST, SPI3_HOST)
+ * @param mosi MOSI GPIO pin
+ * @param miso MISO GPIO pin (or GPIO_NUM_NC if not used)
+ * @param sclk SCLK GPIO pin
+ * @param max_transfer_sz Maximum transfer size in bytes
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_spi_init_bus(spi_host_device_t host, int mosi, int miso, int sclk, size_t max_transfer_sz);
+
+/**
+ * @brief Add SPI device to bus
+ * 
+ * @param host SPI host
+ * @param cs Chip select GPIO pin
+ * @param clock_hz Clock speed in Hz
+ * @param mode SPI mode (0-3)
+ * @param queue_size Transaction queue size
+ * @param handle Output device handle
+ * @return ESP_OK on success
+ */
+esp_err_t bsp_spi_add_device(spi_host_device_t host, int cs, uint32_t clock_hz, 
+                             uint8_t mode, uint8_t queue_size, spi_device_handle_t *handle);
 
 /**
  * @brief Initialize shared I2C bus with board-specific pins

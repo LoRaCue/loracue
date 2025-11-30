@@ -46,7 +46,11 @@ extern "C" {
 #define LCD_PARAM_BITS              8
 #define I2C_CONTROL_PHASE_BYTES     1
 #define I2C_DC_BIT_OFFSET           6
-#define SPI_MODE                    0
+#define SPI_MODE_DEFAULT            0
+#define SPI_QUEUE_SIZE_DEFAULT      1
+
+// Display panel constants
+#define DISPLAY_BITS_PER_PIXEL_MONO 1
 
 // Helper: Convert LVGL area (inclusive) to esp_lcd coords (exclusive)
 static inline void area_to_lcd_coords(const lv_area_t *area, int *x1, int *y1, int *x2, int *y2) {
@@ -98,6 +102,12 @@ typedef struct {
     esp_lcd_panel_io_handle_t io_handle;  ///< Panel I/O handle (for LVGL callbacks)
     epaper_state_t *epaper_state;         // cppcheck-suppress unusedStructMember
 } display_config_t;
+
+// Helper: Set display dimensions
+static inline void display_set_dimensions(display_config_t *config, int width, int height) {
+    config->width = width;
+    config->height = height;
+}
 
 /**
  * @brief Common LVGL flush callback for all display types

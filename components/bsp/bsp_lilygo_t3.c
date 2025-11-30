@@ -38,23 +38,9 @@ esp_err_t bsp_init(void) {
     ESP_ERROR_CHECK(bsp_init_buttons());
     
     // Initialize SPI for E-Paper
-    spi_bus_config_t buscfg = {
-        .mosi_io_num = PIN_EPAPER_MOSI,
-        .miso_io_num = GPIO_NUM_NC,
-        .sclk_io_num = PIN_EPAPER_CLK,
-        .quadwp_io_num = GPIO_NUM_NC,
-        .quadhd_io_num = GPIO_NUM_NC,
-        .max_transfer_sz = SPI_TRANSFER_SIZE_EPAPER,
-    };
-    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO));
-    
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = DISPLAY_SSD1681_SPI_SPEED,
-        .mode = 0,
-        .spics_io_num = PIN_EPAPER_CS,
-        .queue_size = 1,
-    };
-    ESP_ERROR_CHECK(spi_bus_add_device(SPI2_HOST, &devcfg, &spi_epaper));
+    ESP_ERROR_CHECK(bsp_spi_init_bus(SPI2_HOST, PIN_EPAPER_MOSI, GPIO_NUM_NC, PIN_EPAPER_CLK, SPI_TRANSFER_SIZE_EPAPER));
+    ESP_ERROR_CHECK(bsp_spi_add_device(SPI2_HOST, PIN_EPAPER_CS, DISPLAY_SSD1681_SPI_SPEED, 
+                                       SPI_MODE_DEFAULT, SPI_QUEUE_SIZE_DEFAULT, &spi_epaper));
     
     ESP_LOGI(TAG, "LilyGO T3-S3 BSP initialized");
     return ESP_OK;
@@ -115,18 +101,8 @@ bool bsp_battery_is_charging(void) {
     return false;
 }
 
-const bsp_lora_pins_t *bsp_get_lora_pins(void) {
-    static const bsp_lora_pins_t lora_pins = {
-        .miso = PIN_LORA_MISO,
-        .mosi = PIN_LORA_MOSI,
-        .sclk = PIN_LORA_SCLK,
-        .cs = PIN_LORA_CS,
-        .rst = PIN_LORA_RST,
-        .busy = PIN_LORA_BUSY,
-        .dio1 = PIN_LORA_DIO1
-    };
-    return &lora_pins;
-}
+BSP_DEFINE_LORA_PINS(PIN_LORA_MISO, PIN_LORA_MOSI, PIN_LORA_SCLK, PIN_LORA_CS,
+                     PIN_LORA_RST, PIN_LORA_BUSY, PIN_LORA_DIO1)
 
 // cppcheck-suppress unknownMacro
 // Stub implementations for unused features

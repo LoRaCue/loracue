@@ -7,6 +7,13 @@
 extern "C" {
 #endif
 
+// Safe wrapper macro for display functions
+#define DISPLAY_SAFE_WRAPPER(name, func, ...) \
+    static inline esp_err_t name(__VA_ARGS__) { \
+        display_config_t *cfg = ui_lvgl_get_display_config(); \
+        return cfg ? func(cfg, ##__VA_ARGS__) : ESP_ERR_INVALID_STATE; \
+    }
+
 /**
  * @brief Initialize LVGL display port
  * 

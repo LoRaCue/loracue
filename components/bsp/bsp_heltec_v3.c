@@ -65,31 +65,13 @@ esp_err_t bsp_init_spi(void)
     ESP_LOGD(TAG, "Initializing SPI bus for SX1262 LoRa (MOSI=%d, MISO=%d, SCK=%d, CS=%d)",
              LORA_MOSI_PIN, LORA_MISO_PIN, LORA_SCK_PIN, LORA_CS_PIN);
 
-    // Configure SPI bus
-    spi_bus_config_t buscfg = {
-        .mosi_io_num     = LORA_MOSI_PIN,
-        .miso_io_num     = LORA_MISO_PIN,
-        .sclk_io_num     = LORA_SCK_PIN,
-        .quadwp_io_num   = GPIO_NUM_NC,
-        .quadhd_io_num   = GPIO_NUM_NC,
-        .max_transfer_sz = SPI_TRANSFER_SIZE_LORA,
-    };
-
-    esp_err_t ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    esp_err_t ret = bsp_spi_init_bus(SPI2_HOST, LORA_MOSI_PIN, LORA_MISO_PIN, LORA_SCK_PIN, SPI_TRANSFER_SIZE_LORA);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    // Configure SPI device (SX1262)
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = SPI_CLOCK_SPEED_HZ,
-        .mode           = 0,
-        .spics_io_num   = LORA_CS_PIN,
-        .queue_size     = SPI_QUEUE_SIZE,
-    };
-
-    ret = spi_bus_add_device(SPI2_HOST, &devcfg, &spi_handle);
+    ret = bsp_spi_add_device(SPI2_HOST, LORA_CS_PIN, SPI_CLOCK_SPEED_HZ, SPI_MODE_DEFAULT, SPI_QUEUE_SIZE, &spi_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to add SPI device: %s", esp_err_to_name(ret));
         spi_bus_free(SPI2_HOST);
@@ -176,13 +158,7 @@ esp_err_t bsp_init(void)
 
     // Initialize status LED
     ESP_LOGD(TAG, "Configuring status LED on GPIO%d", STATUS_LED_PIN);
-    gpio_config_t led_config = {
-        .pin_bit_mask = (1ULL << STATUS_LED_PIN),
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
+    gpio_config_t led_config = GPIO_CONFIG_OUTPUT(STATUS_LED_PIN);
     ret = gpio_config(&led_config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to configure LED GPIO: %s", esp_err_to_name(ret));
@@ -259,13 +235,7 @@ esp_err_t bsp_init_buttons(void)
 {
     ESP_LOGI(TAG, "Configuring button GPIO%d", BUTTON_PIN);
 
-    gpio_config_t button_config = {
-        .pin_bit_mask = (1ULL << BUTTON_PIN),
-        .mode         = GPIO_MODE_INPUT,
-        .pull_up_en   = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
+    gpio_config_t button_config = GPIO_CONFIG_INPUT_PULLUP(BUTTON_PIN);
 
     esp_err_t ret = gpio_config(&button_config);
     if (ret != ESP_OK) {
@@ -283,13 +253,7 @@ esp_err_t bsp_init_battery(void)
              BATTERY_CTRL_PIN);
 
     // Configure battery control pin as output
-    gpio_config_t ctrl_config = {
-        .pin_bit_mask = (1ULL << BATTERY_CTRL_PIN),
-        .mode         = GPIO_MODE_OUTPUT,
-        .pull_up_en   = GPIO_PULLUP_DISABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type    = GPIO_INTR_DISABLE,
-    };
+    gpio_config_t ctrl_config = GPIO_CONFIG_OUTPUT(BATTERY_CTRL_PIN);
 
     esp_err_t ret = gpio_config(&ctrl_config);
     if (ret != ESP_OK) {
@@ -481,19 +445,8 @@ esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len)
     return ESP_OK;
 }
 
-const bsp_lora_pins_t *bsp_get_lora_pins(void)
-{
-    static const bsp_lora_pins_t lora_pins = {
-        .miso = 11,
-        .mosi = 10,
-        .sclk = 9,
-        .cs = 8,
-        .rst = 12,
-        .busy = 13,
-        .dio1 = 14
-    };
-    return &lora_pins;
-}
+BSP_DEFINE_LORA_PINS(LORA_MISO_PIN, LORA_MOSI_PIN, LORA_SCK_PIN, LORA_CS_PIN, 
+                     LORA_RST_PIN, LORA_BUSY_PIN, LORA_DIO1_PIN)
 
 // Display control functions removed - use display.h API directly with display_config_t
 

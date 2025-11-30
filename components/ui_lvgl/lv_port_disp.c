@@ -70,6 +70,7 @@ void lv_port_disp_deinit(void) {
     display_deinit(&display_config);
 }
 
+// Safe wrapper implementations using macro
 esp_err_t display_safe_set_brightness(uint8_t brightness) {
     display_config_t *cfg = ui_lvgl_get_display_config();
     return cfg ? display_set_brightness(cfg, brightness) : ESP_ERR_INVALID_STATE;
