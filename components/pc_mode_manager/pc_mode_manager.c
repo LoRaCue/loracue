@@ -126,7 +126,7 @@ esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_
     }
 
     usb_hid_keycode_t keycode = 0;
-    uint8_t modifiers         = 0;
+    uint8_t modifiers __attribute__((unused)) = 0;
 
     // Parse HID report from payload
     if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_t)) {
