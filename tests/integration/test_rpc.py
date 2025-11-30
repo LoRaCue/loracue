@@ -40,16 +40,16 @@ def test_general_config(rpc_client):
     original = resp["result"]
     
     # Verify fields
-    required = ["name", "mode", "brightness", "bluetooth", "slot_id"]
+    required = ["name", "mode", "contrast", "bluetooth", "slot_id"]
     for field in required:
         assert field in original
         
-    # Try setting a value (brightness)
-    new_brightness = 100 if original["brightness"] != 100 else 200
+    # Try setting a value (contrast)
+    new_contrast = 100 if original["contrast"] != 100 else 200
     
     # Copy original and modify
     new_config = original.copy()
-    new_config["brightness"] = new_brightness
+    new_config["contrast"] = new_contrast
     
     # Set
     resp = rpc_client("general:set", new_config)
@@ -57,7 +57,7 @@ def test_general_config(rpc_client):
     
     # Verify set
     resp = rpc_client("general:get")
-    assert resp["result"]["brightness"] == new_brightness
+    assert resp["result"]["contrast"] == new_contrast
     
     # Restore
     rpc_client("general:set", original)

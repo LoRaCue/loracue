@@ -12,11 +12,13 @@ extern "C" {
 #endif
 
 // Validation macros
+#ifndef VALIDATE_ARG
 #define VALIDATE_ARG(arg)                                                                                              \
     do {                                                                                                               \
         if (!(arg))                                                                                                    \
             return ESP_ERR_INVALID_ARG;                                                                                \
     } while (0)
+#endif
 
 #define VALIDATE_CONFIG(cfg)                                                                                           \
     do {                                                                                                               \
@@ -153,13 +155,13 @@ esp_err_t display_sleep(display_config_t *config);
 esp_err_t display_wake(display_config_t *config);
 
 /**
- * @brief Set display brightness/contrast
+ * @brief Set display contrast
  *
  * @param config Display configuration
- * @param brightness Brightness value (0-255)
+ * @param contrast Contrast value (0-255)
  * @return esp_err_t ESP_OK on success
  */
-esp_err_t display_set_brightness(display_config_t *config, uint8_t brightness);
+esp_err_t display_set_contrast(display_config_t *config, uint8_t contrast);
 
 #ifdef __cplusplus
 }

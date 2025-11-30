@@ -129,7 +129,7 @@ bool ui_confirmation_check_hold(ui_confirmation_t *confirm, bool button_pressed,
 typedef struct {
     const char **lines; // cppcheck-suppress unusedStructMember
     uint8_t line_count; // cppcheck-suppress unusedStructMember
-    uint8_t scroll_pos; // cppcheck-suppress unusedStructMember
+    int8_t scroll_pos;  // cppcheck-suppress unusedStructMember
 } ui_text_viewer_t;
 
 ui_text_viewer_t *ui_text_viewer_create(const char **lines, uint8_t line_count);

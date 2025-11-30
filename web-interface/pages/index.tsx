@@ -5,7 +5,7 @@ import { Save, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 interface DeviceSettings {
   name: string
   mode: string
-  brightness: number
+  contrast: number
   slot_id: number
   bluetooth: boolean
 }
@@ -14,7 +14,7 @@ export default function DevicePage() {
   const [settings, setSettings] = useState<DeviceSettings>({
     name: '',
     mode: 'presenter',
-    brightness: 128,
+    contrast: 128,
     slot_id: 1,
     bluetooth: true
   })
@@ -98,13 +98,13 @@ export default function DevicePage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Display Brightness: {settings.brightness}</label>
+              <label className="block text-sm font-medium mb-2">Display Contrast: {settings.contrast}</label>
               <input
                 type="range"
                 min="0"
                 max="255"
-                value={settings.brightness}
-                onChange={(e) => setSettings({ ...settings, brightness: parseInt(e.target.value) })}
+                value={settings.contrast}
+                onChange={(e) => setSettings({ ...settings, contrast: parseInt(e.target.value) })}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
               />
             </div>

@@ -65,7 +65,7 @@ static const ble_uuid128_t NUS_CHR_TX_UUID =
 //==============================================================================
 
 #define BLE_CMD_QUEUE_SIZE 10
-#define BLE_CMD_TASK_STACK_SIZE 4096
+#define BLE_CMD_TASK_STACK_SIZE 6144
 #define BLE_CMD_TASK_PRIORITY 5
 #define BLE_CMD_MAX_LENGTH 2048
 #define BLE_RESPONSE_MAX_LENGTH 2048
@@ -446,6 +446,7 @@ static void ble_advertise(void)
 
     // Manufacturer Specific Data (2 + 2 + 5 + model_len bytes)
     uint8_t mfg_data_len = 2 + 5 + model_len; // Company ID + version + model
+    // cppcheck-suppress knownConditionTrueFalse
     if (pos + 2 + mfg_data_len <= 31) {
         adv_data[pos++] = 1 + mfg_data_len; // Length
         adv_data[pos++] = 0xFF;             // Manufacturer Specific Data

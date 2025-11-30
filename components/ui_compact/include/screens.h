@@ -46,7 +46,7 @@ typedef enum {
     MAIN_MENU_LORA,
     MAIN_MENU_PAIRING,
     MAIN_MENU_REGISTRY,
-    MAIN_MENU_BRIGHTNESS,
+    MAIN_MENU_CONTRAST,
     MAIN_MENU_BLUETOOTH,
     MAIN_MENU_CONFIG,
     MAIN_MENU_DEVICE_INFO,
@@ -360,37 +360,37 @@ void screen_device_registry_reset(void);
 ui_screen_t *screen_device_registry_get_interface(void);
 
 /**
- * @brief Create brightness screen
+ * @brief Create contrast screen
  * @param parent Parent object to create screen in
  */
-void screen_brightness_create(lv_obj_t *parent);
+void screen_contrast_create(lv_obj_t *parent);
 
 /**
- * @brief Initialize brightness screen
+ * @brief Initialize contrast screen
  */
-void screen_brightness_init(void);
-ui_screen_t *screen_brightness_get_interface(void);
+void screen_contrast_init(void);
+ui_screen_t *screen_contrast_get_interface(void);
 
 /**
- * @brief Navigate down in brightness screen
+ * @brief Navigate down in contrast screen
  */
-void screen_brightness_navigate_down(void);
+void screen_contrast_navigate_down(void);
 
 /**
- * @brief Navigate up in brightness screen
+ * @brief Navigate up in contrast screen
  */
-void screen_brightness_navigate_up(void);
+void screen_contrast_navigate_up(void);
 
 /**
- * @brief Select brightness
+ * @brief Select contrast
  */
-void screen_brightness_select(void);
+void screen_contrast_select(void);
 
 /**
- * @brief Check if brightness screen is in edit mode
+ * @brief Check if contrast screen is in edit mode
  * @return true if in edit mode
  */
-bool screen_brightness_is_edit_mode(void);
+bool screen_contrast_is_edit_mode(void);
 
 /**
  * @brief Create bluetooth screen

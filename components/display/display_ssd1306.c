@@ -78,10 +78,10 @@ esp_err_t display_ssd1306_wake(display_config_t *config)
     return esp_lcd_panel_disp_on_off(config->panel, true);
 }
 
-esp_err_t display_ssd1306_set_brightness(display_config_t *config, uint8_t brightness)
+esp_err_t display_ssd1306_set_contrast(display_config_t *config, uint8_t contrast)
 {
     VALIDATE_CONFIG(config);
     VALIDATE_ARG(config->io_handle);
 
-    return esp_lcd_panel_io_tx_param(config->io_handle, DISPLAY_SSD1306_CMD_CONTRAST, (uint8_t[]){brightness}, 1);
+    return esp_lcd_panel_io_tx_param(config->io_handle, DISPLAY_SSD1306_CMD_CONTRAST, (uint8_t[]){contrast}, 1);
 }

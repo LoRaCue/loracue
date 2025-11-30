@@ -27,7 +27,7 @@ void test_general_config_get_set(void) {
     // Set defaults
     strncpy(config.device_name, "TestDevice", sizeof(config.device_name));
     config.device_mode = DEVICE_MODE_PC;
-    config.display_brightness = 128;
+    config.display_contrast = 128;
     config.bluetooth_enabled = true;
     config.bluetooth_pairing_enabled = false;
     config.slot_id = 5;
@@ -39,7 +39,7 @@ void test_general_config_get_set(void) {
 
     TEST_ASSERT_EQUAL_STRING("TestDevice", read_config.device_name);
     TEST_ASSERT_EQUAL(DEVICE_MODE_PC, read_config.device_mode);
-    TEST_ASSERT_EQUAL(128, read_config.display_brightness);
+    TEST_ASSERT_EQUAL(128, read_config.display_contrast);
     TEST_ASSERT_TRUE(read_config.bluetooth_enabled);
     TEST_ASSERT_FALSE(read_config.bluetooth_pairing_enabled);
     TEST_ASSERT_EQUAL(5, read_config.slot_id);

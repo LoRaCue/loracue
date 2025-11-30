@@ -8,7 +8,7 @@ static ui_menu_t *menu = NULL;
 const char *MAIN_MENU_ITEMS[MAIN_MENU_COUNT] = {
     [MAIN_MENU_DEVICE_MODE] = "Device Mode",    [MAIN_MENU_SLOT] = "Slot",
     [MAIN_MENU_LORA] = "LoRa Settings",         [MAIN_MENU_PAIRING] = "Device Pairing",
-    [MAIN_MENU_REGISTRY] = "Device Registry",   [MAIN_MENU_BRIGHTNESS] = "Display Brightness",
+    [MAIN_MENU_REGISTRY] = "Device Registry",   [MAIN_MENU_CONTRAST] = "Display Contrast",
     [MAIN_MENU_BLUETOOTH] = "Bluetooth",        [MAIN_MENU_CONFIG] = "Configuration Mode",
     [MAIN_MENU_DEVICE_INFO] = "Device Info",    [MAIN_MENU_SYSTEM_INFO] = "System Info",
     [MAIN_MENU_FACTORY_RESET] = "Factory Reset"};
@@ -81,8 +81,8 @@ static void handle_input(button_event_type_t event)
             case MAIN_MENU_REGISTRY:
                 ui_navigator_switch_to(UI_SCREEN_DEVICE_REGISTRY);
                 break;
-            case MAIN_MENU_BRIGHTNESS:
-                ui_navigator_switch_to(UI_SCREEN_BRIGHTNESS);
+            case MAIN_MENU_CONTRAST:
+                ui_navigator_switch_to(UI_SCREEN_CONTRAST);
                 break;
             case MAIN_MENU_BLUETOOTH:
                 ui_navigator_switch_to(UI_SCREEN_BLUETOOTH);

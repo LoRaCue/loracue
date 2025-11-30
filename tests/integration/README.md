@@ -37,7 +37,7 @@ python3 test_jsonrpc_protocol.py /dev/ttyACM0
 3. **Method Behavior** - Tests specific method functionality:
    - `ping` returns "pong"
    - `device:info` includes board_id, model, version, mac
-   - `general:get` includes name, mode, brightness, bluetooth, slot_id
+   - `general:get` includes name, mode, contrast, bluetooth, slot_id
    - `paired:list` returns array
    - `lora:bands` returns non-empty array
 

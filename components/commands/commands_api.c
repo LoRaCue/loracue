@@ -33,9 +33,9 @@ esp_err_t cmd_set_general_config(const general_config_t *new_config)
         system_events_post_mode_changed(new_config->device_mode);
     }
 
-    // Check for brightness change
-    if (current_config.display_brightness != new_config->display_brightness) {
-        display_safe_set_brightness(new_config->display_brightness);
+    // Check for contrast change
+    if (current_config.display_contrast != new_config->display_contrast) {
+        display_safe_set_contrast(new_config->display_contrast);
     }
 
     // Check for Bluetooth change

@@ -19,7 +19,7 @@ idf_component_register(
         "screens/screen_factory_reset.c"
         "screens/screen_device_mode.c"
         "screens/screen_slot.c"
-        "screens/screen_brightness.c"
+        "screens/screen_contrast.c"
         "screens/screen_pairing.c"
         "screens/screen_device_registry.c"
         "screens/screen_config_mode.c"

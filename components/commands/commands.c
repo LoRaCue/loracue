@@ -121,7 +121,7 @@ static void handle_get_general(void)
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "name", config.device_name);
     cJSON_AddStringToObject(response, "mode", device_mode_to_string(config.device_mode));
-    cJSON_AddNumberToObject(response, "brightness", config.display_brightness);
+    cJSON_AddNumberToObject(response, "contrast", config.display_contrast);
     cJSON_AddBoolToObject(response, "bluetooth", config.bluetooth_enabled);
     cJSON_AddBoolToObject(response, "bluetooth_pairing", config.bluetooth_pairing_enabled);
     cJSON_AddNumberToObject(response, "slot_id", config.slot_id);
@@ -155,9 +155,9 @@ static void handle_set_general(cJSON *config_json)
         }
     }
 
-    cJSON *brightness = cJSON_GetObjectItem(config_json, "brightness");
-    if (brightness && cJSON_IsNumber(brightness)) {
-        config.display_brightness = (uint8_t)brightness->valueint;
+    cJSON *contrast = cJSON_GetObjectItem(config_json, "contrast");
+    if (contrast && cJSON_IsNumber(contrast)) {
+        config.display_contrast = (uint8_t)contrast->valueint;
     }
 
     cJSON *bluetooth = cJSON_GetObjectItem(config_json, "bluetooth");

@@ -98,7 +98,7 @@ static void create_launcher_screen(void)
 
     // Create 12 app icons (3x4 grid)
     const char *app_names[] = {"Presenter", "PC Mode", "Settings", "LoRa",     "WiFi",       "Bluetooth",
-                               "Power",     "Info",    "Pairing",  "Registry", "Brightness", "Reset"};
+                               "Power",     "Info",    "Pairing",  "Registry", "Contrast", "Reset"};
 
     for (int i = 0; i < 12; i++) {
         lv_obj_t *app = lv_obj_create(grid);

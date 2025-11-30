@@ -34,11 +34,11 @@ void lv_port_disp_deinit(void);
 display_config_t *ui_lvgl_get_display_config(void);
 
 /**
- * @brief Safe wrapper: Set display brightness
- * @param brightness Brightness value (0-255)
+ * @brief Safe wrapper: Set display contrast
+ * @param contrast Contrast value (0-255)
  * @return ESP_OK on success, ESP_ERR_INVALID_STATE if display not initialized
  */
-esp_err_t display_safe_set_brightness(uint8_t brightness);
+esp_err_t display_safe_set_contrast(uint8_t contrast);
 
 /**
  * @brief Safe wrapper: Put display to sleep
