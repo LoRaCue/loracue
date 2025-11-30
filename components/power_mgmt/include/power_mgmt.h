@@ -32,9 +32,9 @@ typedef enum {
  * @brief CPU frequency options
  */
 typedef enum {
-    CPU_FREQ_80MHZ  = 80,   ///< 80 MHz (power efficient)
-    CPU_FREQ_160MHZ = 160,  ///< 160 MHz (balanced)
-    CPU_FREQ_240MHZ = 240   ///< 240 MHz (maximum performance)
+    CPU_FREQ_80MHZ  = 80,  ///< 80 MHz (power efficient)
+    CPU_FREQ_160MHZ = 160, ///< 160 MHz (balanced)
+    CPU_FREQ_240MHZ = 240  ///< 240 MHz (maximum performance)
 } cpu_freq_t;
 
 /**

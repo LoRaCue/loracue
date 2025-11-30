@@ -7,9 +7,7 @@
  */
 
 #include "power_mgmt.h"
-#include "usb_hid.h"
 #include "bsp.h"
-#include "lv_port_disp.h"
 #include "driver/gpio.h"
 #include "driver/rtc_io.h"
 #include "driver/spi_master.h"
@@ -20,7 +18,9 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "lv_port_disp.h"
 #include "soc/rtc.h"
+#include "usb_hid.h"
 
 static const char *TAG = "POWER_MGMT";
 
@@ -33,9 +33,9 @@ static uint64_t session_start_time   = 0;
 static bool display_sleeping         = false;
 
 // Default timeout constants
-#define POWER_MGMT_DEFAULT_DISPLAY_SLEEP_MS  10000   // 10 seconds
-#define POWER_MGMT_DEFAULT_LIGHT_SLEEP_MS    30000   // 30 seconds
-#define POWER_MGMT_DEFAULT_DEEP_SLEEP_MS     300000  // 5 minutes
+#define POWER_MGMT_DEFAULT_DISPLAY_SLEEP_MS 10000 // 10 seconds
+#define POWER_MGMT_DEFAULT_LIGHT_SLEEP_MS 30000   // 30 seconds
+#define POWER_MGMT_DEFAULT_DEEP_SLEEP_MS 300000   // 5 minutes
 
 // Default configuration
 static const power_config_t default_config = {
@@ -134,7 +134,7 @@ esp_err_t power_mgmt_display_sleep(void)
 
         uint64_t current_time = esp_timer_get_time();
         power_stats.display_sleep_time_ms += (current_time - last_activity_time) / 1000;
-        
+
         display_safe_sleep();
     }
 
@@ -157,10 +157,10 @@ esp_err_t power_mgmt_light_sleep(uint32_t timeout_ms)
     if (timeout_ms > 0) {
         esp_sleep_enable_timer_wakeup(timeout_ms * 1000ULL);
     }
-    
+
     // Enable button wake
     esp_sleep_enable_ext0_wakeup(BSP_GPIO_BUTTON_WAKE, 0);
-    
+
     // Enable UART wake
     esp_sleep_enable_uart_wakeup(UART_NUM_0);
 
@@ -199,7 +199,7 @@ esp_err_t power_mgmt_deep_sleep(uint32_t timeout_ms)
     if (timeout_ms > 0) {
         esp_sleep_enable_timer_wakeup(timeout_ms * 1000ULL);
     }
-    
+
     // Enable button wake
     esp_sleep_enable_ext0_wakeup(BSP_GPIO_BUTTON_WAKE, 0);
 
