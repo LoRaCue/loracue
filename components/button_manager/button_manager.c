@@ -7,26 +7,26 @@
  */
 
 #include "button_manager.h"
-#include "system_events.h"
 #include "bsp.h"
-#include "lv_port_disp.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "led_manager.h"
+#include "lv_port_disp.h"
 #include "power_mgmt.h"
+#include "system_events.h"
 #include "task_config.h"
 #include <string.h>
 
 static const char *TAG = "BUTTON_MGR";
 
 // Timing constants (in milliseconds)
-#define DEBOUNCE_TIME_MS       50
-#define SHORT_PRESS_MAX_MS     500
+#define DEBOUNCE_TIME_MS 50
+#define SHORT_PRESS_MAX_MS 500
 #define DOUBLE_CLICK_WINDOW_MS 200
-#define LONG_PRESS_TIME_MS     1500
-#define INACTIVITY_TIMEOUT_MS  300000  // 5 minutes
-#define LED_FADE_DURATION_MS   3000
+#define LONG_PRESS_TIME_MS 1500
+#define INACTIVITY_TIMEOUT_MS 300000 // 5 minutes
+#define LED_FADE_DURATION_MS 3000
 
 // Button manager state
 static TaskHandle_t button_task_handle = NULL;
@@ -76,7 +76,7 @@ static void button_manager_task(void *pvParameters)
             button.press_start_time = current_time;
             button.long_press_sent  = false;
             last_activity_time      = current_time;
-            display_sleep_active    = false;  // Wake from display sleep
+            display_sleep_active    = false; // Wake from display sleep
             led_manager_button_feedback(true);
 
             display_safe_wake();
@@ -192,10 +192,8 @@ esp_err_t button_manager_start(void)
     manager_running = true;
 
     BaseType_t ret = xTaskCreate(button_manager_task, "button_mgr",
-                                 TASK_STACK_SIZE_LARGE,  // UI task with power management logic
-                                 NULL,
-                                 TASK_PRIORITY_NORMAL,
-                                 &button_task_handle);
+                                 TASK_STACK_SIZE_LARGE, // UI task with power management logic
+                                 NULL, TASK_PRIORITY_NORMAL, &button_task_handle);
 
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create button manager task");

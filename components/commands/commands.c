@@ -1,39 +1,40 @@
 #include "commands.h"
-#include "commands_api.h"
+#include "bsp.h"
 #include "cJSON.h"
-#include "esp_log.h"
+#include "commands_api.h"
 #include "esp_chip_info.h"
 #include "esp_flash.h"
+#include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_ota_ops.h"
 #include "esp_partition.h"
-#include "esp_timer.h"
 #include "esp_system.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "bsp.h"
-#include "version.h"
 #include "power_mgmt.h"
+#include "version.h"
 #include <string.h>
 
 // JSON-RPC 2.0 error codes
-#define JSONRPC_PARSE_ERROR      -32700
-#define JSONRPC_INVALID_REQUEST  -32600
+#define JSONRPC_PARSE_ERROR -32700
+#define JSONRPC_INVALID_REQUEST -32600
 #define JSONRPC_METHOD_NOT_FOUND -32601
-#define JSONRPC_INVALID_PARAMS   -32602
-#define JSONRPC_INTERNAL_ERROR   -32603
+#define JSONRPC_INVALID_PARAMS -32602
+#define JSONRPC_INTERNAL_ERROR -32603
 
 static response_fn_t s_send_response = NULL;
-static cJSON *s_request_id = NULL;
+static cJSON *s_request_id           = NULL;
 
-static void send_jsonrpc_result(cJSON *result) {
+static void send_jsonrpc_result(cJSON *result)
+{
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "jsonrpc", "2.0");
     cJSON_AddItemToObject(response, "result", result);
     if (s_request_id) {
         cJSON_AddItemToObject(response, "id", cJSON_Duplicate(s_request_id, 1));
     }
-    
+
     char *json_str = cJSON_PrintUnformatted(response);
     if (json_str) {
         s_send_response(json_str);
@@ -42,21 +43,22 @@ static void send_jsonrpc_result(cJSON *result) {
     cJSON_Delete(response);
 }
 
-static void send_jsonrpc_error(int code, const char *message) {
+static void send_jsonrpc_error(int code, const char *message)
+{
     cJSON *response = cJSON_CreateObject();
     cJSON_AddStringToObject(response, "jsonrpc", "2.0");
-    
+
     cJSON *error = cJSON_CreateObject();
     cJSON_AddNumberToObject(error, "code", code);
     cJSON_AddStringToObject(error, "message", message);
     cJSON_AddItemToObject(response, "error", error);
-    
+
     if (s_request_id) {
         cJSON_AddItemToObject(response, "id", cJSON_Duplicate(s_request_id, 1));
     } else {
         cJSON_AddNullToObject(response, "id");
     }
-    
+
     char *json_str = cJSON_PrintUnformatted(response);
     if (json_str) {
         s_send_response(json_str);
@@ -65,11 +67,13 @@ static void send_jsonrpc_error(int code, const char *message) {
     cJSON_Delete(response);
 }
 
-static void handle_ping(void) {
+static void handle_ping(void)
+{
     send_jsonrpc_result(cJSON_CreateString("pong"));
 }
 
-static void handle_get_device_info(void) {
+static void handle_get_device_info(void)
+{
     cJSON *response = cJSON_CreateObject();
 
     cJSON_AddStringToObject(response, "model", bsp_get_model_name());
@@ -106,7 +110,8 @@ static void handle_get_device_info(void) {
     send_jsonrpc_result(response);
 }
 
-static void handle_get_general(void) {
+static void handle_get_general(void)
+{
     general_config_t config;
     if (cmd_get_general_config(&config) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get config");
@@ -124,7 +129,8 @@ static void handle_get_general(void) {
     send_jsonrpc_result(response);
 }
 
-static void handle_set_general(cJSON *config_json) {
+static void handle_set_general(cJSON *config_json)
+{
     general_config_t config;
     if (cmd_get_general_config(&config) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get current config");
@@ -163,7 +169,7 @@ static void handle_set_general(cJSON *config_json) {
     if (bluetooth_pairing && cJSON_IsBool(bluetooth_pairing)) {
         config.bluetooth_pairing_enabled = cJSON_IsTrue(bluetooth_pairing);
     }
-    
+
     cJSON *slot_id = cJSON_GetObjectItem(config_json, "slot_id");
     if (slot_id && cJSON_IsNumber(slot_id)) {
         int slot = slot_id->valueint;
@@ -182,7 +188,8 @@ static void handle_set_general(cJSON *config_json) {
     send_jsonrpc_result(cJSON_CreateString("Config updated"));
 }
 
-static void handle_get_power_management(void) {
+static void handle_get_power_management(void)
+{
     power_mgmt_config_t config;
     if (cmd_get_power_config(&config) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get power config");
@@ -200,7 +207,8 @@ static void handle_get_power_management(void) {
     send_jsonrpc_result(response);
 }
 
-static void handle_set_power_management(cJSON *config_json) {
+static void handle_set_power_management(cJSON *config_json)
+{
     power_mgmt_config_t config;
     if (cmd_get_power_config(&config) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get current power config");
@@ -229,7 +237,8 @@ static void handle_set_power_management(cJSON *config_json) {
     send_jsonrpc_result(cJSON_CreateString("Power config updated"));
 }
 
-static void handle_get_lora_config(void) {
+static void handle_get_lora_config(void)
+{
     lora_config_t config;
     if (cmd_get_lora_config(&config) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get LoRa config");
@@ -247,7 +256,8 @@ static void handle_get_lora_config(void) {
     send_jsonrpc_result(response);
 }
 
-static void handle_set_lora_config(cJSON *config_json) {
+static void handle_set_lora_config(cJSON *config_json)
+{
     lora_config_t config;
     if (cmd_get_lora_config(&config) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get current LoRa config");
@@ -261,15 +271,20 @@ static void handle_set_lora_config(cJSON *config_json) {
     cJSON *power   = cJSON_GetObjectItem(config_json, "tx_power_dbm");
     cJSON *band_id = cJSON_GetObjectItem(config_json, "band_id");
 
-    if (cJSON_IsNumber(bw)) config.bandwidth = bw->valueint;
-    if (cJSON_IsNumber(freq)) config.frequency = freq->valueint * 1000;
-    if (cJSON_IsNumber(sf)) config.spreading_factor = sf->valueint;
-    if (cJSON_IsNumber(cr)) config.coding_rate = cr->valueint;
+    if (cJSON_IsNumber(bw))
+        config.bandwidth = bw->valueint;
+    if (cJSON_IsNumber(freq))
+        config.frequency = freq->valueint * 1000;
+    if (cJSON_IsNumber(sf))
+        config.spreading_factor = sf->valueint;
+    if (cJSON_IsNumber(cr))
+        config.coding_rate = cr->valueint;
     if (cJSON_IsString(band_id)) {
         strncpy(config.band_id, band_id->valuestring, sizeof(config.band_id) - 1);
         config.band_id[sizeof(config.band_id) - 1] = '\0';
     }
-    if (cJSON_IsNumber(power)) config.tx_power = power->valueint;
+    if (cJSON_IsNumber(power))
+        config.tx_power = power->valueint;
 
     esp_err_t ret = cmd_set_lora_config(&config);
     if (ret == ESP_ERR_INVALID_ARG) {
@@ -283,7 +298,8 @@ static void handle_set_lora_config(cJSON *config_json) {
     send_jsonrpc_result(cJSON_CreateString("LoRa config updated"));
 }
 
-static void handle_get_lora_key(void) {
+static void handle_get_lora_key(void)
+{
     lora_config_t config;
     if (cmd_get_lora_config(&config) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get LoRa config");
@@ -301,7 +317,8 @@ static void handle_get_lora_key(void) {
     send_jsonrpc_result(response);
 }
 
-static void handle_set_lora_key(cJSON *json) {
+static void handle_set_lora_key(cJSON *json)
+{
     cJSON *aes_key_json = cJSON_GetObjectItem(json, "aes_key");
     if (!aes_key_json || !cJSON_IsString(aes_key_json) || strlen(aes_key_json->valuestring) != 64) {
         send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Invalid aes_key (must be 64 hex chars)");
@@ -312,7 +329,7 @@ static void handle_set_lora_key(cJSON *json) {
     const char *hex_key = aes_key_json->valuestring;
     for (int i = 0; i < 32; i++) {
         const char byte_str[3] = {hex_key[i * 2], hex_key[i * 2 + 1], '\0'};
-        key_bytes[i] = (uint8_t)strtol(byte_str, NULL, 16);
+        key_bytes[i]           = (uint8_t)strtol(byte_str, NULL, 16);
     }
 
     if (cmd_set_lora_key(key_bytes) != ESP_OK) {
@@ -323,10 +340,11 @@ static void handle_set_lora_key(cJSON *json) {
     send_jsonrpc_result(cJSON_CreateString("Key updated"));
 }
 
-static void handle_get_paired_devices(void) {
+static void handle_get_paired_devices(void)
+{
     paired_device_t devices[16]; // Assume max 16
     size_t count = 0;
-    
+
     // Using arbitrary max limit that should cover expected MAX_PAIRED_DEVICES
     if (cmd_get_paired_devices(devices, 16, &count) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get devices");
@@ -337,21 +355,21 @@ static void handle_get_paired_devices(void) {
     for (size_t i = 0; i < count; i++) {
         cJSON *obj = cJSON_CreateObject();
         cJSON_AddStringToObject(obj, "name", devices[i].device_name);
-        
+
         char mac_str[18];
-        snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x", 
-                 devices[i].mac_address[0], devices[i].mac_address[1], 
-                 devices[i].mac_address[2], devices[i].mac_address[3], 
+        snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x", devices[i].mac_address[0],
+                 devices[i].mac_address[1], devices[i].mac_address[2], devices[i].mac_address[3],
                  devices[i].mac_address[4], devices[i].mac_address[5]);
         cJSON_AddStringToObject(obj, "mac", mac_str);
-        
+
         cJSON_AddItemToArray(array, obj);
     }
     send_jsonrpc_result(array);
 }
 
-static void handle_pair_device(cJSON *params) {
-    cJSON *name = cJSON_GetObjectItem(params, "name");
+static void handle_pair_device(cJSON *params)
+{
+    cJSON *name      = cJSON_GetObjectItem(params, "name");
     const cJSON *mac = cJSON_GetObjectItem(params, "mac");
     const cJSON *key = cJSON_GetObjectItem(params, "aes_key");
 
@@ -361,9 +379,8 @@ static void handle_pair_device(cJSON *params) {
     }
 
     uint8_t mac_bytes[6];
-    if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", 
-               &mac_bytes[0], &mac_bytes[1], &mac_bytes[2], 
-               &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
+    if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
+               &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
         send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Invalid MAC");
         return;
     }
@@ -371,11 +388,11 @@ static void handle_pair_device(cJSON *params) {
     uint8_t key_bytes[32];
     const char *k = key->valuestring;
     if (strlen(k) != 64) {
-         send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Invalid Key Length");
-         return;
+        send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Invalid Key Length");
+        return;
     }
-    for(int i=0; i<32; i++) {
-        if (sscanf(k + i*2, "%02hhx", &key_bytes[i]) != 1) {
+    for (int i = 0; i < 32; i++) {
+        if (sscanf(k + i * 2, "%02hhx", &key_bytes[i]) != 1) {
             send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Invalid Key Hex");
             return;
         }
@@ -389,7 +406,8 @@ static void handle_pair_device(cJSON *params) {
     send_jsonrpc_result(cJSON_CreateString("Paired"));
 }
 
-static void handle_unpair_device(cJSON *params) {
+static void handle_unpair_device(cJSON *params)
+{
     const cJSON *mac = cJSON_GetObjectItem(params, "mac");
     if (!mac) {
         send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Missing MAC");
@@ -397,9 +415,8 @@ static void handle_unpair_device(cJSON *params) {
     }
 
     uint8_t mac_bytes[6];
-    if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", 
-               &mac_bytes[0], &mac_bytes[1], &mac_bytes[2], 
-               &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
+    if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
+               &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) != 6) {
         send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Invalid MAC");
         return;
     }
@@ -411,17 +428,19 @@ static void handle_unpair_device(cJSON *params) {
     send_jsonrpc_result(cJSON_CreateString("Unpaired"));
 }
 
-static void handle_device_reset(void) {
+static void handle_device_reset(void)
+{
     send_jsonrpc_result(cJSON_CreateString("Reset initiated"));
     // Allow time to send response
     vTaskDelay(pdMS_TO_TICKS(500));
     cmd_factory_reset();
 }
 
-static void handle_firmware_start(cJSON *params) {
+static void handle_firmware_start(cJSON *params)
+{
     cJSON *size = cJSON_GetObjectItem(params, "size");
-    cJSON *sha = cJSON_GetObjectItem(params, "sha256");
-    cJSON *sig = cJSON_GetObjectItem(params, "signature");
+    cJSON *sha  = cJSON_GetObjectItem(params, "sha256");
+    cJSON *sig  = cJSON_GetObjectItem(params, "signature");
 
     if (!size || !sha || !sig) {
         send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Missing params");
@@ -471,14 +490,16 @@ static const jsonrpc_method_t method_table[] = {
     {"firmware:upgrade", true, {.with_params = handle_firmware_start}},
 };
 
-void commands_execute(const char *command_line, response_fn_t send_response) {
-    if (!send_response) return;
+void commands_execute(const char *command_line, response_fn_t send_response)
+{
+    if (!send_response)
+        return;
     s_send_response = send_response;
-    s_request_id = NULL;
+    s_request_id    = NULL;
 
     power_mgmt_update_activity();
 
-    #define MAX_COMMAND_LENGTH 8192
+#define MAX_COMMAND_LENGTH 8192
     if (strlen(command_line) > MAX_COMMAND_LENGTH) {
         send_jsonrpc_error(JSONRPC_INVALID_REQUEST, "Request too large");
         return;
@@ -497,7 +518,7 @@ void commands_execute(const char *command_line, response_fn_t send_response) {
         return;
     }
 
-    s_request_id = cJSON_GetObjectItem(request, "id");
+    s_request_id  = cJSON_GetObjectItem(request, "id");
     cJSON *params = cJSON_GetObjectItem(request, "params");
 
     bool found = false;

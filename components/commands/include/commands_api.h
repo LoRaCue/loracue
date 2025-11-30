@@ -1,10 +1,10 @@
 #pragma once
 
+#include "device_registry.h"
 #include "esp_err.h"
 #include "general_config.h"
-#include "power_mgmt_config.h"
 #include "lora_driver.h"
-#include "device_registry.h"
+#include "power_mgmt_config.h"
 
 #ifdef __cplusplus
 extern "C" {
