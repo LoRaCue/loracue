@@ -51,7 +51,7 @@ esp_err_t led_manager_init(void)
                                           .channel    = LEDC_CHANNEL,
                                           .timer_sel  = LEDC_TIMER,
                                           .intr_type  = LEDC_INTR_DISABLE,
-                                          .gpio_num   = 35, // STATUS_LED_PIN
+                                          .gpio_num   = bsp_get_led_gpio(),
                                           .duty       = 0,
                                           .hpoint     = 0};
     ret                                = ledc_channel_config(&ledc_channel);
@@ -99,7 +99,7 @@ esp_err_t led_manager_fade(uint32_t period_ms)
 
     // Stop any running patterns
     led_manager_stop();
-    
+
     // Ensure task handle is cleared
     if (fade_task_handle != NULL) {
         ESP_LOGW(TAG, "Task handle not cleared after stop, forcing NULL");
@@ -116,7 +116,7 @@ esp_err_t led_manager_fade(uint32_t period_ms)
     BaseType_t ret = xTaskCreate(fade_task, "led_fade", 2048, NULL, 5, &fade_task_handle);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create fade task (heap: %lu bytes)", esp_get_free_heap_size());
-        current_pattern = LED_PATTERN_OFF;
+        current_pattern  = LED_PATTERN_OFF;
         fade_task_handle = NULL;
         return ESP_ERR_NO_MEM;
     }
@@ -130,9 +130,9 @@ esp_err_t led_manager_stop(void)
 
     // Signal fade task to stop
     if (fade_task_handle != NULL) {
-        current_pattern = LED_PATTERN_OFF;  // Signal task to exit first
-        vTaskDelay(pdMS_TO_TICKS(50));  // Wait for task to exit cleanly
-        fade_task_handle = NULL;  // Clear handle after task exits
+        current_pattern = LED_PATTERN_OFF; // Signal task to exit first
+        vTaskDelay(pdMS_TO_TICKS(50));     // Wait for task to exit cleanly
+        fade_task_handle = NULL;           // Clear handle after task exits
     }
 
     // Turn off LED
