@@ -12,14 +12,14 @@ typedef struct {
     uint32_t sleep_timeout_ms;
     uint32_t deep_sleep_timeout_ms;
     bool auto_sleep_enabled;
-    uint8_t brightness_level;
+    uint8_t contrast_level;
 } power_mgmt_config_t;
 
 // Default values
 #define DEFAULT_SLEEP_TIMEOUT_MS 30000
 #define DEFAULT_DEEP_SLEEP_TIMEOUT_MS 300000
-#define DEFAULT_BRIGHTNESS 50
-#define MAX_BRIGHTNESS 100
+#define DEFAULT_CONTRAST 50
+#define MAX_CONTRAST 100
 
 void setUp(void)
 {
@@ -47,11 +47,11 @@ void test_default_deep_sleep_timeout(void)
     TEST_ASSERT_GREATER_THAN(DEFAULT_SLEEP_TIMEOUT_MS, DEFAULT_DEEP_SLEEP_TIMEOUT_MS);
 }
 
-void test_brightness_range(void)
+void test_contrast_range(void)
 {
-    TEST_ASSERT_EQUAL(50, DEFAULT_BRIGHTNESS);
-    TEST_ASSERT_EQUAL(100, MAX_BRIGHTNESS);
-    TEST_ASSERT_LESS_OR_EQUAL(MAX_BRIGHTNESS, DEFAULT_BRIGHTNESS);
+    TEST_ASSERT_EQUAL(50, DEFAULT_CONTRAST);
+    TEST_ASSERT_EQUAL(100, MAX_CONTRAST);
+    TEST_ASSERT_LESS_OR_EQUAL(MAX_CONTRAST, DEFAULT_CONTRAST);
 }
 
 void test_config_initialization(void)
@@ -60,7 +60,7 @@ void test_config_initialization(void)
         .sleep_timeout_ms = DEFAULT_SLEEP_TIMEOUT_MS,
         .deep_sleep_timeout_ms = DEFAULT_DEEP_SLEEP_TIMEOUT_MS,
         .auto_sleep_enabled = true,
-        .brightness_level = DEFAULT_BRIGHTNESS
+        .contrast_level = DEFAULT_CONTRAST
     };
     
     TEST_ASSERT_EQUAL(DEFAULT_SLEEP_TIMEOUT_MS, config.sleep_timeout_ms);
@@ -78,13 +78,13 @@ void test_auto_sleep_toggle(void)
     TEST_ASSERT_TRUE(config.auto_sleep_enabled);
 }
 
-void test_brightness_bounds(void)
+void test_contrast_bounds(void)
 {
-    uint8_t brightness = 0;
-    TEST_ASSERT_GREATER_OR_EQUAL(0, brightness);
+    uint8_t contrast = 0;
+    TEST_ASSERT_GREATER_OR_EQUAL(0, contrast);
     
-    brightness = MAX_BRIGHTNESS;
-    TEST_ASSERT_LESS_OR_EQUAL(MAX_BRIGHTNESS, brightness);
+    contrast = MAX_CONTRAST;
+    TEST_ASSERT_LESS_OR_EQUAL(MAX_CONTRAST, contrast);
 }
 
 void test_timeout_validation(void)
@@ -102,13 +102,13 @@ void test_config_copy(void)
         .sleep_timeout_ms = 60000,
         .deep_sleep_timeout_ms = 600000,
         .auto_sleep_enabled = true,
-        .brightness_level = 75
+        .contrast_level = 75
     };
     
     power_mgmt_config_t dst = src;
     
     TEST_ASSERT_EQUAL(src.sleep_timeout_ms, dst.sleep_timeout_ms);
-    TEST_ASSERT_EQUAL(src.brightness_level, dst.brightness_level);
+    TEST_ASSERT_EQUAL(src.contrast_level, dst.contrast_level);
 }
 
 void test_reasonable_timeout_values(void)

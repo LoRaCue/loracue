@@ -110,7 +110,7 @@ esp_err_t ui_compact_init(void)
         {UI_SCREEN_SYSTEM_INFO, screen_system_info_get_interface},
         {UI_SCREEN_BATTERY, screen_battery_status_get_interface},
         {UI_SCREEN_BLUETOOTH, screen_bluetooth_get_interface},
-        {UI_SCREEN_BRIGHTNESS, screen_brightness_get_interface},
+        {UI_SCREEN_CONTRAST, screen_contrast_get_interface},
         {UI_SCREEN_SLOT, screen_slot_get_interface},
         {UI_SCREEN_DEVICE_MODE, screen_device_mode_get_interface},
         {UI_SCREEN_FACTORY_RESET, screen_factory_reset_get_interface},

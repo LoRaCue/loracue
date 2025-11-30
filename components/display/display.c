@@ -12,7 +12,7 @@ static const char *TAG = "display";
 esp_err_t display_ssd1306_init(display_config_t *config);
 esp_err_t display_ssd1306_sleep(display_config_t *config);
 esp_err_t display_ssd1306_wake(display_config_t *config);
-esp_err_t display_ssd1306_set_brightness(display_config_t *config, uint8_t brightness);
+esp_err_t display_ssd1306_set_contrast(display_config_t *config, uint8_t contrast);
 
 esp_err_t display_ssd1681_init(display_config_t *config);
 esp_err_t display_ssd1681_sleep(const display_config_t *config);
@@ -83,14 +83,14 @@ esp_err_t display_wake(display_config_t *config)
     return DISPLAY_DISPATCH(wake, config);
 }
 
-esp_err_t display_set_brightness(display_config_t *config, uint8_t brightness)
+esp_err_t display_set_contrast(display_config_t *config, uint8_t contrast)
 {
 #if IS_EPAPER_BOARD
     (void)config;
-    (void)brightness;
+    (void)contrast;
     return ESP_ERR_NOT_SUPPORTED;
 #else
     VALIDATE_CONFIG(config);
-    return display_ssd1306_set_brightness(config, brightness);
+    return display_ssd1306_set_contrast(config, contrast);
 #endif
 }

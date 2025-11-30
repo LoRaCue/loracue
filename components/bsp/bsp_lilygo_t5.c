@@ -455,11 +455,11 @@ esp_err_t bsp_validate_hardware(void)
     return ESP_OK;
 }
 
-esp_err_t bsp_set_display_brightness(uint8_t brightness)
+esp_err_t bsp_set_display_contrast(uint8_t contrast)
 {
-    // LilyGO T5 E-Paper doesn't have adjustable brightness
+    // LilyGO T5 E-Paper doesn't have adjustable contrast
     // Could control backlight if available, or adjust refresh intensity
-    ESP_LOGD(TAG, "E-Paper brightness control not implemented (value: %d)", brightness);
+    ESP_LOGD(TAG, "E-Paper contrast control not implemented (value: %d)", contrast);
     return ESP_OK;
 }
 

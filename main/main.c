@@ -389,7 +389,7 @@ void app_main(void)
         return;
     }
 
-    // Get device mode from NVS (reuse config from brightness setting)
+    // Get device mode from NVS (reuse config from contrast setting)
     general_config_get(&config);
 
     // Get device ID from MAC address (static identity)
