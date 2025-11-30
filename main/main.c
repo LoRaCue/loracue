@@ -179,9 +179,6 @@ void app_main(void)
     ESP_LOGI(TAG, "Build: %s (%s)", LORACUE_BUILD_COMMIT_SHORT, LORACUE_BUILD_BRANCH);
     ESP_LOGI(TAG, "Date: %s", LORACUE_BUILD_DATE);
 
-    // Reduce u8g2 HAL logging noise
-    esp_log_level_set("u8g2_hal", ESP_LOG_WARN);
-
     // Check wake cause
     esp_sleep_wakeup_cause_t wake_cause = esp_sleep_get_wakeup_cause();
     if (wake_cause != ESP_SLEEP_WAKEUP_UNDEFINED) {

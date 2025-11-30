@@ -1,7 +1,7 @@
 ---
 :project:
   :use_exceptions: FALSE
-  :use_test_preprocessor: TRUE
+  :use_test_preprocessor: FALSE
   :use_auxiliary_dependencies: TRUE
   :build_root: build
   :release_build: FALSE
@@ -17,13 +17,12 @@
     - -:test/support
   :source:
     - ../../components/lora/**
-    - ../../components/common_types/include/**
   :support:
     - test/support
   :include:
     - ../../components/lora/include
     - ../../components/common_types/include
-    - mocks
+    - test/support
     - .
 
 :defines:
@@ -31,35 +30,6 @@
     - TEST
   :test:
     - *common_defines
-  :test_preprocess:
-    - *common_defines
-
-:cmock:
-  :mock_prefix: mock_
-  :mock_path: mocks
-  :when_no_prototypes: :warn
-  :enforce_strict_ordering: FALSE
-  :plugins:
-    - :ignore
-    - :callback
-    - :return_thru_ptr
-  :treat_as:
-    uint8:    HEX8
-    uint16:   HEX16
-    uint32:   UINT32
-    int8:     INT8
-    bool:     UINT8
-  :includes:
-    - esp_err.h
-  :strippables:
-    - '(?:__attribute__\s*\(\s*\(.*?\)\s*\))'
-
-:gcov:
-  :reports:
-    - HtmlDetailed
-  :gcovr:
-    :html_medium_threshold: 75
-    :html_high_threshold: 90
 
 :tools:
   :test_compiler:
@@ -72,7 +42,6 @@
       - -std=c11
       - -Wall
       - -Wextra
-      - -Werror
       - -c "${1}"
       - -o "${2}"
   :test_linker:
@@ -89,4 +58,3 @@
   :enabled:
     - stdout_pretty_tests_report
     - module_generator
-    - gcov

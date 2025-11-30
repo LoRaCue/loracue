@@ -26,8 +26,8 @@ if [ -n "$WORKFLOW_FILES" ]; then
     echo "✅ Workflow validation passed"
 fi
 
-# Get staged C/C++ files (excluding submodules and test files)
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h|cpp|hpp)$' | grep -v -E '^components/(sx126x|u8g2|u8g2-hal-esp-idf)/' | grep -v -E '^tests/' || true)
+# Get staged C/C++ files (excluding test files)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h|cpp|hpp)$' | grep -v -E '^tests/' || true)
 
 if [ -n "$STAGED_FILES" ]; then
     echo "📝 Checking code formatting..."
