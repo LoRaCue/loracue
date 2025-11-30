@@ -27,11 +27,11 @@ typedef enum {
 
 /**
  * @brief Wake source GPIO pin
- * 
+ *
  * This GPIO is used for waking from light/deep sleep modes.
  * Typically mapped to the primary user button.
  */
-#define BSP_GPIO_BUTTON_WAKE  0  ///< GPIO0 - User button (wake source)
+#define BSP_GPIO_BUTTON_WAKE 0 ///< GPIO0 - User button (wake source)
 
 /**
  * @brief Display type enumeration
@@ -55,7 +55,7 @@ esp_err_t bsp_init(void);
  *
  * @return Pointer to board name string (e.g., "Heltec V3", "LilyGO T3")
  */
-const char* bsp_get_board_name(void);
+const char *bsp_get_board_name(void);
 
 /**
  * @brief Deinitialize BSP and free resources
@@ -68,8 +68,8 @@ const char* bsp_get_board_name(void);
 esp_err_t bsp_deinit(void);
 
 /**
- * 
- * 
+ *
+ *
  * @param timeout_ms Timeout in milliseconds (portMAX_DELAY for infinite)
  * @return true if lock acquired, false on timeout
  */
@@ -79,7 +79,7 @@ esp_err_t bsp_deinit(void);
 
 /**
  * @brief Get UART pins for specified port
- * 
+ *
  * @param uart_num UART port number (0, 1, or 2)
  * @param tx_pin Output parameter for TX pin
  * @param rx_pin Output parameter for RX pin
@@ -146,8 +146,10 @@ static inline uint8_t bsp_battery_voltage_to_percentage(float voltage)
     const float BATTERY_VOLTAGE_MIN   = 3.0f;
     const float BATTERY_VOLTAGE_RANGE = 1.2f;
 
-    if (voltage >= BATTERY_VOLTAGE_MAX) return 100;
-    if (voltage <= BATTERY_VOLTAGE_MIN) return 0;
+    if (voltage >= BATTERY_VOLTAGE_MAX)
+        return 100;
+    if (voltage <= BATTERY_VOLTAGE_MIN)
+        return 0;
     return (uint8_t)((voltage - BATTERY_VOLTAGE_MIN) / BATTERY_VOLTAGE_RANGE * 100);
 }
 
@@ -237,71 +239,75 @@ typedef struct {
  * @brief LoRa SX126X pin configuration (all fields used in sx126x.c)
  */
 typedef struct {
-    int miso;  // cppcheck-suppress unusedStructMember
-    int mosi;  // cppcheck-suppress unusedStructMember
-    int sclk;  // cppcheck-suppress unusedStructMember
-    int cs;    // cppcheck-suppress unusedStructMember
-    int rst;   // cppcheck-suppress unusedStructMember
-    int busy;  // cppcheck-suppress unusedStructMember
-    int dio1;  // cppcheck-suppress unusedStructMember
+    int miso; // cppcheck-suppress unusedStructMember
+    int mosi; // cppcheck-suppress unusedStructMember
+    int sclk; // cppcheck-suppress unusedStructMember
+    int cs;   // cppcheck-suppress unusedStructMember
+    int rst;  // cppcheck-suppress unusedStructMember
+    int busy; // cppcheck-suppress unusedStructMember
+    int dio1; // cppcheck-suppress unusedStructMember
 } bsp_lora_pins_t;
 
 /**
  * @brief E-Paper display pin configuration
  */
 typedef struct {
-    int dc;    // cppcheck-suppress unusedStructMember
-    int cs;    // cppcheck-suppress unusedStructMember
-    int rst;   // cppcheck-suppress unusedStructMember
-    int busy;  // cppcheck-suppress unusedStructMember
+    int dc;   // cppcheck-suppress unusedStructMember
+    int cs;   // cppcheck-suppress unusedStructMember
+    int rst;  // cppcheck-suppress unusedStructMember
+    int busy; // cppcheck-suppress unusedStructMember
 } bsp_epaper_pins_t;
 
 // BSP stub macros for minimal implementations
-#define BSP_STUB_OK(name, ...) \
-    esp_err_t name(__VA_ARGS__) { return ESP_OK; }
+#define BSP_STUB_OK(name, ...)                                                                                         \
+    esp_err_t name(__VA_ARGS__)                                                                                        \
+    {                                                                                                                  \
+        return ESP_OK;                                                                                                 \
+    }
 
-#define BSP_STUB_VOID(name, ...) \
-    void name(__VA_ARGS__) { }
+#define BSP_STUB_VOID(name, ...)                                                                                       \
+    void name(__VA_ARGS__) {}
 
-#define BSP_STUB_RETURN(name, ret_type, ret_val, ...) \
-    ret_type name(__VA_ARGS__) { return ret_val; }
+#define BSP_STUB_RETURN(name, ret_type, ret_val, ...)                                                                  \
+    ret_type name(__VA_ARGS__)                                                                                         \
+    {                                                                                                                  \
+        return ret_val;                                                                                                \
+    }
 
-#define BSP_STUB_SERIAL_NUMBER(name) \
-    esp_err_t name(char *serial_number, size_t max_len) { \
-        snprintf(serial_number, max_len, "%s-000000", BSP_STUB_SERIAL_PREFIX); \
-        return ESP_OK; \
+#define BSP_STUB_SERIAL_NUMBER(name)                                                                                   \
+    esp_err_t name(char *serial_number, size_t max_len)                                                                \
+    {                                                                                                                  \
+        snprintf(serial_number, max_len, "%s-000000", BSP_STUB_SERIAL_PREFIX);                                         \
+        return ESP_OK;                                                                                                 \
     }
 
 // GPIO configuration helper macros
-#define GPIO_CONFIG_INPUT_PULLUP(pin) { \
-    .pin_bit_mask = (1ULL << (pin)), \
-    .mode = GPIO_MODE_INPUT, \
-    .pull_up_en = GPIO_PULLUP_ENABLE, \
-    .pull_down_en = GPIO_PULLDOWN_DISABLE, \
-    .intr_type = GPIO_INTR_DISABLE \
-}
+#define GPIO_CONFIG_INPUT_PULLUP(pin)                                                                                  \
+    {.pin_bit_mask = (1ULL << (pin)),                                                                                  \
+     .mode         = GPIO_MODE_INPUT,                                                                                  \
+     .pull_up_en   = GPIO_PULLUP_ENABLE,                                                                               \
+     .pull_down_en = GPIO_PULLDOWN_DISABLE,                                                                            \
+     .intr_type    = GPIO_INTR_DISABLE}
 
-#define GPIO_CONFIG_OUTPUT(pin) { \
-    .pin_bit_mask = (1ULL << (pin)), \
-    .mode = GPIO_MODE_OUTPUT, \
-    .pull_up_en = GPIO_PULLUP_DISABLE, \
-    .pull_down_en = GPIO_PULLDOWN_DISABLE, \
-    .intr_type = GPIO_INTR_DISABLE \
-}
+#define GPIO_CONFIG_OUTPUT(pin)                                                                                        \
+    {.pin_bit_mask = (1ULL << (pin)),                                                                                  \
+     .mode         = GPIO_MODE_OUTPUT,                                                                                 \
+     .pull_up_en   = GPIO_PULLUP_DISABLE,                                                                              \
+     .pull_down_en = GPIO_PULLDOWN_DISABLE,                                                                            \
+     .intr_type    = GPIO_INTR_DISABLE}
 
 // LoRa pins struct definition macro
-#define BSP_DEFINE_LORA_PINS(miso_pin, mosi_pin, sclk_pin, cs_pin, rst_pin, busy_pin, dio1_pin) \
-    const bsp_lora_pins_t *bsp_get_lora_pins(void) { \
-        static const bsp_lora_pins_t lora_pins = { \
-            .miso = miso_pin, \
-            .mosi = mosi_pin, \
-            .sclk = sclk_pin, \
-            .cs = cs_pin, \
-            .rst = rst_pin, \
-            .busy = busy_pin, \
-            .dio1 = dio1_pin \
-        }; \
-        return &lora_pins; \
+#define BSP_DEFINE_LORA_PINS(miso_pin, mosi_pin, sclk_pin, cs_pin, rst_pin, busy_pin, dio1_pin)                        \
+    const bsp_lora_pins_t *bsp_get_lora_pins(void)                                                                     \
+    {                                                                                                                  \
+        static const bsp_lora_pins_t lora_pins = {.miso = miso_pin,                                                    \
+                                                  .mosi = mosi_pin,                                                    \
+                                                  .sclk = sclk_pin,                                                    \
+                                                  .cs   = cs_pin,                                                      \
+                                                  .rst  = rst_pin,                                                     \
+                                                  .busy = busy_pin,                                                    \
+                                                  .dio1 = dio1_pin};                                                   \
+        return &lora_pins;                                                                                             \
     }
 
 /**
@@ -344,7 +350,7 @@ const bsp_epaper_pins_t *bsp_get_epaper_pins(void);
 
 /**
  * @brief Initialize SPI bus
- * 
+ *
  * @param host SPI host (SPI2_HOST, SPI3_HOST)
  * @param mosi MOSI GPIO pin
  * @param miso MISO GPIO pin (or GPIO_NUM_NC if not used)
@@ -356,7 +362,7 @@ esp_err_t bsp_spi_init_bus(spi_host_device_t host, int mosi, int miso, int sclk,
 
 /**
  * @brief Add SPI device to bus
- * 
+ *
  * @param host SPI host
  * @param cs Chip select GPIO pin
  * @param clock_hz Clock speed in Hz
@@ -365,8 +371,8 @@ esp_err_t bsp_spi_init_bus(spi_host_device_t host, int mosi, int miso, int sclk,
  * @param handle Output device handle
  * @return ESP_OK on success
  */
-esp_err_t bsp_spi_add_device(spi_host_device_t host, int cs, uint32_t clock_hz, 
-                             uint8_t mode, uint8_t queue_size, spi_device_handle_t *handle);
+esp_err_t bsp_spi_add_device(spi_host_device_t host, int cs, uint32_t clock_hz, uint8_t mode, uint8_t queue_size,
+                             spi_device_handle_t *handle);
 
 /**
  * @brief Initialize shared I2C bus with board-specific pins
@@ -383,11 +389,11 @@ esp_err_t bsp_i2c_init_default(void);
  * @param freq_hz I2C frequency in Hz
  * @return ESP_OK on success
  */
-esp_err_t bsp_i2c_init(gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz);
+esp_err_t bsp_i2c_init(i2c_port_t port, gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz);
 
 /**
  * @brief Deinitialize I2C bus
- * 
+ *
  * @return ESP_OK on success
  */
 esp_err_t bsp_i2c_deinit(void);
@@ -408,7 +414,6 @@ i2c_master_bus_handle_t bsp_i2c_get_bus(void);
  * @return ESP_OK on success
  */
 esp_err_t bsp_i2c_add_device(uint8_t addr, uint32_t freq_hz, i2c_master_dev_handle_t *dev_handle);
-
 
 /**
  */

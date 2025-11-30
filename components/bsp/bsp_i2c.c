@@ -11,7 +11,7 @@ static const char *TAG = "BSP_I2C";
 
 static i2c_master_bus_handle_t i2c_bus_handle = NULL;
 
-esp_err_t bsp_i2c_init(gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz)
+esp_err_t bsp_i2c_init(i2c_port_t port, gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz)
 {
     if (i2c_bus_handle != NULL) {
         ESP_LOGW(TAG, "I2C bus already initialized");
@@ -19,7 +19,7 @@ esp_err_t bsp_i2c_init(gpio_num_t sda, gpio_num_t scl, uint32_t freq_hz)
     }
 
     i2c_master_bus_config_t bus_config = {
-        .i2c_port                     = I2C_NUM_0,
+        .i2c_port                     = port,
         .sda_io_num                   = sda,
         .scl_io_num                   = scl,
         .clk_source                   = I2C_CLK_SRC_DEFAULT,

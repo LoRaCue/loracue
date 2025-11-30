@@ -14,13 +14,12 @@
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_adc/adc_oneshot.h"
-#include "esp_mac.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_sleep.h"
 #include <string.h>
 
 static const char *TAG = "BSP_HELTEC_V3";
-
 
 // Heltec LoRa V3 Pin Definitions
 #define BUTTON_PIN GPIO_NUM_0
@@ -44,37 +43,41 @@ static const char *TAG = "BSP_HELTEC_V3";
 #define OLED_RST_PIN GPIO_NUM_21
 
 // BSP Configuration
-#define SPI_CLOCK_SPEED_HZ      1000000     // 1MHz for SX1262
-#define SPI_QUEUE_SIZE          1           // Single transaction queue
-#define I2C_CLOCK_SPEED_HZ      CONFIG_BSP_I2C_CLOCK_SPEED_HZ
-#define ADC_BITWIDTH            ADC_BITWIDTH_12
-#define ADC_ATTENUATION         ADC_ATTEN_DB_12
+#define SPI_CLOCK_SPEED_HZ 1000000 // 1MHz for SX1262
+#define SPI_QUEUE_SIZE 1           // Single transaction queue
+#define I2C_CLOCK_SPEED_HZ CONFIG_BSP_I2C_CLOCK_SPEED_HZ
+#define ADC_BITWIDTH ADC_BITWIDTH_12
+#define ADC_ATTENUATION ADC_ATTEN_DB_12
 
 // Battery monitoring constants
-#define ADC_MAX_VALUE           4095.0f
-#define ADC_VREF                3.3f
+#define ADC_MAX_VALUE 4095.0f
+#define ADC_VREF 3.3f
 #define BATTERY_VOLTAGE_DIVIDER 4.9f
-#define BATTERY_ADC_SAMPLES     8
+#define BATTERY_ADC_SAMPLES 8
 
 // Static handles
 static adc_oneshot_unit_handle_t adc_handle = NULL;
 static spi_device_handle_t spi_handle       = NULL;
 
+#ifndef BSP_LORA_SPI_HOST
+#define BSP_LORA_SPI_HOST SPI2_HOST
+#endif
+
 esp_err_t bsp_init_spi(void)
 {
-    ESP_LOGD(TAG, "Initializing SPI bus for SX1262 LoRa (MOSI=%d, MISO=%d, SCK=%d, CS=%d)",
-             LORA_MOSI_PIN, LORA_MISO_PIN, LORA_SCK_PIN, LORA_CS_PIN);
+    ESP_LOGD(TAG, "Initializing SPI bus for SX1262 LoRa (MOSI=%d, MISO=%d, SCK=%d, CS=%d)", LORA_MOSI_PIN,
+             LORA_MISO_PIN, LORA_SCK_PIN, LORA_CS_PIN);
 
-    esp_err_t ret = bsp_spi_init_bus(SPI2_HOST, LORA_MOSI_PIN, LORA_MISO_PIN, LORA_SCK_PIN, SPI_TRANSFER_SIZE_LORA);
+    esp_err_t ret = bsp_spi_init_bus(BSP_LORA_SPI_HOST, LORA_MOSI_PIN, LORA_MISO_PIN, LORA_SCK_PIN, SPI_TRANSFER_SIZE_LORA);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize SPI bus: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    ret = bsp_spi_add_device(SPI2_HOST, LORA_CS_PIN, SPI_CLOCK_SPEED_HZ, SPI_MODE_DEFAULT, SPI_QUEUE_SIZE, &spi_handle);
+    ret = bsp_spi_add_device(BSP_LORA_SPI_HOST, LORA_CS_PIN, SPI_CLOCK_SPEED_HZ, SPI_MODE_DEFAULT, SPI_QUEUE_SIZE, &spi_handle);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to add SPI device: %s", esp_err_to_name(ret));
-        spi_bus_free(SPI2_HOST);
+        spi_bus_free(BSP_LORA_SPI_HOST);
         return ret;
     }
 
@@ -159,7 +162,7 @@ esp_err_t bsp_init(void)
     // Initialize status LED
     ESP_LOGD(TAG, "Configuring status LED on GPIO%d", STATUS_LED_PIN);
     gpio_config_t led_config = GPIO_CONFIG_OUTPUT(STATUS_LED_PIN);
-    ret = gpio_config(&led_config);
+    ret                      = gpio_config(&led_config);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to configure LED GPIO: %s", esp_err_to_name(ret));
         goto cleanup;
@@ -203,30 +206,28 @@ cleanup:
 esp_err_t bsp_deinit(void)
 {
     ESP_LOGI(TAG, "Deinitializing BSP");
-    
+
     // Clean up SPI
     if (spi_handle) {
         spi_bus_remove_device(spi_handle);
         spi_handle = NULL;
     }
-    spi_bus_free(SPI2_HOST);
-    
+    spi_bus_free(BSP_LORA_SPI_HOST);
+
     // Clean up ADC
     if (adc_handle) {
         adc_oneshot_del_unit(adc_handle);
         adc_handle = NULL;
     }
-    
+
     // Clean up I2C
     bsp_i2c_deinit();
-    
+
     ESP_LOGI(TAG, "BSP deinitialized");
     return ESP_OK;
 }
 
-
-
-const char* bsp_get_board_name(void)
+const char *bsp_get_board_name(void)
 {
     return "Heltec V3";
 }
@@ -391,10 +392,9 @@ esp_err_t bsp_validate_hardware(void)
     return ESP_OK;
 }
 
-
 esp_err_t bsp_i2c_init_default(void)
 {
-    return bsp_i2c_init(OLED_SDA_PIN, OLED_SCL_PIN, I2C_CLOCK_SPEED_HZ);
+    return bsp_i2c_init(I2C_NUM_0, OLED_SDA_PIN, OLED_SCL_PIN, I2C_CLOCK_SPEED_HZ);
 }
 
 const char *bsp_get_board_id(void)
@@ -419,15 +419,12 @@ bool bsp_battery_is_charging(void)
 
 const bsp_usb_config_t *bsp_get_usb_config(void)
 {
-    static bsp_usb_config_t usb_config = {
-        .usb_pid = 0xFAB0,
-        .usb_product = NULL
-    };
-    
+    static bsp_usb_config_t usb_config = {.usb_pid = 0xFAB0, .usb_product = NULL};
+
     if (!usb_config.usb_product) {
         usb_config.usb_product = bsp_get_model_name();
     }
-    
+
     return &usb_config;
 }
 
@@ -436,17 +433,16 @@ esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len)
     if (!serial_number || max_len < 13) {
         return ESP_ERR_INVALID_ARG;
     }
-    
+
     uint8_t mac[6];
     esp_efuse_mac_get_default(mac);
-    snprintf(serial_number, max_len, "%02X%02X%02X%02X%02X%02X",
-             mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    
+    snprintf(serial_number, max_len, "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+
     return ESP_OK;
 }
 
-BSP_DEFINE_LORA_PINS(LORA_MISO_PIN, LORA_MOSI_PIN, LORA_SCK_PIN, LORA_CS_PIN, 
-                     LORA_RST_PIN, LORA_BUSY_PIN, LORA_DIO1_PIN)
+BSP_DEFINE_LORA_PINS(LORA_MISO_PIN, LORA_MOSI_PIN, LORA_SCK_PIN, LORA_CS_PIN, LORA_RST_PIN, LORA_BUSY_PIN,
+                     LORA_DIO1_PIN)
 
 // Display control functions removed - use display.h API directly with display_config_t
 
@@ -458,11 +454,11 @@ esp_err_t bsp_get_uart_pins(int uart_num, int *tx_pin, int *rx_pin)
 
     switch (uart_num) {
         case 0:
-            *tx_pin = 43;  // ESP32-S3 UART0 (USB-JTAG-Serial)
+            *tx_pin = 43; // ESP32-S3 UART0 (USB-JTAG-Serial)
             *rx_pin = 44;
             return ESP_OK;
         case 1:
-            *tx_pin = 2;   // Heltec V3 available pins
+            *tx_pin = 2; // Heltec V3 available pins
             *rx_pin = 3;
             return ESP_OK;
         default:
