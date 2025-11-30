@@ -184,7 +184,7 @@ esp_err_t bsp_init(void)
     ESP_ERROR_CHECK(tps65185_init(BOARD_I2C_PORT));
 
     // Initialize GT911 touch controller
-    ESP_ERROR_CHECK(gt911_init(BOARD_I2C_PORT, BOARD_TOUCH_INT, BOARD_TOUCH_RST));
+    ESP_ERROR_CHECK(gt911_init(BOARD_TOUCH_INT, BOARD_TOUCH_RST));
 
     // Initialize battery management
     bq25896_init(BOARD_I2C_PORT);
