@@ -19,6 +19,7 @@ static lv_group_t *group    = NULL;
 LV_IMG_DECLARE(button_short_press);
 LV_IMG_DECLARE(button_double_press);
 LV_IMG_DECLARE(button_long_press);
+LV_IMG_DECLARE(rotary_button_long);
 
 void screen_main_create(lv_obj_t *parent, const statusbar_data_t *initial_status)
 {
@@ -140,14 +141,14 @@ static void handle_input_event(input_event_t event)
             case INPUT_EVENT_NEXT_SHORT:
                 presenter_mode_manager_handle_input(event);
                 break;
-            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
                 ui_navigator_switch_to(UI_SCREEN_MENU);
                 break;
             default:
                 break;
         }
     } else {
-        if (event == INPUT_EVENT_ENCODER_BUTTON_SHORT) {
+        if (event == INPUT_EVENT_ENCODER_BUTTON_LONG) {
             ui_navigator_switch_to(UI_SCREEN_MENU);
         }
     }

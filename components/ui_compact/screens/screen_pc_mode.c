@@ -294,7 +294,7 @@ static void handle_input_event(input_event_t event)
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
 #elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    if (event == INPUT_EVENT_ENCODER_BUTTON_SHORT) {
+    if (event == INPUT_EVENT_ENCODER_BUTTON_LONG) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
 #endif

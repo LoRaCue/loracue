@@ -16,6 +16,7 @@ LV_IMG_DECLARE(button_long_press);
 LV_IMG_DECLARE(button_double_press);
 LV_IMG_DECLARE(rotary);
 LV_IMG_DECLARE(rotary_button);
+LV_IMG_DECLARE(rotary_button_long);
 
 // LVGL styles
 lv_style_t style_title;
@@ -121,7 +122,7 @@ lv_obj_t *ui_create_main_screen_layout(lv_obj_t *parent, const char *mode_text, 
 
     // Menu button bottom right
 #if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    ui_draw_icon_text(parent, &rotary_button, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
+    ui_draw_icon_text(parent, &rotary_button_long, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
                       UI_ALIGN_RIGHT);
 #else
     ui_draw_icon_text(parent, &button_long_press, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
@@ -363,11 +364,11 @@ void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, con
     LV_IMG_DECLARE(rotary);
     
     if (screen->edit_mode) {
-        // Edit mode: [left] Cancel, [rotary] Adjust, [right] Save
-        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Cancel", &rotary, "Adjust", &nav_right, "Save");
+        // Edit mode: [left] Cancel, [rotary] Adjust, [rotary_long] Save
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Cancel", &rotary, "Adjust", &rotary_button_long, "Save");
     } else {
-        // View mode: [left] Back, [rotary] Edit
-        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Edit", NULL, NULL);
+        // View mode: [left] Back, [rotary_long] Edit
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary_button_long, "Edit", NULL, NULL);
     }
 #else
     if (screen->edit_mode) {
@@ -544,11 +545,11 @@ void ui_numeric_input_render(const ui_numeric_input_t *input, lv_obj_t *parent, 
     LV_IMG_DECLARE(rotary);
     
     if (input->edit_mode) {
-        // Edit mode: [left] Cancel, [rotary] Adjust, [right] Save
-        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Cancel", &rotary, "Adjust", &nav_right, "Save");
+        // Edit mode: [left] Cancel, [rotary] Adjust, [rotary_long] Save
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Cancel", &rotary, "Adjust", &rotary_button_long, "Save");
     } else {
-        // View mode: [left] Back, [rotary] Edit
-        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Edit", NULL, NULL);
+        // View mode: [left] Back, [rotary_long] Edit
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary_button_long, "Edit", NULL, NULL);
     }
 #else
     if (input->edit_mode) {

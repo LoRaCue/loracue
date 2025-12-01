@@ -106,6 +106,7 @@ static void handle_input_event(input_event_t event)
     if (screen_slot_is_edit_mode()) {
         switch (event) {
             case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
                 screen->edit_mode = false;
                 ui_navigator_switch_to(UI_SCREEN_MENU);
                 break;
@@ -117,7 +118,7 @@ static void handle_input_event(input_event_t event)
                 screen_slot_navigate_up();
                 ui_navigator_switch_to(UI_SCREEN_SLOT);
                 break;
-            case INPUT_EVENT_NEXT_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
                 screen_slot_select();
                 ui_navigator_switch_to(UI_SCREEN_MENU);
                 break;
@@ -127,10 +128,10 @@ static void handle_input_event(input_event_t event)
     } else {
         switch (event) {
             case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
                 ui_navigator_switch_to(UI_SCREEN_MENU);
                 break;
-            case INPUT_EVENT_NEXT_SHORT:
-            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
                 screen_slot_select();
                 ui_navigator_switch_to(UI_SCREEN_SLOT);
                 break;

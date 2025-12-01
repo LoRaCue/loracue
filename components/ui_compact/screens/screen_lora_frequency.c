@@ -122,6 +122,7 @@ static void screen_lora_frequency_handle_input_event(input_event_t event)
     if (is_edit) {
         switch (event) {
             case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
                 if (input) {
                     input->edit_mode = false;
                 }
@@ -136,7 +137,7 @@ static void screen_lora_frequency_handle_input_event(input_event_t event)
                 screen_lora_frequency_navigate_up();
                 ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
                 break;
-            case INPUT_EVENT_NEXT_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
                 screen_lora_frequency_select();
                 ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
                 break;
@@ -146,10 +147,10 @@ static void screen_lora_frequency_handle_input_event(input_event_t event)
     } else {
         switch (event) {
             case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
                 ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
                 break;
-            case INPUT_EVENT_NEXT_SHORT:
-            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
                 screen_lora_frequency_select();
                 ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
                 break;
