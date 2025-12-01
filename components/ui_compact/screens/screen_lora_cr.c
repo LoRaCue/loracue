@@ -56,6 +56,11 @@ void screen_lora_cr_navigate_down(void)
     ui_radio_select_navigate_down(radio);
 }
 
+void screen_lora_cr_navigate_up(void)
+{
+    ui_radio_select_navigate_up(radio);
+}
+
 void screen_lora_cr_select(void)
 {
     if (!radio)
@@ -94,9 +99,7 @@ static void screen_lora_cr_handle_input_event(input_event_t event)
             ui_navigator_switch_to(UI_SCREEN_LORA_CR);
             break;
         case INPUT_EVENT_ENCODER_CCW:
-            if (radio) {
-                ui_radio_select_navigate_up(radio);
-            }
+            screen_lora_cr_navigate_up();
             ui_navigator_switch_to(UI_SCREEN_LORA_CR);
             break;
         case INPUT_EVENT_NEXT_SHORT:

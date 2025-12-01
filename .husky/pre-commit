@@ -69,7 +69,7 @@ if [ -n "$STAGED_FILES" ]; then
                     --inline-suppr \
                     --quiet \
                     -I main/include -I components/*/include \
-                    "$file" 2>&1 | grep -v "Checking")
+                    "$file" 2>&1 | grep -v "Checking" || true)
                 
                 # Show output if there are any issues
                 if [ -n "$OUTPUT" ]; then

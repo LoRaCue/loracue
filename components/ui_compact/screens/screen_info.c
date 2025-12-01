@@ -214,6 +214,14 @@ static void handle_system_info_input_event(input_event_t event)
                 screen_system_info_create(screen);
             }
             break;
+        case INPUT_EVENT_ENCODER_CCW:
+            if (system_viewer) {
+                ui_text_viewer_scroll_back(system_viewer);
+                lv_obj_t *screen = lv_scr_act();
+                lv_obj_clean(screen);
+                screen_system_info_create(screen);
+            }
+            break;
         default:
             break;
     }
@@ -267,6 +275,14 @@ static void handle_device_info_input_event(input_event_t event)
                 screen_device_info_create(screen);
             }
             break;
+        case INPUT_EVENT_ENCODER_CCW:
+            if (device_viewer) {
+                ui_text_viewer_scroll_back(device_viewer);
+                lv_obj_t *screen = lv_scr_act();
+                lv_obj_clean(screen);
+                screen_device_info_create(screen);
+            }
+            break;
         default:
             break;
     }
@@ -307,6 +323,14 @@ static void handle_battery_status_input_event(input_event_t event)
         case INPUT_EVENT_NEXT_SHORT:
             if (battery_viewer) {
                 ui_text_viewer_scroll(battery_viewer);
+                lv_obj_t *screen = lv_scr_act();
+                lv_obj_clean(screen);
+                screen_battery_status_create(screen);
+            }
+            break;
+        case INPUT_EVENT_ENCODER_CCW:
+            if (battery_viewer) {
+                ui_text_viewer_scroll_back(battery_viewer);
                 lv_obj_t *screen = lv_scr_act();
                 lv_obj_clean(screen);
                 screen_battery_status_create(screen);

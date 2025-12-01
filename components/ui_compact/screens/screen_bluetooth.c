@@ -49,6 +49,23 @@ void screen_bluetooth_navigate_down(void)
     ui_menu_update(menu, items);
 }
 
+void screen_bluetooth_navigate_up(void)
+{
+    if (!menu)
+        return;
+    menu->selected_index = (menu->selected_index + 1) % 2; // Only 2 items, so up = down
+
+    general_config_t config;
+    general_config_get(&config);
+
+    static char bt_text[32], pair_text[32];
+    snprintf(bt_text, sizeof(bt_text), "Bluetooth: %s", config.bluetooth_enabled ? "ON" : "OFF");
+    snprintf(pair_text, sizeof(pair_text), "Pairing: %s", config.bluetooth_pairing_enabled ? "ON" : "OFF");
+
+    const char *items[] = {bt_text, pair_text};
+    ui_menu_update(menu, items);
+}
+
 void screen_bluetooth_select(void)
 {
     if (!menu)
@@ -95,6 +112,9 @@ static void handle_input_event(input_event_t event)
         case INPUT_EVENT_ENCODER_CW:
         case INPUT_EVENT_NEXT_SHORT:
             screen_bluetooth_navigate_down();
+            break;
+        case INPUT_EVENT_ENCODER_CCW:
+            screen_bluetooth_navigate_up();
             break;
         case INPUT_EVENT_ENCODER_BUTTON_SHORT:
             screen_bluetooth_select();

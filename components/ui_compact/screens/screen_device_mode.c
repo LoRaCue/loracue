@@ -52,6 +52,12 @@ void screen_device_mode_navigate_down(void)
     ESP_LOGI(TAG, "Navigate down: selected_index=%d", radio->selected_index);
 }
 
+void screen_device_mode_navigate_up(void)
+{
+    ui_radio_select_navigate_up(radio);
+    ESP_LOGI(TAG, "Navigate up: selected_index=%d", radio->selected_index);
+}
+
 void screen_device_mode_select(void)
 {
     if (!radio)
@@ -112,9 +118,7 @@ static void handle_input_event(input_event_t event)
             ui_navigator_switch_to(UI_SCREEN_DEVICE_MODE);
             break;
         case INPUT_EVENT_ENCODER_CCW:
-            if (radio) {
-                ui_radio_select_navigate_up(radio);
-            }
+            screen_device_mode_navigate_up();
             ui_navigator_switch_to(UI_SCREEN_DEVICE_MODE);
             break;
         case INPUT_EVENT_NEXT_SHORT:
