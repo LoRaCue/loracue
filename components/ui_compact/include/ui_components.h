@@ -139,7 +139,7 @@ void ui_text_viewer_scroll_back(ui_text_viewer_t *viewer);
 void ui_text_viewer_destroy(ui_text_viewer_t *viewer);
 
 // Alpha+ bottom bar rendering
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
 void ui_draw_bottom_bar_alpha_plus(lv_obj_t *parent, const lv_img_dsc_t *icon_left, const char *text_left,
                                     const lv_img_dsc_t *icon_center, const char *text_center,
                                     const lv_img_dsc_t *icon_right, const char *text_right);

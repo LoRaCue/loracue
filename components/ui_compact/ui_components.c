@@ -120,7 +120,7 @@ lv_obj_t *ui_create_main_screen_layout(lv_obj_t *parent, const char *mode_text, 
     lv_obj_set_pos(device_label, TEXT_MARGIN_LEFT, BOTTOM_TEXT_Y);
 
     // Menu button bottom right
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     ui_draw_icon_text(parent, &rotary_button, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
                       UI_ALIGN_RIGHT);
 #else
@@ -252,7 +252,7 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
     lv_obj_set_style_line_width(bottom_line, 1, 0);
 
     // Bottom bar button hints
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     ui_draw_bottom_bar_alpha_plus(menu->screen, &nav_left, "Back", &rotary, "Scroll", &nav_right, "Select");
 #else
     ui_draw_icon_text(menu->screen, &button_short_press, "Next", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
@@ -357,6 +357,19 @@ void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, con
     lv_obj_set_style_line_width(bottom_line, 1, 0);
 
     // Bottom bar
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    LV_IMG_DECLARE(nav_left);
+    LV_IMG_DECLARE(nav_right);
+    LV_IMG_DECLARE(rotary);
+    
+    if (screen->edit_mode) {
+        // Edit mode: [left] Cancel, [rotary] Adjust, [right] Save
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Cancel", &rotary, "Adjust", &nav_right, "Save");
+    } else {
+        // View mode: [left] Back, [rotary] Edit
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Edit", NULL, NULL);
+    }
+#else
     if (screen->edit_mode) {
         ui_draw_icon_text(parent, &button_short_press, "+", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
         ui_draw_icon_text(parent, &button_double_press, "-", 30, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
@@ -364,6 +377,7 @@ void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, con
     } else {
         ui_draw_icon_text(parent, &button_long_press, "Edit", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
     }
+#endif
 }
 
 // Info screen
@@ -430,7 +444,7 @@ void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const cha
     }
 
     // Bottom bar
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Scroll", NULL, NULL);
 #endif
 
@@ -524,6 +538,19 @@ void ui_numeric_input_render(const ui_numeric_input_t *input, lv_obj_t *parent, 
     lv_obj_set_style_line_width(bottom_line, 1, 0);
 
     // Bottom bar hints
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    LV_IMG_DECLARE(nav_left);
+    LV_IMG_DECLARE(nav_right);
+    LV_IMG_DECLARE(rotary);
+    
+    if (input->edit_mode) {
+        // Edit mode: [left] Cancel, [rotary] Adjust, [right] Save
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Cancel", &rotary, "Adjust", &nav_right, "Save");
+    } else {
+        // View mode: [left] Back, [rotary] Edit
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Edit", NULL, NULL);
+    }
+#else
     if (input->edit_mode) {
         int plus_width = ui_draw_icon_text(parent, &button_short_press, "+", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
         ui_draw_icon_text(parent, &button_double_press, "-", 2 + plus_width + 4, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
@@ -532,6 +559,7 @@ void ui_numeric_input_render(const ui_numeric_input_t *input, lv_obj_t *parent, 
         ui_draw_icon_text(parent, &button_long_press, "Edit", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
         ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
     }
+#endif
 }
 
 void ui_numeric_input_increment(ui_numeric_input_t *input)
@@ -690,7 +718,7 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
     lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
     lv_obj_set_style_line_width(bottom_line, 1, 0);
 
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Scroll", &nav_right, "Select");
 #else
     ui_draw_icon_text(parent, &button_short_press, "Next", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
@@ -763,7 +791,7 @@ void ui_confirmation_render(ui_confirmation_t *confirm, lv_obj_t *parent, const 
     lv_obj_set_pos(msg_label, UI_MARGIN_LEFT, 20);
 
     // Bottom bar hint
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "No", NULL, NULL, &nav_right, "Yes");
 #else
     ui_draw_icon_text(parent, &button_long_press, "Hold 5s", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
@@ -787,7 +815,7 @@ bool ui_confirmation_check_hold(ui_confirmation_t *confirm, bool button_pressed,
     return false;
 }
 
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
 void ui_draw_bottom_bar_alpha_plus(lv_obj_t *parent, const lv_img_dsc_t *icon_left, const char *text_left,
                                     const lv_img_dsc_t *icon_center, const char *text_center,
                                     const lv_img_dsc_t *icon_right, const char *text_right)

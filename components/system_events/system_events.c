@@ -65,13 +65,6 @@ esp_err_t system_events_post_lora_command(const char *command, int8_t rssi)
                              portMAX_DELAY);
 }
 
-esp_err_t system_events_post_button(button_event_type_t type)
-{
-    system_event_button_t data = {.type = type};
-    return esp_event_post_to(event_loop, SYSTEM_EVENTS, SYSTEM_EVENT_BUTTON_PRESSED, &data, sizeof(data),
-                             portMAX_DELAY);
-}
-
 esp_err_t system_events_post_ota_progress(uint8_t percent, const char *status)
 {
     system_event_ota_t data = {.percent = percent};

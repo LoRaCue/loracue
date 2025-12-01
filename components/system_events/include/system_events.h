@@ -45,10 +45,6 @@ typedef struct {
 } system_event_lora_cmd_t;
 
 typedef struct {
-    button_event_type_t type;
-} system_event_button_t;
-
-typedef struct {
     uint8_t percent;
     char status[32];
 } system_event_ota_t;
@@ -99,11 +95,6 @@ esp_err_t system_events_post_lora_state(bool connected, int8_t rssi);
  * @brief Post LoRa command event
  */
 esp_err_t system_events_post_lora_command(const char *command, int8_t rssi);
-
-/**
- * @brief Post button event
- */
-esp_err_t system_events_post_button(button_event_type_t type);
 
 /**
  * @brief Post OTA progress event

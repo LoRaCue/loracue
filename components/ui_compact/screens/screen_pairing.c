@@ -96,7 +96,7 @@ void screen_pairing_create(lv_obj_t *parent)
     }
 
     ui_create_footer(parent);
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Scroll", &nav_right, "Select");
 #else
     ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
@@ -111,18 +111,24 @@ void screen_pairing_reset(void)
     msg2         = NULL;
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_DOUBLE) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    if (event == INPUT_EVENT_PREV_SHORT) {
+        ui_navigator_switch_to(UI_SCREEN_MENU);
+    }
+#endif
 }
 
 static ui_screen_t pairing_screen = {
-    .type         = UI_SCREEN_PAIRING,
-    .create       = screen_pairing_create,
-    .destroy      = screen_pairing_reset,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_PAIRING,
+    .create             = screen_pairing_create,
+    .destroy            = screen_pairing_reset,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_pairing_get_interface(void)

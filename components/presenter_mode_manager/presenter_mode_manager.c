@@ -65,7 +65,7 @@ esp_err_t presenter_mode_manager_handle_input(input_event_t event)
 
             ESP_LOGI(TAG, "Next slide - sending Cursor Right");
 
-#ifdef CONFIG_LORA_SEND_RELIABLE
+#ifdef CONFIG_LORACUE_LORA_SEND_RELIABLE
 
             ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, HID_KEY_ARROW_RIGHT,
 
@@ -84,20 +84,20 @@ esp_err_t presenter_mode_manager_handle_input(input_event_t event)
         // Alpha: long press = menu (handled by UI)
         case INPUT_EVENT_NEXT_LONG:
         // Alpha+: encoder button = menu (handled by UI)
-        case INPUT_EVENT_ENCODER_BUTTON:
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
 
             ESP_LOGI(TAG, "Menu button - no LoRa transmission");
 
             break;
 
         // Alpha: double press = prev slide
-        case INPUT_EVENT_PREV_DOUBLE:
+        case INPUT_EVENT_NEXT_DOUBLE:
         // Alpha+: PREV button short press = prev slide
         case INPUT_EVENT_PREV_SHORT:
 
             ESP_LOGI(TAG, "Previous slide - sending Cursor Left");
 
-#ifdef CONFIG_LORA_SEND_RELIABLE
+#ifdef CONFIG_LORACUE_LORA_SEND_RELIABLE
 
             ret = lora_protocol_send_keyboard_reliable(config.slot_id, 0, HID_KEY_ARROW_LEFT,
 

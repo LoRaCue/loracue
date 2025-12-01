@@ -20,14 +20,14 @@
     {
       "type": "wokwi-pushbutton",
       "id": "btn_next",
-      "top": 265.4,
+      "top": 267,
       "left": -316.8,
       "attrs": { "color": "red", "label": "NEXT", "key": "ArrowRight", "xray": "" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_prev",
-      "top": 188.6,
+      "top": 190.5,
       "left": -316.8,
       "attrs": { "color": "green", "label": "PREV", "key": "ArrowLeft" }
     },
@@ -88,7 +88,6 @@
     [ "esp:18", "oled:SCL", "yellow", [] ],
     [ "esp:3V3.2", "oled:VCC", "red", [] ],
     [ "esp:GND.1", "oled:GND", "black", [] ],
-    [ "btn_prev:2.r", "esp:GND.1", "black", [ "h15", "v-10" ] ],
     [ "esp:1", "battery_sim:SIG", "orange", [] ],
     [ "esp:GND.2", "battery_sim:GND", "black", [] ],
     [ "esp:35", "r_power:1", "yellow", [] ],
@@ -99,20 +98,21 @@
     [ "esp:11", "lora:MISO", "brown", [] ],
     [ "esp:13", "lora:BUSY", "orange", [] ],
     [ "esp:12", "lora:RESET", "red", [] ],
-    [ "esp:46", "btn_prev:1.r", "yellow", [ "v-2.18", "h-168.48" ] ],
     [ "battery_sim:VCC", "esp:3V3.1", "red", [ "v0" ] ],
     [ "esp:17", "i2console:SDA", "blue", [] ],
     [ "esp:18", "i2console:SCL", "yellow", [] ],
     [ "esp:3V3.1", "i2console:VCC", "red", [] ],
     [ "battery_sim:GND", "i2console:GND", "black", [] ],
     [ "esp:GND.4", "led_power:C", "black", [ "h0" ] ],
-    [ "esp:0", "btn_next:2.r", "green", [ "h52.57", "v93.82", "h-393.6" ] ],
     [ "encoder:CLK", "esp:4", "green", [ "h0" ] ],
     [ "esp:5", "encoder:DT", "green", [ "h0" ] ],
     [ "encoder:SW", "esp:6", "green", [ "h0" ] ],
     [ "encoder:GND", "btn_prev:2.r", "black", [ "h0", "v135.2" ] ],
     [ "i2console:VCC", "encoder:VCC", "red", [ "v0" ] ],
-    [ "btn_prev:2.r", "btn_next:1.r", "black", [ "h0" ] ]
+    [ "btn_prev:2.r", "btn_next:1.r", "black", [ "h0" ] ],
+    [ "esp:46", "btn_prev:1.r", "yellow", [ "v0" ] ],
+    [ "btn_next:1.r", "esp:GND.1", "black", [ "v0" ] ],
+    [ "esp:0", "btn_next:2.r", "green", [ "h62.17", "v7.42" ] ]
   ],
   "dependencies": {}
 }

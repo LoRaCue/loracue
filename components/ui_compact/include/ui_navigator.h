@@ -32,17 +32,13 @@ esp_err_t ui_navigator_switch_to(ui_screen_type_t screen_type);
 ui_screen_type_t ui_navigator_get_current_screen_type(void);
 
 /**
- * @brief Handle button input for the current screen
+ * @brief Handle input event for current screen
  *
- * Dispatches the event to the current screen's handle_input callback.
+ * Dispatches the event to the current screen's handle_input_event callback.
  *
- * @param event Button event
+ * @param event Input event
  */
-void ui_navigator_handle_input(button_event_type_t event);
-
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
 void ui_navigator_handle_input_event(input_event_t event);
-#endif
 
 /**
  * @brief Register a screen implementation

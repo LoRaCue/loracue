@@ -59,13 +59,13 @@ const char *screen_menu_get_selected_name(void)
     return NULL;
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         screen_menu_navigate_down();
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         int selected = screen_menu_get_selected();
-
         switch (selected) {
             case MAIN_MENU_DEVICE_MODE:
                 ui_navigator_switch_to(UI_SCREEN_DEVICE_MODE);
@@ -103,14 +103,10 @@ static void handle_input(button_event_type_t event)
             default:
                 break;
         }
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MAIN);
     }
-}
-
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
-static void handle_input_event(input_event_t event)
-{
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     switch (event) {
         case INPUT_EVENT_PREV_SHORT:
             ui_navigator_switch_to(UI_SCREEN_MAIN);
@@ -119,7 +115,6 @@ static void handle_input_event(input_event_t event)
             screen_menu_navigate_down();
             break;
         case INPUT_EVENT_ENCODER_CCW:
-            // Navigate up
             if (menu) {
                 int new_index = (menu->selected_index - 1 + MAIN_MENU_COUNT) % MAIN_MENU_COUNT;
                 if (new_index != menu->selected_index) {
@@ -129,8 +124,7 @@ static void handle_input_event(input_event_t event)
             }
             break;
         case INPUT_EVENT_NEXT_SHORT:
-        case INPUT_EVENT_ENCODER_BUTTON: {
-            // Select current item (Alpha+)
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT: {
             int selected = screen_menu_get_selected();
             switch (selected) {
                 case MAIN_MENU_DEVICE_MODE:
@@ -174,17 +168,14 @@ static void handle_input_event(input_event_t event)
         default:
             break;
     }
-}
 #endif
+}
 
 static ui_screen_t menu_screen = {
-    .type         = UI_SCREEN_MENU,
-    .create       = screen_menu_create,
-    .destroy      = screen_menu_reset,
-    .handle_input = handle_input,
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    .type               = UI_SCREEN_MENU,
+    .create             = screen_menu_create,
+    .destroy            = screen_menu_reset,
     .handle_input_event = handle_input_event,
-#endif
 };
 
 ui_screen_t *screen_menu_get_interface(void)

@@ -89,24 +89,49 @@ void screen_device_mode_reset(void)
     }
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         screen_device_mode_navigate_down();
         ui_navigator_switch_to(UI_SCREEN_DEVICE_MODE);
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         screen_device_mode_select();
         ui_navigator_switch_to(UI_SCREEN_MENU);
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+            break;
+        case INPUT_EVENT_ENCODER_CW:
+            screen_device_mode_navigate_down();
+            ui_navigator_switch_to(UI_SCREEN_DEVICE_MODE);
+            break;
+        case INPUT_EVENT_ENCODER_CCW:
+            if (radio) {
+                ui_radio_select_navigate_up(radio);
+            }
+            ui_navigator_switch_to(UI_SCREEN_DEVICE_MODE);
+            break;
+        case INPUT_EVENT_NEXT_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+            screen_device_mode_select();
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 static ui_screen_t device_mode_screen = {
-    .type         = UI_SCREEN_DEVICE_MODE,
-    .create       = screen_device_mode_create,
-    .destroy      = screen_device_mode_reset,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_DEVICE_MODE,
+    .create             = screen_device_mode_create,
+    .destroy            = screen_device_mode_reset,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_device_mode_get_interface(void)

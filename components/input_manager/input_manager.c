@@ -20,7 +20,7 @@
 #include "system_events.h"
 #include "sdkconfig.h"
 
-#if CONFIG_INPUT_HAS_ENCODER
+#if CONFIG_LORACUE_INPUT_HAS_ENCODER
 #include "encoder.h"
 #endif
 
@@ -33,14 +33,12 @@ static const char *TAG = "INPUT_MGR";
 #define POLL_INTERVAL_MS 10
 
 // Timing from Kconfig
-#define DEBOUNCE_MS CONFIG_INPUT_DEBOUNCE_MS
-#define LONG_PRESS_MS CONFIG_INPUT_LONG_PRESS_MS
-#define DOUBLE_PRESS_MS CONFIG_INPUT_DOUBLE_PRESS_MS
+#define DEBOUNCE_MS CONFIG_LORACUE_INPUT_DEBOUNCE_MS
+#define LONG_PRESS_MS CONFIG_LORACUE_INPUT_LONG_PRESS_MS
+#define DOUBLE_PRESS_MS CONFIG_LORACUE_INPUT_DOUBLE_PRESS_MS
 
 // State tracking
 static input_callback_t s_callback = NULL;
-static button_event_callback_t s_button_callback = NULL;
-static void *s_button_callback_arg = NULL;
 static TaskHandle_t s_task_handle  = NULL;
 static QueueHandle_t s_event_queue = NULL;
 static bool s_initialized          = false;
@@ -54,16 +52,17 @@ typedef struct {
     uint8_t click_count;
 } button_state_t;
 
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
 static button_state_t s_prev_btn = {0};
 static button_state_t s_next_btn = {0};
 #else
 static button_state_t s_btn = {0};
 #endif
 
-#if CONFIG_INPUT_HAS_ENCODER
+#if CONFIG_LORACUE_INPUT_HAS_ENCODER
 // Encoder state
-static rotary_encoder_t s_encoder;
+static rotary_encoder_t s_encoder = {0};
+static QueueHandle_t s_encoder_queue = NULL;
 static bool s_encoder_btn_pressed  = false;
 static uint32_t s_encoder_btn_start_ms = 0;
 #endif
@@ -71,27 +70,6 @@ static uint32_t s_encoder_btn_start_ms = 0;
 static inline void post_event(input_event_t event)
 {
     xQueueSend(s_event_queue, &event, 0);
-    
-    // Also emit button_event_type_t for Alpha compatibility
-    if (s_button_callback) {
-        button_event_type_t btn_event;
-        switch (event) {
-            case INPUT_EVENT_NEXT_SHORT:
-            case INPUT_EVENT_PREV_SHORT:
-                btn_event = BUTTON_EVENT_SHORT;
-                break;
-            case INPUT_EVENT_NEXT_LONG:
-            case INPUT_EVENT_PREV_LONG:
-                btn_event = BUTTON_EVENT_LONG;
-                break;
-            case INPUT_EVENT_PREV_DOUBLE:
-                btn_event = BUTTON_EVENT_DOUBLE;
-                break;
-            default:
-                return; // No mapping for encoder events
-        }
-        s_button_callback(btn_event, s_button_callback_arg);
-    }
 }
 
 static void handle_button(button_state_t *btn, bool pressed, uint32_t now, input_event_t short_evt,
@@ -118,7 +96,6 @@ static void handle_button(button_state_t *btn, bool pressed, uint32_t now, input
     } else if (btn->pressed && !btn->long_sent) {
         if ((now - btn->press_start_ms) >= LONG_PRESS_MS) {
             post_event(long_evt);
-            system_events_post_button(BUTTON_EVENT_LONG);
             btn->long_sent = true;
             btn->click_count = 0;
         }
@@ -129,40 +106,39 @@ static void handle_button(button_state_t *btn, bool pressed, uint32_t now, input
         uint32_t since_release = now - btn->last_release_ms;
         if (btn->click_count == 2) {
             post_event(double_evt);
-            system_events_post_button(BUTTON_EVENT_DOUBLE);
             btn->click_count = 0;
         } else if (since_release >= DOUBLE_PRESS_MS) {
             post_event(short_evt);
-            system_events_post_button(BUTTON_EVENT_SHORT);
             btn->click_count = 0;
         }
     }
 }
 
-#if CONFIG_INPUT_HAS_ENCODER
+#if CONFIG_LORACUE_INPUT_HAS_ENCODER
 static void handle_encoder(uint32_t now)
 {
-    // Read encoder using library
-    rotary_encoder_event_t event;
-    if (rotary_encoder_get_event(&s_encoder, &event) == ESP_OK) {
-        if (event.type == RE_ET_CHANGED) {
-            if (event.diff > 0) {
+    // Read encoder events from queue
+    rotary_encoder_event_t enc_event;
+    while (xQueueReceive(s_encoder_queue, &enc_event, 0) == pdTRUE) {
+        if (enc_event.type == RE_ET_CHANGED) {
+            if (enc_event.diff > 0) {
                 post_event(INPUT_EVENT_ENCODER_CW);
-            } else if (event.diff < 0) {
+            } else if (enc_event.diff < 0) {
                 post_event(INPUT_EVENT_ENCODER_CCW);
             }
         }
     }
 
-    // Encoder button
+    // Encoder button (handled separately)
     bool btn_pressed = !gpio_get_level(bsp_get_encoder_btn_gpio());
     if (btn_pressed && !s_encoder_btn_pressed) {
         s_encoder_btn_pressed = true;
         s_encoder_btn_start_ms = now;
     } else if (!btn_pressed && s_encoder_btn_pressed) {
         s_encoder_btn_pressed = false;
-        if ((now - s_encoder_btn_start_ms) >= DEBOUNCE_MS) {
-            post_event(INPUT_EVENT_ENCODER_BUTTON);
+        uint32_t duration = now - s_encoder_btn_start_ms;
+        if (duration >= DEBOUNCE_MS) {
+            post_event(duration >= LONG_PRESS_MS ? INPUT_EVENT_ENCODER_BUTTON_LONG : INPUT_EVENT_ENCODER_BUTTON_SHORT);
         }
     }
 }
@@ -176,22 +152,22 @@ static void input_task(void *arg)
     while (1) {
         uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
         // Alpha+: Dual buttons
         bool prev_pressed = !gpio_get_level(bsp_get_button_prev_gpio());
         bool next_pressed = !gpio_get_level(bsp_get_button_next_gpio());
         handle_button(&s_prev_btn, prev_pressed, now, INPUT_EVENT_PREV_SHORT, INPUT_EVENT_PREV_LONG,
-                      INPUT_EVENT_PREV_DOUBLE);
+                      INPUT_EVENT_NEXT_DOUBLE);
         handle_button(&s_next_btn, next_pressed, now, INPUT_EVENT_NEXT_SHORT, INPUT_EVENT_NEXT_LONG,
-                      INPUT_EVENT_PREV_DOUBLE);
+                      INPUT_EVENT_NEXT_DOUBLE);
 #else
         // Alpha: Single button
         bool btn_pressed = bsp_read_button(BSP_BUTTON_NEXT);
         handle_button(&s_btn, btn_pressed, now, INPUT_EVENT_NEXT_SHORT, INPUT_EVENT_NEXT_LONG,
-                      INPUT_EVENT_PREV_DOUBLE);
+                      INPUT_EVENT_NEXT_DOUBLE);
 #endif
 
-#if CONFIG_INPUT_HAS_ENCODER
+#if CONFIG_LORACUE_INPUT_HAS_ENCODER
         handle_encoder(now);
 #endif
 
@@ -219,7 +195,7 @@ esp_err_t input_manager_init(void)
         return ESP_ERR_NO_MEM;
     }
 
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     // Configure PREV button
     gpio_config_t prev_cfg = {
         .pin_bit_mask = (1ULL << bsp_get_button_prev_gpio()),
@@ -241,12 +217,24 @@ esp_err_t input_manager_init(void)
     gpio_config(&next_cfg);
 #endif
 
-#if CONFIG_INPUT_HAS_ENCODER
-    // Initialize encoder library
-    ESP_ERROR_CHECK(rotary_encoder_init(&s_encoder, bsp_get_encoder_clk_gpio(), bsp_get_encoder_dt_gpio()));
-    ESP_ERROR_CHECK(rotary_encoder_set_steps_per_click(&s_encoder, 2));
+#if CONFIG_LORACUE_INPUT_HAS_ENCODER
+    // Initialize encoder library with queue
+    s_encoder_queue = xQueueCreate(4, sizeof(rotary_encoder_event_t));
+    if (!s_encoder_queue) {
+        ESP_LOGE(TAG, "Failed to create encoder queue");
+        return ESP_ERR_NO_MEM;
+    }
+    ESP_ERROR_CHECK(rotary_encoder_init(s_encoder_queue));
     
-    // Configure encoder button
+    // Configure encoder descriptor
+    s_encoder.pin_a = bsp_get_encoder_clk_gpio();
+    s_encoder.pin_b = bsp_get_encoder_dt_gpio();
+    s_encoder.pin_btn = GPIO_NUM_MAX; // We handle button separately
+    
+    // Add encoder
+    ESP_ERROR_CHECK(rotary_encoder_add(&s_encoder));
+    
+    // Configure encoder button GPIO
     gpio_config_t enc_btn_cfg = {
         .pin_bit_mask = (1ULL << bsp_get_encoder_btn_gpio()),
         .mode = GPIO_MODE_INPUT,
@@ -270,18 +258,6 @@ esp_err_t input_manager_register_callback(input_callback_t callback)
 
     s_callback = callback;
     ESP_LOGI(TAG, "Callback registered");
-    return ESP_OK;
-}
-
-esp_err_t input_manager_register_button_callback(button_event_callback_t callback, void *arg)
-{
-    if (!callback) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    s_button_callback = callback;
-    s_button_callback_arg = arg;
-    ESP_LOGI(TAG, "Button callback registered");
     return ESP_OK;
 }
 

@@ -35,14 +35,7 @@ struct ui_screen_t {
     void (*destroy)(void);
 
     /**
-     * @brief Handle button input events (Alpha compatibility)
-     *
-     * @param event The button event type
-     */
-    void (*handle_input)(button_event_type_t event);
-
-    /**
-     * @brief Handle unified input events (Alpha+)
+     * @brief Handle input events
      *
      * @param event The input event type
      */

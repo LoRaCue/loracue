@@ -25,26 +25,21 @@ extern "C" {
  * @brief Input event types (Alpha+ specific)
  */
 typedef enum {
-    INPUT_EVENT_PREV_SHORT,       ///< PREV button short press (Alpha+)
-    INPUT_EVENT_PREV_LONG,        ///< PREV button long press (Alpha+)
-    INPUT_EVENT_PREV_DOUBLE,      ///< Single button double press (Alpha only)
-    INPUT_EVENT_NEXT_SHORT,       ///< NEXT button short press (Alpha/Alpha+)
-    INPUT_EVENT_NEXT_LONG,        ///< NEXT button long press (Alpha/Alpha+)
-    INPUT_EVENT_ENCODER_CW,       ///< Encoder clockwise rotation (Alpha+)
-    INPUT_EVENT_ENCODER_CCW,      ///< Encoder counter-clockwise rotation (Alpha+)
-    INPUT_EVENT_ENCODER_BUTTON,   ///< Encoder button press (Alpha+)
+    INPUT_EVENT_PREV_SHORT,             ///< PREV button short press (Alpha+)
+    INPUT_EVENT_PREV_LONG,              ///< PREV button long press (Alpha+)
+    INPUT_EVENT_NEXT_SHORT,             ///< NEXT button short press (Alpha/Alpha+)
+    INPUT_EVENT_NEXT_LONG,              ///< NEXT button long press (Alpha/Alpha+)
+    INPUT_EVENT_NEXT_DOUBLE,            ///< NEXT button double press (Alpha only)
+    INPUT_EVENT_ENCODER_CW,             ///< Encoder clockwise rotation (Alpha+)
+    INPUT_EVENT_ENCODER_CCW,            ///< Encoder counter-clockwise rotation (Alpha+)
+    INPUT_EVENT_ENCODER_BUTTON_SHORT,   ///< Encoder button short press (Alpha+)
+    INPUT_EVENT_ENCODER_BUTTON_LONG,    ///< Encoder button long press (Alpha+)
 } input_event_t;
 
 /**
  * @brief Input event callback function type
  */
 typedef void (*input_callback_t)(input_event_t event);
-
-/**
- * @brief Button event callback (for backward compatibility)
- * Uses button_event_type_t from common_types.h
- */
-typedef void (*button_event_callback_t)(button_event_type_t event, void *arg);
 
 /**
  * @brief Initialize input manager
@@ -58,21 +53,12 @@ typedef void (*button_event_callback_t)(button_event_type_t event, void *arg);
 esp_err_t input_manager_init(void);
 
 /**
- * @brief Register callback for input events (Alpha+)
+ * @brief Register callback for input events
  *
  * @param callback Function to call when input events occur
  * @return ESP_OK on success, ESP_ERR_INVALID_ARG if callback is NULL
  */
 esp_err_t input_manager_register_callback(input_callback_t callback);
-
-/**
- * @brief Register callback for button events (Alpha compatibility)
- *
- * @param callback Function to call when button events occur
- * @param arg User argument passed to callback
- * @return ESP_OK on success, ESP_ERR_INVALID_ARG if callback is NULL
- */
-esp_err_t input_manager_register_button_callback(button_event_callback_t callback, void *arg);
 
 /**
  * @brief Start input manager task

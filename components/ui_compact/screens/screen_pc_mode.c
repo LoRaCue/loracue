@@ -118,18 +118,24 @@ static void screen_pc_mode_create_wrapper(lv_obj_t *parent)
     screen_pc_mode_create(parent, &status);
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_LONG) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_LONG) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    if (event == INPUT_EVENT_ENCODER_BUTTON_SHORT) {
+        ui_navigator_switch_to(UI_SCREEN_MENU);
+    }
+#endif
 }
 
 static ui_screen_t pc_mode_screen = {
-    .type         = UI_SCREEN_PC_MODE,
-    .create       = screen_pc_mode_create_wrapper,
-    .destroy      = screen_pc_mode_destroy,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_PC_MODE,
+    .create             = screen_pc_mode_create_wrapper,
+    .destroy            = screen_pc_mode_destroy,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_pc_mode_get_interface(void)

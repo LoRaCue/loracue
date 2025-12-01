@@ -186,19 +186,37 @@ void screen_battery_status_create(lv_obj_t *parent)
 
 // --- Input Handlers & Interfaces ---
 
-static void handle_system_info_input(button_event_type_t event)
+static void handle_system_info_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         if (system_viewer) {
             ui_text_viewer_scroll(system_viewer);
-            // Recreate screen to show updated scroll position
             lv_obj_t *screen = lv_scr_act();
             lv_obj_clean(screen);
             screen_system_info_create(screen);
         }
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+            break;
+        case INPUT_EVENT_ENCODER_CW:
+        case INPUT_EVENT_NEXT_SHORT:
+            if (system_viewer) {
+                ui_text_viewer_scroll(system_viewer);
+                lv_obj_t *screen = lv_scr_act();
+                lv_obj_clean(screen);
+                screen_system_info_create(screen);
+            }
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 static void screen_system_info_reset(void)
@@ -210,10 +228,10 @@ static void screen_system_info_reset(void)
 }
 
 static ui_screen_t system_info_screen = {
-    .type         = UI_SCREEN_SYSTEM_INFO,
-    .create       = screen_system_info_create,
-    .destroy      = screen_system_info_reset,
-    .handle_input = handle_system_info_input,
+    .type               = UI_SCREEN_SYSTEM_INFO,
+    .create             = screen_system_info_create,
+    .destroy            = screen_system_info_reset,
+    .handle_input_event = handle_system_info_input_event,
 };
 
 ui_screen_t *screen_system_info_get_interface(void)
@@ -221,26 +239,44 @@ ui_screen_t *screen_system_info_get_interface(void)
     return &system_info_screen;
 }
 
-static void handle_device_info_input(button_event_type_t event)
+static void handle_device_info_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         if (device_viewer) {
             ui_text_viewer_scroll(device_viewer);
-            // Recreate screen to show updated scroll position
             lv_obj_t *screen = lv_scr_act();
             lv_obj_clean(screen);
             screen_device_info_create(screen);
         }
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+            break;
+        case INPUT_EVENT_ENCODER_CW:
+        case INPUT_EVENT_NEXT_SHORT:
+            if (device_viewer) {
+                ui_text_viewer_scroll(device_viewer);
+                lv_obj_t *screen = lv_scr_act();
+                lv_obj_clean(screen);
+                screen_device_info_create(screen);
+            }
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 static ui_screen_t device_info_screen = {
-    .type         = UI_SCREEN_DEVICE_INFO,
-    .create       = screen_device_info_create,
-    .destroy      = screen_device_info_reset,
-    .handle_input = handle_device_info_input,
+    .type               = UI_SCREEN_DEVICE_INFO,
+    .create             = screen_device_info_create,
+    .destroy            = screen_device_info_reset,
+    .handle_input_event = handle_device_info_input_event,
 };
 
 ui_screen_t *screen_device_info_get_interface(void)
@@ -248,19 +284,37 @@ ui_screen_t *screen_device_info_get_interface(void)
     return &device_info_screen;
 }
 
-static void handle_battery_status_input(button_event_type_t event)
+static void handle_battery_status_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         if (battery_viewer) {
             ui_text_viewer_scroll(battery_viewer);
-            // Recreate screen to show updated scroll position
             lv_obj_t *screen = lv_scr_act();
             lv_obj_clean(screen);
             screen_battery_status_create(screen);
         }
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+            break;
+        case INPUT_EVENT_ENCODER_CW:
+        case INPUT_EVENT_NEXT_SHORT:
+            if (battery_viewer) {
+                ui_text_viewer_scroll(battery_viewer);
+                lv_obj_t *screen = lv_scr_act();
+                lv_obj_clean(screen);
+                screen_battery_status_create(screen);
+            }
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 static void screen_battery_status_reset(void)
@@ -272,10 +326,10 @@ static void screen_battery_status_reset(void)
 }
 
 static ui_screen_t battery_status_screen = {
-    .type         = UI_SCREEN_BATTERY,
-    .create       = screen_battery_status_create,
-    .destroy      = screen_battery_status_reset,
-    .handle_input = handle_battery_status_input,
+    .type               = UI_SCREEN_BATTERY,
+    .create             = screen_battery_status_create,
+    .destroy            = screen_battery_status_reset,
+    .handle_input_event = handle_battery_status_input_event,
 };
 
 ui_screen_t *screen_battery_status_get_interface(void)

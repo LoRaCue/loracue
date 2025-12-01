@@ -59,14 +59,14 @@ void screen_lora_submenu_reset(void)
     }
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         screen_lora_submenu_navigate_down();
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         screen_lora_submenu_select();
         int selected = screen_lora_submenu_get_selected();
-
         switch (selected) {
             case LORA_MENU_PRESETS:
                 ui_navigator_switch_to(UI_SCREEN_LORA_PRESETS);
@@ -92,16 +92,59 @@ static void handle_input(button_event_type_t event)
             default:
                 break;
         }
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+            break;
+        case INPUT_EVENT_ENCODER_CW:
+        case INPUT_EVENT_NEXT_SHORT:
+            screen_lora_submenu_navigate_down();
+            break;
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT: {
+            screen_lora_submenu_select();
+            int selected = screen_lora_submenu_get_selected();
+            switch (selected) {
+                case LORA_MENU_PRESETS:
+                    ui_navigator_switch_to(UI_SCREEN_LORA_PRESETS);
+                    break;
+                case LORA_MENU_FREQUENCY:
+                    ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
+                    break;
+                case LORA_MENU_SF:
+                    ui_navigator_switch_to(UI_SCREEN_LORA_SF);
+                    break;
+                case LORA_MENU_BW:
+                    ui_navigator_switch_to(UI_SCREEN_LORA_BW);
+                    break;
+                case LORA_MENU_CR:
+                    ui_navigator_switch_to(UI_SCREEN_LORA_CR);
+                    break;
+                case LORA_MENU_TXPOWER:
+                    ui_navigator_switch_to(UI_SCREEN_LORA_TXPOWER);
+                    break;
+                case LORA_MENU_BAND:
+                    ui_navigator_switch_to(UI_SCREEN_LORA_BAND);
+                    break;
+                default:
+                    break;
+            }
+            break;
+        }
+        default:
+            break;
+    }
+#endif
 }
 
 static ui_screen_t lora_submenu_screen = {
-    .type         = UI_SCREEN_LORA_SUBMENU,
-    .create       = screen_lora_submenu_create,
-    .destroy      = screen_lora_submenu_reset,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_LORA_SUBMENU,
+    .create             = screen_lora_submenu_create,
+    .destroy            = screen_lora_submenu_reset,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_lora_submenu_get_interface(void)

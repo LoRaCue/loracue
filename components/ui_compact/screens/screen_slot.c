@@ -76,33 +76,69 @@ bool screen_slot_is_edit_mode(void)
     return screen ? screen->edit_mode : false;
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
+#if CONFIG_LORACUE_MODEL_ALPHA
     if (screen_slot_is_edit_mode()) {
-        if (event == BUTTON_EVENT_SHORT) {
+        if (event == INPUT_EVENT_NEXT_SHORT) {
             screen_slot_navigate_down();
             ui_navigator_switch_to(UI_SCREEN_SLOT);
-        } else if (event == BUTTON_EVENT_DOUBLE) {
+        } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
             screen_slot_navigate_up();
             ui_navigator_switch_to(UI_SCREEN_SLOT);
-        } else if (event == BUTTON_EVENT_LONG) {
+        } else if (event == INPUT_EVENT_NEXT_LONG) {
             screen_slot_select();
-            // If we exited edit mode, go back to menu
             if (!screen_slot_is_edit_mode()) {
                 ui_navigator_switch_to(UI_SCREEN_MENU);
             } else {
-                // Should not happen if select exits edit mode
                 ui_navigator_switch_to(UI_SCREEN_SLOT);
             }
         }
     } else {
-        if (event == BUTTON_EVENT_LONG) {
+        if (event == INPUT_EVENT_NEXT_LONG) {
             screen_slot_select();
             ui_navigator_switch_to(UI_SCREEN_SLOT);
-        } else if (event == BUTTON_EVENT_DOUBLE) {
+        } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
             ui_navigator_switch_to(UI_SCREEN_MENU);
         }
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    if (screen_slot_is_edit_mode()) {
+        switch (event) {
+            case INPUT_EVENT_PREV_SHORT:
+                screen->edit_mode = false;
+                ui_navigator_switch_to(UI_SCREEN_MENU);
+                break;
+            case INPUT_EVENT_ENCODER_CW:
+                screen_slot_navigate_down();
+                ui_navigator_switch_to(UI_SCREEN_SLOT);
+                break;
+            case INPUT_EVENT_ENCODER_CCW:
+                screen_slot_navigate_up();
+                ui_navigator_switch_to(UI_SCREEN_SLOT);
+                break;
+            case INPUT_EVENT_NEXT_SHORT:
+                screen_slot_select();
+                ui_navigator_switch_to(UI_SCREEN_MENU);
+                break;
+            default:
+                break;
+        }
+    } else {
+        switch (event) {
+            case INPUT_EVENT_PREV_SHORT:
+                ui_navigator_switch_to(UI_SCREEN_MENU);
+                break;
+            case INPUT_EVENT_NEXT_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+                screen_slot_select();
+                ui_navigator_switch_to(UI_SCREEN_SLOT);
+                break;
+            default:
+                break;
+        }
+    }
+#endif
 }
 
 static void screen_slot_reset(void)
@@ -115,10 +151,10 @@ static void screen_slot_reset(void)
 }
 
 static ui_screen_t slot_screen = {
-    .type         = UI_SCREEN_SLOT,
-    .create       = screen_slot_create,
-    .destroy      = screen_slot_reset,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_SLOT,
+    .create             = screen_slot_create,
+    .destroy            = screen_slot_reset,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_slot_get_interface(void)

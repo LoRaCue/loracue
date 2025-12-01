@@ -71,17 +71,42 @@ void screen_lora_cr_select(void)
     }
 }
 
-static void screen_lora_cr_handle_input(button_event_type_t event)
+static void screen_lora_cr_handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         screen_lora_cr_navigate_down();
         ui_navigator_switch_to(UI_SCREEN_LORA_CR);
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         screen_lora_cr_select();
         ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+            break;
+        case INPUT_EVENT_ENCODER_CW:
+            screen_lora_cr_navigate_down();
+            ui_navigator_switch_to(UI_SCREEN_LORA_CR);
+            break;
+        case INPUT_EVENT_ENCODER_CCW:
+            if (radio) {
+                ui_radio_select_navigate_up(radio);
+            }
+            ui_navigator_switch_to(UI_SCREEN_LORA_CR);
+            break;
+        case INPUT_EVENT_NEXT_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+            screen_lora_cr_select();
+            ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 void screen_lora_cr_reset(void)
@@ -98,11 +123,11 @@ void screen_lora_cr_reset(void)
 
 ui_screen_t *screen_lora_cr_get_interface(void)
 {
-    static ui_screen_t screen = {.type         = UI_SCREEN_LORA_CR,
-                                 .create       = screen_lora_cr_create,
-                                 .destroy      = screen_lora_cr_reset,
-                                 .handle_input = screen_lora_cr_handle_input,
-                                 .on_enter     = screen_lora_cr_on_enter,
-                                 .on_exit      = NULL};
+    static ui_screen_t screen = {.type               = UI_SCREEN_LORA_CR,
+                                 .create             = screen_lora_cr_create,
+                                 .destroy            = screen_lora_cr_reset,
+                                 .handle_input_event = screen_lora_cr_handle_input_event,
+                                 .on_enter           = screen_lora_cr_on_enter,
+                                 .on_exit            = NULL};
     return &screen;
 }

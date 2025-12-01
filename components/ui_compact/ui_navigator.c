@@ -117,16 +117,6 @@ ui_screen_type_t ui_navigator_get_current_screen_type(void)
     return current_type;
 }
 
-void ui_navigator_handle_input(button_event_type_t event)
-{
-    if (current_screen_impl && current_screen_impl->handle_input) {
-        current_screen_impl->handle_input(event);
-    } else {
-        ESP_LOGD(TAG, "No input handler for current screen");
-    }
-}
-
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
 void ui_navigator_handle_input_event(input_event_t event)
 {
     if (current_screen_impl && current_screen_impl->handle_input_event) {
@@ -135,4 +125,3 @@ void ui_navigator_handle_input_event(input_event_t event)
         ESP_LOGD(TAG, "No input event handler for current screen");
     }
 }
-#endif

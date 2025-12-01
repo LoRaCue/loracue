@@ -116,60 +116,49 @@ static void screen_main_destroy(void)
     mode_label = NULL;
 }
 
-static void handle_input(button_event_type_t event)
-{
-    general_config_t config;
-    general_config_get(&config);
-
-    if (config.device_mode == DEVICE_MODE_PRESENTER) {
-        if (event == BUTTON_EVENT_SHORT || event == BUTTON_EVENT_DOUBLE) {
-            presenter_mode_manager_handle_input(event);
-        } else if (event == BUTTON_EVENT_LONG) {
-            ui_navigator_switch_to(UI_SCREEN_MENU);
-        }
-    } else {
-        if (event == BUTTON_EVENT_LONG) {
-            ui_navigator_switch_to(UI_SCREEN_MENU);
-        }
-    }
-}
-
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
 static void handle_input_event(input_event_t event)
 {
     general_config_t config;
     general_config_get(&config);
 
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (config.device_mode == DEVICE_MODE_PRESENTER) {
+        if (event == INPUT_EVENT_NEXT_SHORT || event == INPUT_EVENT_NEXT_DOUBLE) {
+            presenter_mode_manager_handle_input(event);
+        } else if (event == INPUT_EVENT_NEXT_LONG) {
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+        }
+    } else {
+        if (event == INPUT_EVENT_NEXT_LONG) {
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+        }
+    }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     if (config.device_mode == DEVICE_MODE_PRESENTER) {
         switch (event) {
             case INPUT_EVENT_PREV_SHORT:
-                presenter_mode_manager_handle_input(INPUT_EVENT_PREV_SHORT);
-                break;
             case INPUT_EVENT_NEXT_SHORT:
-                presenter_mode_manager_handle_input(INPUT_EVENT_NEXT_SHORT);
+                presenter_mode_manager_handle_input(event);
                 break;
-            case INPUT_EVENT_ENCODER_BUTTON:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
                 ui_navigator_switch_to(UI_SCREEN_MENU);
                 break;
             default:
                 break;
         }
     } else {
-        if (event == INPUT_EVENT_ENCODER_BUTTON) {
+        if (event == INPUT_EVENT_ENCODER_BUTTON_SHORT) {
             ui_navigator_switch_to(UI_SCREEN_MENU);
         }
     }
-}
 #endif
+}
 
 static ui_screen_t main_screen = {
-    .type         = UI_SCREEN_MAIN,
-    .create       = screen_main_create_wrapper,
-    .destroy      = screen_main_destroy,
-    .handle_input = handle_input,
-#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    .type               = UI_SCREEN_MAIN,
+    .create             = screen_main_create_wrapper,
+    .destroy            = screen_main_destroy,
     .handle_input_event = handle_input_event,
-#endif
 };
 
 ui_screen_t *screen_main_get_interface(void)
