@@ -100,9 +100,8 @@ bool screen_lora_frequency_is_edit_mode(void)
 
 static void screen_lora_frequency_handle_input_event(input_event_t event)
 {
-    bool is_edit = is_editing;
-
 #if CONFIG_LORACUE_MODEL_ALPHA
+    bool is_edit = is_editing;
     if (event == INPUT_EVENT_NEXT_SHORT && is_edit) {
         screen_lora_frequency_navigate_down();
         ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
@@ -120,6 +119,7 @@ static void screen_lora_frequency_handle_input_event(input_event_t event)
         ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
     }
 #elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    bool is_edit = is_editing;
     if (is_edit) {
         switch (event) {
             case INPUT_EVENT_PREV_SHORT:
