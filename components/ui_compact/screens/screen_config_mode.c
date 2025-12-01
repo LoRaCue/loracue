@@ -1,4 +1,5 @@
 #include "input_manager.h"
+#include "ui_strings.h"
 #include "esp_crc.h"
 #include "input_manager.h"
 #include "esp_log.h"
@@ -70,9 +71,9 @@ void screen_config_mode_create(lv_obj_t *parent)
 
     ui_create_footer(parent);
 #if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", NULL, NULL, NULL, NULL);
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_BACK, NULL, NULL, NULL, NULL);
 #else
-    ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+    ui_draw_icon_text(parent, &button_double_press, UI_STR_BACK, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
 #endif
 }
 

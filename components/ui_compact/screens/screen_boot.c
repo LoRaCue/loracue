@@ -1,4 +1,5 @@
 #include "lvgl.h"
+#include "ui_strings.h"
 #include "screens.h"
 #include "ui_compact_fonts.h"
 #include "ui_navigator.h"

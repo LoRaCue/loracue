@@ -1,4 +1,5 @@
 #include "input_manager.h"
+#include "ui_strings.h"
 #include "ble.h"
 #include "input_manager.h"
 #include "esp_log.h"

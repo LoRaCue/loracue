@@ -1,4 +1,5 @@
 #include "ui_components.h"
+#include "ui_strings.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -122,10 +123,10 @@ lv_obj_t *ui_create_main_screen_layout(lv_obj_t *parent, const char *mode_text, 
 
     // Menu button bottom right
 #if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    ui_draw_icon_text(parent, &rotary_button_long, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
+    ui_draw_icon_text(parent, &rotary_button_long, UI_STR_MENU, DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
                       UI_ALIGN_RIGHT);
 #else
-    ui_draw_icon_text(parent, &button_long_press, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
+    ui_draw_icon_text(parent, &button_long_press, UI_STR_MENU, DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
                       UI_ALIGN_RIGHT);
 #endif
 
@@ -254,11 +255,11 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
 
     // Bottom bar button hints
 #if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    ui_draw_bottom_bar_alpha_plus(menu->screen, &nav_left, "Back", &rotary, "Scroll", &nav_right, "Select");
+    ui_draw_bottom_bar_alpha_plus(menu->screen, &nav_left, UI_STR_BACK, &rotary, UI_STR_SCROLL, &nav_right, UI_STR_SELECT);
 #else
     ui_draw_icon_text(menu->screen, &button_short_press, "Next", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-    ui_draw_icon_text(menu->screen, &button_long_press, "Select", 41, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-    ui_draw_icon_text(menu->screen, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+    ui_draw_icon_text(menu->screen, &button_long_press, UI_STR_SELECT, 41, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+    ui_draw_icon_text(menu->screen, &button_double_press, UI_STR_BACK, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
 #endif
 }
 
@@ -365,18 +366,18 @@ void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, con
     
     if (screen->edit_mode) {
         // Edit mode: [left] Cancel, [rotary] Adjust, [rotary_long] Save
-        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Cancel", &rotary, "Adjust", &rotary_button_long, "Save");
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_CANCEL, &rotary, UI_STR_ADJUST, &rotary_button_long, UI_STR_SAVE);
     } else {
         // View mode: [left] Back, [rotary_long] Edit
-        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary_button_long, "Edit", NULL, NULL);
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_BACK, &rotary_button_long, UI_STR_EDIT, NULL, NULL);
     }
 #else
     if (screen->edit_mode) {
         ui_draw_icon_text(parent, &button_short_press, "+", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
         ui_draw_icon_text(parent, &button_double_press, "-", 30, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-        ui_draw_icon_text(parent, &button_long_press, "Save", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+        ui_draw_icon_text(parent, &button_long_press, UI_STR_SAVE, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
     } else {
-        ui_draw_icon_text(parent, &button_long_press, "Edit", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+        ui_draw_icon_text(parent, &button_long_press, UI_STR_EDIT, 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
     }
 #endif
 }
@@ -446,12 +447,12 @@ void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const cha
 
     // Bottom bar
 #if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Scroll", NULL, NULL);
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_BACK, &rotary, UI_STR_SCROLL, NULL, NULL);
 #endif
 
     // Button hints: short press for scroll, double press for back
-    ui_draw_icon_text(parent, &button_short_press, "Scroll", 0, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-    ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+    ui_draw_icon_text(parent, &button_short_press, UI_STR_SCROLL, 0, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+    ui_draw_icon_text(parent, &button_double_press, UI_STR_BACK, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
 }
 
 void ui_text_viewer_scroll(ui_text_viewer_t *viewer)
@@ -546,19 +547,19 @@ void ui_numeric_input_render(const ui_numeric_input_t *input, lv_obj_t *parent, 
     
     if (input->edit_mode) {
         // Edit mode: [left] Cancel, [rotary] Adjust, [rotary_long] Save
-        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Cancel", &rotary, "Adjust", &rotary_button_long, "Save");
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_CANCEL, &rotary, UI_STR_ADJUST, &rotary_button_long, UI_STR_SAVE);
     } else {
         // View mode: [left] Back, [rotary_long] Edit
-        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary_button_long, "Edit", NULL, NULL);
+        ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_BACK, &rotary_button_long, UI_STR_EDIT, NULL, NULL);
     }
 #else
     if (input->edit_mode) {
         int plus_width = ui_draw_icon_text(parent, &button_short_press, "+", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
         ui_draw_icon_text(parent, &button_double_press, "-", 2 + plus_width + 4, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-        ui_draw_icon_text(parent, &button_long_press, "Save", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+        ui_draw_icon_text(parent, &button_long_press, UI_STR_SAVE, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
     } else {
-        ui_draw_icon_text(parent, &button_long_press, "Edit", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-        ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+        ui_draw_icon_text(parent, &button_long_press, UI_STR_EDIT, 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+        ui_draw_icon_text(parent, &button_double_press, UI_STR_BACK, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
     }
 #endif
 }
@@ -720,11 +721,11 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
     lv_obj_set_style_line_width(bottom_line, 1, 0);
 
 #if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Scroll", &nav_right, "Select");
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_BACK, &rotary, UI_STR_SCROLL, &nav_right, UI_STR_SELECT);
 #else
     ui_draw_icon_text(parent, &button_short_press, "Next", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-    ui_draw_icon_text(parent, &button_long_press, "Select", 42, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
-    ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+    ui_draw_icon_text(parent, &button_long_press, UI_STR_SELECT, 42, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+    ui_draw_icon_text(parent, &button_double_press, UI_STR_BACK, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
 #endif
 }
 
@@ -793,7 +794,7 @@ void ui_confirmation_render(ui_confirmation_t *confirm, lv_obj_t *parent, const 
 
     // Bottom bar hint
 #if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "No", NULL, NULL, &nav_right, "Yes");
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_NO, NULL, NULL, &nav_right, UI_STR_YES);
 #else
     ui_draw_icon_text(parent, &button_long_press, "Hold 5s", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
 #endif

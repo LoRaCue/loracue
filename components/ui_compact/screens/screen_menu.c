@@ -1,4 +1,5 @@
 #include "lvgl.h"
+#include "ui_strings.h"
 #include "input_manager.h"
 #include "screens.h"
 #include "ui_components.h"

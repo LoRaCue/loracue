@@ -1,4 +1,5 @@
 #include "esp_log.h"
+#include "ui_strings.h"
 #include "general_config.h"
 #include "input_manager.h"
 #include "lvgl.h"
@@ -44,7 +45,7 @@ void screen_main_create(lv_obj_t *parent, const statusbar_data_t *initial_status
 
     // Create main screen layout (mode label, bottom bar with device name and menu)
     const char *device_name = (initial_status && initial_status->device_name) ? initial_status->device_name : "LC-????";
-    mode_label              = ui_create_main_screen_layout(parent, "PRESENTER", device_name);
+    mode_label              = ui_create_main_screen_layout(parent, UI_STR_PRESENTER, device_name);
     ESP_LOGI(TAG, "Device name: %s", device_name);
 
     // Button hints: Double-press icon + "PREV" on left

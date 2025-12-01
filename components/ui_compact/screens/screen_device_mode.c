@@ -1,4 +1,5 @@
 #include "input_manager.h"
+#include "ui_strings.h"
 #include "esp_log.h"
 #include "input_manager.h"
 #include "general_config.h"
@@ -12,7 +13,7 @@ static const char *TAG          = "device_mode";
 static ui_radio_select_t *radio = NULL;
 static int preserved_index      = -1; // Preserve selection across screen recreations
 
-static const char *mode_items[] = {"PRESENTER", "PC"};
+static const char *mode_items[] = {UI_STR_PRESENTER, "PC"};
 #define MODE_COUNT 2
 
 void screen_device_mode_create(lv_obj_t *parent)
@@ -73,7 +74,7 @@ void screen_device_mode_select(void)
         system_event_mode_t evt = {.mode = new_mode};
         esp_event_post_to(system_events_get_loop(), SYSTEM_EVENTS, SYSTEM_EVENT_MODE_CHANGED, &evt, sizeof(evt), 0);
 
-        ESP_LOGI(TAG, "Device mode changed to: %s", new_mode == DEVICE_MODE_PRESENTER ? "PRESENTER" : "PC");
+        ESP_LOGI(TAG, "Device mode changed to: %s", new_mode == DEVICE_MODE_PRESENTER ? UI_STR_PRESENTER : "PC");
     }
 }
 

@@ -1,4 +1,5 @@
 #include "esp_log.h"
+#include "ui_strings.h"
 #include "lvgl.h"
 #include "screens.h"
 #include "ui_components.h"

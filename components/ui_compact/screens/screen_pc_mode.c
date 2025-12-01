@@ -1,4 +1,5 @@
 #include "esp_log.h"
+#include "ui_strings.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lvgl.h"
@@ -212,7 +213,7 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
 
     // Create main screen layout
     const char *device_name = (initial_status && initial_status->device_name) ? initial_status->device_name : "LC-????";
-    mode_label = ui_create_main_screen_layout(parent, "PC MODE", device_name);
+    mode_label = ui_create_main_screen_layout(parent, UI_STR_PC_MODE, device_name);
 
     // Calculate dynamic layout
     int content_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
