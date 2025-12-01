@@ -16,6 +16,9 @@ static char device_ssid[32]     = {0};
 static char device_password[16] = {0};
 
 LV_IMG_DECLARE(button_double_press);
+LV_IMG_DECLARE(nav_left);
+LV_IMG_DECLARE(nav_right);
+LV_IMG_DECLARE(rotary);
 
 static void generate_credentials(void)
 {

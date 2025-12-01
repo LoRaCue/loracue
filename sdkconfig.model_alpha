@@ -1,5 +1,8 @@
 # LC-Alpha Model Configuration
 # Prototype with single onboard button (GPIO0)
+# Model selection handled by Kconfig default in Kconfig.projbuild
 
+# Override default to select Alpha instead of Alpha+
 CONFIG_LORACUE_MODEL_ALPHA=y
+# CONFIG_LORACUE_MODEL_ALPHA_PLUS is not set
 

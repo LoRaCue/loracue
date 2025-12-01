@@ -11,6 +11,9 @@
 static const char *TAG = "device_registry";
 
 LV_IMG_DECLARE(button_double_press);
+LV_IMG_DECLARE(nav_left);
+LV_IMG_DECLARE(nav_right);
+LV_IMG_DECLARE(rotary);
 
 void screen_device_registry_create(lv_obj_t *parent)
 {

@@ -123,7 +123,7 @@ static void handle_input(button_event_type_t event)
 
     if (config.device_mode == DEVICE_MODE_PRESENTER) {
         if (event == BUTTON_EVENT_SHORT || event == BUTTON_EVENT_DOUBLE) {
-            presenter_mode_manager_handle_button(event);
+            presenter_mode_manager_handle_input(event);
         } else if (event == BUTTON_EVENT_LONG) {
             ui_navigator_switch_to(UI_SCREEN_MENU);
         }
@@ -143,10 +143,10 @@ static void handle_input_event(input_event_t event)
     if (config.device_mode == DEVICE_MODE_PRESENTER) {
         switch (event) {
             case INPUT_EVENT_PREV_SHORT:
-                presenter_mode_manager_send_command(CMD_PREV_SLIDE);
+                presenter_mode_manager_handle_input(INPUT_EVENT_PREV_SHORT);
                 break;
             case INPUT_EVENT_NEXT_SHORT:
-                presenter_mode_manager_send_command(CMD_NEXT_SLIDE);
+                presenter_mode_manager_handle_input(INPUT_EVENT_NEXT_SHORT);
                 break;
             case INPUT_EVENT_ENCODER_BUTTON:
                 ui_navigator_switch_to(UI_SCREEN_MENU);

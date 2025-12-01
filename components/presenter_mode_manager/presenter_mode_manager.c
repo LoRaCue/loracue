@@ -38,7 +38,7 @@ esp_err_t presenter_mode_manager_init(void)
     return ESP_OK;
 }
 
-esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
+esp_err_t presenter_mode_manager_handle_input(input_event_t event)
 
 {
 
@@ -57,11 +57,13 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
 
     esp_err_t ret = ESP_OK;
 
-    switch (button_type) {
+    switch (event) {
 
-        case BUTTON_EVENT_SHORT:
+        // Alpha: short press = next slide
+        case INPUT_EVENT_NEXT_SHORT:
+        // Alpha+: NEXT button short press = next slide (same event)
 
-            ESP_LOGI(TAG, "Short press - sending Cursor Right");
+            ESP_LOGI(TAG, "Next slide - sending Cursor Right");
 
 #ifdef CONFIG_LORA_SEND_RELIABLE
 
@@ -79,17 +81,21 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
 
             break;
 
-        case BUTTON_EVENT_LONG:
+        // Alpha: long press = menu (handled by UI)
+        case INPUT_EVENT_NEXT_LONG:
+        // Alpha+: encoder button = menu (handled by UI)
+        case INPUT_EVENT_ENCODER_BUTTON:
 
-            ESP_LOGI(TAG, "Long press - entering menu mode");
-
-            // Long press enters menu mode, no LoRa transmission
+            ESP_LOGI(TAG, "Menu button - no LoRa transmission");
 
             break;
 
-        case BUTTON_EVENT_DOUBLE:
+        // Alpha: double press = prev slide
+        case INPUT_EVENT_PREV_DOUBLE:
+        // Alpha+: PREV button short press = prev slide
+        case INPUT_EVENT_PREV_SHORT:
 
-            ESP_LOGI(TAG, "Double press - sending Cursor Left");
+            ESP_LOGI(TAG, "Previous slide - sending Cursor Left");
 
 #ifdef CONFIG_LORA_SEND_RELIABLE
 
@@ -108,7 +114,7 @@ esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type)
             break;
 
         default:
-            ESP_LOGW(TAG, "Unknown button type: %d", button_type);
+            ESP_LOGW(TAG, "Unknown input event: %d", event);
             ret = ESP_ERR_INVALID_ARG;
             break;
     }

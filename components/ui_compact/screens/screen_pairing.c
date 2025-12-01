@@ -12,6 +12,9 @@
 static const char *TAG = "pairing";
 
 LV_IMG_DECLARE(button_double_press);
+LV_IMG_DECLARE(nav_left);
+LV_IMG_DECLARE(nav_right);
+LV_IMG_DECLARE(rotary);
 
 static lv_obj_t *status_label = NULL;
 static lv_obj_t *msg1         = NULL;

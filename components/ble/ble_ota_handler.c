@@ -19,15 +19,6 @@
 #include "freertos/task.h"
 #include "host/ble_gap.h"
 
-#ifdef CONFIG_LORACUE_UI_COMPACT
-#include "ui_data_update_task.h"
-#include "ui_mini.h"
-#endif
-
-#ifdef CONFIG_LORACUE_UI_RICH
-#include "ui_rich.h"
-#endif
-
 #define OTA_RINGBUF_SIZE 4096
 #define OTA_TASK_SIZE 8192
 
@@ -90,16 +81,8 @@ static void ota_task(void *arg)
 
     ESP_LOGI(TAG, "OTA task started");
 
-    // Suspend UI update tasks to prevent display conflicts
-#ifdef CONFIG_LORACUE_UI_COMPACT
-    ESP_LOGI(TAG, "Suspending UI update tasks");
-    ui_data_update_task_stop();
-    ui_mini_show_ota_update();
-#endif
-
-#ifdef CONFIG_LORACUE_UI_RICH
-    ui_rich_show_ota_update();
-#endif
+    // TODO: Add OTA screen support for UI
+    // For now, OTA proceeds without UI feedback
 
     notify_sem = xSemaphoreCreateCounting(100, 0);
     xSemaphoreGive(notify_sem);
@@ -166,9 +149,7 @@ static void ota_task(void *arg)
             uint8_t progress = (recv_len * 100) / fw_length;
             if (progress != last_progress) {
                 last_progress = progress;
-#ifdef CONFIG_LORACUE_UI_COMPACT
-                ui_mini_update_ota_progress(progress);
-#endif
+                // TODO: Add OTA progress UI update
                 ESP_LOGI(TAG, "Progress: %u%%", progress);
             }
         }

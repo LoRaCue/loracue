@@ -77,11 +77,7 @@
       "rotate": 270,
       "attrs": {}
     },
-    { "type": "wokwi-ky-040",
-      "id": "encoder", 
-      "top": 100, 
-      "left": -317.6,
-      "attrs": {} }
+    { "type": "wokwi-ky-040", "id": "encoder", "top": 100, "left": -317.6, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
@@ -115,7 +111,8 @@
     [ "esp:5", "encoder:DT", "green", [ "h0" ] ],
     [ "encoder:SW", "esp:6", "green", [ "h0" ] ],
     [ "encoder:GND", "btn_prev:2.r", "black", [ "h0", "v135.2" ] ],
-    [ "i2console:VCC", "encoder:VCC", "red", [ "v0" ] ]
+    [ "i2console:VCC", "encoder:VCC", "red", [ "v0" ] ],
+    [ "btn_prev:2.r", "btn_next:1.r", "black", [ "h0" ] ]
   ],
   "dependencies": {}
 }

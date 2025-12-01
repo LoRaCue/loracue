@@ -129,10 +129,48 @@ static void handle_input_event(input_event_t event)
             }
             break;
         case INPUT_EVENT_NEXT_SHORT:
-        case INPUT_EVENT_ENCODER_BUTTON:
-            // Select current item
-            handle_input(BUTTON_EVENT_LONG);
+        case INPUT_EVENT_ENCODER_BUTTON: {
+            // Select current item (Alpha+)
+            int selected = screen_menu_get_selected();
+            switch (selected) {
+                case MAIN_MENU_DEVICE_MODE:
+                    ui_navigator_switch_to(UI_SCREEN_DEVICE_MODE);
+                    break;
+                case MAIN_MENU_SLOT:
+                    ui_navigator_switch_to(UI_SCREEN_SLOT);
+                    break;
+                case MAIN_MENU_LORA:
+                    ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+                    break;
+                case MAIN_MENU_PAIRING:
+                    ui_navigator_switch_to(UI_SCREEN_PAIRING);
+                    break;
+                case MAIN_MENU_REGISTRY:
+                    ui_navigator_switch_to(UI_SCREEN_DEVICE_REGISTRY);
+                    break;
+                case MAIN_MENU_CONTRAST:
+                    ui_navigator_switch_to(UI_SCREEN_CONTRAST);
+                    break;
+                case MAIN_MENU_BLUETOOTH:
+                    ui_navigator_switch_to(UI_SCREEN_BLUETOOTH);
+                    break;
+                case MAIN_MENU_CONFIG:
+                    ui_navigator_switch_to(UI_SCREEN_CONFIG_MODE);
+                    break;
+                case MAIN_MENU_DEVICE_INFO:
+                    ui_navigator_switch_to(UI_SCREEN_DEVICE_INFO);
+                    break;
+                case MAIN_MENU_SYSTEM_INFO:
+                    ui_navigator_switch_to(UI_SCREEN_SYSTEM_INFO);
+                    break;
+                case MAIN_MENU_FACTORY_RESET:
+                    ui_navigator_switch_to(UI_SCREEN_FACTORY_RESET);
+                    break;
+                default:
+                    break;
+            }
             break;
+        }
         default:
             break;
     }

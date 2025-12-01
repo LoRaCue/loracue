@@ -28,6 +28,15 @@ static const char *TAG = "BSP_HELTEC_V3";
 #define BATTERY_CTRL_PIN GPIO_NUM_37
 #define VEXT_CTRL_PIN GPIO_NUM_36 // Controls power to OLED and LoRa
 
+// Alpha+ Dual Buttons
+#define BUTTON_PREV_PIN GPIO_NUM_46
+#define BUTTON_NEXT_PIN GPIO_NUM_0
+
+// Alpha+ Rotary Encoder
+#define ENCODER_CLK_PIN GPIO_NUM_4
+#define ENCODER_DT_PIN GPIO_NUM_5
+#define ENCODER_BTN_PIN GPIO_NUM_6
+
 // LoRa SX1262 Pins
 #define LORA_CS_PIN GPIO_NUM_8
 #define LORA_SCK_PIN GPIO_NUM_9
@@ -311,6 +320,31 @@ void bsp_toggle_led(void)
 gpio_num_t bsp_get_led_gpio(void)
 {
     return STATUS_LED_PIN;
+}
+
+gpio_num_t bsp_get_encoder_clk_gpio(void)
+{
+    return ENCODER_CLK_PIN;
+}
+
+gpio_num_t bsp_get_encoder_dt_gpio(void)
+{
+    return ENCODER_DT_PIN;
+}
+
+gpio_num_t bsp_get_encoder_btn_gpio(void)
+{
+    return ENCODER_BTN_PIN;
+}
+
+gpio_num_t bsp_get_button_prev_gpio(void)
+{
+    return BUTTON_PREV_PIN;
+}
+
+gpio_num_t bsp_get_button_next_gpio(void)
+{
+    return BUTTON_NEXT_PIN;
 }
 
 bool bsp_read_button(bsp_button_t button)

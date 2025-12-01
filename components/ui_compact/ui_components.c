@@ -44,6 +44,7 @@ int ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, 
 {
     const lv_img_dsc_t *img_dsc = icon_src;
     int icon_width              = img_dsc->header.w;
+    int icon_height             = img_dsc->header.h;
 
     // Create label first to measure text width
     lv_obj_t *label = lv_label_create(parent);
@@ -70,7 +71,10 @@ int ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, 
         text_x = icon_x + icon_width + 2;
     }
 
-    lv_obj_set_pos(icon, icon_x, y);
+    // Center icon vertically: y is baseline, adjust for icon height
+    int icon_y = y + (8 - icon_height) / 2;
+    
+    lv_obj_set_pos(icon, icon_x, icon_y);
     lv_obj_set_pos(label, text_x, y - 1);
 
     return total_width;

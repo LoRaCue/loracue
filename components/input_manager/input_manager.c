@@ -20,6 +20,10 @@
 #include "system_events.h"
 #include "sdkconfig.h"
 
+#if CONFIG_INPUT_HAS_ENCODER
+#include "encoder.h"
+#endif
+
 static const char *TAG = "INPUT_MGR";
 
 // Task configuration
@@ -59,7 +63,7 @@ static button_state_t s_btn = {0};
 
 #if CONFIG_INPUT_HAS_ENCODER
 // Encoder state
-static int8_t s_encoder_last_state = 0;
+static rotary_encoder_t s_encoder;
 static bool s_encoder_btn_pressed  = false;
 static uint32_t s_encoder_btn_start_ms = 0;
 #endif
@@ -138,23 +142,20 @@ static void handle_button(button_state_t *btn, bool pressed, uint32_t now, input
 #if CONFIG_INPUT_HAS_ENCODER
 static void handle_encoder(uint32_t now)
 {
-    // Read encoder pins
-    int clk = gpio_get_level(GPIO_NUM_4);
-    int dt = gpio_get_level(GPIO_NUM_5);
-    int8_t state = (clk << 1) | dt;
-
-    // Detect rotation
-    if (state != s_encoder_last_state) {
-        if ((s_encoder_last_state == 0 && state == 1) || (s_encoder_last_state == 3 && state == 2)) {
-            post_event(INPUT_EVENT_ENCODER_CW);
-        } else if ((s_encoder_last_state == 0 && state == 2) || (s_encoder_last_state == 3 && state == 1)) {
-            post_event(INPUT_EVENT_ENCODER_CCW);
+    // Read encoder using library
+    rotary_encoder_event_t event;
+    if (rotary_encoder_get_event(&s_encoder, &event) == ESP_OK) {
+        if (event.type == RE_ET_CHANGED) {
+            if (event.diff > 0) {
+                post_event(INPUT_EVENT_ENCODER_CW);
+            } else if (event.diff < 0) {
+                post_event(INPUT_EVENT_ENCODER_CCW);
+            }
         }
-        s_encoder_last_state = state;
     }
 
     // Encoder button
-    bool btn_pressed = !gpio_get_level(GPIO_NUM_6);
+    bool btn_pressed = !gpio_get_level(bsp_get_encoder_btn_gpio());
     if (btn_pressed && !s_encoder_btn_pressed) {
         s_encoder_btn_pressed = true;
         s_encoder_btn_start_ms = now;
@@ -177,8 +178,8 @@ static void input_task(void *arg)
 
 #if CONFIG_INPUT_HAS_DUAL_BUTTONS
         // Alpha+: Dual buttons
-        bool prev_pressed = !gpio_get_level(GPIO_NUM_46);
-        bool next_pressed = !gpio_get_level(GPIO_NUM_0);
+        bool prev_pressed = !gpio_get_level(bsp_get_button_prev_gpio());
+        bool next_pressed = !gpio_get_level(bsp_get_button_next_gpio());
         handle_button(&s_prev_btn, prev_pressed, now, INPUT_EVENT_PREV_SHORT, INPUT_EVENT_PREV_LONG,
                       INPUT_EVENT_PREV_DOUBLE);
         handle_button(&s_next_btn, next_pressed, now, INPUT_EVENT_NEXT_SHORT, INPUT_EVENT_NEXT_LONG,
@@ -219,9 +220,9 @@ esp_err_t input_manager_init(void)
     }
 
 #if CONFIG_INPUT_HAS_DUAL_BUTTONS
-    // Configure PREV button (GPIO46)
+    // Configure PREV button
     gpio_config_t prev_cfg = {
-        .pin_bit_mask = (1ULL << GPIO_NUM_46),
+        .pin_bit_mask = (1ULL << bsp_get_button_prev_gpio()),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -229,9 +230,9 @@ esp_err_t input_manager_init(void)
     };
     gpio_config(&prev_cfg);
 
-    // Configure NEXT button (GPIO0)
+    // Configure NEXT button
     gpio_config_t next_cfg = {
-        .pin_bit_mask = (1ULL << GPIO_NUM_0),
+        .pin_bit_mask = (1ULL << bsp_get_button_next_gpio()),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -241,37 +242,19 @@ esp_err_t input_manager_init(void)
 #endif
 
 #if CONFIG_INPUT_HAS_ENCODER
-    // Configure encoder CLK (GPIO4)
-    gpio_config_t enc_clk_cfg = {
-        .pin_bit_mask = (1ULL << GPIO_NUM_4),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&enc_clk_cfg);
-
-    // Configure encoder DT (GPIO5)
-    gpio_config_t enc_dt_cfg = {
-        .pin_bit_mask = (1ULL << GPIO_NUM_5),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    gpio_config(&enc_dt_cfg);
-
-    // Configure encoder button (GPIO6)
+    // Initialize encoder library
+    ESP_ERROR_CHECK(rotary_encoder_init(&s_encoder, bsp_get_encoder_clk_gpio(), bsp_get_encoder_dt_gpio()));
+    ESP_ERROR_CHECK(rotary_encoder_set_steps_per_click(&s_encoder, 2));
+    
+    // Configure encoder button
     gpio_config_t enc_btn_cfg = {
-        .pin_bit_mask = (1ULL << GPIO_NUM_6),
+        .pin_bit_mask = (1ULL << bsp_get_encoder_btn_gpio()),
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
         .pull_down_en = GPIO_PULLDOWN_DISABLE,
         .intr_type = GPIO_INTR_DISABLE,
     };
     gpio_config(&enc_btn_cfg);
-
-    s_encoder_last_state = (gpio_get_level(GPIO_NUM_4) << 1) | gpio_get_level(GPIO_NUM_5);
 #endif
 
     s_initialized = true;
