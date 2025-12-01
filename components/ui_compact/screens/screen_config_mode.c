@@ -1,4 +1,6 @@
+#include "input_manager.h"
 #include "esp_crc.h"
+#include "input_manager.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "general_config.h"
@@ -64,7 +66,11 @@ void screen_config_mode_create(lv_obj_t *parent)
     lv_obj_set_pos(url_label, 0, 38);
 
     ui_create_footer(parent);
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", NULL, NULL, NULL, NULL);
+#else
     ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+#endif
 }
 
 void screen_config_mode_reset(void)

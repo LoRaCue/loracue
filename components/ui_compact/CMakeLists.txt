@@ -37,7 +37,7 @@ idf_component_register(
         ${INCLUDE_DIRS}
     REQUIRES 
         ui_lvgl
-        button_manager
+        input_manager
         general_config
         power_mgmt
         ble

@@ -40,6 +40,10 @@ ui_screen_type_t ui_navigator_get_current_screen_type(void);
  */
 void ui_navigator_handle_input(button_event_type_t event);
 
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+void ui_navigator_handle_input_event(input_event_t event);
+#endif
+
 /**
  * @brief Register a screen implementation
  *

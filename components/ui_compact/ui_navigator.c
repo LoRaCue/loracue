@@ -1,5 +1,6 @@
 #include "ui_navigator.h"
 #include "esp_log.h"
+#include "input_manager.h"
 #include "ui_lvgl.h"
 #include <string.h>
 
@@ -124,3 +125,14 @@ void ui_navigator_handle_input(button_event_type_t event)
         ESP_LOGD(TAG, "No input handler for current screen");
     }
 }
+
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+void ui_navigator_handle_input_event(input_event_t event)
+{
+    if (current_screen_impl && current_screen_impl->handle_input_event) {
+        current_screen_impl->handle_input_event(event);
+    } else {
+        ESP_LOGD(TAG, "No input event handler for current screen");
+    }
+}
+#endif

@@ -45,7 +45,7 @@ static const char *TAG = "BSP_HELTEC_V3";
 // BSP Configuration
 #define SPI_CLOCK_SPEED_HZ 1000000 // 1MHz for SX1262
 #define SPI_QUEUE_SIZE 1           // Single transaction queue
-#define I2C_CLOCK_SPEED_HZ CONFIG_BSP_I2C_CLOCK_SPEED_HZ
+#define I2C_CLOCK_SPEED_HZ CONFIG_LORACUE_BSP_I2C_CLOCK_SPEED_HZ
 #define ADC_BITWIDTH ADC_BITWIDTH_12
 #define ADC_ATTENUATION ADC_ATTEN_DB_12
 
@@ -411,7 +411,7 @@ const char *bsp_get_board_id(void)
 
 const char *bsp_get_model_name(void)
 {
-#if defined(CONFIG_MODEL_ALPHA_PLUS)
+#if defined(CONFIG_LORACUE_MODEL_ALPHA_PLUS)
     return "LC-Alpha+";
 #else
     return "LC-Alpha";

@@ -1,4 +1,6 @@
+#include "input_manager.h"
 #include "esp_log.h"
+#include "input_manager.h"
 #include "lvgl.h"
 #include "screens.h"
 #include "ui_compact_fonts.h"
@@ -91,7 +93,11 @@ void screen_pairing_create(lv_obj_t *parent)
     }
 
     ui_create_footer(parent);
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Scroll", &nav_right, "Select");
+#else
     ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+#endif
 }
 
 void screen_pairing_reset(void)

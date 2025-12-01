@@ -1,4 +1,6 @@
+#include "input_manager.h"
 #include "bsp.h"
+#include "input_manager.h"
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_mac.h"

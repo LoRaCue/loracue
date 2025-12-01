@@ -4,7 +4,7 @@
  */
 
 #include "usb_hid.h"
-#include "button_manager.h"
+#include "input_manager.h"
 #include "cJSON.h"
 #include "class/cdc/cdc_device.h"
 #include "class/hid/hid_device.h"
@@ -135,7 +135,7 @@ esp_err_t usb_hid_init(void)
     ESP_ERROR_CHECK(usb_cdc_init());
 
     // Register button event handler
-    ESP_ERROR_CHECK(button_manager_register_callback(button_event_handler, NULL));
+    ESP_ERROR_CHECK(input_manager_register_button_callback(button_event_handler, NULL));
 
     ESP_LOGI(TAG, "USB composite device initialized");
     return ESP_OK;

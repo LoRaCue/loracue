@@ -1,4 +1,5 @@
 #include "bsp.h"
+#include "common_types.h"
 #include "display.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"

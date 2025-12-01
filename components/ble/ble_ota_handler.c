@@ -19,12 +19,12 @@
 #include "freertos/task.h"
 #include "host/ble_gap.h"
 
-#ifdef CONFIG_UI_MINI
+#ifdef CONFIG_LORACUE_UI_COMPACT
 #include "ui_data_update_task.h"
 #include "ui_mini.h"
 #endif
 
-#ifdef CONFIG_UI_RICH
+#ifdef CONFIG_LORACUE_UI_RICH
 #include "ui_rich.h"
 #endif
 
@@ -91,13 +91,13 @@ static void ota_task(void *arg)
     ESP_LOGI(TAG, "OTA task started");
 
     // Suspend UI update tasks to prevent display conflicts
-#ifdef CONFIG_UI_MINI
+#ifdef CONFIG_LORACUE_UI_COMPACT
     ESP_LOGI(TAG, "Suspending UI update tasks");
     ui_data_update_task_stop();
     ui_mini_show_ota_update();
 #endif
 
-#ifdef CONFIG_UI_RICH
+#ifdef CONFIG_LORACUE_UI_RICH
     ui_rich_show_ota_update();
 #endif
 
@@ -166,7 +166,7 @@ static void ota_task(void *arg)
             uint8_t progress = (recv_len * 100) / fw_length;
             if (progress != last_progress) {
                 last_progress = progress;
-#ifdef CONFIG_UI_MINI
+#ifdef CONFIG_LORACUE_UI_COMPACT
                 ui_mini_update_ota_progress(progress);
 #endif
                 ESP_LOGI(TAG, "Progress: %u%%", progress);

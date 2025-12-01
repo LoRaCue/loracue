@@ -1,7 +1,7 @@
 #include "ui_compact.h"
 #include "ble.h"
 #include "bsp.h"
-#include "button_manager.h"
+#include "input_manager.h"
 #include "esp_log.h"
 #include "general_config.h"
 #include "lora_protocol.h"
@@ -56,6 +56,17 @@ static void button_event_handler(button_event_type_t event, void *arg)
     ui_navigator_handle_input(event);
     ui_lvgl_unlock();
 }
+
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+static void input_event_handler(input_event_t event)
+{
+    ESP_LOGD(TAG, "Input event received: %d on screen %d", event, current_screen_type);
+
+    ui_lvgl_lock();
+    ui_navigator_handle_input_event(event);
+    ui_lvgl_unlock();
+}
+#endif
 
 static void mode_change_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
@@ -160,7 +171,10 @@ esp_err_t ui_compact_show_main_screen(void)
 
 esp_err_t ui_compact_register_button_callback(void)
 {
-    button_manager_register_callback(button_event_handler, NULL);
+    input_manager_register_button_callback(button_event_handler, NULL);
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    input_manager_register_callback(input_event_handler);
+#endif
     ESP_LOGI(TAG, "Button callback registered");
     return ESP_OK;
 }

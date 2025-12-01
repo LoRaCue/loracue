@@ -9,7 +9,7 @@
 
 #include "ble.h"
 #include "bsp.h"
-#include "button_manager.h"
+#include "input_manager.h"
 #include "common_types.h"
 #include "device_registry.h"
 #include "esp_log.h"
@@ -331,11 +331,11 @@ void app_main(void)
         return;
     }
 
-    // Initialize button manager first (before UI registers callbacks)
-    ESP_LOGI(TAG, "Initializing button manager...");
-    ret = button_manager_init();
+    // Initialize input manager first (before UI registers callbacks)
+    ESP_LOGI(TAG, "Initializing input manager...");
+    ret = input_manager_init();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Button manager initialization failed: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Input manager initialization failed: %s", esp_err_to_name(ret));
         return;
     }
 
@@ -366,10 +366,10 @@ void app_main(void)
         return;
     }
 
-    // Start button manager task
-    ret = button_manager_start();
+    // Start input manager task
+    ret = input_manager_start();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to start button manager: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to start input manager: %s", esp_err_to_name(ret));
         return;
     }
 
@@ -461,7 +461,7 @@ void app_main(void)
         ESP_LOGI(TAG, "Bluetooth disabled in configuration");
     }
 
-#ifdef CONFIG_UART_COMMANDS_ENABLED
+#ifdef CONFIG_LORACUE_UART_COMMANDS_ENABLED
     // Initialize UART command interface
     ESP_LOGI(TAG, "Initializing UART command interface...");
     ret = uart_commands_init();

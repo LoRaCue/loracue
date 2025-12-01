@@ -12,14 +12,6 @@ extern "C" {
 #endif
 
 // Validation macros
-#ifndef VALIDATE_ARG
-#define VALIDATE_ARG(arg)                                                                                              \
-    do {                                                                                                               \
-        if (!(arg))                                                                                                    \
-            return ESP_ERR_INVALID_ARG;                                                                                \
-    } while (0)
-#endif
-
 #define VALIDATE_CONFIG(cfg)                                                                                           \
     do {                                                                                                               \
         if (!(cfg) || !(cfg)->panel)                                                                                   \

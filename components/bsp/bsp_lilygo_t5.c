@@ -387,7 +387,7 @@ void bsp_power_deep_sleep(uint64_t time_us)
 
 esp_err_t bsp_i2c_init_default(void)
 {
-    return bsp_i2c_init(BOARD_SDA, BOARD_SCL, CONFIG_BSP_I2C_CLOCK_SPEED_HZ);
+    return bsp_i2c_init(BOARD_SDA, BOARD_SCL, CONFIG_LORACUE_BSP_I2C_CLOCK_SPEED_HZ);
 }
 
 const char *bsp_get_board_id(void)

@@ -1,6 +1,6 @@
 menu "UART Commands Configuration"
 
-    config UART_COMMANDS_ENABLED
+    config LORACUE_UART_COMMANDS_ENABLED
         bool "Enable UART command interface"
         default n
         help
@@ -11,9 +11,9 @@ menu "UART Commands Configuration"
             Production: UART0 (TX=GPIO43, RX=GPIO44)
             Debug: UART1 (TX=GPIO2, RX=GPIO3)
 
-    config UART_COMMANDS_PORT_NUM
+    config LORACUE_UART_COMMANDS_PORT_NUM
         int "UART port number for commands"
-        depends on UART_COMMANDS_ENABLED
+        depends on LORACUE_UART_COMMANDS_ENABLED
         range 0 2
         default 0
         help

@@ -9,9 +9,13 @@
 // External image declarations
 LV_IMG_DECLARE(nav_up);
 LV_IMG_DECLARE(nav_down);
+LV_IMG_DECLARE(nav_left);
+LV_IMG_DECLARE(nav_right);
 LV_IMG_DECLARE(button_short_press);
 LV_IMG_DECLARE(button_long_press);
 LV_IMG_DECLARE(button_double_press);
+LV_IMG_DECLARE(rotary);
+LV_IMG_DECLARE(rotary_button);
 
 // LVGL styles
 lv_style_t style_title;
@@ -112,8 +116,13 @@ lv_obj_t *ui_create_main_screen_layout(lv_obj_t *parent, const char *mode_text, 
     lv_obj_set_pos(device_label, TEXT_MARGIN_LEFT, BOTTOM_TEXT_Y);
 
     // Menu button bottom right
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    ui_draw_icon_text(parent, &rotary_button, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
+                      UI_ALIGN_RIGHT);
+#else
     ui_draw_icon_text(parent, &button_long_press, "Menu", DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
                       UI_ALIGN_RIGHT);
+#endif
 
     return mode_label;
 }
@@ -239,9 +248,13 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
     lv_obj_set_style_line_width(bottom_line, 1, 0);
 
     // Bottom bar button hints
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    ui_draw_bottom_bar_alpha_plus(menu->screen, &nav_left, "Back", &rotary, "Scroll", &nav_right, "Select");
+#else
     ui_draw_icon_text(menu->screen, &button_short_press, "Next", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
     ui_draw_icon_text(menu->screen, &button_long_press, "Select", 41, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
     ui_draw_icon_text(menu->screen, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+#endif
 }
 
 void ui_menu_set_selected(ui_menu_t *menu, int index)
@@ -411,6 +424,11 @@ void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const cha
             lv_obj_set_pos(nav_down_img, UI_NAV_ARROW_X, UI_MENU_ARROW_Y_DOWN);
         }
     }
+
+    // Bottom bar
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Scroll", NULL, NULL);
+#endif
 
     // Button hints: short press for scroll, double press for back
     ui_draw_icon_text(parent, &button_short_press, "Scroll", 0, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
@@ -668,9 +686,13 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
     lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
     lv_obj_set_style_line_width(bottom_line, 1, 0);
 
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "Back", &rotary, "Scroll", &nav_right, "Select");
+#else
     ui_draw_icon_text(parent, &button_short_press, "Next", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
     ui_draw_icon_text(parent, &button_long_press, "Select", 42, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
     ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+#endif
 }
 
 void ui_radio_select_navigate_down(ui_radio_select_t *radio)
@@ -737,7 +759,11 @@ void ui_confirmation_render(ui_confirmation_t *confirm, lv_obj_t *parent, const 
     lv_obj_set_pos(msg_label, UI_MARGIN_LEFT, 20);
 
     // Bottom bar hint
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, "No", NULL, NULL, &nav_right, "Yes");
+#else
     ui_draw_icon_text(parent, &button_long_press, "Hold 5s", 2, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
+#endif
 }
 
 bool ui_confirmation_check_hold(ui_confirmation_t *confirm, bool button_pressed, uint32_t hold_duration_ms)
@@ -756,3 +782,73 @@ bool ui_confirmation_check_hold(ui_confirmation_t *confirm, bool button_pressed,
     }
     return false;
 }
+
+#if CONFIG_INPUT_HAS_DUAL_BUTTONS
+void ui_draw_bottom_bar_alpha_plus(lv_obj_t *parent, const lv_img_dsc_t *icon_left, const char *text_left,
+                                    const lv_img_dsc_t *icon_center, const char *text_center,
+                                    const lv_img_dsc_t *icon_right, const char *text_right)
+{
+    // Bottom separator line
+    lv_obj_t *line                     = lv_line_create(parent);
+    static lv_point_precise_t points[] = {{0, UI_BOTTOM_BAR_LINE_Y}, {DISPLAY_WIDTH, UI_BOTTOM_BAR_LINE_Y}};
+    lv_line_set_points(line, points, 2);
+    lv_obj_set_style_line_color(line, lv_color_white(), 0);
+    lv_obj_set_style_line_width(line, 1, 0);
+
+    // Left section (0-42px)
+    if (icon_left || text_left) {
+        int x = 2;
+        if (icon_left) {
+            lv_obj_t *img = lv_img_create(parent);
+            lv_img_set_src(img, icon_left);
+            lv_obj_set_pos(img, x, UI_BOTTOM_BAR_ICON_Y);
+            x += icon_left->header.w + 2;
+        }
+        if (text_left) {
+            lv_obj_t *label = lv_label_create(parent);
+            lv_label_set_text(label, text_left);
+            lv_obj_add_style(label, &style_text, 0);
+            lv_obj_set_pos(label, x, UI_BOTTOM_BAR_TEXT_Y);
+        }
+    }
+
+    // Center section (43-85px)
+    if (icon_center || text_center) {
+        int x = 43;
+        if (icon_center) {
+            lv_obj_t *img = lv_img_create(parent);
+            lv_img_set_src(img, icon_center);
+            lv_obj_set_pos(img, x, UI_BOTTOM_BAR_ICON_Y);
+            x += icon_center->header.w + 2;
+        }
+        if (text_center) {
+            lv_obj_t *label = lv_label_create(parent);
+            lv_label_set_text(label, text_center);
+            lv_obj_add_style(label, &style_text, 0);
+            lv_obj_set_pos(label, x, UI_BOTTOM_BAR_TEXT_Y);
+        }
+    }
+
+    // Right section (86-128px, right-aligned)
+    if (icon_right || text_right) {
+        int x = DISPLAY_WIDTH - 2;
+        if (icon_right) {
+            x -= icon_right->header.w;
+            lv_obj_t *img = lv_img_create(parent);
+            lv_img_set_src(img, icon_right);
+            lv_obj_set_pos(img, x, UI_BOTTOM_BAR_ICON_Y);
+            x -= 2;
+        }
+        if (text_right) {
+            // Measure text width for right alignment
+            lv_obj_t *label = lv_label_create(parent);
+            lv_label_set_text(label, text_right);
+            lv_obj_add_style(label, &style_text, 0);
+            lv_obj_update_layout(label);
+            int text_w = lv_obj_get_width(label);
+            x -= text_w;
+            lv_obj_set_pos(label, x, UI_BOTTOM_BAR_TEXT_Y);
+        }
+    }
+}
+#endif

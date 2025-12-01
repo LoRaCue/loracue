@@ -2,42 +2,42 @@ menu "LoRaCue Configuration"
 
     choice LORACUE_MODEL
         prompt "Product Model"
-        default MODEL_LC_ALPHA
+        default LORACUE_MODEL_ALPHA_PLUS
         help
             Select the LoRaCue product model.
             Each model has a specific hardware configuration.
         
-        config MODEL_LC_ALPHA
+        config LORACUE_MODEL_ALPHA
             bool "LC-Alpha (Heltec V3, 1 button)"
             select BOARD_HELTEC_V3
-            select UI_MINI
-            select BUTTON_MODE_SINGLE
+            select LORACUE_UI_COMPACT
+            select LORACUE_BUTTON_MODE_SINGLE
             help
                 Prototype model with Heltec LoRa V3 board.
                 Uses single onboard button (GPIO0).
         
-        config MODEL_LC_ALPHA_PLUS
+        config LORACUE_MODEL_ALPHA_PLUS
             bool "LC-Alpha+ (Heltec V3, 2 buttons)"
             select BOARD_HELTEC_V3
-            select UI_MINI
-            select BUTTON_MODE_DUAL
+            select LORACUE_UI_COMPACT
+            select LORACUE_BUTTON_MODE_DUAL
             help
                 Enhanced prototype with Heltec LoRa V3 board.
                 Uses two separate external buttons (prev/next).
         
-        config MODEL_LC_BETA
+        config LORACUE_MODEL_BETA
             bool "LC-Beta (LilyGO T3-S3, E-paper)"
             select BOARD_LILYGO_T3
-            select UI_MINI
+            select LORACUE_UI_COMPACT
             select EINK_DISPLAY
-            select BUTTON_MODE_DUAL
+            select LORACUE_BUTTON_MODE_DUAL
             help
                 Compact model with LilyGO T3-S3 2.13" E-paper display.
         
-        config MODEL_LC_GAMMA
+        config LORACUE_MODEL_GAMMA
             bool "LC-Gamma (LilyGO T5 Pro, E-paper)"
             select BOARD_LILYGO_T5
-            select UI_RICH
+            select LORACUE_UI_RICH
             select TOUCH_ENABLED
             select EINK_DISPLAY
             help
@@ -47,10 +47,10 @@ menu "LoRaCue Configuration"
 
     config LORACUE_MODEL_NAME
         string
-        default "LC-Alpha" if MODEL_LC_ALPHA
-        default "LC-Alpha+" if MODEL_LC_ALPHA_PLUS
-        default "LC-Beta" if MODEL_LC_BETA
-        default "LC-Gamma" if MODEL_LC_GAMMA
+        default "LC-Alpha" if LORACUE_MODEL_ALPHA
+        default "LC-Alpha+" if LORACUE_MODEL_ALPHA_PLUS
+        default "LC-Beta" if LORACUE_MODEL_BETA
+        default "LC-Gamma" if LORACUE_MODEL_GAMMA
 
     # Board selection (implicit, set by model)
     config BOARD_HELTEC_V3
@@ -69,33 +69,33 @@ menu "LoRaCue Configuration"
         default "lilygo_t5" if BOARD_LILYGO_T5
 
     # UI selection (implicit, set by model)
-    config UI_MINI
+    config LORACUE_UI_COMPACT
         bool
     
-    config UI_RICH
+    config LORACUE_UI_RICH
         bool
 
     # Button configuration
-    config BUTTON_MODE_SINGLE
+    config LORACUE_BUTTON_MODE_SINGLE
         bool
 
-    config BUTTON_MODE_DUAL
+    config LORACUE_BUTTON_MODE_DUAL
         bool
 
-    config BUTTON_GPIO
+    config LORACUE_BUTTON_GPIO
         int "Single button GPIO"
         default 0
-        depends on BUTTON_MODE_SINGLE
+        depends on LORACUE_BUTTON_MODE_SINGLE
 
-    config BUTTON_PREV_GPIO
+    config LORACUE_BUTTON_PREV_GPIO
         int "Previous button GPIO"
         default 12
-        depends on BUTTON_MODE_DUAL
+        depends on LORACUE_BUTTON_MODE_DUAL
 
-    config BUTTON_NEXT_GPIO
+    config LORACUE_BUTTON_NEXT_GPIO
         int "Next button GPIO"
         default 13
-        depends on BUTTON_MODE_DUAL
+        depends on LORACUE_BUTTON_MODE_DUAL
 
     # Display configuration
     config TOUCH_ENABLED

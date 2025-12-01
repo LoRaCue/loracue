@@ -1,4 +1,6 @@
+#include "input_manager.h"
 #include "bsp.h"
+#include "input_manager.h"
 #include "esp_log.h"
 #include "general_config.h"
 #include "lv_port_disp.h"
