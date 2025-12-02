@@ -242,14 +242,14 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
         lv_obj_add_flag(history_labels[i], LV_OBJ_FLAG_HIDDEN);
     }
 
-    // Waiting message - single line at PC MODE text + 23px
+    // Waiting message - single line at PC MODE text + 10px
     waiting_label1 = lv_label_create(parent);
     lv_label_set_text(waiting_label1, "Waiting for commands...");
     lv_obj_set_style_text_color(waiting_label1, lv_color_white(), 0);
     lv_obj_set_style_text_font(waiting_label1, &lv_font_pixolletta_10, 0);
     lv_obj_set_style_text_align(waiting_label1, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(waiting_label1, DISPLAY_WIDTH);
-    lv_obj_set_pos(waiting_label1, 0, 50); // PRESENTER_TEXT_Y (27) + 23
+    lv_obj_set_pos(waiting_label1, 0, 37); // PRESENTER_TEXT_Y (27) + 10
 
     // Subscribe to HID events
     esp_event_loop_handle_t loop = system_events_get_loop();
