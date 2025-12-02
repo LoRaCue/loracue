@@ -82,6 +82,10 @@ static void handle_button(button_state_t *btn, bool pressed, uint32_t now, input
         led_manager_button_feedback(true);
         display_safe_wake();
         power_mgmt_update_activity();
+    } else if (pressed && !btn->long_sent && (now - btn->press_start_ms) >= LONG_PRESS_MS) {
+        post_event(long_evt);
+        btn->long_sent = true;
+        btn->click_count = 0;
     } else if (!pressed && btn->pressed) {
         btn->pressed = false;
         uint32_t duration = now - btn->press_start_ms;
@@ -92,12 +96,6 @@ static void handle_button(button_state_t *btn, bool pressed, uint32_t now, input
         } else if (duration < LONG_PRESS_MS) {
             btn->click_count++;
             btn->last_release_ms = now;
-        }
-    } else if (btn->pressed && !btn->long_sent) {
-        if ((now - btn->press_start_ms) >= LONG_PRESS_MS) {
-            post_event(long_evt);
-            btn->long_sent = true;
-            btn->click_count = 0;
         }
     }
 
