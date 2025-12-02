@@ -24,6 +24,14 @@
 
 static const char *TAG = "CONFIG_WIFI_SERVER";
 
+#define POST_CONTENT_BUFFER_SIZE 16384
+#define COMMAND_BUFFER_SIZE 16512
+#define PATH_BUFFER_SIZE 512
+#define MAX_URI_LENGTH 500
+#define HTTPD_STACK_SIZE 12288
+#define OTA_BUFFER_SIZE 4096
+#define RESTART_DELAY_MS 500
+
 static httpd_handle_t server = NULL;
 static esp_netif_t *ap_netif = NULL;
 static bool server_running   = false;
@@ -49,7 +57,7 @@ static esp_err_t commands_api_handle_get(httpd_req_t *req, const char *command)
 
 static esp_err_t commands_api_handle_post(httpd_req_t *req, const char *command_fmt)
 {
-    char content[16384];
+    char content[POST_CONTENT_BUFFER_SIZE];
     int ret = httpd_req_recv(req, content, sizeof(content) - 1);
     if (ret <= 0) {
         httpd_resp_send_500(req);
@@ -57,7 +65,7 @@ static esp_err_t commands_api_handle_post(httpd_req_t *req, const char *command_
     }
     content[ret] = '\0';
 
-    char command[16512];
+    char command[COMMAND_BUFFER_SIZE];
     snprintf(command, sizeof(command), command_fmt, content);
 
     httpd_resp_set_type(req, "application/json");
@@ -98,7 +106,7 @@ static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
         const char *ext = strrchr(filepath, '.');
         if (!ext || (strcmp(ext, ".html") != 0 && strcmp(ext, ".js") != 0 && strcmp(ext, ".css") != 0 &&
                      strcmp(ext, ".json") != 0)) {
-            char index_path[512];
+            char index_path[PATH_BUFFER_SIZE];
             snprintf(index_path, sizeof(index_path), "%s%sindex.html", filepath,
                      (filepath[strlen(filepath) - 1] == '/') ? "" : "/");
             file = fopen(index_path, "r");
@@ -140,14 +148,14 @@ static esp_err_t serve_static_file(httpd_req_t *req, const char *filepath)
 // HTTP handlers
 static esp_err_t static_handler(httpd_req_t *req)
 {
-    char filepath[512];
+    char filepath[PATH_BUFFER_SIZE];
 
     // If root is requested, serve index.html
     if (strcmp(req->uri, "/") == 0) {
         return serve_static_file(req, "/storage/index.html");
     }
 
-    if (strlen(req->uri) > 500) {
+    if (strlen(req->uri) > MAX_URI_LENGTH) {
         httpd_resp_send_404(req);
         return ESP_FAIL;
     }
@@ -196,7 +204,7 @@ static esp_err_t api_devices_get_handler(httpd_req_t *req)
 
 static esp_err_t api_devices_post_handler(httpd_req_t *req)
 {
-    char content[16384];
+    char content[POST_CONTENT_BUFFER_SIZE];
     int ret = httpd_req_recv(req, content, sizeof(content) - 1);
     if (ret <= 0) {
         httpd_resp_send_500(req);
@@ -228,7 +236,7 @@ static esp_err_t api_devices_post_handler(httpd_req_t *req)
     cJSON_Delete(json);
 
     // Use appropriate command
-    char command[16512];
+    char command[COMMAND_BUFFER_SIZE];
     snprintf(command, sizeof(command), is_update ? "UPDATE_PAIRED_DEVICE %s" : "PAIR_DEVICE %s", content);
 
     httpd_resp_set_type(req, "application/json");
@@ -275,7 +283,7 @@ static esp_err_t api_firmware_upload_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
 
-    uint8_t buffer[4096];
+    uint8_t buffer[OTA_BUFFER_SIZE];
     size_t received = 0;
 
     while (received < content_length) {
@@ -309,7 +317,7 @@ static esp_err_t api_firmware_upload_handler(httpd_req_t *req)
 
     httpd_resp_sendstr(req, "{\"status\":\"success\"}");
 
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(RESTART_DELAY_MS));
     esp_restart();
 
     return ESP_OK;
@@ -340,7 +348,7 @@ static esp_err_t factory_reset_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "application/json");
     httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Factory reset initiated\"}", 52);
 
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(RESTART_DELAY_MS));
     general_config_factory_reset();
     return ESP_OK;
 }
@@ -399,7 +407,7 @@ esp_err_t config_wifi_server_start(void)
     config.server_port      = 80;
     config.max_uri_handlers = 32;
     config.uri_match_fn     = httpd_uri_match_wildcard; // Enable wildcard matching
-    config.stack_size       = 12288;                    // Increase to 12KB for file serving + WiFi operations
+    config.stack_size       = HTTPD_STACK_SIZE;         // Increase to 12KB for file serving + WiFi operations
 
     if (httpd_start(&server, &config) == ESP_OK) {
         // API endpoints first (specific routes)

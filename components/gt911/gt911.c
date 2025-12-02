@@ -4,40 +4,48 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-static const char *TAG = "gt911";
+static const char *TAG                   = "gt911";
 static i2c_master_dev_handle_t gt_handle = NULL;
 static gpio_num_t gt_int_pin;
 static gpio_num_t gt_rst_pin;
 
 #define GT911_REG_STATUS 0x814E
 #define GT911_REG_POINT1 0x814F
+#define GT911_I2C_FREQ_HZ 400000
+#define I2C_TIMEOUT_MS 100
+#define GT911_TOUCH_POINT_MASK 0x0F
+#define GT911_MAX_TOUCH_POINTS 5
+#define GT911_RESET_DELAY_MS 10
+#define GT911_RESET_HOLD_MS 100
 
-static esp_err_t gt911_write_reg(uint16_t reg, uint8_t *data, size_t len)
+static esp_err_t gt911_write_reg(uint16_t reg, const uint8_t *data, size_t len)
 {
-    if (!gt_handle) return ESP_ERR_INVALID_STATE;
+    if (!gt_handle)
+        return ESP_ERR_INVALID_STATE;
     uint8_t buf[len + 2];
     buf[0] = reg >> 8;
     buf[1] = reg & 0xFF;
     memcpy(&buf[2], data, len);
-    return i2c_master_transmit(gt_handle, buf, len + 2, 100);
+    return i2c_master_transmit(gt_handle, buf, len + 2, I2C_TIMEOUT_MS);
 }
 
 static esp_err_t gt911_read_reg(uint16_t reg, uint8_t *data, size_t len)
 {
-    if (!gt_handle) return ESP_ERR_INVALID_STATE;
+    if (!gt_handle)
+        return ESP_ERR_INVALID_STATE;
     uint8_t reg_buf[2] = {reg >> 8, reg & 0xFF};
-    return i2c_master_transmit_receive(gt_handle, reg_buf, 2, data, len, 100);
+    return i2c_master_transmit_receive(gt_handle, reg_buf, 2, data, len, I2C_TIMEOUT_MS);
 }
 
 esp_err_t gt911_init(gpio_num_t int_pin, gpio_num_t rst_pin)
 {
-    gt_int_pin  = int_pin;
-    gt_rst_pin  = rst_pin;
+    gt_int_pin = int_pin;
+    gt_rst_pin = rst_pin;
 
     ESP_LOGI(TAG, "Initializing GT911 touch controller");
 
     // Add device to I2C bus
-    esp_err_t ret = bsp_i2c_add_device(GT911_ADDR, 400000, &gt_handle); // Default to 400kHz
+    esp_err_t ret = bsp_i2c_add_device(GT911_ADDR, GT911_I2C_FREQ_HZ, &gt_handle); // Default to 400kHz
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to add GT911 I2C device: %s", esp_err_to_name(ret));
         return ret;
@@ -47,11 +55,11 @@ esp_err_t gt911_init(gpio_num_t int_pin, gpio_num_t rst_pin)
     // Reset sequence
     gpio_set_level(gt_rst_pin, 0);
     gpio_set_level(gt_int_pin, 0);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(GT911_RESET_DELAY_MS));
     gpio_set_level(gt_int_pin, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(GT911_RESET_DELAY_MS));
     gpio_set_level(gt_rst_pin, 1);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(GT911_RESET_HOLD_MS));
 
     return ESP_OK;
 }
@@ -63,8 +71,8 @@ esp_err_t gt911_read_touch(gt911_touch_point_t *point, uint8_t *num_points)
     if (ret != ESP_OK)
         return ret;
 
-    *num_points = status & 0x0F;
-    if (*num_points == 0 || *num_points > 5) {
+    *num_points = status & GT911_TOUCH_POINT_MASK;
+    if (*num_points == 0 || *num_points > GT911_MAX_TOUCH_POINTS) {
         // Clear status
         uint8_t clear = 0;
         gt911_write_reg(GT911_REG_STATUS, &clear, 1);

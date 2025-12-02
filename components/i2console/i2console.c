@@ -24,6 +24,10 @@ static const char *TAG = "i2console";
 #define REG_RX_AVAIL 0x12
 #define REG_DATA_START 0x20
 #define REG_VERSION_STRING 0x04
+#define I2CONSOLE_I2C_FREQ_HZ 400000
+#define I2C_TIMEOUT_MS 100
+#define I2CONSOLE_TASK_STACK_SIZE 2048
+#define I2CONSOLE_TASK_PRIORITY 5
 
 // Component state
 static struct {
@@ -48,7 +52,7 @@ typedef struct {
  */
 static esp_err_t i2console_read_reg(uint8_t reg, uint8_t *data, size_t len)
 {
-    return i2c_master_transmit_receive(i2console.dev_handle, &reg, 1, data, len, 100);
+    return i2c_master_transmit_receive(i2console.dev_handle, &reg, 1, data, len, I2C_TIMEOUT_MS);
 }
 
 /**
@@ -59,7 +63,7 @@ static esp_err_t i2console_write_data(const uint8_t *data, size_t len)
     uint8_t tx_buffer[len + 1];
     tx_buffer[0] = REG_DATA_START;
     memcpy(&tx_buffer[1], data, len);
-    return i2c_master_transmit(i2console.dev_handle, tx_buffer, len + 1, 100);
+    return i2c_master_transmit(i2console.dev_handle, tx_buffer, len + 1, I2C_TIMEOUT_MS);
 }
 
 /**
@@ -118,7 +122,7 @@ esp_err_t i2console_init(uint8_t addr)
     i2console.addr = addr;
 
     // Add I2Console device to BSP I2C bus
-    esp_err_t ret = bsp_i2c_add_device(addr, 400000, &i2console.dev_handle);
+    esp_err_t ret = bsp_i2c_add_device(addr, I2CONSOLE_I2C_FREQ_HZ, &i2console.dev_handle);
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "Failed to add I2Console device: %s", esp_err_to_name(ret));
         return ret;
@@ -141,7 +145,7 @@ esp_err_t i2console_init(uint8_t addr)
     }
 
     // Start TX task
-    xTaskCreate(i2console_tx_task, "i2console_tx", 2048, NULL, 5, NULL);
+    xTaskCreate(i2console_tx_task, "i2console_tx", I2CONSOLE_TASK_STACK_SIZE, NULL, I2CONSOLE_TASK_PRIORITY, NULL);
 
     // Register as log output
     esp_log_set_vprintf(i2console_vprintf);
