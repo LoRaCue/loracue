@@ -129,14 +129,20 @@ static void handle_encoder(uint32_t now)
 
     // Encoder button (handled separately)
     bool btn_pressed = !gpio_get_level(bsp_get_encoder_btn_gpio());
+    static bool long_sent = false;
+    
     if (btn_pressed && !s_encoder_btn_pressed) {
         s_encoder_btn_pressed = true;
         s_encoder_btn_start_ms = now;
+        long_sent = false;
+    } else if (btn_pressed && !long_sent && (now - s_encoder_btn_start_ms) >= LONG_PRESS_MS) {
+        post_event(INPUT_EVENT_ENCODER_BUTTON_LONG);
+        long_sent = true;
     } else if (!btn_pressed && s_encoder_btn_pressed) {
         s_encoder_btn_pressed = false;
         uint32_t duration = now - s_encoder_btn_start_ms;
-        if (duration >= DEBOUNCE_MS) {
-            post_event(duration >= LONG_PRESS_MS ? INPUT_EVENT_ENCODER_BUTTON_LONG : INPUT_EVENT_ENCODER_BUTTON_SHORT);
+        if (!long_sent && duration >= DEBOUNCE_MS && duration < LONG_PRESS_MS) {
+            post_event(INPUT_EVENT_ENCODER_BUTTON_SHORT);
         }
     }
 }
