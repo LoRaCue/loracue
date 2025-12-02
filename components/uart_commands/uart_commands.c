@@ -5,7 +5,7 @@
 
 #include "uart_commands.h"
 
-#ifdef CONFIG_UART_COMMANDS_ENABLED
+#ifdef CONFIG_LORACUE_UART_COMMANDS_ENABLED
 
 #include "bsp.h"
 #include "commands.h"
@@ -18,8 +18,8 @@
 static const char *TAG = "UART_CMD";
 
 // UART configuration from Kconfig
-#ifdef CONFIG_UART_COMMANDS_PORT_NUM
-#define UART_PORT_NUM CONFIG_UART_COMMANDS_PORT_NUM
+#ifdef CONFIG_LORACUE_UART_COMMANDS_PORT_NUM
+#define UART_PORT_NUM CONFIG_LORACUE_UART_COMMANDS_PORT_NUM
 #else
 #define UART_PORT_NUM 1 // Default to UART1 if not configured
 #endif
@@ -233,7 +233,7 @@ esp_err_t uart_commands_stop(void)
     return ESP_OK;
 }
 
-#else // CONFIG_UART_COMMANDS_ENABLED not defined
+#else // CONFIG_LORACUE_UART_COMMANDS_ENABLED not defined
 
 // Stub implementations when UART commands are disabled
 esp_err_t uart_commands_init(void)
@@ -251,4 +251,4 @@ esp_err_t uart_commands_stop(void)
     return ESP_OK;
 }
 
-#endif // CONFIG_UART_COMMANDS_ENABLED
+#endif // CONFIG_LORACUE_UART_COMMANDS_ENABLED

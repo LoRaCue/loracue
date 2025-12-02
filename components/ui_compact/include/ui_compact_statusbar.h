@@ -25,4 +25,4 @@ typedef struct {
 } statusbar_data_t;
 
 lv_obj_t *ui_compact_statusbar_create(lv_obj_t *parent);
-void ui_compact_statusbar_update(lv_obj_t *statusbar, const statusbar_data_t *data);
+void ui_compact_statusbar_update(const lv_obj_t *statusbar, const statusbar_data_t *data);

@@ -1,7 +1,7 @@
 #include "ui_compact.h"
 #include "ble.h"
 #include "bsp.h"
-#include "button_manager.h"
+#include "input_manager.h"
 #include "esp_log.h"
 #include "general_config.h"
 #include "lora_protocol.h"
@@ -48,12 +48,12 @@ void ui_compact_get_status(statusbar_data_t *status)
     status->device_name = cached_config.device_name;
 }
 
-static void button_event_handler(button_event_type_t event, void *arg)
+static void input_event_handler(input_event_t event)
 {
-    ESP_LOGD(TAG, "Button event received: %d on screen %d", event, current_screen_type);
+    ESP_LOGD(TAG, "Input event received: %d on screen %d", event, current_screen_type);
 
     ui_lvgl_lock();
-    ui_navigator_handle_input(event);
+    ui_navigator_handle_input_event(event);
     ui_lvgl_unlock();
 }
 
@@ -160,8 +160,8 @@ esp_err_t ui_compact_show_main_screen(void)
 
 esp_err_t ui_compact_register_button_callback(void)
 {
-    button_manager_register_callback(button_event_handler, NULL);
-    ESP_LOGI(TAG, "Button callback registered");
+    input_manager_register_callback(input_event_handler);
+    ESP_LOGI(TAG, "Input callback registered");
     return ESP_OK;
 }
 

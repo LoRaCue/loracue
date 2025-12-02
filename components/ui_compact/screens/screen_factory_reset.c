@@ -1,4 +1,7 @@
+#include "input_manager.h"
+#include "ui_strings.h"
 #include "esp_log.h"
+#include "input_manager.h"
 #include "esp_system.h"
 #include "lvgl.h"
 #include "nvs_flash.h"
@@ -37,20 +40,33 @@ void screen_factory_reset_reset(void)
     }
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_DOUBLE) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         screen_factory_reset_check_hold(true);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+            break;
+        case INPUT_EVENT_NEXT_SHORT:
+            screen_factory_reset_check_hold(true);
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 static ui_screen_t factory_reset_screen = {
-    .type         = UI_SCREEN_FACTORY_RESET,
-    .create       = screen_factory_reset_create,
-    .destroy      = screen_factory_reset_reset,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_FACTORY_RESET,
+    .create             = screen_factory_reset_create,
+    .destroy            = screen_factory_reset_reset,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_factory_reset_get_interface(void)

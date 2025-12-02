@@ -1,4 +1,7 @@
+#include "input_manager.h"
+#include "ui_strings.h"
 #include "bsp.h"
+#include "input_manager.h"
 #include "esp_log.h"
 #include "general_config.h"
 #include "lv_port_disp.h"
@@ -85,18 +88,18 @@ bool screen_contrast_is_edit_mode(void)
     return screen ? screen->edit_mode : false;
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
+#if CONFIG_LORACUE_MODEL_ALPHA
     if (screen_contrast_is_edit_mode()) {
-        if (event == BUTTON_EVENT_SHORT) {
+        if (event == INPUT_EVENT_NEXT_SHORT) {
             screen_contrast_navigate_down();
             ui_navigator_switch_to(UI_SCREEN_CONTRAST);
-        } else if (event == BUTTON_EVENT_DOUBLE) {
+        } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
             screen_contrast_navigate_up();
             ui_navigator_switch_to(UI_SCREEN_CONTRAST);
-        } else if (event == BUTTON_EVENT_LONG) {
+        } else if (event == INPUT_EVENT_NEXT_LONG) {
             screen_contrast_select();
-            // If we exited edit mode, go back to menu
             if (!screen_contrast_is_edit_mode()) {
                 ui_navigator_switch_to(UI_SCREEN_MENU);
             } else {
@@ -104,13 +107,51 @@ static void handle_input(button_event_type_t event)
             }
         }
     } else {
-        if (event == BUTTON_EVENT_SHORT) {
+        if (event == INPUT_EVENT_NEXT_SHORT) {
             ui_navigator_switch_to(UI_SCREEN_MENU);
-        } else if (event == BUTTON_EVENT_LONG) {
+        } else if (event == INPUT_EVENT_NEXT_LONG) {
             screen_contrast_select();
             ui_navigator_switch_to(UI_SCREEN_CONTRAST);
         }
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    if (screen_contrast_is_edit_mode()) {
+        switch (event) {
+            case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+                screen->edit_mode = false;
+                ui_navigator_switch_to(UI_SCREEN_MENU);
+                break;
+            case INPUT_EVENT_ENCODER_CW:
+                screen_contrast_navigate_down();
+                ui_navigator_switch_to(UI_SCREEN_CONTRAST);
+                break;
+            case INPUT_EVENT_ENCODER_CCW:
+                screen_contrast_navigate_up();
+                ui_navigator_switch_to(UI_SCREEN_CONTRAST);
+                break;
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
+                screen_contrast_select();
+                ui_navigator_switch_to(UI_SCREEN_MENU);
+                break;
+            default:
+                break;
+        }
+    } else {
+        switch (event) {
+            case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+                ui_navigator_switch_to(UI_SCREEN_MENU);
+                break;
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
+                screen_contrast_select();
+                ui_navigator_switch_to(UI_SCREEN_CONTRAST);
+                break;
+            default:
+                break;
+        }
+    }
+#endif
 }
 
 static void on_screen_enter(void)
@@ -126,8 +167,8 @@ static void on_screen_exit(void)
 }
 
 static ui_screen_t screen_interface = {
-    .create      = screen_contrast_create,
-    .handle_input = handle_input,
+    .create             = screen_contrast_create,
+    .handle_input_event = handle_input_event,
     .on_enter    = on_screen_enter,
     .on_exit     = on_screen_exit,
 };

@@ -1,4 +1,7 @@
+#include "input_manager.h"
+#include "ui_strings.h"
 #include "esp_log.h"
+#include "input_manager.h"
 #include "lora_driver.h"
 #include "lvgl.h"
 #include "ui_components.h"
@@ -77,26 +80,68 @@ bool screen_lora_txpower_is_edit_mode(void)
 #include "ui_navigator.h"
 #include "ui_screen_interface.h"
 
-static void screen_lora_txpower_handle_input(button_event_type_t event)
+static void screen_lora_txpower_handle_input_event(input_event_t event)
 {
+#if CONFIG_LORACUE_MODEL_ALPHA
     bool is_edit = is_editing;
-
-    if (event == BUTTON_EVENT_SHORT && is_edit) {
-        screen_lora_txpower_navigate_down(); // Increment
+    if (event == INPUT_EVENT_NEXT_SHORT && is_edit) {
+        screen_lora_txpower_navigate_down();
         ui_navigator_switch_to(UI_SCREEN_LORA_TXPOWER);
-    } else if (event == BUTTON_EVENT_DOUBLE && is_edit) {
-        screen_lora_txpower_navigate_up(); // Decrement
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE && is_edit) {
+        screen_lora_txpower_navigate_up();
         ui_navigator_switch_to(UI_SCREEN_LORA_TXPOWER);
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         screen_lora_txpower_select();
         if (!is_editing) {
             ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
         } else {
             ui_navigator_switch_to(UI_SCREEN_LORA_TXPOWER);
         }
-    } else if (event == BUTTON_EVENT_DOUBLE && !is_edit) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE && !is_edit) {
         ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    bool is_edit = is_editing;
+    if (is_edit) {
+        switch (event) {
+            case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+                if (input) {
+                    input->edit_mode = false;
+                }
+                is_editing = false;
+                ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+                break;
+            case INPUT_EVENT_ENCODER_CW:
+                screen_lora_txpower_navigate_down();
+                ui_navigator_switch_to(UI_SCREEN_LORA_TXPOWER);
+                break;
+            case INPUT_EVENT_ENCODER_CCW:
+                screen_lora_txpower_navigate_up();
+                ui_navigator_switch_to(UI_SCREEN_LORA_TXPOWER);
+                break;
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
+                screen_lora_txpower_select();
+                ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+                break;
+            default:
+                break;
+        }
+    } else {
+        switch (event) {
+            case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+                ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+                break;
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
+                screen_lora_txpower_select();
+                ui_navigator_switch_to(UI_SCREEN_LORA_TXPOWER);
+                break;
+            default:
+                break;
+        }
+    }
+#endif
 }
 
 void screen_lora_txpower_reset(void)
@@ -110,11 +155,11 @@ void screen_lora_txpower_reset(void)
 
 ui_screen_t *screen_lora_txpower_get_interface(void)
 {
-    static ui_screen_t screen = {.type         = UI_SCREEN_LORA_TXPOWER,
-                                 .create       = screen_lora_txpower_create,
-                                 .destroy      = screen_lora_txpower_reset,
-                                 .handle_input = screen_lora_txpower_handle_input,
-                                 .on_enter     = screen_lora_txpower_on_enter,
+    static ui_screen_t screen = {.type               = UI_SCREEN_LORA_TXPOWER,
+                                 .create             = screen_lora_txpower_create,
+                                 .destroy            = screen_lora_txpower_reset,
+                                 .handle_input_event = screen_lora_txpower_handle_input_event,
+                                 .on_enter           = screen_lora_txpower_on_enter,
                                  .on_exit      = NULL};
     return &screen;
 }

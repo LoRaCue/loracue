@@ -1,4 +1,7 @@
+#include "input_manager.h"
+#include "ui_strings.h"
 #include "esp_log.h"
+#include "input_manager.h"
 #include "lora_bands.h"
 #include "lora_driver.h"
 #include "lvgl.h"
@@ -112,18 +115,42 @@ void screen_lora_presets_select(void)
 #include "ui_navigator.h"
 #include "ui_screen_interface.h"
 
-static void screen_lora_presets_handle_input(button_event_type_t event)
+static void screen_lora_presets_handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         screen_lora_presets_navigate_down();
         ui_navigator_switch_to(UI_SCREEN_LORA_PRESETS);
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         screen_lora_presets_navigate_up();
         ui_navigator_switch_to(UI_SCREEN_LORA_PRESETS);
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         screen_lora_presets_select();
         ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+            break;
+        case INPUT_EVENT_ENCODER_CW:
+            screen_lora_presets_navigate_down();
+            ui_navigator_switch_to(UI_SCREEN_LORA_PRESETS);
+            break;
+        case INPUT_EVENT_ENCODER_CCW:
+            screen_lora_presets_navigate_up();
+            ui_navigator_switch_to(UI_SCREEN_LORA_PRESETS);
+            break;
+        case INPUT_EVENT_NEXT_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_LONG:
+            screen_lora_presets_select();
+            ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 void screen_lora_presets_reset(void)
@@ -137,11 +164,11 @@ void screen_lora_presets_reset(void)
 
 ui_screen_t *screen_lora_presets_get_interface(void)
 {
-    static ui_screen_t screen = {.type         = UI_SCREEN_LORA_PRESETS,
-                                 .create       = screen_lora_presets_create,
-                                 .destroy      = screen_lora_presets_reset,
-                                 .handle_input = screen_lora_presets_handle_input,
-                                 .on_enter     = screen_lora_presets_on_enter,
-                                 .on_exit      = NULL};
+    static ui_screen_t screen = {.type               = UI_SCREEN_LORA_PRESETS,
+                                 .create             = screen_lora_presets_create,
+                                 .destroy            = screen_lora_presets_reset,
+                                 .handle_input_event = screen_lora_presets_handle_input_event,
+                                 .on_enter           = screen_lora_presets_on_enter,
+                                 .on_exit            = NULL};
     return &screen;
 }

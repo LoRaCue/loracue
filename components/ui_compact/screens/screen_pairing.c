@@ -1,4 +1,7 @@
+#include "input_manager.h"
+#include "ui_strings.h"
 #include "esp_log.h"
+#include "input_manager.h"
 #include "lvgl.h"
 #include "screens.h"
 #include "ui_compact_fonts.h"
@@ -10,6 +13,9 @@
 static const char *TAG = "pairing";
 
 LV_IMG_DECLARE(button_double_press);
+LV_IMG_DECLARE(nav_left);
+LV_IMG_DECLARE(nav_right);
+LV_IMG_DECLARE(rotary);
 
 static lv_obj_t *status_label = NULL;
 static lv_obj_t *msg1         = NULL;
@@ -91,7 +97,11 @@ void screen_pairing_create(lv_obj_t *parent)
     }
 
     ui_create_footer(parent);
-    ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_BACK, &rotary, UI_STR_SCROLL, &nav_right, UI_STR_SELECT);
+#else
+    ui_draw_icon_text(parent, &button_double_press, UI_STR_BACK, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+#endif
 }
 
 void screen_pairing_reset(void)
@@ -102,18 +112,24 @@ void screen_pairing_reset(void)
     msg2         = NULL;
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_DOUBLE) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    if (event == INPUT_EVENT_PREV_SHORT) {
+        ui_navigator_switch_to(UI_SCREEN_MENU);
+    }
+#endif
 }
 
 static ui_screen_t pairing_screen = {
-    .type         = UI_SCREEN_PAIRING,
-    .create       = screen_pairing_create,
-    .destroy      = screen_pairing_reset,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_PAIRING,
+    .create             = screen_pairing_create,
+    .destroy            = screen_pairing_reset,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_pairing_get_interface(void)

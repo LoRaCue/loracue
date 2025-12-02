@@ -1,4 +1,7 @@
+#include "input_manager.h"
+#include "ui_strings.h"
 #include "ble.h"
+#include "input_manager.h"
 #include "esp_log.h"
 #include "general_config.h"
 #include "lvgl.h"
@@ -46,6 +49,23 @@ void screen_bluetooth_navigate_down(void)
     ui_menu_update(menu, items);
 }
 
+void screen_bluetooth_navigate_up(void)
+{
+    if (!menu)
+        return;
+    menu->selected_index = (menu->selected_index + 1) % 2; // Only 2 items, so up = down
+
+    general_config_t config;
+    general_config_get(&config);
+
+    static char bt_text[32], pair_text[32];
+    snprintf(bt_text, sizeof(bt_text), "Bluetooth: %s", config.bluetooth_enabled ? "ON" : "OFF");
+    snprintf(pair_text, sizeof(pair_text), "Pairing: %s", config.bluetooth_pairing_enabled ? "ON" : "OFF");
+
+    const char *items[] = {bt_text, pair_text};
+    ui_menu_update(menu, items);
+}
+
 void screen_bluetooth_select(void)
 {
     if (!menu)
@@ -73,64 +93,45 @@ void screen_bluetooth_reset(void)
     }
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         screen_bluetooth_navigate_down();
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         screen_bluetooth_select();
-        // Re-create screen to update UI
-        // In the new system, we might need to trigger a redraw or re-create
-        // Since we are inside the screen's input handler, we can't easily "reload"
-        // without exiting and entering.
-        // But wait, the legacy logic did:
-        // lv_obj_t *screen = lv_obj_create(NULL);
-        // screen_bluetooth_create(screen);
-        // lv_screen_load(screen);
-
-        // We can achieve this by calling create again on the current parent?
-        // No, we don't have reference to parent.
-
-        // Better approach: Update the menu items directly.
-        // screen_bluetooth_select updates the config.
-        // We should update the menu text.
-
-        // Actually, screen_bluetooth_navigate_down also updates the text!
-        // Let's check screen_bluetooth_select implementation.
-        // It toggles config but doesn't update menu text.
-
-        // We should call a refresh function.
-        // screen_bluetooth_navigate_down updates the menu items.
-        // Let's reuse that logic or create a refresh function.
-
-        // For now, let's just call navigate_down which updates the text,
-        // but that also changes selection.
-
-        // Let's modify screen_bluetooth_select to update the menu.
-        // Or just call create again? No.
-
-        // Let's look at screen_bluetooth_navigate_down. It does:
-        // menu->selected_index = ...
-        // ui_menu_update(menu, items);
-
-        // We can just call ui_menu_update with new items.
-        // But we need to construct the items string again.
-
-        // Let's just trigger a reload via navigator?
-        // ui_navigator_switch_to(UI_SCREEN_BLUETOOTH);
-        // This works because switch_to destroys and creates.
         ui_navigator_switch_to(UI_SCREEN_BLUETOOTH);
-
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+            break;
+        case INPUT_EVENT_ENCODER_CW:
+        case INPUT_EVENT_NEXT_SHORT:
+            screen_bluetooth_navigate_down();
+            break;
+        case INPUT_EVENT_ENCODER_CCW:
+            screen_bluetooth_navigate_up();
+            break;
+        case INPUT_EVENT_ENCODER_BUTTON_LONG:
+            screen_bluetooth_select();
+            ui_navigator_switch_to(UI_SCREEN_BLUETOOTH);
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 static ui_screen_t bluetooth_screen = {
-    .type         = UI_SCREEN_BLUETOOTH,
-    .create       = screen_bluetooth_create,
-    .destroy      = screen_bluetooth_reset,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_BLUETOOTH,
+    .create             = screen_bluetooth_create,
+    .destroy            = screen_bluetooth_reset,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_bluetooth_get_interface(void)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "button_manager.h"
+#include "input_manager.h"
 #include "lvgl.h"
 #include "ui_compact.h"
 
@@ -35,11 +35,11 @@ struct ui_screen_t {
     void (*destroy)(void);
 
     /**
-     * @brief Handle button input events
+     * @brief Handle input events
      *
-     * @param event The button event type
+     * @param event The input event type
      */
-    void (*handle_input)(button_event_type_t event);
+    void (*handle_input_event)(input_event_t event);
 
     /**
      * @brief Called when the screen becomes active (after creation/transition)

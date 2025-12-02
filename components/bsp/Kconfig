@@ -1,6 +1,6 @@
 menu "Board Support Package (BSP)"
 
-    config BSP_I2C_CLOCK_SPEED_HZ
+    config LORACUE_BSP_I2C_CLOCK_SPEED_HZ
         int "I2C Clock Speed (Hz)"
         default 400000
         range 100000 1000000

@@ -1,5 +1,6 @@
 #include "ui_navigator.h"
 #include "esp_log.h"
+#include "input_manager.h"
 #include "ui_lvgl.h"
 #include <string.h>
 
@@ -116,11 +117,11 @@ ui_screen_type_t ui_navigator_get_current_screen_type(void)
     return current_type;
 }
 
-void ui_navigator_handle_input(button_event_type_t event)
+void ui_navigator_handle_input_event(input_event_t event)
 {
-    if (current_screen_impl && current_screen_impl->handle_input) {
-        current_screen_impl->handle_input(event);
+    if (current_screen_impl && current_screen_impl->handle_input_event) {
+        current_screen_impl->handle_input_event(event);
     } else {
-        ESP_LOGD(TAG, "No input handler for current screen");
+        ESP_LOGD(TAG, "No input event handler for current screen");
     }
 }

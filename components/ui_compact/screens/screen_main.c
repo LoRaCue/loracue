@@ -1,5 +1,7 @@
 #include "esp_log.h"
+#include "ui_strings.h"
 #include "general_config.h"
+#include "input_manager.h"
 #include "lvgl.h"
 #include "presenter_mode_manager.h"
 #include "screens.h"
@@ -18,6 +20,7 @@ static lv_group_t *group    = NULL;
 LV_IMG_DECLARE(button_short_press);
 LV_IMG_DECLARE(button_double_press);
 LV_IMG_DECLARE(button_long_press);
+LV_IMG_DECLARE(rotary_button_long);
 
 void screen_main_create(lv_obj_t *parent, const statusbar_data_t *initial_status)
 {
@@ -42,7 +45,7 @@ void screen_main_create(lv_obj_t *parent, const statusbar_data_t *initial_status
 
     // Create main screen layout (mode label, bottom bar with device name and menu)
     const char *device_name = (initial_status && initial_status->device_name) ? initial_status->device_name : "LC-????";
-    mode_label              = ui_create_main_screen_layout(parent, "PRESENTER", device_name);
+    mode_label              = ui_create_main_screen_layout(parent, UI_STR_PRESENTER, device_name);
     ESP_LOGI(TAG, "Device name: %s", device_name);
 
     // Button hints: Double-press icon + "PREV" on left
@@ -115,66 +118,49 @@ static void screen_main_destroy(void)
     mode_label = NULL;
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    // Logic from ui_compact.c button_event_handler for UI_SCREEN_MAIN
-
-    // We need to check device mode.
-    // Since we don't have direct access to config here, we might need a helper
-    // or assume we are in the mode the screen was created for.
-    // However, the input handling logic depends on the mode (Presenter vs PC).
-
-    // For now, let's assume we can get the config or delegate.
-    // But wait, ui_compact.c logic was:
-    // if (config.device_mode == DEVICE_MODE_PRESENTER) { ... }
-
-    // We should probably move the input handling logic here.
-    // We need access to general_config_get.
-
-    // Let's add includes for config if needed, or just implement the navigation logic.
-    // The navigation logic for Main is:
-    // Long press -> Menu
-    // Short/Double -> Presenter mode manager (if in presenter mode)
-
-    // We need to include "general_config.h" and "presenter_mode_manager.h"
-
     general_config_t config;
     general_config_get(&config);
 
+#if CONFIG_LORACUE_MODEL_ALPHA
     if (config.device_mode == DEVICE_MODE_PRESENTER) {
-        if (event == BUTTON_EVENT_SHORT || event == BUTTON_EVENT_DOUBLE) {
-            // Forward to presenter mode manager for HID commands
-            // We need to unlock LVGL if we are going to call external things that might block or use other locks?
-            // ui_compact.c did ui_lvgl_unlock() before calling presenter_mode_manager_handle_button(event).
-            // But ui_navigator_handle_input is called with lock held?
-            // No, ui_navigator_handle_input is called from ui_compact.c which holds the lock?
-            // Wait, button_event_handler in ui_compact.c holds the lock.
-            // So we are inside the lock.
-
-            // If presenter_mode_manager_handle_button needs to be called without lock, we have a problem
-            // if we are strictly inside the navigator's handle_input which is called under lock.
-            // However, looking at ui_compact.c, it unlocks before calling presenter_mode_manager.
-
-            // We might need to handle this carefully.
-            // For now, let's assume we can call it.
-            presenter_mode_manager_handle_button(event);
-        } else if (event == BUTTON_EVENT_LONG) {
-            // Long press -> go to menu
+        if (event == INPUT_EVENT_NEXT_SHORT || event == INPUT_EVENT_NEXT_DOUBLE) {
+            presenter_mode_manager_handle_input(event);
+        } else if (event == INPUT_EVENT_NEXT_LONG) {
             ui_navigator_switch_to(UI_SCREEN_MENU);
         }
     } else {
-        // PC mode: long press -> go to menu
-        if (event == BUTTON_EVENT_LONG) {
+        if (event == INPUT_EVENT_NEXT_LONG) {
             ui_navigator_switch_to(UI_SCREEN_MENU);
         }
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    if (config.device_mode == DEVICE_MODE_PRESENTER) {
+        switch (event) {
+            case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_NEXT_SHORT:
+                presenter_mode_manager_handle_input(event);
+                break;
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
+                ui_navigator_switch_to(UI_SCREEN_MENU);
+                break;
+            default:
+                break;
+        }
+    } else {
+        if (event == INPUT_EVENT_ENCODER_BUTTON_LONG) {
+            ui_navigator_switch_to(UI_SCREEN_MENU);
+        }
+    }
+#endif
 }
 
 static ui_screen_t main_screen = {
-    .type         = UI_SCREEN_MAIN,
-    .create       = screen_main_create_wrapper,
-    .destroy      = screen_main_destroy,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_MAIN,
+    .create             = screen_main_create_wrapper,
+    .destroy            = screen_main_destroy,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_main_get_interface(void)

@@ -1,4 +1,5 @@
 #include "lvgl.h"
+#include "ui_strings.h"
 #include "screens.h"
 #include "ui_compact_fonts.h"
 #include "ui_navigator.h"
@@ -26,9 +27,10 @@ void screen_boot_create(lv_obj_t *parent)
     lv_obj_set_width(version, 128);
     lv_obj_set_pos(version, 0, 64 - 10); // Full width, bottom of screen
 }
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
     // Boot screen might not handle input, or could skip boot on click
+    (void)event;
 }
 
 static void screen_boot_reset(void)
@@ -37,10 +39,10 @@ static void screen_boot_reset(void)
 }
 
 static ui_screen_t boot_screen = {
-    .type         = UI_SCREEN_BOOT,
-    .create       = screen_boot_create,
-    .destroy      = screen_boot_reset,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_BOOT,
+    .create             = screen_boot_create,
+    .destroy            = screen_boot_reset,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_boot_get_interface(void)

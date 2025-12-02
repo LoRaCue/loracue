@@ -133,6 +133,36 @@ gpio_num_t bsp_get_led_gpio(void);
 bool bsp_read_button(bsp_button_t button);
 
 /**
+ * @brief Get encoder CLK GPIO number (Alpha+ only)
+ * @return GPIO number for encoder CLK pin
+ */
+gpio_num_t bsp_get_encoder_clk_gpio(void);
+
+/**
+ * @brief Get encoder DT GPIO number (Alpha+ only)
+ * @return GPIO number for encoder DT pin
+ */
+gpio_num_t bsp_get_encoder_dt_gpio(void);
+
+/**
+ * @brief Get encoder button GPIO number (Alpha+ only)
+ * @return GPIO number for encoder button pin
+ */
+gpio_num_t bsp_get_encoder_btn_gpio(void);
+
+/**
+ * @brief Get PREV button GPIO number (Alpha+ only)
+ * @return GPIO number for PREV button pin
+ */
+gpio_num_t bsp_get_button_prev_gpio(void);
+
+/**
+ * @brief Get NEXT button GPIO number
+ * @return GPIO number for NEXT button pin
+ */
+gpio_num_t bsp_get_button_next_gpio(void);
+
+/**
  * @brief Read battery voltage
  *
  * Enables voltage divider, takes multiple ADC readings, and calculates battery voltage.

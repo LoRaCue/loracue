@@ -1,4 +1,7 @@
+#include "input_manager.h"
+#include "ui_strings.h"
 #include "esp_log.h"
+#include "input_manager.h"
 #include "lora_bands.h"
 #include "lora_driver.h"
 #include "lvgl.h"
@@ -109,20 +112,42 @@ bool screen_lora_band_is_edit_mode(void)
 #include "ui_navigator.h"
 #include "ui_screen_interface.h"
 
-static void screen_lora_band_handle_input(button_event_type_t event)
+static void screen_lora_band_handle_input_event(input_event_t event)
 {
-    // Band screen is always in "edit mode" (navigable)
-
-    if (event == BUTTON_EVENT_SHORT) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_SHORT) {
         screen_lora_band_navigate_down();
         ui_navigator_switch_to(UI_SCREEN_LORA_BAND);
-    } else if (event == BUTTON_EVENT_DOUBLE) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE) {
         screen_lora_band_navigate_up();
         ui_navigator_switch_to(UI_SCREEN_LORA_BAND);
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         screen_lora_band_select();
         ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    switch (event) {
+        case INPUT_EVENT_PREV_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+            ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+            break;
+        case INPUT_EVENT_ENCODER_CW:
+            screen_lora_band_navigate_down();
+            ui_navigator_switch_to(UI_SCREEN_LORA_BAND);
+            break;
+        case INPUT_EVENT_ENCODER_CCW:
+            screen_lora_band_navigate_up();
+            ui_navigator_switch_to(UI_SCREEN_LORA_BAND);
+            break;
+        case INPUT_EVENT_NEXT_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_LONG:
+            screen_lora_band_select();
+            ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+            break;
+        default:
+            break;
+    }
+#endif
 }
 
 void screen_lora_band_reset(void)
@@ -143,10 +168,10 @@ void screen_lora_band_reset(void)
 
 ui_screen_t *screen_lora_band_get_interface(void)
 {
-    static ui_screen_t screen = {.type         = UI_SCREEN_LORA_BAND,
-                                 .create       = screen_lora_band_create,
-                                 .destroy      = screen_lora_band_reset,
-                                 .handle_input = screen_lora_band_handle_input,
+    static ui_screen_t screen = {.type               = UI_SCREEN_LORA_BAND,
+                                 .create             = screen_lora_band_create,
+                                 .destroy            = screen_lora_band_reset,
+                                 .handle_input_event = screen_lora_band_handle_input_event,
                                  .on_enter     = screen_lora_band_on_enter,
                                  .on_exit      = NULL};
     return &screen;

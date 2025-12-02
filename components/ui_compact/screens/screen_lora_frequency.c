@@ -1,4 +1,7 @@
+#include "input_manager.h"
+#include "ui_strings.h"
 #include "esp_log.h"
+#include "input_manager.h"
 #include "lora_bands.h"
 #include "lora_driver.h"
 #include "lvgl.h"
@@ -95,38 +98,74 @@ bool screen_lora_frequency_is_edit_mode(void)
 #include "ui_navigator.h"
 #include "ui_screen_interface.h"
 
-static void screen_lora_frequency_handle_input(button_event_type_t event)
+static void screen_lora_frequency_handle_input_event(input_event_t event)
 {
-    // Use our static state for check, or the helper (which checks input)
-    // But input might be NULL if not created? No, handle_input is called when screen is active.
-
-    bool is_edit = is_editing; // Use static state
-
-    if (event == BUTTON_EVENT_SHORT && is_edit) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    bool is_edit = is_editing;
+    if (event == INPUT_EVENT_NEXT_SHORT && is_edit) {
         screen_lora_frequency_navigate_down();
         ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
-    } else if (event == BUTTON_EVENT_DOUBLE && is_edit) {
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE && is_edit) {
         screen_lora_frequency_navigate_up();
         ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
-    } else if (event == BUTTON_EVENT_LONG) {
+    } else if (event == INPUT_EVENT_NEXT_LONG) {
         screen_lora_frequency_select();
-
         if (!is_editing) {
             ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
         } else {
-            // Entered edit mode
             ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
         }
-    } else if (event == BUTTON_EVENT_DOUBLE && !is_edit) {
-        // Back to submenu
+    } else if (event == INPUT_EVENT_NEXT_DOUBLE && !is_edit) {
         ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    bool is_edit = is_editing;
+    if (is_edit) {
+        switch (event) {
+            case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+                if (input) {
+                    input->edit_mode = false;
+                }
+                is_editing = false;
+                ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+                break;
+            case INPUT_EVENT_ENCODER_CW:
+                screen_lora_frequency_navigate_down();
+                ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
+                break;
+            case INPUT_EVENT_ENCODER_CCW:
+                screen_lora_frequency_navigate_up();
+                ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
+                break;
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
+                screen_lora_frequency_select();
+                ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+                break;
+            default:
+                break;
+        }
+    } else {
+        switch (event) {
+            case INPUT_EVENT_PREV_SHORT:
+            case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+                ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
+                break;
+            case INPUT_EVENT_ENCODER_BUTTON_LONG:
+                screen_lora_frequency_select();
+                ui_navigator_switch_to(UI_SCREEN_LORA_FREQUENCY);
+                break;
+            default:
+                break;
+        }
+    }
+#endif
 }
 
 void screen_lora_frequency_reset(void)
 {
     if (input) {
-        preserved_edit_mode = input->edit_mode; // Save before destroying
+        preserved_edit_mode = input->edit_mode;
         free(input);
         input = NULL;
     }
@@ -134,10 +173,10 @@ void screen_lora_frequency_reset(void)
 
 ui_screen_t *screen_lora_frequency_get_interface(void)
 {
-    static ui_screen_t screen = {.type         = UI_SCREEN_LORA_FREQUENCY,
-                                 .create       = screen_lora_frequency_create,
-                                 .destroy      = screen_lora_frequency_reset,
-                                 .handle_input = screen_lora_frequency_handle_input,
+    static ui_screen_t screen = {.type               = UI_SCREEN_LORA_FREQUENCY,
+                                 .create             = screen_lora_frequency_create,
+                                 .destroy            = screen_lora_frequency_reset,
+                                 .handle_input_event = screen_lora_frequency_handle_input_event,
                                  .on_enter     = screen_lora_frequency_on_enter,
                                  .on_exit      = NULL};
     return &screen;

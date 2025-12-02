@@ -28,6 +28,15 @@ static const char *TAG = "BSP_HELTEC_V3";
 #define BATTERY_CTRL_PIN GPIO_NUM_37
 #define VEXT_CTRL_PIN GPIO_NUM_36 // Controls power to OLED and LoRa
 
+// Alpha+ Dual Buttons
+#define BUTTON_PREV_PIN GPIO_NUM_46
+#define BUTTON_NEXT_PIN GPIO_NUM_0
+
+// Alpha+ Rotary Encoder
+#define ENCODER_CLK_PIN GPIO_NUM_4
+#define ENCODER_DT_PIN GPIO_NUM_5
+#define ENCODER_BTN_PIN GPIO_NUM_6
+
 // LoRa SX1262 Pins
 #define LORA_CS_PIN GPIO_NUM_8
 #define LORA_SCK_PIN GPIO_NUM_9
@@ -45,7 +54,7 @@ static const char *TAG = "BSP_HELTEC_V3";
 // BSP Configuration
 #define SPI_CLOCK_SPEED_HZ 1000000 // 1MHz for SX1262
 #define SPI_QUEUE_SIZE 1           // Single transaction queue
-#define I2C_CLOCK_SPEED_HZ CONFIG_BSP_I2C_CLOCK_SPEED_HZ
+#define I2C_CLOCK_SPEED_HZ CONFIG_LORACUE_BSP_I2C_CLOCK_SPEED_HZ
 #define ADC_BITWIDTH ADC_BITWIDTH_12
 #define ADC_ATTENUATION ADC_ATTEN_DB_12
 
@@ -313,6 +322,31 @@ gpio_num_t bsp_get_led_gpio(void)
     return STATUS_LED_PIN;
 }
 
+gpio_num_t bsp_get_encoder_clk_gpio(void)
+{
+    return ENCODER_CLK_PIN;
+}
+
+gpio_num_t bsp_get_encoder_dt_gpio(void)
+{
+    return ENCODER_DT_PIN;
+}
+
+gpio_num_t bsp_get_encoder_btn_gpio(void)
+{
+    return ENCODER_BTN_PIN;
+}
+
+gpio_num_t bsp_get_button_prev_gpio(void)
+{
+    return BUTTON_PREV_PIN;
+}
+
+gpio_num_t bsp_get_button_next_gpio(void)
+{
+    return BUTTON_NEXT_PIN;
+}
+
 bool bsp_read_button(bsp_button_t button)
 {
     return gpio_get_level(BUTTON_PIN) == 0; // Active low (pulled up, pressed = low)
@@ -411,7 +445,16 @@ const char *bsp_get_board_id(void)
 
 const char *bsp_get_model_name(void)
 {
-#if defined(CONFIG_MODEL_ALPHA_PLUS)
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    return "LC-Alpha+";
+#else
+    return "LC-Alpha";
+#endif
+}
+
+const char *bsp_get_model_name(void)
+{
+#if defined(CONFIG_LORACUE_MODEL_ALPHA_PLUS)
     return "LC-Alpha+";
 #else
     return "LC-Alpha";
@@ -448,6 +491,7 @@ esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len)
     return ESP_OK;
 }
 
+// cppcheck-suppress unknownMacro
 BSP_DEFINE_LORA_PINS(LORA_MISO_PIN, LORA_MOSI_PIN, LORA_SCK_PIN, LORA_CS_PIN, LORA_RST_PIN, LORA_BUSY_PIN,
                      LORA_DIO1_PIN)
 

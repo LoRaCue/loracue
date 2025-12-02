@@ -1,4 +1,7 @@
+#include "input_manager.h"
+#include "ui_strings.h"
 #include "esp_crc.h"
+#include "input_manager.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "general_config.h"
@@ -14,6 +17,9 @@ static char device_ssid[32]     = {0};
 static char device_password[16] = {0};
 
 LV_IMG_DECLARE(button_double_press);
+LV_IMG_DECLARE(nav_left);
+LV_IMG_DECLARE(nav_right);
+LV_IMG_DECLARE(rotary);
 
 static void generate_credentials(void)
 {
@@ -64,7 +70,11 @@ void screen_config_mode_create(lv_obj_t *parent)
     lv_obj_set_pos(url_label, 0, 38);
 
     ui_create_footer(parent);
-    ui_draw_icon_text(parent, &button_double_press, "Back", DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    ui_draw_bottom_bar_alpha_plus(parent, &nav_left, UI_STR_BACK, NULL, NULL, NULL, NULL);
+#else
+    ui_draw_icon_text(parent, &button_double_press, UI_STR_BACK, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
+#endif
 }
 
 void screen_config_mode_reset(void)
@@ -74,18 +84,24 @@ void screen_config_mode_reset(void)
     ESP_LOGI(TAG, "Config mode screen reset");
 }
 
-static void handle_input(button_event_type_t event)
+static void handle_input_event(input_event_t event)
 {
-    if (event == BUTTON_EVENT_DOUBLE) {
+#if CONFIG_LORACUE_MODEL_ALPHA
+    if (event == INPUT_EVENT_NEXT_DOUBLE) {
         ui_navigator_switch_to(UI_SCREEN_MENU);
     }
+#elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    if (event == INPUT_EVENT_PREV_SHORT) {
+        ui_navigator_switch_to(UI_SCREEN_MENU);
+    }
+#endif
 }
 
 static ui_screen_t config_mode_screen = {
-    .type         = UI_SCREEN_CONFIG_MODE,
-    .create       = screen_config_mode_create,
-    .destroy      = screen_config_mode_reset,
-    .handle_input = handle_input,
+    .type               = UI_SCREEN_CONFIG_MODE,
+    .create             = screen_config_mode_create,
+    .destroy            = screen_config_mode_reset,
+    .handle_input_event = handle_input_event,
 };
 
 ui_screen_t *screen_config_mode_get_interface(void)

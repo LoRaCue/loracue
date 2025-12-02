@@ -1,8 +1,8 @@
 /**
  * @file presenter_mode_manager.h
- * @brief Presenter Mode Manager - handles button events in presenter mode
+ * @brief Presenter Mode Manager - handles input events in presenter mode
  *
- * CONTEXT: Maps button presses to LoRa commands for presentation control
+ * CONTEXT: Maps button/encoder events to LoRa commands for presentation control
  * PURPOSE: Separate presenter mode business logic from UI
  */
 
@@ -10,6 +10,7 @@
 
 #include "common_types.h"
 #include "esp_err.h"
+#include "input_manager.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,12 +24,12 @@ extern "C" {
 esp_err_t presenter_mode_manager_init(void);
 
 /**
- * @brief Handle button event in presenter mode
+ * @brief Handle input event in presenter mode
  *
- * @param button_type Type of button event
+ * @param event Type of input event (button or encoder)
  * @return ESP_OK if handled
  */
-esp_err_t presenter_mode_manager_handle_button(button_event_type_t button_type);
+esp_err_t presenter_mode_manager_handle_input(input_event_t event);
 
 /**
  * @brief Deinitialize presenter mode manager

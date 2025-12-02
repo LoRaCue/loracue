@@ -209,11 +209,11 @@ endif
 endif
 
 # Build targets
-# Usage: make build              - Build LC-Alpha (default)
+# Usage: make build              - Build LC-Alpha+ (default)
 #        make build MODEL=alpha  - Build LC-Alpha (Heltec V3, 1 button)
 #        make build MODEL=alpha+ - Build LC-Alpha+ (Heltec V3, 2 buttons)
 #        make build MODEL=gamma  - Build LC-Gamma (LilyGO T5, E-paper)
-MODEL ?= alpha
+MODEL ?= alpha+
 
 ifeq ($(MODEL),alpha)
 MODEL_NAME = LC-Alpha
@@ -264,7 +264,7 @@ fullclean:
 rebuild: fullclean build
 
 # Flash targets with MODEL parameter
-# Usage: make flash              - Flash LC-Alpha (default)
+# Usage: make flash              - Flash LC-Alpha+ (default)
 #        make flash MODEL=alpha  - Flash LC-Alpha
 #        make flash MODEL=alpha+ - Flash LC-Alpha+
 #        make flash MODEL=gamma  - Flash LC-Gamma
@@ -601,7 +601,7 @@ help:
 	@echo "🚀 LoRaCue Build System"
 	@echo ""
 	@echo "📦 Build:"
-	@echo "  make build              - Build LC-Alpha (default)"
+	@echo "  make build              - Build LC-Alpha+ (default)"
 	@echo "  make build MODEL=alpha  - Build LC-Alpha (Heltec V3, 1 button)"
 	@echo "  make build MODEL=alpha+ - Build LC-Alpha+ (Heltec V3, 2 buttons)"
 	@echo "  make build MODEL=gamma  - Build LC-Gamma (LilyGO T5, E-paper)"
@@ -610,7 +610,7 @@ help:
 	@echo "  make fullclean          - Full clean (CMake cache + sdkconfig)"
 	@echo ""
 	@echo "📡 Flash:"
-	@echo "  make flash              - Flash LC-Alpha (default)"
+	@echo "  make flash              - Flash LC-Alpha+ (default)"
 	@echo "  make flash MODEL=alpha  - Flash LC-Alpha"
 	@echo "  make flash MODEL=alpha+ - Flash LC-Alpha+"
 	@echo "  make flash MODEL=gamma  - Flash LC-Gamma"
@@ -651,5 +651,5 @@ help:
 	@echo "💡 Quick Start:"
 	@echo "  source ~/esp-idf-v5.5/export.sh  # Setup ESP-IDF"
 	@echo "  make set-target                   # First time only"
-	@echo "  make build MODEL=alpha            # Build LC-Alpha"
-	@echo "  make flash-monitor MODEL=alpha    # Flash and monitor"
+	@echo "  make build MODEL=alpha+           # Build LC-Alpha+"
+	@echo "  make flash-monitor MODEL=alpha+   # Flash and monitor"

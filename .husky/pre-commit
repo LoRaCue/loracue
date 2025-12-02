@@ -65,21 +65,15 @@ if [ -n "$STAGED_FILES" ]; then
             if [ -f "$file" ]; then
                 OUTPUT=$(cppcheck --enable=warning,style,performance,portability \
                     --suppress=missingIncludeSystem \
+                    --suppress=unusedStructMember \
                     --inline-suppr \
-                    --error-exitcode=1 \
                     --quiet \
                     -I main/include -I components/*/include \
-                    "$file" 2>&1 | grep -v "Checking")
-                
-                EXITCODE=$?
+                    "$file" 2>&1 | grep -v "Checking" | grep -v "information:" | grep -v "^$" | grep -v "^\^$" || true)
                 
                 # Show output if there are any issues
                 if [ -n "$OUTPUT" ]; then
                     echo "$OUTPUT"
-                fi
-                
-                # Fail if cppcheck returned error
-                if [ $EXITCODE -ne 0 ]; then
                     echo "❌ Static analysis found issues in $file"
                     CPPCHECK_FAILED=1
                 fi

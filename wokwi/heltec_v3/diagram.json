@@ -13,22 +13,22 @@
     {
       "type": "board-ssd1306",
       "id": "oled",
-      "top": 300.74,
-      "left": -114.97,
+      "top": 291.14,
+      "left": -201.37,
       "attrs": { "width": "128", "height": "64" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_next",
-      "top": 169.4,
-      "left": 172.8,
+      "top": 313.4,
+      "left": -76.8,
       "attrs": { "color": "red", "label": "NEXT", "key": "ArrowRight", "xray": "" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_prev",
-      "top": 188.6,
-      "left": -240,
+      "top": 313.4,
+      "left": -288,
       "attrs": { "color": "green", "label": "PREV", "key": "ArrowLeft" }
     },
     {
@@ -56,33 +56,33 @@
     {
       "type": "chip-uart",
       "id": "uart1",
-      "top": 400,
-      "left": -13,
+      "top": 359.6,
+      "left": -8.82,
       "rotate": 90,
       "attrs": { "baudrate": "115200" }
     },
     {
       "type": "chip-sx1262",
       "id": "lora",
-      "top": 316.7,
-      "left": -205.32,
-      "rotate": 90,
+      "top": 78.9,
+      "left": -147.68,
+      "rotate": 270,
       "attrs": {}
     },
     {
       "type": "chip-i2console",
       "id": "i2console",
-      "top": 77,
-      "left": -166.38,
+      "top": 78.4,
+      "left": -89.58,
       "rotate": 270,
       "attrs": {}
     },
     {
       "type": "wokwi-ky-040",
-      "id": "encoder1",
-      "top": 94,
-      "left": 124.8,
-      "rotate": 180,
+      "id": "encoder",
+      "top": 311,
+      "left": -386.1,
+      "rotate": 270,
       "attrs": {}
     }
   ],
@@ -92,10 +92,9 @@
     [ "esp:2", "uart1:RX", "green", [ "h0" ] ],
     [ "esp:3", "uart1:TX", "yellow", [ "h0" ] ],
     [ "esp:17", "oled:SDA", "blue", [] ],
-    [ "esp:18", "oled:SCL", "yellow", [] ],
+    [ "esp:18", "oled:SCL", "violet", [] ],
     [ "esp:3V3.2", "oled:VCC", "red", [] ],
     [ "esp:GND.1", "oled:GND", "black", [] ],
-    [ "btn_prev:2.r", "esp:GND.1", "black", [ "h15", "v-10" ] ],
     [ "esp:1", "battery_sim:SIG", "orange", [] ],
     [ "esp:GND.2", "battery_sim:GND", "black", [] ],
     [ "esp:35", "r_power:1", "yellow", [] ],
@@ -106,20 +105,21 @@
     [ "esp:11", "lora:MISO", "brown", [] ],
     [ "esp:13", "lora:BUSY", "orange", [] ],
     [ "esp:12", "lora:RESET", "red", [] ],
-    [ "btn_next:2.l", "esp:0", "green", [ "h0" ] ],
-    [ "esp:46", "btn_prev:1.r", "yellow", [ "v-2.18", "h-168.48" ] ],
     [ "battery_sim:VCC", "esp:3V3.1", "red", [ "v0" ] ],
     [ "esp:17", "i2console:SDA", "blue", [] ],
     [ "esp:18", "i2console:SCL", "yellow", [] ],
     [ "esp:3V3.1", "i2console:VCC", "red", [] ],
     [ "battery_sim:GND", "i2console:GND", "black", [] ],
-    [ "encoder1:CLK", "esp:39", "green", [ "h0" ] ],
-    [ "encoder1:DT", "esp:40", "green", [ "h0" ] ],
-    [ "encoder1:SW", "esp:41", "green", [ "h0" ] ],
-    [ "encoder1:VCC", "battery_sim:VCC", "red", [ "h-19.2", "v-67.6" ] ],
-    [ "encoder1:GND", "esp:GND.2", "black", [ "h-9.6", "v-29.6" ] ],
     [ "esp:GND.4", "led_power:C", "black", [ "h0" ] ],
-    [ "encoder1:GND", "btn_next:1.l", "black", [ "h0" ] ]
+    [ "esp:5", "encoder:DT", "yellow", [ "h0" ] ],
+    [ "btn_next:1.r", "esp:GND.1", "black", [ "v0" ] ],
+    [ "esp:0", "btn_next:2.r", "yellow", [ "h62.17", "v7.42" ] ],
+    [ "btn_prev:2.r", "esp:46", "yellow", [ "h0.2", "v48.2", "h240", "v-211.2" ] ],
+    [ "encoder:CLK", "esp:4", "violet", [ "v0" ] ],
+    [ "encoder:SW", "esp:6", "yellow", [ "v0" ] ],
+    [ "btn_prev:1.r", "oled:GND", "black", [ "v-48", "h48.2" ] ],
+    [ "encoder:VCC", "esp:3V3.2", "red", [ "v0" ] ],
+    [ "encoder:GND", "oled:GND", "black", [ "v-9.6", "h154.4" ] ]
   ],
   "dependencies": {}
 }

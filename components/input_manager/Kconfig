@@ -1,0 +1,40 @@
+menu "Input Manager"
+
+    config LORACUE_INPUT_HAS_DUAL_BUTTONS
+        bool
+        default y if LORACUE_MODEL_ALPHA_PLUS
+        default n
+        help
+            Enable dual button support (PREV + NEXT buttons).
+            Automatically enabled for Alpha+ model.
+
+    config LORACUE_INPUT_HAS_ENCODER
+        bool
+        default y if LORACUE_MODEL_ALPHA_PLUS
+        default n
+        help
+            Enable rotary encoder support.
+            Automatically enabled for Alpha+ model.
+
+    config LORACUE_INPUT_DEBOUNCE_MS
+        int "Button debounce time (ms)"
+        default 50
+        range 10 200
+        help
+            Debounce time for button presses in milliseconds.
+
+    config LORACUE_INPUT_LONG_PRESS_MS
+        int "Long press threshold (ms)"
+        default 1000
+        range 500 3000
+        help
+            Time threshold for detecting long press in milliseconds.
+
+    config LORACUE_INPUT_DOUBLE_PRESS_MS
+        int "Double press window (ms)"
+        default 300
+        range 100 500
+        help
+            Maximum time between presses to detect double press.
+
+endmenu

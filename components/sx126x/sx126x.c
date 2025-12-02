@@ -17,9 +17,9 @@
 #define TAG "SX126X"
 
 // SPI Stuff
-#if CONFIG_SPI2_HOST
+#if CONFIG_LORACUE_SX126X_SPI2_HOST
 #define HOST_ID SPI2_HOST
-#elif CONFIG_SPI3_HOST
+#elif CONFIG_LORACUE_SX126X_SPI3_HOST
 #define HOST_ID SPI3_HOST
 #endif
 
@@ -77,14 +77,14 @@ esp_err_t sx126x_init(void)
     // Get board-specific LoRa pins from BSP
     const bsp_lora_pins_t *pins = bsp_get_lora_pins();
     
-    ESP_LOGI(TAG, "CONFIG_MISO_GPIO=%d", pins->miso);
-    ESP_LOGI(TAG, "CONFIG_MOSI_GPIO=%d", pins->mosi);
-    ESP_LOGI(TAG, "CONFIG_SCLK_GPIO=%d", pins->sclk);
-    ESP_LOGI(TAG, "CONFIG_NSS_GPIO=%d", pins->cs);
-    ESP_LOGI(TAG, "CONFIG_RST_GPIO=%d", pins->rst);
-    ESP_LOGI(TAG, "CONFIG_BUSY_GPIO=%d", pins->busy);
-    ESP_LOGI(TAG, "CONFIG_TXEN_GPIO=%d", -1);
-    ESP_LOGI(TAG, "CONFIG_RXEN_GPIO=%d", -1);
+    ESP_LOGI(TAG, "MISO_GPIO=%d", pins->miso);
+    ESP_LOGI(TAG, "MOSI_GPIO=%d", pins->mosi);
+    ESP_LOGI(TAG, "SCLK_GPIO=%d", pins->sclk);
+    ESP_LOGI(TAG, "NSS_GPIO=%d", pins->cs);
+    ESP_LOGI(TAG, "RST_GPIO=%d", pins->rst);
+    ESP_LOGI(TAG, "BUSY_GPIO=%d", pins->busy);
+    ESP_LOGI(TAG, "TXEN_GPIO=%d", -1);
+    ESP_LOGI(TAG, "RXEN_GPIO=%d", -1);
 
     s_sx126x->nss_pin = pins->cs;
     s_sx126x->reset_pin = pins->rst;

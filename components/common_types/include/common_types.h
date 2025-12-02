@@ -138,15 +138,6 @@ static inline void unpack_u16_le(uint16_t val, uint8_t *low, uint8_t *high)
 }
 
 /**
- * @brief Button event types for one-button UI
- */
-typedef enum {
-    BUTTON_EVENT_SHORT = 0, // <500ms
-    BUTTON_EVENT_DOUBLE,    // 2 clicks <200ms apart
-    BUTTON_EVENT_LONG       // >2s
-} button_event_type_t;
-
-/**
  * @brief Command history entry for PC mode
  */
 typedef struct {
