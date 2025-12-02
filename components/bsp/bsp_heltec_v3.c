@@ -445,6 +445,15 @@ const char *bsp_get_board_id(void)
 
 const char *bsp_get_model_name(void)
 {
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+    return "LC-Alpha+";
+#else
+    return "LC-Alpha";
+#endif
+}
+
+const char *bsp_get_model_name(void)
+{
 #if defined(CONFIG_LORACUE_MODEL_ALPHA_PLUS)
     return "LC-Alpha+";
 #else
@@ -482,6 +491,7 @@ esp_err_t bsp_get_serial_number(char *serial_number, size_t max_len)
     return ESP_OK;
 }
 
+// cppcheck-suppress unknownMacro
 BSP_DEFINE_LORA_PINS(LORA_MISO_PIN, LORA_MOSI_PIN, LORA_SCK_PIN, LORA_CS_PIN, LORA_RST_PIN, LORA_BUSY_PIN,
                      LORA_DIO1_PIN)
 
