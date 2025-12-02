@@ -111,6 +111,7 @@ static void handle_input_event(input_event_t event)
 #elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     switch (event) {
         case INPUT_EVENT_PREV_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
             ui_navigator_switch_to(UI_SCREEN_MENU);
             break;
         case INPUT_EVENT_ENCODER_CW:
@@ -122,7 +123,7 @@ static void handle_input_event(input_event_t event)
             ui_navigator_switch_to(UI_SCREEN_DEVICE_MODE);
             break;
         case INPUT_EVENT_NEXT_SHORT:
-        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_LONG:
             screen_device_mode_select();
             ui_navigator_switch_to(UI_SCREEN_MENU);
             break;

@@ -92,6 +92,7 @@ static void screen_lora_bw_handle_input_event(input_event_t event)
 #elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     switch (event) {
         case INPUT_EVENT_PREV_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
             ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
             break;
         case INPUT_EVENT_ENCODER_CW:
@@ -103,7 +104,7 @@ static void screen_lora_bw_handle_input_event(input_event_t event)
             ui_navigator_switch_to(UI_SCREEN_LORA_BW);
             break;
         case INPUT_EVENT_NEXT_SHORT:
-        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_LONG:
             screen_lora_bw_select();
             ui_navigator_switch_to(UI_SCREEN_LORA_SUBMENU);
             break;
