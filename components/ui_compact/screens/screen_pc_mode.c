@@ -159,6 +159,7 @@ static void update_history_display(lv_timer_t *timer)
     }
 }
 
+// cppcheck-suppress constParameterCallback
 static void hid_command_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     const system_event_hid_command_t *evt = (const system_event_hid_command_t *)data;
@@ -216,7 +217,6 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
     mode_label = ui_create_main_screen_layout(parent, UI_STR_PC_MODE, device_name);
 
     // Calculate dynamic layout
-    int content_height = SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP;
     int line_height = 9;
     int start_y = SEPARATOR_Y_TOP + 1;
 
@@ -242,15 +242,14 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
         lv_obj_add_flag(history_labels[i], LV_OBJ_FLAG_HIDDEN);
     }
 
-    // Waiting message - centered
-    int content_center_y = SEPARATOR_Y_TOP + (content_height / 2);
+    // Waiting message - single line at PC MODE text + 23px
     waiting_label1 = lv_label_create(parent);
-    lv_label_set_text(waiting_label1, "Waiting for\ncommands...");
+    lv_label_set_text(waiting_label1, "Waiting for commands...");
     lv_obj_set_style_text_color(waiting_label1, lv_color_white(), 0);
     lv_obj_set_style_text_font(waiting_label1, &lv_font_pixolletta_10, 0);
     lv_obj_set_style_text_align(waiting_label1, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(waiting_label1, DISPLAY_WIDTH);
-    lv_obj_align(waiting_label1, LV_ALIGN_CENTER, 0, content_center_y - SEPARATOR_Y_TOP - 32);
+    lv_obj_set_pos(waiting_label1, 0, 50); // PRESENTER_TEXT_Y (27) + 23
 
     // Subscribe to HID events
     esp_event_loop_handle_t loop = system_events_get_loop();
