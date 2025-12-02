@@ -55,7 +55,11 @@ void screen_device_info_create(lv_obj_t *parent)
 
         // Hardware info first
         // Model
+#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
+        snprintf(device_lines_buffer[idx], 64, "Model: LC-Alpha+");
+#else
         snprintf(device_lines_buffer[idx], 64, "Model: LC-Alpha");
+#endif
         device_lines[idx] = device_lines_buffer[idx];
         idx++;
 
