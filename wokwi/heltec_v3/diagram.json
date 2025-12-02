@@ -14,21 +14,21 @@
       "type": "board-ssd1306",
       "id": "oled",
       "top": 291.14,
-      "left": -201.37,
+      "left": -182.17,
       "attrs": { "width": "128", "height": "64" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_next",
       "top": 313.4,
-      "left": -76.8,
+      "left": -67.2,
       "attrs": { "color": "red", "label": "NEXT", "key": "ArrowRight", "xray": "" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_prev",
       "top": 313.4,
-      "left": -288,
+      "left": -259.2,
       "attrs": { "color": "green", "label": "PREV", "key": "ArrowLeft" }
     },
     {
@@ -81,7 +81,7 @@
       "type": "wokwi-ky-040",
       "id": "encoder",
       "top": 311,
-      "left": -386.1,
+      "left": -357.3,
       "rotate": 270,
       "attrs": {}
     }
@@ -114,12 +114,12 @@
     [ "esp:5", "encoder:DT", "yellow", [ "h0" ] ],
     [ "btn_next:1.r", "esp:GND.1", "black", [ "v0" ] ],
     [ "esp:0", "btn_next:2.r", "yellow", [ "h62.17", "v7.42" ] ],
-    [ "btn_prev:2.r", "esp:46", "yellow", [ "h0.2", "v48.2", "h240", "v-211.2" ] ],
     [ "encoder:CLK", "esp:4", "violet", [ "v0" ] ],
     [ "encoder:SW", "esp:6", "yellow", [ "v0" ] ],
-    [ "btn_prev:1.r", "oled:GND", "black", [ "v-48", "h48.2" ] ],
     [ "encoder:VCC", "esp:3V3.2", "red", [ "v0" ] ],
-    [ "encoder:GND", "oled:GND", "black", [ "v-9.6", "h154.4" ] ]
+    [ "encoder:GND", "oled:GND", "black", [ "v-7.5", "h154.4" ] ],
+    [ "btn_prev:1.r", "oled:GND", "black", [ "v-46", "h57.8" ] ],
+    [ "btn_prev:2.r", "esp:46", "yellow", [ "h0.2", "v48.2", "h211.2", "v-192" ] ]
   ],
   "dependencies": {}
 }
