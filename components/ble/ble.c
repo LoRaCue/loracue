@@ -70,6 +70,12 @@ static const ble_uuid128_t NUS_CHR_TX_UUID =
 #define BLE_CMD_MAX_LENGTH 2048
 #define BLE_RESPONSE_MAX_LENGTH 2048
 #define BLE_MTU_MAX 512
+#define BLE_DEFAULT_MTU 23
+#define BLE_MUTEX_WAIT_MS 100
+#define BLE_ADV_START_DELAY_MS 100
+#define BLE_CHUNK_DELAY_MS 10
+#define BLE_ADV_TASK_STACK_SIZE 3072
+#define BLE_ADV_TASK_PRIORITY 5
 
 //==============================================================================
 // STATE MANAGEMENT
@@ -96,7 +102,7 @@ static bool s_ble_enabled     = false;
 static uint16_t s_nus_tx_handle;
 static uint8_t s_own_addr_type;
 static ble_conn_state_t s_conn_state        = {.conn_handle           = BLE_HS_CONN_HANDLE_NONE,
-                                               .mtu                   = 23,
+                                               .mtu                   = BLE_DEFAULT_MTU,
                                                .connected             = false,
                                                .notifications_enabled = false,
                                                .pairing_active        = false,
@@ -118,7 +124,7 @@ static bool conn_state_lock(void)
     if (!s_conn_state_mutex) {
         return false;
     }
-    return xSemaphoreTake(s_conn_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE;
+    return xSemaphoreTake(s_conn_state_mutex, pdMS_TO_TICKS(BLE_MUTEX_WAIT_MS)) == pdTRUE;
 }
 
 static void conn_state_unlock(void)
@@ -246,7 +252,7 @@ static int gap_event_handler(struct ble_gap_event *event, void *arg)
                     if (conn_state_lock()) {
                         s_conn_state.connected             = true;
                         s_conn_state.conn_handle           = event->connect.conn_handle;
-                        s_conn_state.mtu                   = 23;
+                        s_conn_state.mtu                   = BLE_DEFAULT_MTU;
                         s_conn_state.notifications_enabled = false;
                         s_conn_state.addr_type             = desc.peer_id_addr.type;
                         memcpy(s_conn_state.addr, desc.peer_id_addr.val, 6);
@@ -512,7 +518,7 @@ static void ble_advertise(void)
 
 static void start_advertising_task(void *arg)
 {
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(BLE_ADV_START_DELAY_MS));
     ble_advertise();
     vTaskDelete(NULL);
 }
@@ -554,7 +560,7 @@ static void on_sync(void)
     }
 
     // Start advertising from separate task (can't call ble_gap_adv_start from sync callback)
-    xTaskCreate(start_advertising_task, "ble_adv", 3072, NULL, 5, NULL);
+    xTaskCreate(start_advertising_task, "ble_adv", BLE_ADV_TASK_STACK_SIZE, NULL, BLE_ADV_TASK_PRIORITY, NULL);
 }
 
 static void on_reset(int reason)
@@ -752,7 +758,7 @@ static void ble_send_long_notification(uint16_t conn_handle, uint16_t attr_handl
         offset += to_send;
 
         if (offset < len) {
-            vTaskDelay(pdMS_TO_TICKS(10)); // Small delay between chunks
+            vTaskDelay(pdMS_TO_TICKS(BLE_CHUNK_DELAY_MS)); // Small delay between chunks
         }
     }
 }

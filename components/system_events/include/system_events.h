@@ -55,7 +55,7 @@ typedef struct {
 
 typedef struct {
     uint16_t device_id;    // Source device
-    uint8_t hid_type;      // HID device type (0x1=keyboard, 0x2=mouse, 0x3=media)
+    uint8_t hid_type;      // HID device type (HID_TYPE_*)
     uint8_t hid_report[5]; // Raw HID report data (protocol format)
     uint8_t flags;         // Protocol flags (ACK_REQUEST, etc)
     int8_t rssi;           // Signal strength (RX only, valid in PC mode)
@@ -120,7 +120,7 @@ esp_err_t system_events_post_hid_command(const system_event_hid_command_t *hid_c
 static inline void system_event_get_keyboard_data(const system_event_hid_command_t *evt, uint8_t *modifiers,
                                                   uint8_t *keycode)
 {
-    if (evt && evt->hid_type == 0x1) { // Keyboard
+    if (evt && evt->hid_type == HID_TYPE_KEYBOARD) {
         if (modifiers)
             *modifiers = evt->hid_report[0];
         if (keycode)

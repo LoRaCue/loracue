@@ -18,6 +18,7 @@ static const char *TAG = "PC_MODE_MGR";
 // Rate limiter and presenter tracking constants
 #define RATE_LIMIT_MAX_COMMANDS_PER_SEC 10
 #define PRESENTER_EXPIRY_TIMEOUT_MS 30000 // 30 seconds
+#define RATE_LIMIT_WINDOW_MS 1000
 
 // Active presenter tracking
 typedef struct {
@@ -43,7 +44,7 @@ static bool rate_limiter_check(void)
 {
     uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
-    if (now - rate_limiter.last_command_ms > 1000) {
+    if (now - rate_limiter.last_command_ms > RATE_LIMIT_WINDOW_MS) {
         rate_limiter.command_count_1s = 0;
     }
 
@@ -126,7 +127,6 @@ esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_
     }
 
     usb_hid_keycode_t keycode = 0;
-    uint8_t modifiers __attribute__((unused)) = 0;
 
     // Parse HID report from payload
     if (command == CMD_HID_REPORT && payload_length >= sizeof(lora_payload_t)) {
@@ -134,8 +134,7 @@ esp_err_t pc_mode_manager_process_command(uint16_t device_id, uint16_t sequence_
         uint8_t hid_type          = LORA_HID_TYPE(pkt->type_flags);
 
         if (hid_type == HID_TYPE_KEYBOARD) {
-            keycode   = pkt->hid_report.keyboard.keycode[0];
-            modifiers = pkt->hid_report.keyboard.modifiers;
+            keycode = pkt->hid_report.keyboard.keycode[0];
         }
 
         // Forward to USB HID if connected

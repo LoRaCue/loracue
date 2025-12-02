@@ -445,15 +445,6 @@ const char *bsp_get_board_id(void)
 
 const char *bsp_get_model_name(void)
 {
-#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    return "LC-Alpha+";
-#else
-    return "LC-Alpha";
-#endif
-}
-
-const char *bsp_get_model_name(void)
-{
 #if defined(CONFIG_LORACUE_MODEL_ALPHA_PLUS)
     return "LC-Alpha+";
 #else

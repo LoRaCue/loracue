@@ -57,27 +57,39 @@ esp_err_t system_events_post_lora_state(bool connected, int8_t rssi)
                              portMAX_DELAY);
 }
 
+/**
+ * @brief Post LoRa command event
+ */
 esp_err_t system_events_post_lora_command(const char *command, int8_t rssi)
 {
     system_event_lora_cmd_t data = {.rssi = rssi};
-    strncpy(data.command, command, sizeof(data.command) - 1);
+    strlcpy(data.command, command, sizeof(data.command));
     return esp_event_post_to(event_loop, SYSTEM_EVENTS, SYSTEM_EVENT_LORA_COMMAND_RECEIVED, &data, sizeof(data),
                              portMAX_DELAY);
 }
 
+/**
+ * @brief Post OTA progress event
+ */
 esp_err_t system_events_post_ota_progress(uint8_t percent, const char *status)
 {
     system_event_ota_t data = {.percent = percent};
-    strncpy(data.status, status, sizeof(data.status) - 1);
+    strlcpy(data.status, status, sizeof(data.status));
     return esp_event_post_to(event_loop, SYSTEM_EVENTS, SYSTEM_EVENT_OTA_PROGRESS, &data, sizeof(data), portMAX_DELAY);
 }
 
+/**
+ * @brief Post mode change event
+ */
 esp_err_t system_events_post_mode_changed(device_mode_t mode)
 {
     system_event_mode_t data = {.mode = mode};
     return esp_event_post_to(event_loop, SYSTEM_EVENTS, SYSTEM_EVENT_MODE_CHANGED, &data, sizeof(data), portMAX_DELAY);
 }
 
+/**
+ * @brief Post HID command received event
+ */
 esp_err_t system_events_post_hid_command(const system_event_hid_command_t *hid_cmd)
 {
     if (!hid_cmd) {
@@ -88,10 +100,13 @@ esp_err_t system_events_post_hid_command(const system_event_hid_command_t *hid_c
                              sizeof(system_event_hid_command_t), portMAX_DELAY);
 }
 
+/**
+ * @brief Post device config changed event
+ */
 esp_err_t system_events_post_device_config_changed(uint16_t device_id, const char *device_name)
 {
     system_event_device_config_t data = {.device_id = device_id};
-    strncpy(data.device_name, device_name, sizeof(data.device_name) - 1);
+    strlcpy(data.device_name, device_name, sizeof(data.device_name));
     return esp_event_post_to(event_loop, SYSTEM_EVENTS, SYSTEM_EVENT_DEVICE_CONFIG_CHANGED, &data, sizeof(data),
                              portMAX_DELAY);
 }

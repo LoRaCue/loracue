@@ -1,9 +1,9 @@
 #include "ui_compact.h"
 #include "ble.h"
 #include "bsp.h"
-#include "input_manager.h"
 #include "esp_log.h"
 #include "general_config.h"
+#include "input_manager.h"
 #include "lora_protocol.h"
 #include "screens.h"
 #include "system_events.h"
@@ -13,6 +13,8 @@
 #include "ui_navigator.h"
 
 static const char *TAG = "ui_compact";
+
+#define BATTERY_UPDATE_INTERVAL_MS 5000
 
 static lv_obj_t *current_screen             = NULL;
 static ui_screen_type_t current_screen_type = UI_SCREEN_BOOT;
@@ -38,7 +40,7 @@ void ui_compact_get_status(statusbar_data_t *status)
     static float cached_voltage         = 0.0f;
 
     uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
-    if (now - last_battery_update > 5000 || last_battery_update == 0) {
+    if (now - last_battery_update > BATTERY_UPDATE_INTERVAL_MS || last_battery_update == 0) {
         cached_voltage      = bsp_read_battery();
         last_battery_update = now;
     }
@@ -57,6 +59,7 @@ static void input_event_handler(input_event_t event)
     ui_lvgl_unlock();
 }
 
+// cppcheck-suppress constParameterCallback
 static void mode_change_event_handler(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     const system_event_mode_t *evt = (const system_event_mode_t *)data;

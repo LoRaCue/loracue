@@ -8,10 +8,10 @@ static const char *TAG = "ui_navigator";
 
 #define MAX_SCREENS 32
 
-static const ui_screen_t *screen_registry[MAX_SCREENS]  = {0};
-static const ui_screen_t *current_screen_impl           = NULL;
-static lv_obj_t *current_lv_screen_obj                  = NULL;
-static ui_screen_type_t current_type                    = -1; // Default changed from UI_SCREEN_BOOT to -1
+static const ui_screen_t *screen_registry[MAX_SCREENS] = {0};
+static const ui_screen_t *current_screen_impl          = NULL;
+static lv_obj_t *current_lv_screen_obj                 = NULL;
+static ui_screen_type_t current_type = (ui_screen_type_t)-1; // Default changed from UI_SCREEN_BOOT to -1
 static ui_navigator_screen_change_cb_t screen_change_cb = NULL;
 
 esp_err_t ui_navigator_init(void)

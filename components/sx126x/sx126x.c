@@ -16,6 +16,17 @@
 
 #define TAG "SX126X"
 
+#define SPI_CLOCK_SPEED_HZ 9000000
+#define SPI_QUEUE_SIZE 7
+#define MUTEX_TIMEOUT_MS 1000
+#define TX_DONE_TIMEOUT_MS 600
+#define TX_TIMEOUT_MS 500
+#define RESET_DELAY_1_MS 10
+#define RESET_DELAY_2_MS 20
+#define RX_TIMEOUT_INF 0xFFFFFF
+#define RX_CHECK_RETRY_COUNT 10
+#define RX_CHECK_DELAY_MS 1
+
 // SPI Stuff
 #if CONFIG_LORACUE_SX126X_SPI2_HOST
 #define HOST_ID SPI2_HOST
@@ -76,7 +87,7 @@ esp_err_t sx126x_init(void)
 
     // Get board-specific LoRa pins from BSP
     const bsp_lora_pins_t *pins = bsp_get_lora_pins();
-    
+
     ESP_LOGI(TAG, "MISO_GPIO=%d", pins->miso);
     ESP_LOGI(TAG, "MOSI_GPIO=%d", pins->mosi);
     ESP_LOGI(TAG, "SCLK_GPIO=%d", pins->sclk);
@@ -86,13 +97,13 @@ esp_err_t sx126x_init(void)
     ESP_LOGI(TAG, "TXEN_GPIO=%d", -1);
     ESP_LOGI(TAG, "RXEN_GPIO=%d", -1);
 
-    s_sx126x->nss_pin = pins->cs;
+    s_sx126x->nss_pin   = pins->cs;
     s_sx126x->reset_pin = pins->rst;
-    s_sx126x->busy_pin = pins->busy;
-    s_sx126x->txen_pin = -1;
-    s_sx126x->rxen_pin = -1;
+    s_sx126x->busy_pin  = pins->busy;
+    s_sx126x->txen_pin  = -1;
+    s_sx126x->rxen_pin  = -1;
     s_sx126x->tx_active = false;
-    s_sx126x->tx_lost = 0;
+    s_sx126x->tx_lost   = 0;
 
     gpio_reset_pin(s_sx126x->nss_pin);
     gpio_set_direction(s_sx126x->nss_pin, GPIO_MODE_OUTPUT);
@@ -114,13 +125,11 @@ esp_err_t sx126x_init(void)
         gpio_set_direction(s_sx126x->rxen_pin, GPIO_MODE_OUTPUT);
     }
 
-    spi_bus_config_t spi_bus_config = {
-        .sclk_io_num = pins->sclk,
-        .mosi_io_num = pins->mosi,
-        .miso_io_num = pins->miso,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1
-    };
+    spi_bus_config_t spi_bus_config = {.sclk_io_num   = pins->sclk,
+                                       .mosi_io_num   = pins->mosi,
+                                       .miso_io_num   = pins->miso,
+                                       .quadwp_io_num = -1,
+                                       .quadhd_io_num = -1};
 
     esp_err_t ret;
     ret = spi_bus_initialize(HOST_ID, &spi_bus_config, SPI_DMA_CH_AUTO);
@@ -133,14 +142,12 @@ esp_err_t sx126x_init(void)
         goto error;
     }
 
-    spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 9000000,
-        .mode = 0,
-        .spics_io_num = pins->cs,
-        .queue_size = 7,
-        .flags = 0,
-        .pre_cb = NULL
-    };
+    spi_device_interface_config_t devcfg = {.clock_speed_hz = SPI_CLOCK_SPEED_HZ,
+                                            .mode           = 0,
+                                            .spics_io_num   = pins->cs,
+                                            .queue_size     = SPI_QUEUE_SIZE,
+                                            .flags          = 0,
+                                            .pre_cb         = NULL};
 
     ret = spi_bus_add_device(HOST_ID, &devcfg, &s_sx126x->spi);
     if (ret != ESP_OK) {
@@ -181,7 +188,7 @@ esp_err_t sx126x_deinit(void)
 
     free(s_sx126x);
     s_sx126x = NULL;
-    
+
     ESP_LOGI(TAG, "SX126x deinitialized");
     return ESP_OK;
 }
@@ -192,7 +199,7 @@ void spi_write_byte(uint8_t *Dataout, size_t DataLength)
         return;
     }
 
-    if (xSemaphoreTake(s_sx126x->spi_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+    if (xSemaphoreTake(s_sx126x->spi_mutex, pdMS_TO_TICKS(MUTEX_TIMEOUT_MS)) != pdTRUE) {
         ESP_LOGE(TAG, "Failed to acquire SPI mutex in spi_write_byte");
         return;
     }
@@ -216,7 +223,7 @@ void spi_read_byte(uint8_t *Datain, uint8_t *Dataout, size_t DataLength)
         return;
     }
 
-    if (xSemaphoreTake(s_sx126x->spi_mutex, pdMS_TO_TICKS(1000)) != pdTRUE) {
+    if (xSemaphoreTake(s_sx126x->spi_mutex, pdMS_TO_TICKS(MUTEX_TIMEOUT_MS)) != pdTRUE) {
         ESP_LOGE(TAG, "Failed to acquire SPI mutex in spi_read_byte");
         return;
     }
@@ -285,14 +292,9 @@ esp_err_t sx126x_begin(uint32_t frequencyInHz, int8_t txPowerInDbm, float tcxoVo
     }
 
     SetBufferBaseAddress(0, 0);
-#if 0
-	// SX1261_TRANCEIVER
-	SetPaConfig(0x06, 0x00, 0x01, 0x01); // PA Optimal Settings +15 dBm
-	// SX1262_TRANCEIVER
-	SetPaConfig(0x04, 0x07, 0x00, 0x01); // PA Optimal Settings +22 dBm
-	// SX1268_TRANCEIVER
-	SetPaConfig(0x04, 0x07, 0x00, 0x01); // PA Optimal Settings +22 dBm
-#endif
+    SetBufferBaseAddress(0, 0);
+
+    // PA Config for SX1262/SX1268 (+22 dBm)
     SetPaConfig(0x04, 0x07, 0x00, 0x01);               // PA Optimal Settings +22 dBm
     SetOvercurrentProtection(60.0);                    // current max 60mA for the whole device
     SetPowerConfig(txPowerInDbm, SX126X_PA_RAMP_200U); // 0 fuer Empfaenger
@@ -326,7 +328,7 @@ void FixInvertedIQ(uint8_t iqConfig)
 }
 
 esp_err_t sx126x_config(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codingRate, uint16_t preambleLength,
-                uint8_t payloadLen, bool crcOn, bool invertIrq)
+                        uint8_t payloadLen, bool crcOn, bool invertIrq)
 {
     SetStopRxTimerOnPreambleDetect(false);
     SetLoRaSymbNumTimeout(0);
@@ -372,8 +374,8 @@ esp_err_t sx126x_config(uint8_t spreadingFactor, uint8_t bandwidth, uint8_t codi
     );
 
     // Receive state no receive timeoout
-    SetRx(0xFFFFFF);
-    
+    SetRx(RX_TIMEOUT_INF);
+
     return ESP_OK;
 }
 
@@ -383,16 +385,16 @@ esp_err_t sx126x_receive(uint8_t *pData, int16_t len, uint8_t *received)
         return ESP_ERR_INVALID_ARG;
     }
 
-    *received = 0;
+    *received        = 0;
     uint16_t irqRegs = GetIrqStatus();
 
     if (irqRegs & SX126X_IRQ_RX_DONE) {
         ClearIrqStatus(SX126X_IRQ_ALL);
         *received = ReadBuffer(pData, len);
-        
+
         // Return to RX mode after reading packet
-        SetRx(0xFFFFFF);
-        
+        SetRx(RX_TIMEOUT_INF);
+
         return ESP_OK;
     }
 
@@ -411,7 +413,7 @@ esp_err_t sx126x_send(const uint8_t *pData, int16_t len, uint8_t mode)
     }
 
     s_sx126x->tx_active = true;
-    
+
     if (s_sx126x->packet_params[2] == 0x00) { // Variable length packet (explicit header)
         s_sx126x->packet_params[3] = len;
     }
@@ -419,19 +421,19 @@ esp_err_t sx126x_send(const uint8_t *pData, int16_t len, uint8_t mode)
 
     ClearIrqStatus(SX126X_IRQ_ALL);
     WriteBuffer(pData, len);
-    SetTx(500);
+    SetTx(TX_TIMEOUT_MS);
 
     if (mode & SX126x_TXMODE_SYNC) {
         // Wait for TX completion via semaphore (signaled by IRQ polling)
-        if (xSemaphoreTake(s_sx126x->tx_done_sem, pdMS_TO_TICKS(600)) == pdTRUE) {
+        if (xSemaphoreTake(s_sx126x->tx_done_sem, pdMS_TO_TICKS(TX_DONE_TIMEOUT_MS)) == pdTRUE) {
             s_sx126x->tx_active = false;
-            SetRx(0xFFFFFF);
+            SetRx(RX_TIMEOUT_INF);
 
             if (s_sx126x->last_irq_status & SX126X_IRQ_TX_DONE) {
                 ESP_LOGI(TAG, "TX done");
                 return ESP_OK;
             }
-            
+
             if (s_sx126x->last_irq_status & SX126X_IRQ_TIMEOUT) {
                 ESP_LOGW(TAG, "TX timeout");
                 s_sx126x->tx_lost++;
@@ -471,9 +473,9 @@ bool ReceiveMode(void)
     } else {
         uint16_t irq = GetIrqStatus();
         if (irq & (SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT)) {
-            SetRx(0xFFFFFF);
+            SetRx(RX_TIMEOUT_INF);
             s_sx126x->tx_active = false;
-            rv       = true;
+            rv                  = true;
         }
     }
 
@@ -495,11 +497,11 @@ void SetTxPower(int8_t txPowerInDbm)
 
 void Reset(void)
 {
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(RESET_DELAY_1_MS));
     gpio_set_level(s_sx126x->reset_pin, 0);
-    vTaskDelay(pdMS_TO_TICKS(20));
+    vTaskDelay(pdMS_TO_TICKS(RESET_DELAY_2_MS));
     gpio_set_level(s_sx126x->reset_pin, 1);
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(RESET_DELAY_1_MS));
     // ensure BUSY is low (state meachine ready)
     WaitForIdle(BUSY_WAIT, "Reset", true);
 }
@@ -750,17 +752,17 @@ void SetRx(uint32_t timeout)
     SetStandby(SX126X_STANDBY_RC);
     SetRxEnable();
     ESP_LOGI(TAG, "SetRx: timeout=%u, TXEN=%d RXEN=%d", timeout, s_sx126x->txen_pin, s_sx126x->rxen_pin);
-    
+
     uint8_t buf[3];
     buf[0] = (uint8_t)((timeout >> 16) & 0xFF);
     buf[1] = (uint8_t)((timeout >> 8) & 0xFF);
     buf[2] = (uint8_t)(timeout & 0xFF);
     WriteCommand(SX126X_CMD_SET_RX, buf, 3); // 0x82
 
-    for (int retry = 0; retry < 10; retry++) {
+    for (int retry = 0; retry < RX_CHECK_RETRY_COUNT; retry++) {
         if ((GetStatus() & 0x70) == 0x50)
             break;
-        vTaskDelay(pdMS_TO_TICKS(1));
+        vTaskDelay(pdMS_TO_TICKS(RX_CHECK_DELAY_MS));
     }
     if ((GetStatus() & 0x70) != 0x50) {
         ESP_LOGE(TAG, "SetRx failed: invalid state 0x%02x (expected 0x50)", GetStatus() & 0x70);
@@ -792,10 +794,10 @@ void SetTx(uint32_t timeoutInMs)
     buf[2] = (uint8_t)(tout & 0xFF);
     WriteCommand(SX126X_CMD_SET_TX, buf, 3); // 0x83
 
-    for (int retry = 0; retry < 10; retry++) {
+    for (int retry = 0; retry < RX_CHECK_RETRY_COUNT; retry++) {
         if ((GetStatus() & 0x70) == 0x60)
             break;
-        vTaskDelay(1);
+        vTaskDelay(pdMS_TO_TICKS(RX_CHECK_DELAY_MS));
     }
     if ((GetStatus() & 0x70) != 0x60) {
         ESP_LOGE(TAG, "SetTx failed: invalid state 0x%02x (expected 0x20)", GetStatus() & 0x70);
@@ -969,7 +971,7 @@ void ReadRegister(uint16_t reg, uint8_t *data, uint8_t numBytes)
 }
 
 // WriteCommand with retry
-void WriteCommand(uint8_t cmd, uint8_t *data, uint8_t numBytes)
+void WriteCommand(uint8_t cmd, const uint8_t *data, uint8_t numBytes)
 {
     uint8_t status;
     for (int retry = 1; retry < 10; retry++) {

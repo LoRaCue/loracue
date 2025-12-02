@@ -138,13 +138,29 @@ static inline void unpack_u16_le(uint16_t val, uint8_t *low, uint8_t *high)
 }
 
 /**
+ * @brief HID Device Types
+ */
+typedef enum {
+    HID_TYPE_NONE     = 0x0,
+    HID_TYPE_KEYBOARD = 0x1,
+    HID_TYPE_MOUSE    = 0x2,
+    HID_TYPE_MEDIA    = 0x3,
+} hid_type_t;
+
+/**
+ * @brief Command History Constants
+ */
+#define CMD_HISTORY_DEVICE_NAME_LEN 16
+#define CMD_HISTORY_COMMAND_LEN 8
+
+/**
  * @brief Command history entry for PC mode
  */
 typedef struct {
     uint32_t timestamp_ms;
     uint16_t device_id;
-    char device_name[16];
-    char command[8];
+    char device_name[CMD_HISTORY_DEVICE_NAME_LEN];
+    char command[CMD_HISTORY_COMMAND_LEN];
     uint8_t keycode;
     uint8_t modifiers;
 } command_history_entry_t;

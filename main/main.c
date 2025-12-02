@@ -9,18 +9,18 @@
 
 #include "ble.h"
 #include "bsp.h"
-#include "input_manager.h"
 #include "common_types.h"
 #include "device_registry.h"
 #include "esp_log.h"
-#include "esp_mac.h"
+
 #include "esp_ota_ops.h"
-#include "esp_random.h"
+
 #include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "general_config.h"
 #include "i2console.h"
+#include "input_manager.h"
 #include "led_manager.h"
 #include "lora_driver.h"
 #include "lora_protocol.h"
@@ -35,7 +35,7 @@
 #include "uart_commands.h"
 #include "ui_compact.h"
 #include "usb_cdc.h"
-#include "usb_console.h"
+
 #include "usb_hid.h"
 #include "version.h"
 #include <stdio.h>
@@ -48,6 +48,12 @@ static TimerHandle_t ota_validation_timer       = NULL;
 #define OTA_BOOT_COUNTER_KEY "ota_boot_cnt"
 #define OTA_ROLLBACK_LOG_KEY "ota_rollback"
 #define MAX_BOOT_ATTEMPTS 3
+
+#define BATTERY_MONITOR_INTERVAL_MS 5000
+#define USB_MONITOR_INTERVAL_MS 100
+#define LED_FADE_DURATION_MS 3000
+#define OTA_VALIDATION_TIME_MS 60000
+#define WDT_TIMEOUT_MS 90000
 
 static uint32_t ota_get_boot_counter(void)
 {
@@ -120,7 +126,7 @@ static void battery_monitor_task(void *pvParameters)
             prev_battery = current_battery;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5000)); // Check every 5 seconds
+        vTaskDelay(pdMS_TO_TICKS(BATTERY_MONITOR_INTERVAL_MS));
     }
 }
 
@@ -136,7 +142,7 @@ static void usb_monitor_task(void *pvParameters)
             prev_usb = current_usb;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(USB_MONITOR_INTERVAL_MS));
     }
 }
 
@@ -412,8 +418,6 @@ void app_main(void)
 
     // Initialize LoRa communication
     ESP_LOGI(TAG, "Initializing LoRa communication...");
-    // lora_protocol_init is called by lora_driver_init
-    // No separate init needed here
 
     // Initialize USB HID
     ESP_LOGI(TAG, "Initializing USB HID interface...");
@@ -438,16 +442,6 @@ void app_main(void)
         ESP_LOGE(TAG, "USB CDC initialization failed: %s", esp_err_to_name(ret));
         return;
     }
-
-#if 0 // USB CDC is only for command parser, not console
-    // Wait for USB enumeration before redirecting console
-    ESP_LOGI(TAG, "Waiting for USB enumeration...");
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    
-    // Redirect console to USB CDC (same port as commands)
-    usb_console_init();
-    ESP_LOGI(TAG, "Console redirected to USB CDC");
-#endif
 
     // Initialize Bluetooth configuration based on settings
     ESP_LOGI(TAG, "Initializing Bluetooth configuration...");
@@ -486,7 +480,7 @@ void app_main(void)
 
     // Start LED fading after initialization complete
     ESP_LOGI(TAG, "Starting LED fade pattern");
-    led_manager_fade(3000); // 3 second fade cycle
+    led_manager_fade(LED_FADE_DURATION_MS);
 
     // Set to receive mode initially
     lora_set_receive_mode();
@@ -506,8 +500,8 @@ void app_main(void)
     if (esp_ota_get_state_partition(running_partition, &ota_state) == ESP_OK) {
         if (ota_state == ESP_OTA_IMG_PENDING_VERIFY) {
             ESP_LOGI(TAG, "Starting 60s health check for new firmware");
-            ota_validation_timer =
-                xTimerCreate("ota_valid", pdMS_TO_TICKS(60000), pdFALSE, NULL, ota_validation_timer_cb);
+            ota_validation_timer = xTimerCreate("ota_valid", pdMS_TO_TICKS(OTA_VALIDATION_TIME_MS), pdFALSE, NULL,
+                                                ota_validation_timer_cb);
             if (ota_validation_timer) {
                 xTimerStart(ota_validation_timer, 0);
             }
@@ -527,7 +521,7 @@ void app_main(void)
     ui_compact_show_main_screen();
 
     // Main task now just handles events
-    ESP_LOGI(TAG, "Main loop starting - watchdog keepalive only");
+    ESP_LOGI(TAG, "Main loop starting");
 
     while (1) {
         esp_task_wdt_reset();

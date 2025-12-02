@@ -23,6 +23,14 @@
 #define JSONRPC_INVALID_PARAMS -32602
 #define JSONRPC_INTERNAL_ERROR -32603
 
+#define BYTES_PER_MB (1024 * 1024)
+#define BYTES_PER_KB 1024
+#define US_PER_SEC 1000000
+#define SLOT_ID_MIN 1
+#define SLOT_ID_MAX 16
+#define MAX_COMMAND_LENGTH 8192
+#define RESET_DELAY_MS 500
+
 static response_fn_t s_send_response = NULL;
 static cJSON *s_request_id           = NULL;
 
@@ -91,7 +99,7 @@ static void handle_get_device_info(void)
 
     uint32_t flash_size = 0;
     esp_flash_get_size(NULL, &flash_size);
-    cJSON_AddNumberToObject(response, "flash_size_mb", flash_size / (1024 * 1024));
+    cJSON_AddNumberToObject(response, "flash_size_mb", flash_size / BYTES_PER_MB);
 
     uint8_t mac[6];
     esp_efuse_mac_get_default(mac);
@@ -99,8 +107,8 @@ static void handle_get_device_info(void)
     snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     cJSON_AddStringToObject(response, "mac", mac_str);
 
-    cJSON_AddNumberToObject(response, "uptime_sec", esp_timer_get_time() / 1000000);
-    cJSON_AddNumberToObject(response, "free_heap_kb", esp_get_free_heap_size() / 1024);
+    cJSON_AddNumberToObject(response, "uptime_sec", esp_timer_get_time() / US_PER_SEC);
+    cJSON_AddNumberToObject(response, "free_heap_kb", esp_get_free_heap_size() / BYTES_PER_KB);
 
     const esp_partition_t *running = esp_ota_get_running_partition();
     if (running) {
@@ -173,7 +181,7 @@ static void handle_set_general(cJSON *config_json)
     cJSON *slot_id = cJSON_GetObjectItem(config_json, "slot_id");
     if (slot_id && cJSON_IsNumber(slot_id)) {
         int slot = slot_id->valueint;
-        if (slot < 1 || slot > 16) {
+        if (slot < SLOT_ID_MIN || slot > SLOT_ID_MAX) {
             send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Invalid slot_id (1-16)");
             return;
         }
@@ -342,11 +350,11 @@ static void handle_set_lora_key(cJSON *json)
 
 static void handle_get_paired_devices(void)
 {
-    paired_device_t devices[16]; // Assume max 16
+    paired_device_t devices[SLOT_ID_MAX]; // Assume max 16
     size_t count = 0;
 
     // Using arbitrary max limit that should cover expected MAX_PAIRED_DEVICES
-    if (cmd_get_paired_devices(devices, 16, &count) != ESP_OK) {
+    if (cmd_get_paired_devices(devices, SLOT_ID_MAX, &count) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get devices");
         return;
     }
@@ -432,7 +440,7 @@ static void handle_device_reset(void)
 {
     send_jsonrpc_result(cJSON_CreateString("Reset initiated"));
     // Allow time to send response
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(RESET_DELAY_MS));
     cmd_factory_reset();
 }
 
@@ -499,7 +507,6 @@ void commands_execute(const char *command_line, response_fn_t send_response)
 
     power_mgmt_update_activity();
 
-#define MAX_COMMAND_LENGTH 8192
     if (strlen(command_line) > MAX_COMMAND_LENGTH) {
         send_jsonrpc_error(JSONRPC_INVALID_REQUEST, "Request too large");
         return;

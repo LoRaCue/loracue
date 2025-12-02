@@ -22,10 +22,16 @@ static const char *TAG = "LED_MANAGER";
 #define LEDC_FREQUENCY 5000
 #define LEDC_MAX_DUTY ((1 << LEDC_DUTY_RES) - 1)
 
+#define LED_DEFAULT_FADE_PERIOD_MS 2000
+#define LED_TASK_STACK_SIZE 2048
+#define LED_TASK_PRIORITY 5
+#define LED_STOP_DELAY_MS 50
+#define LED_FADE_STEP_MS 20
+
 // State management
 static led_pattern_t current_pattern = LED_PATTERN_OFF;
 static TaskHandle_t fade_task_handle = NULL;
-static uint32_t fade_period_ms       = 2000;
+static uint32_t fade_period_ms       = LED_DEFAULT_FADE_PERIOD_MS;
 static bool button_feedback_active   = false;
 
 // Forward declaration
@@ -113,7 +119,8 @@ esp_err_t led_manager_fade(uint32_t period_ms)
     ESP_LOGI(TAG, "Free heap before task creation: %lu bytes", esp_get_free_heap_size());
 
     // Create fade task
-    BaseType_t ret = xTaskCreate(fade_task, "led_fade", 2048, NULL, 5, &fade_task_handle);
+    BaseType_t ret =
+        xTaskCreate(fade_task, "led_fade", LED_TASK_STACK_SIZE, NULL, LED_TASK_PRIORITY, &fade_task_handle);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create fade task (heap: %lu bytes)", esp_get_free_heap_size());
         current_pattern  = LED_PATTERN_OFF;
@@ -130,9 +137,9 @@ esp_err_t led_manager_stop(void)
 
     // Signal fade task to stop
     if (fade_task_handle != NULL) {
-        current_pattern = LED_PATTERN_OFF; // Signal task to exit first
-        vTaskDelay(pdMS_TO_TICKS(50));     // Wait for task to exit cleanly
-        fade_task_handle = NULL;           // Clear handle after task exits
+        current_pattern = LED_PATTERN_OFF;            // Signal task to exit first
+        vTaskDelay(pdMS_TO_TICKS(LED_STOP_DELAY_MS)); // Wait for task to exit cleanly
+        fade_task_handle = NULL;                      // Clear handle after task exits
     }
 
     // Turn off LED
@@ -150,7 +157,7 @@ led_pattern_t led_manager_get_pattern(void)
 
 static void fade_task(void *pvParameters)
 {
-    const uint32_t step_ms         = 20; // 50Hz update rate
+    const uint32_t step_ms         = LED_FADE_STEP_MS; // 50Hz update rate
     const uint32_t steps_per_cycle = fade_period_ms / step_ms;
     uint32_t step                  = 0;
 
