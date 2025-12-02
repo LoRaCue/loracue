@@ -67,8 +67,25 @@ static bool s_encoder_btn_pressed  = false;
 static uint32_t s_encoder_btn_start_ms = 0;
 #endif
 
+static const char *event_to_string(input_event_t event)
+{
+    switch (event) {
+        case INPUT_EVENT_NEXT_SHORT: return "NEXT_SHORT";
+        case INPUT_EVENT_NEXT_LONG: return "NEXT_LONG";
+        case INPUT_EVENT_NEXT_DOUBLE: return "NEXT_DOUBLE";
+        case INPUT_EVENT_PREV_SHORT: return "PREV_SHORT";
+        case INPUT_EVENT_PREV_LONG: return "PREV_LONG";
+        case INPUT_EVENT_ENCODER_CW: return "ENCODER_CW";
+        case INPUT_EVENT_ENCODER_CCW: return "ENCODER_CCW";
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT: return "ENCODER_BTN_SHORT";
+        case INPUT_EVENT_ENCODER_BUTTON_LONG: return "ENCODER_BTN_LONG";
+        default: return "UNKNOWN";
+    }
+}
+
 static inline void post_event(input_event_t event)
 {
+    ESP_LOGI(TAG, "Event: %s", event_to_string(event));
     xQueueSend(s_event_queue, &event, 0);
 }
 
