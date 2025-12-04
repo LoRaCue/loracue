@@ -33,9 +33,9 @@ static const char *TAG = "BSP_HELTEC_V3";
 #define BUTTON_NEXT_PIN GPIO_NUM_0
 
 // Alpha+ Rotary Encoder
-#define ENCODER_CLK_PIN GPIO_NUM_4
-#define ENCODER_DT_PIN GPIO_NUM_5
-#define ENCODER_BTN_PIN GPIO_NUM_6
+#define ENCODER_CLK_PIN GPIO_NUM_9
+#define ENCODER_DT_PIN GPIO_NUM_10
+#define ENCODER_BTN_PIN GPIO_NUM_12
 
 // LoRa SX1262 Pins
 #define LORA_CS_PIN GPIO_NUM_8
