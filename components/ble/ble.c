@@ -593,6 +593,7 @@ esp_err_t ble_init(void)
     if (!s_cmd_queue) {
         ESP_LOGE(TAG, "Failed to create command queue");
         vSemaphoreDelete(s_conn_state_mutex);
+        s_conn_state_mutex = NULL;
         return ESP_ERR_NO_MEM;
     }
 
@@ -602,7 +603,9 @@ esp_err_t ble_init(void)
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create command task");
         vQueueDelete(s_cmd_queue);
+        s_cmd_queue = NULL;
         vSemaphoreDelete(s_conn_state_mutex);
+        s_conn_state_mutex = NULL;
         return ESP_ERR_NO_MEM;
     }
 

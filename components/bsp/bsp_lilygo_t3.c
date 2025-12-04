@@ -62,7 +62,7 @@ esp_err_t bsp_init(void)
     ESP_LOGI(TAG, "Initializing SPI bus for E-Paper...");
     ESP_ERROR_CHECK(
         bsp_spi_init_bus(SPI3_HOST, PIN_EPAPER_MOSI, GPIO_NUM_NC, PIN_EPAPER_CLK, SPI_TRANSFER_SIZE_EPAPER));
-    
+
     // Note: We don't add a device here - the esp_lcd driver will create its own device
     ESP_LOGI(TAG, "SPI bus initialized, esp_lcd will add its own device");
 
@@ -141,6 +141,31 @@ bool bsp_battery_is_charging(void)
 {
     // LilyGO T3-S3 doesn't have charging detection hardware
     return false;
+}
+
+gpio_num_t bsp_get_encoder_clk_gpio(void)
+{
+    return ENCODER_CLK_PIN;
+}
+
+gpio_num_t bsp_get_encoder_dt_gpio(void)
+{
+    return ENCODER_DT_PIN;
+}
+
+gpio_num_t bsp_get_encoder_btn_gpio(void)
+{
+    return ENCODER_BTN_PIN;
+}
+
+gpio_num_t bsp_get_button_prev_gpio(void)
+{
+    return PIN_BUTTON_PREV;
+}
+
+gpio_num_t bsp_get_button_next_gpio(void)
+{
+    return PIN_BUTTON_NEXT;
 }
 
 // cppcheck-suppress unknownMacro

@@ -28,12 +28,13 @@ esp_err_t display_ssd1681_init(display_config_t *config)
     }
 
     esp_lcd_panel_io_spi_config_t io_config = {
-        .dc_gpio_num    = pins->dc,
-        .cs_gpio_num    = pins->cs,
-        .pclk_hz        = DISPLAY_SSD1681_SPI_SPEED,
-        .lcd_cmd_bits   = LCD_CMD_BITS,
-        .lcd_param_bits = LCD_PARAM_BITS,
-        .spi_mode       = SPI_MODE_DEFAULT,
+        .dc_gpio_num       = pins->dc,
+        .cs_gpio_num       = pins->cs,
+        .pclk_hz           = DISPLAY_SSD1681_SPI_SPEED,
+        .lcd_cmd_bits      = LCD_CMD_BITS,
+        .lcd_param_bits    = LCD_PARAM_BITS,
+        .spi_mode          = SPI_MODE_DEFAULT,
+        .trans_queue_depth = 10,
     };
 
     esp_err_t ret = esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)spi_device, &io_config, &config->io_handle);

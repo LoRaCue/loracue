@@ -16,7 +16,7 @@
 
 #define TAG "SX126X"
 
-#define SPI_CLOCK_SPEED_HZ 9000000
+#define SPI_CLOCK_SPEED_HZ 1000000
 #define SPI_QUEUE_SIZE 7
 #define MUTEX_TIMEOUT_MS 1000
 #define TX_DONE_TIMEOUT_MS 600
@@ -114,6 +114,7 @@ esp_err_t sx126x_init(void)
 
     gpio_reset_pin(s_sx126x->busy_pin);
     gpio_set_direction(s_sx126x->busy_pin, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(s_sx126x->busy_pin, GPIO_PULLDOWN_ONLY);
 
     if (s_sx126x->txen_pin != -1) {
         gpio_reset_pin(s_sx126x->txen_pin);
