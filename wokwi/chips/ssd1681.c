@@ -243,9 +243,6 @@ void chip_init()
     // Clear buffers
     memset(chip->buffer_bw, 0xFF, BUFFER_SIZE);  // White
     memset(chip->buffer_red, 0x00, BUFFER_SIZE);
-    
-    // Initial framebuffer update (white screen)
-    update_framebuffer(chip);
 
     chip->busy_timer = timer_init(&(timer_config_t){
         .callback  = on_busy_timer,

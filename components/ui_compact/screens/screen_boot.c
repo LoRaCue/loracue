@@ -18,13 +18,16 @@ void screen_boot_create(lv_obj_t *parent)
     // Select logo based on display type
     const lv_img_dsc_t *logo_img;
     uint16_t screen_width;
+    uint16_t screen_height;
     
     if (bsp_get_display_type() == BSP_DISPLAY_TYPE_EPAPER_SSD1681) {
         logo_img = &boot_logo_250x122;
         screen_width = 250;
+        screen_height = 122;
     } else {
         logo_img = &boot_logo_128x64;
         screen_width = 128;
+        screen_height = 64;
     }
 
     // Boot logo centered
@@ -39,7 +42,7 @@ void screen_boot_create(lv_obj_t *parent)
     lv_obj_set_style_text_font(version, &lv_font_micro_10, 0);
     lv_obj_set_style_text_align(version, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(version, screen_width);
-    lv_obj_set_pos(version, 0, 64 - 10);
+    lv_obj_set_pos(version, 0, screen_height - 10);
 }
 static void handle_input_event(input_event_t event)
 {
