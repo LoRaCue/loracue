@@ -57,6 +57,26 @@ esp_err_t display_ssd1681_init(display_config_t *config)
         goto cleanup_panel;
     }
 
+    // Test pattern: vertical stripes (first 8 pixels black, next 8 white, repeat)
+    uint8_t *test_buf = calloc(1, 3904);  // 32 bytes * 122 rows
+    if (test_buf) {
+        for (int y = 0; y < 122; y++) {
+            for (int x = 0; x < 32; x++) {
+                // First 8 bytes black (0xFF), rest alternating
+                if (x < 8) {
+                    test_buf[y * 32 + x] = 0xFF;  // Solid black on left edge
+                } else {
+                    test_buf[y * 32 + x] = (x % 2 == 0) ? 0xFF : 0x00;
+                }
+            }
+        }
+        ESP_LOGI(TAG, "Drawing test pattern: solid black left edge, then stripes");
+        esp_lcd_panel_draw_bitmap(config->panel, 0, 0, 250, 122, test_buf);
+        esp_lcd_panel_disp_on_off(config->panel, true);
+        free(test_buf);
+        ESP_LOGI(TAG, "Test pattern displayed");
+    }
+
     // Allocate E-Paper state
     config->epaper_state = calloc(1, sizeof(epaper_state_t));
     if (!config->epaper_state) {

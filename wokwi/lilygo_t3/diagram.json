@@ -34,39 +34,23 @@
     {
       "type": "wokwi-led",
       "id": "led_power",
-      "top": 238,
-      "left": 90.2,
+      "top": 236.4,
+      "left": 128.6,
       "attrs": { "color": "blue", "label": "Power", "flip": "" }
     },
     {
       "type": "wokwi-resistor",
       "id": "r_power",
       "top": 235.2,
-      "left": 105.05,
+      "left": 143.45,
       "rotate": 90,
       "attrs": { "value": "220" }
     },
     {
-      "type": "chip-uart",
-      "id": "uart1",
-      "top": 359.6,
-      "left": -8.82,
-      "rotate": 90,
-      "attrs": { "baudrate": "115200" }
-    },
-    {
       "type": "chip-sx1262",
       "id": "lora",
-      "top": 69.3,
-      "left": -147.68,
-      "rotate": 270,
-      "attrs": {}
-    },
-    {
-      "type": "chip-i2console",
-      "id": "i2console",
-      "top": 68.8,
-      "left": -89.58,
+      "top": -7.5,
+      "left": -80.48,
       "rotate": 270,
       "attrs": {}
     },
@@ -74,17 +58,15 @@
       "type": "wokwi-ky-040",
       "id": "encoder",
       "top": 445.4,
-      "left": -443.7,
+      "left": -405.3,
       "rotate": 270,
       "attrs": {}
     },
-    { "type": "board-epaper-2in9", "id": "epd1", "top": 288.6, "left": -341.52, "attrs": {} }
+    { "type": "chip-ssd1681", "id": "ssd1681", "top": 289.02, "left": -312, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
-    [ "esp:2", "uart1:RX", "green", [ "h0" ] ],
-    [ "esp:3", "uart1:TX", "yellow", [ "h0" ] ],
     [ "esp:1", "battery_sim:SIG", "orange", [] ],
     [ "esp:GND.2", "battery_sim:GND", "black", [] ],
     [ "esp:37", "r_power:1", "yellow", [] ],
@@ -96,29 +78,24 @@
     [ "esp:34", "lora:BUSY", "orange", [] ],
     [ "esp:8", "lora:RESET", "red", [] ],
     [ "battery_sim:VCC", "esp:3V3.1", "red", [ "v0" ] ],
-    [ "esp:17", "i2console:SDA", "blue", [] ],
-    [ "esp:18", "i2console:SCL", "yellow", [] ],
-    [ "esp:3V3.1", "i2console:VCC", "red", [] ],
-    [ "battery_sim:GND", "i2console:GND", "black", [] ],
     [ "esp:GND.4", "led_power:C", "black", [ "h0" ] ],
     [ "esp:10", "encoder:DT", "yellow", [ "h0" ] ],
-    [ "btn_next:1.r", "esp:GND.1", "black", [ "v0" ] ],
-    [ "esp:0", "btn_next:2.r", "yellow", [ "h62.17", "v7.42" ] ],
     [ "encoder:CLK", "esp:9", "violet", [ "v0" ] ],
     [ "encoder:SW", "esp:12", "yellow", [ "v0" ] ],
     [ "encoder:VCC", "esp:3V3.2", "red", [ "v0" ] ],
     [ "encoder:GND", "esp:GND.1", "black", [ "v0" ] ],
     [ "btn_prev:2.r", "esp:46", "yellow", [ "h0.2", "v48.2", "h211.2", "v-192" ] ],
     [ "btn_prev:1.r", "btn_next:1.l", "black", [ "v0" ] ],
-    [ "epd1:GND", "encoder:GND", "black", [ "h0" ] ],
-    [ "epd1:VCC", "encoder:VCC", "red", [ "h0" ] ],
-    [ "epd1:BUSY", "esp:48", "yellow", [ "h-19.2", "v-76.8" ] ],
-    [ "epd1:RST", "esp:47", "yellow", [ "h-28.8", "v-124.8" ] ],
-    [ "epd1:DC", "esp:16", "yellow", [ "h-38.4", "v-115.2" ] ],
-    [ "epd1:DIN", "esp:11", "yellow", [ "h-19.2", "v67.13", "h345.6", "v-201.6" ] ],
-    [ "btn_next:1.r", "esp:GND.1", "black", [ "v0", "h9.8" ] ],
-    [ "epd1:CLK", "esp:14", "magenta", [ "h-28.8", "v86.33", "h364.8", "v-192" ] ],
-    [ "epd1:CS", "esp:15", "yellow", [ "h-38.4", "v105.6", "h393.6", "v-307.2" ] ]
+    [ "ssd1681:GND", "encoder:GND", "black", [ "h0" ] ],
+    [ "ssd1681:VCC", "encoder:VCC", "red", [ "h0" ] ],
+    [ "ssd1681:CLK", "esp:14", "magenta", [ "h-9.6", "v-57.6" ] ],
+    [ "ssd1681:CS", "esp:15", "gold", [ "h-19.2", "v-144" ] ],
+    [ "ssd1681:DIN", "esp:11", "gold", [ "v0", "h11.24", "v-96" ] ],
+    [ "ssd1681:BUSY", "esp:48", "gold", [ "h49.64", "v28.8", "h115.2", "v-115.2" ] ],
+    [ "ssd1681:RST", "esp:47", "gold", [ "h40.04", "v28.8", "h134.4", "v-115.2" ] ],
+    [ "ssd1681:DC", "esp:16", "gold", [ "h20.84", "v-134.4" ] ],
+    [ "esp:0", "btn_next:2.r", "gold", [ "h33.37", "v103.42" ] ],
+    [ "esp:GND.1", "btn_next:1.r", "black", [ "h0" ] ]
   ],
   "dependencies": {}
 }

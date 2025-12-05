@@ -3,33 +3,20 @@
   "author": "Fabian Schmieder",
   "editor": "wokwi",
   "parts": [
-    {
-      "type": "board-esp32-s3-devkitc-1",
-      "id": "esp",
-      "top": 50,
-      "left": 0,
-      "attrs": {}
-    },
+    { "type": "board-esp32-s3-devkitc-1", "id": "esp", "top": 50, "left": 0, "attrs": {} },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_boot",
       "top": 249,
       "left": -100,
-      "rotate": 0,
-      "attrs": {
-        "color": "blue",
-        "label": "BOOT"
-      }
+      "attrs": { "color": "blue", "label": "BOOT" }
     },
     {
       "type": "wokwi-led",
       "id": "led_backlight",
       "top": 240,
       "left": 100,
-      "attrs": {
-        "color": "white",
-        "label": "Backlight"
-      }
+      "attrs": { "color": "white", "label": "Backlight" }
     },
     {
       "type": "wokwi-resistor",
@@ -37,9 +24,7 @@
       "top": 242,
       "left": 110,
       "rotate": 90,
-      "attrs": {
-        "value": "220"
-      }
+      "attrs": { "value": "220" }
     },
     {
       "type": "chip-uart",
@@ -47,128 +32,59 @@
       "top": 400,
       "left": -13,
       "rotate": 90,
-      "attrs": {
-        "baudrate": "115200"
-      }
+      "attrs": { "baudrate": "115200" }
     },
-    {
-      "type": "chip-sx1262",
-      "id": "lora",
-      "top": 120,
-      "left": -250,
-      "rotate": 0,
-      "attrs": {}
-    },
-    {
-      "type": "chip-pca9535",
-      "id": "pca",
-      "top": 300,
-      "left": -250,
-      "rotate": 0,
-      "attrs": {}
-    },
-    {
-      "type": "chip-pcf85063",
-      "id": "rtc",
-      "top": 350,
-      "left": -250,
-      "rotate": 0,
-      "attrs": {}
-    },
-    {
-      "type": "chip-bq27220",
-      "id": "fuel_gauge",
-      "top": 400,
-      "left": -250,
-      "rotate": 0,
-      "attrs": {}
-    },
-    {
-      "type": "chip-bq25896",
-      "id": "charger",
-      "top": 450,
-      "left": -250,
-      "rotate": 0,
-      "attrs": {}
-    },
-    {
-      "type": "chip-tps65185",
-      "id": "epaper_pmic",
-      "top": 500,
-      "left": -250,
-      "rotate": 0,
-      "attrs": {}
-    },
-    {
-      "type": "chip-gt911",
-      "id": "touch",
-      "top": 550,
-      "left": -250,
-      "rotate": 0,
-      "attrs": {}
-    },
-    {
-      "type": "chip-ed047tc1",
-      "id": "epaper",
-      "top": 180,
-      "left": 300,
-      "rotate": 0,
-      "attrs": {}
-    }
+    { "type": "chip-sx1262", "id": "lora", "top": 120, "left": -250, "attrs": {} },
+    { "type": "chip-pca9535", "id": "pca", "top": 300, "left": -250, "attrs": {} },
+    { "type": "chip-pcf85063", "id": "rtc", "top": 350, "left": -250, "attrs": {} },
+    { "type": "chip-bq27220", "id": "fuel_gauge", "top": 400, "left": -250, "attrs": {} },
+    { "type": "chip-bq25896", "id": "charger", "top": 450, "left": -250, "attrs": {} },
+    { "type": "chip-tps65185", "id": "epaper_pmic", "top": 500, "left": -250, "attrs": {} },
+    { "type": "chip-gt911", "id": "touch", "top": 550, "left": -250, "attrs": {} },
+    { "type": "chip-ed047tc1", "id": "epaper", "top": 183.42, "left": 302.4, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
-    
     [ "esp:0", "btn_boot:1.r", "yellow", [] ],
     [ "btn_boot:2.r", "esp:GND.1", "black", [] ],
-    
     [ "esp:2", "uart1:RX", "green", [ "h0" ] ],
     [ "esp:3", "uart1:TX", "yellow", [ "h0" ] ],
-   
-    [ "esp:11", "r_backlight:1", "yellow", [  ] ],
+    [ "esp:11", "r_backlight:1", "yellow", [] ],
     [ "r_backlight:2", "led_backlight:A", "yellow", [ "v22" ] ],
-    [ "esp:GND.4", "led_backlight:C", "black", [  ] ],
-    
-    [ "esp:46", "lora:CS", "purple", [  ] ],
-    [ "esp:14", "lora:SCK", "blue", [  ] ],
-    [ "esp:13", "lora:MOSI", "green", [  ] ],
-    [ "esp:21", "lora:MISO", "brown", [  ] ],
-    [ "esp:47", "lora:BUSY", "orange", [  ] ],
-    [ "esp:1", "lora:RESET", "red", [  ] ],
-    [ "esp:10", "lora:DIO1", "cyan", [  ] ],
-    
-    [ "esp:40", "pca:SCL", "blue", [  ] ],
-    [ "esp:39", "pca:SDA", "green", [  ] ],
-    
-    [ "esp:40", "rtc:SCL", "blue", [  ] ],
-    [ "esp:39", "rtc:SDA", "green", [  ] ],
-    
-    [ "esp:40", "fuel_gauge:SCL", "blue", [  ] ],
-    [ "esp:39", "fuel_gauge:SDA", "green", [  ] ],
-    
-    [ "esp:40", "charger:SCL", "blue", [  ] ],
-    [ "esp:39", "charger:SDA", "green", [  ] ],
-    
-    [ "esp:40", "epaper_pmic:SCL", "blue", [  ] ],
-    [ "esp:39", "epaper_pmic:SDA", "green", [  ] ],
-    
-    [ "esp:40", "touch:SCL", "blue", [  ] ],
-    [ "esp:39", "touch:SDA", "green", [  ] ],
-    
-    [ "esp:5", "epaper:D0", "gray", [  ] ],
-    [ "esp:6", "epaper:D1", "gray", [  ] ],
-    [ "esp:7", "epaper:D2", "gray", [  ] ],
-    [ "esp:15", "epaper:D3", "gray", [  ] ],
-    [ "esp:16", "epaper:D4", "gray", [  ] ],
-    [ "esp:17", "epaper:D5", "gray", [  ] ],
-    [ "esp:18", "epaper:D6", "gray", [  ] ],
-    [ "esp:8", "epaper:D7", "gray", [  ] ],
-    [ "esp:48", "epaper:CKV", "purple", [  ] ],
-    [ "esp:41", "epaper:STH", "purple", [  ] ],
-    [ "esp:42", "epaper:LEH", "purple", [  ] ],
-    [ "esp:45", "epaper:STV", "purple", [  ] ],
-    [ "esp:4", "epaper:CKH", "purple", [  ] ]
+    [ "esp:GND.4", "led_backlight:C", "black", [] ],
+    [ "esp:46", "lora:CS", "purple", [] ],
+    [ "esp:14", "lora:SCK", "blue", [] ],
+    [ "esp:13", "lora:MOSI", "green", [] ],
+    [ "esp:21", "lora:MISO", "brown", [] ],
+    [ "esp:47", "lora:BUSY", "orange", [] ],
+    [ "esp:1", "lora:RESET", "red", [] ],
+    [ "esp:10", "lora:DIO1", "cyan", [] ],
+    [ "esp:40", "pca:SCL", "blue", [] ],
+    [ "esp:39", "pca:SDA", "green", [] ],
+    [ "esp:40", "rtc:SCL", "blue", [] ],
+    [ "esp:39", "rtc:SDA", "green", [] ],
+    [ "esp:40", "fuel_gauge:SCL", "blue", [] ],
+    [ "esp:39", "fuel_gauge:SDA", "green", [] ],
+    [ "esp:40", "charger:SCL", "blue", [] ],
+    [ "esp:39", "charger:SDA", "green", [] ],
+    [ "esp:40", "epaper_pmic:SCL", "blue", [] ],
+    [ "esp:39", "epaper_pmic:SDA", "green", [] ],
+    [ "esp:40", "touch:SCL", "blue", [] ],
+    [ "esp:39", "touch:SDA", "green", [] ],
+    [ "esp:5", "epaper:D0", "gray", [] ],
+    [ "esp:6", "epaper:D1", "gray", [] ],
+    [ "esp:7", "epaper:D2", "gray", [] ],
+    [ "esp:15", "epaper:D3", "gray", [] ],
+    [ "esp:16", "epaper:D4", "gray", [] ],
+    [ "esp:17", "epaper:D5", "gray", [] ],
+    [ "esp:18", "epaper:D6", "gray", [] ],
+    [ "esp:8", "epaper:D7", "gray", [] ],
+    [ "esp:48", "epaper:CKV", "purple", [] ],
+    [ "esp:41", "epaper:STH", "purple", [] ],
+    [ "esp:42", "epaper:LEH", "purple", [] ],
+    [ "esp:45", "epaper:STV", "purple", [] ],
+    [ "esp:4", "epaper:CKH", "purple", [] ]
   ],
   "dependencies": {}
 }

@@ -27,7 +27,7 @@ extern "C" {
 
 #define DISPLAY_SSD1681_WIDTH 250
 #define DISPLAY_SSD1681_HEIGHT 122
-#define DISPLAY_SSD1681_SPI_SPEED (4 * 1000 * 1000)
+#define DISPLAY_SSD1681_SPI_SPEED (1 * 1000 * 1000)
 
 #define EPAPER_PARTIAL_REFRESH_CYCLE 10
 
@@ -108,8 +108,6 @@ static inline void display_set_dimensions(display_config_t *config, int width, i
     config->width  = width;
     config->height = height;
 }
-
-
 
 /**
  * @brief Initialize display subsystem

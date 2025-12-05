@@ -14,6 +14,21 @@ display_config_t *ui_lvgl_get_display_config(void)
     return &display_config;
 }
 
+#if defined(CONFIG_BOARD_LILYGO_T5) || defined(CONFIG_BOARD_LILYGO_T3)
+static void custom_flush_cb(lv_display_t *disp_drv, const lv_area_t *area, uint8_t *px_map)
+{
+    // LVGL I1 format has 8-byte palette at start - skip it!
+    uint8_t *actual_data = px_map + 8;
+    
+    // Use actual area dimensions from LVGL
+    int width = lv_area_get_width(area);
+    int height = lv_area_get_height(area);
+    
+    // Forward to driver with correct dimensions
+    esp_lcd_panel_draw_bitmap(display_config.panel, area->x1, area->y1, area->x1 + width, area->y1 + height, actual_data);
+}
+#endif
+
 static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata,
                                     void *user_ctx)
 {
@@ -32,24 +47,47 @@ lv_display_t *lv_port_disp_init(void)
     }
 
     // Configure LVGL port for monochrome display
-    const lvgl_port_display_cfg_t disp_cfg = {.io_handle     = display_config.io_handle,
-                                              .panel_handle  = display_config.panel,
-                                              .buffer_size   = display_config.width * display_config.height,
-                                              .double_buffer = true,
-                                              .hres          = display_config.width,
-                                              .vres          = display_config.height,
-                                              .monochrome    = true,
-                                              .rotation      = {
-                                                       .swap_xy  = false,
-                                                       .mirror_x = true,
-                                                       .mirror_y = true,
-                                              }};
+    const lvgl_port_display_cfg_t disp_cfg = {
+        .io_handle     = display_config.io_handle,
+        .panel_handle  = display_config.panel,
+#if defined(CONFIG_BOARD_LILYGO_T5) || defined(CONFIG_BOARD_LILYGO_T3)
+        // E-Paper: I1 format with stride (round up width to byte boundary)
+        // Use 256 pixels (32 bytes) to match stride exactly
+        .buffer_size   = 32 * display_config.height,
+        .monochrome    = false,
+        .color_format  = LV_COLOR_FORMAT_I1,
+#else
+        // OLED: RGB565 format with monochrome transformation
+        .buffer_size   = display_config.width * display_config.height,
+        .monochrome    = true,
+#endif
+        .double_buffer = true,
+        .hres          = display_config.width,
+        .vres          = display_config.height,
+        .rotation      = {
+            .swap_xy  = false,
+            .mirror_x = true,
+            .mirror_y = true,
+        }
+    };
 
     disp = lvgl_port_add_disp(&disp_cfg);
     if (!disp) {
         ESP_LOGE(TAG, "Failed to add LVGL display");
         return NULL;
     }
+
+#if defined(CONFIG_BOARD_LILYGO_T5) || defined(CONFIG_BOARD_LILYGO_T3)
+    // Override flush callback to debug
+    lv_display_set_flush_cb(disp, custom_flush_cb);
+#endif
+
+    // Debug: Check actual color format
+    lv_color_format_t actual_format = lv_display_get_color_format(disp);
+    uint32_t actual_stride = lv_display_get_horizontal_resolution(disp);
+    ESP_LOGI(TAG, "LVGL color format: %d (I1=%d), stride: %d pixels, buffer_size: %d bytes", 
+             actual_format, LV_COLOR_FORMAT_I1, actual_stride, 
+             ((display_config.width + 7) / 8) * display_config.height);
 
     // Register callback for flush ready notification
     const esp_lcd_panel_io_callbacks_t cbs = {

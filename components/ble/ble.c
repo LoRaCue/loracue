@@ -121,7 +121,7 @@ static void ble_advertise(void);
 
 static bool conn_state_lock(void)
 {
-    if (!s_conn_state_mutex) {
+    if (s_conn_state_mutex == NULL) {
         return false;
     }
     return xSemaphoreTake(s_conn_state_mutex, pdMS_TO_TICKS(BLE_MUTEX_WAIT_MS)) == pdTRUE;
@@ -581,19 +581,20 @@ esp_err_t ble_init(void)
 
     ESP_LOGI(TAG, "Initializing NimBLE BLE stack");
 
-    // Create mutex
-    s_conn_state_mutex = xSemaphoreCreateMutex();
+    // Create mutex if not already created
     if (!s_conn_state_mutex) {
-        ESP_LOGE(TAG, "Failed to create mutex");
-        return ESP_ERR_NO_MEM;
+        s_conn_state_mutex = xSemaphoreCreateMutex();
+        if (!s_conn_state_mutex) {
+            ESP_LOGE(TAG, "Failed to create mutex");
+            return ESP_ERR_NO_MEM;
+        }
     }
 
     // Create command queue
     s_cmd_queue = xQueueCreate(BLE_CMD_QUEUE_SIZE, sizeof(ble_cmd_t));
     if (!s_cmd_queue) {
         ESP_LOGE(TAG, "Failed to create command queue");
-        vSemaphoreDelete(s_conn_state_mutex);
-        s_conn_state_mutex = NULL;
+        // Do not delete mutex here as it might be in use by other tasks
         return ESP_ERR_NO_MEM;
     }
 
@@ -604,8 +605,7 @@ esp_err_t ble_init(void)
         ESP_LOGE(TAG, "Failed to create command task");
         vQueueDelete(s_cmd_queue);
         s_cmd_queue = NULL;
-        vSemaphoreDelete(s_conn_state_mutex);
-        s_conn_state_mutex = NULL;
+        // Do not delete mutex here
         return ESP_ERR_NO_MEM;
     }
 
@@ -615,7 +615,8 @@ esp_err_t ble_init(void)
         ESP_LOGE(TAG, "Failed to init nimble: %d", rc);
         vTaskDelete(s_cmd_task_handle);
         vQueueDelete(s_cmd_queue);
-        vSemaphoreDelete(s_conn_state_mutex);
+        s_cmd_queue = NULL;
+        // Do not delete mutex here
         return rc;
     }
 
@@ -642,7 +643,9 @@ esp_err_t ble_init(void)
         nimble_port_deinit();
         vTaskDelete(s_cmd_task_handle);
         vQueueDelete(s_cmd_queue);
+        s_cmd_queue = NULL;
         vSemaphoreDelete(s_conn_state_mutex);
+        s_conn_state_mutex = NULL;
         return ESP_FAIL;
     }
 
@@ -652,7 +655,9 @@ esp_err_t ble_init(void)
         nimble_port_deinit();
         vTaskDelete(s_cmd_task_handle);
         vQueueDelete(s_cmd_queue);
+        s_cmd_queue = NULL;
         vSemaphoreDelete(s_conn_state_mutex);
+        s_conn_state_mutex = NULL;
         return ESP_FAIL;
     }
 

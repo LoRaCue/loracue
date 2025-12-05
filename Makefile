@@ -1,6 +1,6 @@
 # LoRaCue Makefile with ESP-IDF Auto-Detection and Wokwi Simulator
 
-.PHONY: all build clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim sim-run sim-debug chips web-dev web-build web-flash help check-idf assets ui_compact_assets fonts-1bpp fonts-4bpp fonts-8bpp fonts-all
+.PHONY: all build clean fullclean rebuild flash flash-monitor monitor menuconfig size erase set-target format format-check lint test test-device test-build sim chips web-dev web-build web-flash help check-idf assets ui_compact_assets fonts-1bpp fonts-4bpp fonts-8bpp fonts-all
 
 # WASI Toolchain Detection (for Wokwi chips)
 WASI_SYSROOT := $(shell find /opt/homebrew/Cellar/wasi-libc -name wasi-sysroot 2>/dev/null | head -1)
@@ -212,6 +212,7 @@ endif
 # Usage: make build              - Build LC-Alpha+ (default)
 #        make build MODEL=alpha  - Build LC-Alpha (Heltec V3, 1 button)
 #        make build MODEL=alpha+ - Build LC-Alpha+ (Heltec V3, 2 buttons)
+#        make build MODEL=beta   - Build LC-Beta (LilyGO T3, E-paper)
 #        make build MODEL=gamma  - Build LC-Gamma (LilyGO T5, E-paper)
 MODEL ?= alpha+
 
@@ -370,28 +371,50 @@ test-build: check-idf
 # 🎮 Wokwi Simulator
 # ============================================================================
 
-# Start SX1262 RF relay server
-	@echo "📦 Installing relay server dependencies..."
-	@cd wokwi/sx1262-rf-relay && npm install
+# Model to Wokwi board mapping
+WOKWI_BOARD_alpha = heltec_v3
+WOKWI_BOARD_alpha+ = heltec_v3
+WOKWI_BOARD_beta = lilygo_t3
+WOKWI_BOARD_gamma = lilygo_t5
 
-# Wokwi simulator
-WOKWI_BOARD ?= heltec_v3
+# Determine Wokwi board from MODEL
+ifdef MODEL
+WOKWI_BOARD = $(WOKWI_BOARD_$(MODEL))
+else
+WOKWI_BOARD = heltec_v3
+endif
+
 WOKWI_DIR = wokwi/$(WOKWI_BOARD)
 
-ifdef CI
-sim: check-idf
+# Simulation parameters
+TIMEOUT ?= 15000
+ifdef SCREENSHOT_PART
+SCREENSHOT_TIME ?= $(TIMEOUT)
+SCREENSHOT_FILE ?= wokwi.png
+SCREENSHOT_ARGS = --screenshot-part $(SCREENSHOT_PART) --screenshot-time $(SCREENSHOT_TIME) --screenshot-file $(SCREENSHOT_FILE)
+else ifdef SCREENSHOT_TIME
+SCREENSHOT_FILE ?= wokwi.png
+SCREENSHOT_ARGS = --screenshot-time $(SCREENSHOT_TIME) --screenshot-file $(SCREENSHOT_FILE)
 else
-sim: check-idf build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm
+SCREENSHOT_ARGS =
 endif
+
+# Wokwi simulator - run simulation with MODEL selection
+sim: check-idf chips
 ifndef WOKWI_CLI
-	@echo "❌ Wokwi CLI not found. Install: npm install -g wokwi-cli"
+	@echo "❌ Wokwi CLI not found. Install: npm install -g @wokwi/cli"
 	@false
 endif
-	@$(MAKE) build BOARD=heltec
-	@echo "✅ Wokwi simulation ready (using Heltec V3 firmware)"
+	@if [ ! -d $(WOKWI_DIR) ]; then \
+		echo "❌ Board $(WOKWI_BOARD) not found for MODEL=$(MODEL)"; \
+		exit 1; \
+	fi
+	@echo "🚀 Starting Wokwi simulation for MODEL=$(MODEL) ($(WOKWI_BOARD))..."
+	@cd $(WOKWI_DIR) && wokwi-cli --timeout $(TIMEOUT) $(SCREENSHOT_ARGS) .
+	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
 
 # Build all custom Wokwi chips
-chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm build/wokwi/chips/ed047tc1.chip.wasm build/wokwi/chips/i2console.chip.wasm
+chips: build/wokwi/chips/uart.chip.wasm build/wokwi/chips/sx1262.chip.wasm build/wokwi/chips/pca9535.chip.wasm build/wokwi/chips/pcf85063.chip.wasm build/wokwi/chips/bq27220.chip.wasm build/wokwi/chips/bq25896.chip.wasm build/wokwi/chips/tps65185.chip.wasm build/wokwi/chips/gt911.chip.wasm build/wokwi/chips/ed047tc1.chip.wasm build/wokwi/chips/i2console.chip.wasm build/wokwi/chips/ssd1681.chip.wasm
 	@echo "✅ All custom chips compiled"
 
 # Build custom UART bridge chip
@@ -545,29 +568,21 @@ build/wokwi/chips/i2console.chip.wasm: wokwi/chips/i2console.chip.c wokwi/chips/
 	@rm build/wokwi/chips/i2console.o
 	@echo "✅ I2Console chip compiled"
 
-sim-run: sim
-	@if [ ! -d $(WOKWI_DIR) ]; then \
-		echo "❌ Board $(WOKWI_BOARD) not found"; \
-		exit 1; \
-	fi
-	@echo "🚀 Starting Wokwi simulation for $(WOKWI_BOARD)..."
-	@cd $(WOKWI_DIR) && wokwi-cli .
-	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
-	@echo "💡 Serial log: wokwi.log"
-	@echo "💡 Press Ctrl+C to stop"
-	@echo ""
-	wokwi-cli --timeout 0 --interactive --serial-log-file wokwi.log
+# Build custom SSD1681 E-Paper display chip
+build/wokwi/chips/ssd1681.chip.wasm: wokwi/chips/ssd1681.c wokwi/chips/wokwi-api.h wokwi/chips/ssd1681.json
+	@echo "🔧 Compiling custom SSD1681 E-Paper chip..."
+	@mkdir -p build/wokwi/chips
+	@$(CLANG) --target=wasm32-unknown-wasi \
+		--sysroot $(WASI_SYSROOT) \
+		-c -o build/wokwi/chips/ssd1681.o wokwi/chips/ssd1681.c
+	@$(WASM_LD) --no-entry --import-memory --export-table \
+		-o build/wokwi/chips/ssd1681.chip.wasm \
+		build/wokwi/chips/ssd1681.o \
+		$(WASI_SYSROOT)/lib/wasm32-wasi/libc.a
+	@cp wokwi/chips/ssd1681.json build/wokwi/chips/ssd1681.chip.json
+	@rm build/wokwi/chips/ssd1681.o
+	@echo "✅ SSD1681 chip compiled"
 
-sim-debug: sim
-	@echo "🐛 Starting debug simulation with interactive serial..."
-	@echo "💡 UART0 commands: telnet localhost 4000 (RFC2217)"
-	@echo "💡 Serial log: wokwi.log"
-	@echo "💡 Press Ctrl+C to stop"
-	@echo ""
-	wokwi-cli --timeout 0 --interactive --serial-log-file wokwi.log
-
-build/wokwi_sim.bin:
-	@$(MAKE) sim
 
 # Web interface
 web-dev:
@@ -604,6 +619,7 @@ help:
 	@echo "  make build              - Build LC-Alpha+ (default)"
 	@echo "  make build MODEL=alpha  - Build LC-Alpha (Heltec V3, 1 button)"
 	@echo "  make build MODEL=alpha+ - Build LC-Alpha+ (Heltec V3, 2 buttons)"
+	@echo "  make build MODEL=beta   - Build LC-Beta (LilyGO T3, E-paper)"
 	@echo "  make build MODEL=gamma  - Build LC-Gamma (LilyGO T5, E-paper)"
 	@echo "  make rebuild            - Clean and rebuild"
 	@echo "  make clean              - Clean build artifacts"
@@ -613,6 +629,7 @@ help:
 	@echo "  make flash              - Flash LC-Alpha+ (default)"
 	@echo "  make flash MODEL=alpha  - Flash LC-Alpha"
 	@echo "  make flash MODEL=alpha+ - Flash LC-Alpha+"
+	@echo "  make flash MODEL=beta   - Flash LC-Beta"
 	@echo "  make flash MODEL=gamma  - Flash LC-Gamma"
 	@echo "  make flash-monitor MODEL=alpha - Flash and monitor LC-Alpha"
 	@echo "  make monitor            - Serial monitor only"
@@ -624,9 +641,11 @@ help:
 	@echo "  make size          - Show binary size analysis"
 	@echo ""
 	@echo "🎮 Simulator:"
-	@echo "  make sim           - Build for Wokwi"
-	@echo "  make sim-run       - Run Wokwi simulation (WOKWI_BOARD=heltec_v3|lilygo_t5)"
-	@echo "  make sim-debug     - Interactive simulation"
+	@echo "  make sim MODEL=alpha   - Run Wokwi simulation for LC-Alpha"
+	@echo "  make sim MODEL=alpha+  - Run Wokwi simulation for LC-Alpha+"
+	@echo "  make sim MODEL=beta    - Run Wokwi simulation for LC-Beta"
+	@echo "  make sim MODEL=gamma   - Run Wokwi simulation for LC-Gamma"
+	@echo "  Options: TIMEOUT=15000 SCREENSHOT_PART=display SCREENSHOT_TIME=10000 SCREENSHOT_FILE=wokwi.png"
 	@echo ""
 	@echo "🌐 Web Interface:"
 	@echo "  make web-dev       - Start dev server (localhost:3000)"

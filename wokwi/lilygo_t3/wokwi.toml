@@ -19,3 +19,7 @@ binary = "../../build/wokwi/chips/sx1262.chip.wasm"
 [[chip]]
 name = "i2console"
 binary = "../../build/wokwi/chips/i2console.chip.wasm"
+
+[[chip]]
+name = "ssd1681"
+binary = "../../build/wokwi/chips/ssd1681.chip.wasm"
