@@ -28,17 +28,17 @@ void ui_components_init(void)
 {
     // Title style (bold, larger)
     lv_style_init(&style_title);
-    lv_style_set_text_font(&style_title, &lv_font_pixolletta_10);
+    lv_style_set_text_font(&style_title, UI_FONT_BODY);
     lv_style_set_text_color(&style_title, lv_color_white());
 
     // Normal text style
     lv_style_init(&style_text);
-    lv_style_set_text_font(&style_text, &lv_font_pixolletta_10);
+    lv_style_set_text_font(&style_text, UI_FONT_BODY);
     lv_style_set_text_color(&style_text, lv_color_white());
 
     // Small text style
     lv_style_init(&style_small);
-    lv_style_set_text_font(&style_small, &lv_font_pixolletta_10);
+    lv_style_set_text_font(&style_small, UI_FONT_BODY);
     lv_style_set_text_color(&style_small, lv_color_make(0xA0, 0xA0, 0xA0));
 }
 
@@ -73,11 +73,16 @@ int ui_draw_icon_text(lv_obj_t *parent, const void *icon_src, const char *text, 
         text_x = icon_x + icon_width + 2;
     }
 
-    // Center icon vertically: y is baseline, adjust for icon height
-    int icon_y = y + (8 - icon_height) / 2;
+    // Center icon vertically relative to text line height
+    // If between two pixels, use bottom-most (add 1 to result if odd)
+    int vertical_offset = (UI_LINE_HEIGHT - icon_height) / 2;
+    if ((UI_LINE_HEIGHT - icon_height) % 2 != 0) {
+        vertical_offset++; // Use bottom-most pixel
+    }
+    int icon_y = y + vertical_offset;
     
     lv_obj_set_pos(icon, icon_x, icon_y);
-    lv_obj_set_pos(label, text_x, y - 1);
+    lv_obj_set_pos(label, text_x, y);
 
     return total_width;
 }
@@ -93,7 +98,7 @@ void ui_create_header(lv_obj_t *parent, const char *title)
 void ui_create_footer(lv_obj_t *parent)
 {
     lv_obj_t *bottom_line                     = lv_line_create(parent);
-    static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
+    static lv_point_precise_t bottom_points[] = {{0, BOTTOM_BAR_Y}, {DISPLAY_WIDTH, BOTTOM_BAR_Y}};
     lv_line_set_points(bottom_line, bottom_points, 2);
     lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
     lv_obj_set_style_line_width(bottom_line, 1, 0);
@@ -108,7 +113,7 @@ lv_obj_t *ui_create_main_screen_layout(lv_obj_t *parent, const char *mode_text, 
     lv_obj_t *mode_label = lv_label_create(parent);
     lv_label_set_text(mode_label, mode_text);
     lv_obj_set_style_text_color(mode_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(mode_label, &lv_font_pixolletta_20, 0);
+    lv_obj_set_style_text_font(mode_label, UI_FONT_LARGE, 0);
     lv_obj_align(mode_label, LV_ALIGN_CENTER, 0, PRESENTER_TEXT_Y - (DISPLAY_HEIGHT / 2));
 
     // Bottom separator
@@ -118,7 +123,7 @@ lv_obj_t *ui_create_main_screen_layout(lv_obj_t *parent, const char *mode_text, 
     lv_obj_t *device_label = lv_label_create(parent);
     lv_label_set_text(device_label, device_name ? device_name : "LC-????");
     lv_obj_set_style_text_color(device_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(device_label, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(device_label, UI_FONT_BODY, 0);
     lv_obj_set_pos(device_label, TEXT_MARGIN_LEFT, BOTTOM_TEXT_Y);
 
     // Menu button bottom right
@@ -202,7 +207,7 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
     for (int i = 0; i < UI_MENU_VISIBLE_ITEMS; i++) {
         int item_index = menu->scroll_offset + i;
         if (item_index < menu->total_items) {
-            int y = 0 + (i * 13); // Start at Y=0 for 4 items
+            int y = 0 + (i * UI_MENU_ITEM_HEIGHT);
 
             // Calculate lightbar width based on nav arrows
             bool has_nav_arrows =
@@ -212,7 +217,7 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
             // Create rounded highlight box for selected item
             if (item_index == menu->selected_index) {
                 lv_obj_t *highlight = lv_obj_create(menu->screen);
-                lv_obj_set_size(highlight, lightbar_width, 11);
+                lv_obj_set_size(highlight, lightbar_width, UI_MENU_ITEM_HEIGHT - 2);
                 lv_obj_set_pos(highlight, 0, y + 1);
                 lv_obj_set_style_bg_color(highlight, lv_color_white(), 0);
                 lv_obj_set_style_border_width(highlight, 0, 0);
@@ -224,7 +229,7 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
             menu->items[i] = lv_label_create(menu->screen);
             lv_obj_add_style(menu->items[i], &style_text, 0);
             lv_label_set_text(menu->items[i], item_names[item_index]);
-            lv_obj_set_pos(menu->items[i], UI_MARGIN_LEFT + 2, y + 1);
+            lv_obj_set_pos(menu->items[i], UI_MARGIN_LEFT + 2, y + 1 + UI_TEXT_OFFSET_Y);
 
             // Invert text color for selected item
             if (item_index == menu->selected_index) {
@@ -246,13 +251,6 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
         lv_obj_set_pos(menu->nav_down, UI_NAV_ARROW_X, UI_MENU_ARROW_Y_DOWN);
     }
 
-    // Bottom separator line
-    lv_obj_t *bottom_line                     = lv_line_create(menu->screen);
-    static lv_point_precise_t bottom_points[] = {{0, UI_BOTTOM_BAR_LINE_Y}, {DISPLAY_WIDTH, UI_BOTTOM_BAR_LINE_Y}};
-    lv_line_set_points(bottom_line, bottom_points, 2);
-    lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
-    lv_obj_set_style_line_width(bottom_line, 1, 0);
-
     // Bottom bar button hints
 #if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     ui_draw_bottom_bar_alpha_plus(menu->screen, &nav_left, UI_STR_BACK, &rotary, UI_STR_SCROLL, &nav_right, UI_STR_SELECT);
@@ -261,6 +259,16 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
     ui_draw_icon_text(menu->screen, &button_long_press, UI_STR_SELECT, 41, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_LEFT);
     ui_draw_icon_text(menu->screen, &button_double_press, UI_STR_BACK, DISPLAY_WIDTH, UI_BOTTOM_BAR_ICON_Y, UI_ALIGN_RIGHT);
 #endif
+
+    // Bottom separator line - draw AFTER bottom bar to prevent overwriting
+    menu->bottom_line_points[0] = (lv_point_precise_t){0, UI_BOTTOM_BAR_LINE_Y};
+    menu->bottom_line_points[1] = (lv_point_precise_t){DISPLAY_WIDTH, UI_BOTTOM_BAR_LINE_Y};
+    
+    lv_obj_t *bottom_line = lv_line_create(menu->screen);
+    lv_line_set_points(bottom_line, menu->bottom_line_points, 2);
+    lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
+    lv_obj_set_style_line_width(bottom_line, 1, 0);
+    lv_obj_move_foreground(bottom_line);  // Ensure line is on top
 }
 
 void ui_menu_set_selected(ui_menu_t *menu, int index)
@@ -316,7 +324,7 @@ void ui_edit_screen_render(const ui_edit_screen_t *screen, lv_obj_t *parent, con
 
     // Center value in content area (always same position)
     lv_obj_t *value_label = lv_label_create(parent);
-    lv_obj_set_style_text_font(value_label, &lv_font_pixolletta_20, 0);
+    lv_obj_set_style_text_font(value_label, UI_FONT_LARGE, 0);
     lv_obj_set_style_text_color(value_label, lv_color_white(), 0);
     lv_label_set_text(value_label, value);
     lv_obj_update_layout(value_label);
@@ -428,7 +436,7 @@ void ui_text_viewer_render(ui_text_viewer_t *viewer, lv_obj_t *parent, const cha
         lv_obj_t *line_label = lv_label_create(parent);
         lv_obj_add_style(line_label, &style_text, 0);
         lv_label_set_text(line_label, viewer->lines[viewer->scroll_pos + i]);
-        lv_obj_set_pos(line_label, 0, 12 + i * UI_LINE_HEIGHT);
+        lv_obj_set_pos(line_label, 0, 12 + i * UI_LINE_HEIGHT + UI_TEXT_OFFSET_Y);
     }
 
     // Nav arrows if scrolling is needed
@@ -521,7 +529,7 @@ void ui_numeric_input_render(const ui_numeric_input_t *input, lv_obj_t *parent, 
     int value_height   = 20; // Font height
 
     lv_obj_t *value_label = lv_label_create(parent);
-    lv_obj_set_style_text_font(value_label, &lv_font_pixolletta_20, 0);
+    lv_obj_set_style_text_font(value_label, UI_FONT_LARGE, 0);
     lv_obj_set_style_text_color(value_label, lv_color_white(), 0);
     char value_text[32];
     snprintf(value_text, sizeof(value_text), "%.1f %s", input->value, unit);
@@ -629,17 +637,18 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
     int visible_items = UI_RADIO_VISIBLE_ITEMS;
     int start_y       = SEPARATOR_Y_TOP + 2;
 
-    // Adjust scroll offset
-    if (radio->selected_index < radio->scroll_offset) {
-        radio->scroll_offset = radio->selected_index;
-    } else if (radio->selected_index >= radio->scroll_offset + visible_items) {
-        radio->scroll_offset = radio->selected_index - visible_items + 1;
-    }
-
+    // Radio button sizing: OLED 11px, E-Paper 15px
+    #if CONFIG_LORACUE_MODEL_BETA || CONFIG_LORACUE_MODEL_GAMMA
+        int outer_size = 15;
+    #else
+        int outer_size = 11;
+    #endif
+    int circle_margin = 1;
+    
     // Check if nav arrows are needed
     bool has_nav_arrows = (radio->scroll_offset > 0) || (radio->scroll_offset + visible_items < radio->item_count);
     int lightbar_width  = has_nav_arrows ? (DISPLAY_WIDTH - 9) : DISPLAY_WIDTH;
-    int lightbar_x      = 14; // Start after radio circles
+    int lightbar_x      = circle_margin + outer_size + 1; // 1 + size + 1
 
     // Draw items
     for (int i = 0; i < visible_items && (radio->scroll_offset + i) < radio->item_count; i++) {
@@ -656,9 +665,9 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
             lv_obj_set_style_radius(highlight, 3, 0);
         }
 
-        // Radio circles - 9px diameter
-        int circle_x = 2;
-        int circle_y = item_y + (UI_MENU_ITEM_HEIGHT - 9) / 2;
+        // Radio circles - vertically centered in item height
+        int circle_x = circle_margin;
+        int circle_y = item_y + (UI_MENU_ITEM_HEIGHT - outer_size) / 2;
 
         // For single-select radio: filled circle shows the SAVED value (from selected_items[0])
         // Navigation (lightbar) is separate and controlled by selected_index
@@ -671,21 +680,35 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
             is_checked = radio->selected_items[item_idx];
         }
 
-        // Outer circle (9px) - always shown
+        #if CONFIG_LORACUE_MODEL_BETA || CONFIG_LORACUE_MODEL_GAMMA
+            int inner_size = outer_size - 6;
+        #else
+            int inner_size = outer_size - 4;
+        #endif
+        
+        // Border width: thicker for E-Paper
+        #if CONFIG_LORACUE_MODEL_BETA || CONFIG_LORACUE_MODEL_GAMMA
+            int border_width = 2;
+        #else
+            int border_width = 1;
+        #endif
+
+        // Outer circle - always shown
         lv_obj_t *outer_circle = lv_obj_create(parent);
-        lv_obj_set_size(outer_circle, 9, 9);
+        lv_obj_set_size(outer_circle, outer_size, outer_size);
         lv_obj_set_pos(outer_circle, circle_x, circle_y);
-        lv_obj_set_style_radius(outer_circle, 5, 0);
+        lv_obj_set_style_radius(outer_circle, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(outer_circle, lv_color_black(), 0);
         lv_obj_set_style_border_color(outer_circle, lv_color_white(), 0);
-        lv_obj_set_style_border_width(outer_circle, 1, 0);
+        lv_obj_set_style_border_width(outer_circle, border_width, 0);
 
-        // Inner filled circle (5px) - only if checked
+        // Inner filled circle - only if checked
         if (is_checked) {
+            int offset = (outer_size - inner_size) / 2;
             lv_obj_t *inner_circle = lv_obj_create(parent);
-            lv_obj_set_size(inner_circle, 5, 5);
-            lv_obj_set_pos(inner_circle, circle_x + 2, circle_y + 2);
-            lv_obj_set_style_radius(inner_circle, 3, 0);
+            lv_obj_set_size(inner_circle, inner_size, inner_size);
+            lv_obj_set_pos(inner_circle, circle_x + offset, circle_y + offset);
+            lv_obj_set_style_radius(inner_circle, LV_RADIUS_CIRCLE, 0);
             lv_obj_set_style_bg_color(inner_circle, lv_color_white(), 0);
             lv_obj_set_style_border_width(inner_circle, 0, 0);
         }
@@ -697,7 +720,7 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
             lv_obj_set_style_text_color(text, lv_color_black(), 0);
         }
         lv_label_set_text(text, items[item_idx]);
-        lv_obj_set_pos(text, lightbar_x + 2, item_y + 2);
+        lv_obj_set_pos(text, lightbar_x + 2, item_y + 2 + UI_TEXT_OFFSET_Y);
     }
 
     // Nav arrows

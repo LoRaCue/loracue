@@ -35,14 +35,18 @@ void screen_boot_create(lv_obj_t *parent)
     lv_img_set_src(logo, logo_img);
     lv_obj_set_pos(logo, (screen_width - logo_img->header.w) / 2, 0);
 
-    // Version at bottom center with micro font
+    // Version at bottom - aligned to bottom edge with proper font height consideration
     lv_obj_t *version = lv_label_create(parent);
     lv_label_set_text(version, LORACUE_VERSION_FULL);
     lv_obj_set_style_text_color(version, lv_color_white(), 0);
-    lv_obj_set_style_text_font(version, &lv_font_micro_10, 0);
+    lv_obj_set_style_text_font(version, UI_FONT_SMALL, 0);
     lv_obj_set_style_text_align(version, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(version, screen_width);
-    lv_obj_set_pos(version, 0, screen_height - 10);
+    
+    // Position at bottom: screen_height - font_line_height
+    // OLED: 64 - 12 = 52, E-Paper: 122 - 15 - 2 = 105
+    int version_y = screen_height - (bsp_get_display_type() == BSP_DISPLAY_TYPE_EPAPER_SSD1681 ? 17 : 12);
+    lv_obj_set_pos(version, 0, version_y);
 }
 static void handle_input_event(input_event_t event)
 {

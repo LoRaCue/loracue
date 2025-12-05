@@ -54,19 +54,19 @@ void screen_config_mode_create(lv_obj_t *parent)
     lv_obj_t *ssid_label = lv_label_create(parent);
     lv_label_set_text_fmt(ssid_label, "SSID: %s", device_ssid);
     lv_obj_set_style_text_color(ssid_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(ssid_label, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(ssid_label, UI_FONT_BODY, 0);
     lv_obj_set_pos(ssid_label, 2, 18);
 
     lv_obj_t *pass_label = lv_label_create(parent);
     lv_label_set_text_fmt(pass_label, "Pass: %s", device_password);
     lv_obj_set_style_text_color(pass_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(pass_label, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(pass_label, UI_FONT_BODY, 0);
     lv_obj_set_pos(pass_label, 2, 28);
 
     lv_obj_t *url_label = lv_label_create(parent);
     lv_label_set_text(url_label, "http://192.168.4.1");
     lv_obj_set_style_text_color(url_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(url_label, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(url_label, UI_FONT_BODY, 0);
     lv_obj_set_pos(url_label, 0, 38);
 
     ui_create_footer(parent);
