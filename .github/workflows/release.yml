@@ -415,14 +415,14 @@ jobs:
         zip -r ../loracue-${{ matrix.model.name }}-v${{ needs.version.outputs.version }}.zip .
     
     - name: Upload firmware package
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: loracue-${{ matrix.model.name }}-v${{ needs.version.outputs.version }}
         path: release/loracue-${{ matrix.model.name }}-v${{ needs.version.outputs.version }}.zip
         retention-days: 90
     
     - name: Upload manifest
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: ${{ matrix.model.name }}-manifest-v${{ needs.version.outputs.version }}
         path: release/${{ matrix.model.name }}/manifest.json
