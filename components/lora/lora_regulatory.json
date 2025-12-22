@@ -1,0 +1,251 @@
+{
+  "version": "3.0.0",
+  "hardware": [
+    {
+      "id": "HW_433",
+      "name": "433 MHz",
+      "freq_min_khz": 410000,
+      "freq_max_khz": 525000,
+      "optimal_khz": 433000
+    },
+    {
+      "id": "HW_868", 
+      "name": "868 MHz",
+      "freq_min_khz": 862000,
+      "freq_max_khz": 930000,
+      "optimal_khz": 868000
+    },
+    {
+      "id": "HW_915",
+      "name": "915 MHz", 
+      "freq_min_khz": 862000,
+      "freq_max_khz": 930000,
+      "optimal_khz": 915000
+    },
+    {
+      "id": "HW_2400",
+      "name": "2.4 GHz",
+      "freq_min_khz": 2400000,
+      "freq_max_khz": 2483500,
+      "optimal_khz": 2441750
+    }
+  ],
+  "regions": [
+    {
+      "id": "EU",
+      "name": "European Union",
+      "countries": ["DE", "FR", "IT", "ES", "NL", "BE", "AT", "PL", "SE", "DK", "FI", "NO", "UK"]
+    },
+    {
+      "id": "UA",
+      "name": "Ukraine", 
+      "countries": ["UA"]
+    },
+    {
+      "id": "US", 
+      "name": "United States",
+      "countries": ["US"]
+    },
+    {
+      "id": "CA",
+      "name": "Canada", 
+      "countries": ["CA"]
+    },
+    {
+      "id": "AU",
+      "name": "Australia/New Zealand",
+      "countries": ["AU", "NZ"]
+    },
+    {
+      "id": "JP",
+      "name": "Japan",
+      "countries": ["JP"]
+    },
+    {
+      "id": "BR",
+      "name": "Brazil",
+      "countries": ["BR"]
+    },
+    {
+      "id": "IN",
+      "name": "India", 
+      "countries": ["IN"]
+    },
+    {
+      "id": "CN",
+      "name": "China",
+      "countries": ["CN"]
+    },
+    {
+      "id": "KR",
+      "name": "South Korea",
+      "countries": ["KR"]
+    },
+    {
+      "id": "RU",
+      "name": "Russia",
+      "countries": ["RU"]
+    }
+  ],
+  "compliance": [
+    {
+      "region": "EU",
+      "hardware": "HW_433",
+      "freq_min_khz": 433050,
+      "freq_max_khz": 434790,
+      "max_power_dbm": 10,
+      "duty_cycle_percent": 10,
+      "standard": "ETSI EN 300 220"
+    },
+    {
+      "region": "EU", 
+      "hardware": "HW_868",
+      "freq_min_khz": 863000,
+      "freq_max_khz": 868000,
+      "max_power_dbm": 14,
+      "duty_cycle_percent": 1,
+      "standard": "ETSI EN 300 220"
+    },
+    {
+      "region": "EU",
+      "hardware": "HW_868", 
+      "freq_min_khz": 869400,
+      "freq_max_khz": 869650,
+      "max_power_dbm": 27,
+      "duty_cycle_percent": 10,
+      "standard": "ETSI EN 300 220",
+      "note": "High power sub-band"
+    },
+    {
+      "region": "EU",
+      "hardware": "HW_2400",
+      "freq_min_khz": 2400000,
+      "freq_max_khz": 2483500,
+      "max_power_dbm": 10,
+      "standard": "ETSI EN 300 328"
+    },
+    {
+      "region": "US",
+      "hardware": "HW_433",
+      "freq_min_khz": 433500,
+      "freq_max_khz": 434500, 
+      "max_power_dbm": -14,
+      "manual_limit_ms": 5000,
+      "standard": "FCC Part 15.231(a)",
+      "note": "Manual operation only"
+    },
+    {
+      "region": "US",
+      "hardware": "HW_915",
+      "freq_min_khz": 902000,
+      "freq_max_khz": 928000,
+      "max_power_dbm": 30,
+      "fhss_required": true,
+      "max_dwell_ms": 400,
+      "standard": "FCC Part 15.247"
+    },
+    {
+      "region": "US",
+      "hardware": "HW_2400", 
+      "freq_min_khz": 2400000,
+      "freq_max_khz": 2483500,
+      "max_power_dbm": 30,
+      "standard": "FCC Part 15.247"
+    },
+    {
+      "region": "CA",
+      "hardware": "HW_915",
+      "freq_min_khz": 902000,
+      "freq_max_khz": 928000,
+      "max_power_dbm": 30,
+      "fhss_required": true,
+      "max_dwell_ms": 400,
+      "standard": "ISED RSS-210"
+    },
+    {
+      "region": "AU",
+      "hardware": "HW_915",
+      "freq_min_khz": 915000,
+      "freq_max_khz": 928000,
+      "max_power_dbm": 30,
+      "standard": "ACMA LIPD",
+      "note": "Low interference potential device"
+    },
+    {
+      "region": "JP",
+      "hardware": "HW_915",
+      "freq_min_khz": 920600,
+      "freq_max_khz": 928000,
+      "max_power_dbm": 13,
+      "lbt_required": true,
+      "max_tx_time_ms": 4000,
+      "standard": "ARIB STD-T108"
+    },
+    {
+      "region": "BR",
+      "hardware": "HW_915",
+      "freq_min_khz": 902000,
+      "freq_max_khz": 907500,
+      "max_power_dbm": 30,
+      "fhss_required": true,
+      "max_dwell_ms": 400,
+      "standard": "Anatel Resolution 680"
+    },
+    {
+      "region": "IN",
+      "hardware": "HW_868",
+      "freq_min_khz": 865000,
+      "freq_max_khz": 867000,
+      "max_power_dbm": 30,
+      "duty_cycle_percent": 1,
+      "standard": "WPC NFAP"
+    },
+    {
+      "region": "CN",
+      "hardware": "HW_433",
+      "freq_min_khz": 433050,
+      "freq_max_khz": 434790,
+      "max_power_dbm": 10,
+      "duty_cycle_percent": 10,
+      "standard": "MIIT"
+    },
+    {
+      "region": "CN",
+      "hardware": "HW_433",
+      "freq_min_khz": 470000,
+      "freq_max_khz": 510000,
+      "max_power_dbm": 17,
+      "fhss_required": true,
+      "max_dwell_ms": 5000,
+      "standard": "MIIT"
+    },
+    {
+      "region": "KR",
+      "hardware": "HW_915",
+      "freq_min_khz": 920900,
+      "freq_max_khz": 923300,
+      "max_power_dbm": 14,
+      "lbt_required": true,
+      "standard": "MSIT"
+    },
+    {
+      "region": "RU",
+      "hardware": "HW_868",
+      "freq_min_khz": 864000,
+      "freq_max_khz": 870000,
+      "max_power_dbm": 14,
+      "duty_cycle_percent": 1,
+      "standard": "GKRCH"
+    },
+    {
+      "region": "UA",
+      "hardware": "HW_868",
+      "freq_min_khz": 863000,
+      "freq_max_khz": 870000,
+      "max_power_dbm": 14,
+      "duty_cycle_percent": 1,
+      "standard": "NKRZI",
+      "note": "Similar to EU but separate regulatory authority"
+    }
+  ]
+}
