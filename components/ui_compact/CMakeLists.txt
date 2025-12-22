@@ -31,6 +31,7 @@ idf_component_register(
         "screens/screen_lora_bw.c"
         "screens/screen_lora_cr.c"
         "screens/screen_lora_txpower.c"
+        "screens/screen_lora_regulatory_domain.c"
         "screens/screen_lora_band.c"
         ${GENERATED_SOURCES}
     INCLUDE_DIRS 

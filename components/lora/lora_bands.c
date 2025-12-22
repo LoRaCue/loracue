@@ -218,3 +218,27 @@ int lora_regulatory_get_available_hardware(const char *region_id, const char **h
     }
     return count;
 }
+
+bool lora_regulatory_validate_domain(const char *domain)
+{
+    if (!domain || strlen(domain) == 0) return true; // Empty = "Unknown" is valid
+    if (strlen(domain) != 2) return false; // Must be 2 chars
+    return lora_regulatory_get_region_by_id(domain) != NULL;
+}
+
+const lora_compliance_t *lora_regulatory_get_limits(const char *domain, const char *hardware_id)
+{
+    if (!domain || strlen(domain) == 0) return NULL; // No limits for "Unknown"
+    return lora_regulatory_get_compliance(domain, hardware_id);
+}
+
+int lora_regulatory_get_region_count(void)
+{
+    return region_count;
+}
+
+const lora_region_t *lora_regulatory_get_region(int index)
+{
+    if (index < 0 || index >= region_count) return NULL;
+    return &regions[index];
+}

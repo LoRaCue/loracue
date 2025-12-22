@@ -220,3 +220,16 @@ esp_err_t cmd_factory_reset(void)
     esp_restart();
     return ESP_OK; // Unreachable
 }
+
+esp_err_t cmd_get_regulatory_domain(char *domain, size_t max_len)
+{
+    return config_manager_get_regulatory_domain(domain, max_len);
+}
+
+esp_err_t cmd_set_regulatory_domain(const char *domain)
+{
+    if (!lora_regulatory_validate_domain(domain)) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return config_manager_set_regulatory_domain(domain);
+}

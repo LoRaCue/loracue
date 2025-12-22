@@ -208,6 +208,29 @@ esp_err_t config_manager_set_lora(const lora_config_t *config) {
     return ret;
 }
 
+esp_err_t config_manager_get_regulatory_domain(char *domain, size_t max_len) {
+    lora_config_t config;
+    esp_err_t ret = config_manager_get_lora(&config);
+    if (ret != ESP_OK) return ret;
+    
+    strncpy(domain, config.regulatory_domain, max_len - 1);
+    domain[max_len - 1] = '\0';
+    return ESP_OK;
+}
+
+esp_err_t config_manager_set_regulatory_domain(const char *domain) {
+    if (!domain || strlen(domain) > 2) return ESP_ERR_INVALID_ARG;
+    
+    lora_config_t config;
+    esp_err_t ret = config_manager_get_lora(&config);
+    if (ret != ESP_OK) return ret;
+    
+    strncpy(config.regulatory_domain, domain, sizeof(config.regulatory_domain) - 1);
+    config.regulatory_domain[sizeof(config.regulatory_domain) - 1] = '\0';
+    
+    return config_manager_set_lora(&config);
+}
+
 esp_err_t config_manager_get_device_registry(device_registry_config_t *config) {
     if (cache_valid[3]) {
         *config = cached_registry;

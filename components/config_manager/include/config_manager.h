@@ -31,6 +31,12 @@ esp_err_t config_manager_get_lora(lora_config_t *config);
 esp_err_t config_manager_set_lora(const lora_config_t *config);
 
 /**
+ * @brief Regulatory domain operations
+ */
+esp_err_t config_manager_get_regulatory_domain(char *domain, size_t max_len);
+esp_err_t config_manager_set_regulatory_domain(const char *domain);
+
+/**
  * @brief Device registry operations
  */
 esp_err_t config_manager_get_device_registry(device_registry_config_t *config);

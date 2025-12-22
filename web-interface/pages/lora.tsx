@@ -10,6 +10,7 @@ interface LoRaSettings {
   txPower: number
   band_id: string
   aes_key: string
+  regulatory_domain: string
 }
 
 interface Band {
@@ -21,6 +22,11 @@ interface Band {
   max_power_dbm: number
 }
 
+interface Region {
+  id: string
+  name: string
+}
+
 export default function LoRaPage() {
   const [settings, setSettings] = useState<LoRaSettings>({
     frequency: 868000000,
@@ -29,9 +35,23 @@ export default function LoRaPage() {
     codingRate: 5,
     txPower: 14,
     band_id: 'HW_868',
-    aes_key: ''
+    aes_key: '',
+    regulatory_domain: ''
   })
   const [bands, setBands] = useState<Band[]>([])
+  const [regions] = useState<Region[]>([
+    { id: 'EU', name: 'European Union' },
+    { id: 'US', name: 'United States' },
+    { id: 'CA', name: 'Canada' },
+    { id: 'AU', name: 'Australia/New Zealand' },
+    { id: 'JP', name: 'Japan' },
+    { id: 'BR', name: 'Brazil' },
+    { id: 'IN', name: 'India' },
+    { id: 'CN', name: 'China' },
+    { id: 'KR', name: 'South Korea' },
+    { id: 'RU', name: 'Russia' },
+    { id: 'UA', name: 'Ukraine' }
+  ])
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [showBandWarning, setShowBandWarning] = useState(false)
@@ -254,6 +274,26 @@ export default function LoRaPage() {
         <div className="card p-8">
           <h2 className="text-xl font-semibold mb-6">Advanced Settings</h2>
           <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Regulatory Domain
+              </label>
+              <select
+                value={settings.regulatory_domain || 'Unknown'}
+                onChange={(e) => setSettings({ ...settings, regulatory_domain: e.target.value === 'Unknown' ? '' : e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              >
+                <option value="Unknown">Unknown</option>
+                {regions.map(region => (
+                  <option key={region.id} value={region.id}>
+                    {region.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Select your regulatory domain for compliance with local frequency and power limits
+              </p>
+            </div>
             <div>
               <label className="block text-sm font-medium mb-2">
                 Hardware Band

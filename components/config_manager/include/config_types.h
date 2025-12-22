@@ -43,6 +43,7 @@ typedef struct {
     uint8_t coding_rate;
     int8_t tx_power;
     char band_id[16];
+    char regulatory_domain[3];
     uint8_t aes_key[32];
 } lora_config_t;
 

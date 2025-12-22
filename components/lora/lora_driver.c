@@ -321,6 +321,25 @@ esp_err_t lora_set_config(const lora_config_t *config)
         return ESP_ERR_INVALID_ARG;
     }
 
+    // Validate regulatory domain compliance
+    if (strlen(config->regulatory_domain) > 0) {
+        const lora_compliance_t *limits = lora_regulatory_get_limits(config->regulatory_domain, config->band_id);
+        if (limits) {
+            // Check frequency limits
+            if (config->frequency < limits->freq_min_khz * 1000 || config->frequency > limits->freq_max_khz * 1000) {
+                ESP_LOGE(TAG, "Frequency %lu Hz violates regulatory limits for %s", config->frequency, config->regulatory_domain);
+                return ESP_ERR_INVALID_ARG;
+            }
+            
+            // Check power limits
+            if (config->tx_power > limits->max_power_dbm) {
+                ESP_LOGE(TAG, "TX power %d dBm exceeds regulatory limit %d dBm for %s", 
+                         config->tx_power, limits->max_power_dbm, config->regulatory_domain);
+                return ESP_ERR_INVALID_ARG;
+            }
+        }
+    }
+
     current_config = *config;
 
     // Save via config_manager

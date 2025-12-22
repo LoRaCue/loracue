@@ -79,6 +79,14 @@ const lora_hardware_t *lora_hardware_get_profile(int index);
 const lora_hardware_t *lora_hardware_get_profile_by_id(const char *id);
 
 /**
+ * @brief Regulatory domain validation and limits
+ */
+bool lora_regulatory_validate_domain(const char *domain);
+const lora_compliance_t *lora_regulatory_get_limits(const char *domain, const char *hardware_id);
+int lora_regulatory_get_region_count(void);
+const lora_region_t *lora_regulatory_get_region(int index);
+
+/**
  * @brief Get hardware index for a given frequency
  * @param frequency_hz Frequency in Hz
  * @return Hardware index or -1 if not supported

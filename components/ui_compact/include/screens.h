@@ -166,6 +166,14 @@ void screen_lora_txpower_increment(void);
 void screen_lora_txpower_select(void);
 bool screen_lora_txpower_is_edit_mode(void);
 
+// Regulatory Domain screen
+void screen_lora_regulatory_domain_init(void);
+void screen_lora_regulatory_domain_create(lv_obj_t *parent);
+void screen_lora_regulatory_domain_navigate_down(void);
+void screen_lora_regulatory_domain_navigate_up(void);
+void screen_lora_regulatory_domain_select(void);
+bool screen_lora_regulatory_domain_is_edit_mode(void);
+
 // LoRa Band screen
 void screen_lora_band_init(void);
 void screen_lora_band_create(lv_obj_t *parent);
@@ -239,6 +247,7 @@ typedef enum {
     LORA_MENU_BW,
     LORA_MENU_CR,
     LORA_MENU_TXPOWER,
+    LORA_MENU_REGULATORY_DOMAIN,
     LORA_MENU_BAND,
     LORA_MENU_COUNT
 } lora_menu_item_t;
@@ -327,6 +336,13 @@ void screen_lora_txpower_select(void);
 bool screen_lora_txpower_is_edit_mode(void);
 void screen_lora_txpower_reset(void);
 ui_screen_t *screen_lora_txpower_get_interface(void);
+
+void screen_lora_regulatory_domain_init(void);
+void screen_lora_regulatory_domain_create(lv_obj_t *parent);
+void screen_lora_regulatory_domain_navigate_down(void);
+void screen_lora_regulatory_domain_select(void);
+void screen_lora_regulatory_domain_reset(void);
+ui_screen_t *screen_lora_regulatory_domain_get_interface(void);
 
 void screen_lora_band_init(void);
 void screen_lora_band_create(lv_obj_t *parent);

@@ -260,6 +260,7 @@ static void handle_get_lora_config(void)
     cJSON_AddNumberToObject(response, "bandwidth_khz", config.bandwidth);
     cJSON_AddNumberToObject(response, "coding_rate", config.coding_rate);
     cJSON_AddNumberToObject(response, "tx_power_dbm", config.tx_power);
+    cJSON_AddStringToObject(response, "regulatory_domain", strlen(config.regulatory_domain) > 0 ? config.regulatory_domain : "Unknown");
 
     send_jsonrpc_result(response);
 }
@@ -278,6 +279,7 @@ static void handle_set_lora_config(cJSON *config_json)
     cJSON *cr      = cJSON_GetObjectItem(config_json, "coding_rate");
     cJSON *power   = cJSON_GetObjectItem(config_json, "tx_power_dbm");
     cJSON *band_id = cJSON_GetObjectItem(config_json, "band_id");
+    cJSON *regulatory_domain = cJSON_GetObjectItem(config_json, "regulatory_domain");
 
     if (cJSON_IsNumber(bw))
         config.bandwidth = bw->valueint;
@@ -293,6 +295,15 @@ static void handle_set_lora_config(cJSON *config_json)
     }
     if (cJSON_IsNumber(power))
         config.tx_power = power->valueint;
+    if (cJSON_IsString(regulatory_domain)) {
+        const char *domain = cJSON_GetStringValue(regulatory_domain);
+        if (!lora_regulatory_validate_domain(domain)) {
+            send_jsonrpc_error(JSONRPC_INVALID_PARAMS, "Invalid regulatory domain");
+            return;
+        }
+        strncpy(config.regulatory_domain, domain, sizeof(config.regulatory_domain) - 1);
+        config.regulatory_domain[sizeof(config.regulatory_domain) - 1] = '\0';
+    }
 
     esp_err_t ret = cmd_set_lora_config(&config);
     if (ret == ESP_ERR_INVALID_ARG) {

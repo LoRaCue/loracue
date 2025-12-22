@@ -21,6 +21,8 @@ esp_err_t cmd_set_power_config(const power_config_t *config);
 esp_err_t cmd_get_lora_config(lora_config_t *config);
 esp_err_t cmd_set_lora_config(const lora_config_t *config);
 esp_err_t cmd_set_lora_key(const uint8_t key[32]);
+esp_err_t cmd_get_regulatory_domain(char *domain, size_t max_len);
+esp_err_t cmd_set_regulatory_domain(const char *domain);
 
 // Device Pairing
 esp_err_t cmd_pair_device(const char *name, const uint8_t mac[6], const uint8_t aes_key[32]);

@@ -11,7 +11,7 @@ static ui_menu_t *menu = NULL;
 const char *LORA_MENU_ITEMS[LORA_MENU_COUNT] = {
     [LORA_MENU_PRESETS] = "Presets", [LORA_MENU_FREQUENCY] = "Frequency", [LORA_MENU_SF] = "Spreading Factor",
     [LORA_MENU_BW] = "Bandwidth",    [LORA_MENU_CR] = "Coding Rate",      [LORA_MENU_TXPOWER] = "TX-Power",
-    [LORA_MENU_BAND] = "Band"};
+    [LORA_MENU_REGULATORY_DOMAIN] = "Regulatory Domain", [LORA_MENU_BAND] = "Hardware Band"};
 
 void screen_lora_submenu_create(lv_obj_t *parent)
 {
@@ -87,6 +87,9 @@ static void handle_input_event(input_event_t event)
             case LORA_MENU_TXPOWER:
                 ui_navigator_switch_to(UI_SCREEN_LORA_TXPOWER);
                 break;
+            case LORA_MENU_REGULATORY_DOMAIN:
+                ui_navigator_switch_to(UI_SCREEN_REGULATORY_DOMAIN);
+                break;
             case LORA_MENU_BAND:
                 ui_navigator_switch_to(UI_SCREEN_LORA_BAND);
                 break;
@@ -135,6 +138,9 @@ static void handle_input_event(input_event_t event)
                     break;
                 case LORA_MENU_TXPOWER:
                     ui_navigator_switch_to(UI_SCREEN_LORA_TXPOWER);
+                    break;
+                case LORA_MENU_REGULATORY_DOMAIN:
+                    ui_navigator_switch_to(UI_SCREEN_REGULATORY_DOMAIN);
                     break;
                 case LORA_MENU_BAND:
                     ui_navigator_switch_to(UI_SCREEN_LORA_BAND);
