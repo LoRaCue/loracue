@@ -17,12 +17,12 @@ static int current_band_index = 0;
 
 void screen_lora_band_on_enter(void)
 {
-    band_count = lora_bands_get_count();
+    band_count = lora_hardware_get_count();
     lora_config_t config;
     lora_get_config(&config);
     current_band_index = 0;
     for (int i = 0; i < band_count; i++) {
-        const lora_band_profile_t *profile = lora_bands_get_profile(i);
+        const lora_hardware_t *profile = lora_hardware_get_profile(i);
         if (profile && strcmp(profile->id, config.band_id) == 0) {
             current_band_index = i;
             break;
@@ -32,25 +32,25 @@ void screen_lora_band_on_enter(void)
 
 void screen_lora_band_init(void)
 {
-    band_count = lora_bands_get_count();
+    band_count = lora_hardware_get_count();
 
     if (!band_names) {
         band_names = malloc(band_count * sizeof(char *));
         for (int i = 0; i < band_count; i++) {
-            const lora_band_profile_t *profile = lora_bands_get_profile(i);
-            band_names[i]                      = profile ? profile->name : "Unknown";
+            const lora_hardware_t *profile = lora_hardware_get_profile(i);
+            band_names[i] = profile ? profile->name : "Unknown";
         }
     }
 
     if (!radio) {
-        radio                 = ui_radio_select_create(band_count, UI_RADIO_SINGLE);
+        radio = ui_radio_select_create(band_count, UI_RADIO_SINGLE);
         radio->selected_index = preserved_index >= 0 ? preserved_index : current_band_index;
 
         // Set current band as selected (saved value)
         lora_config_t config;
         lora_get_config(&config);
         for (int i = 0; i < band_count; i++) {
-            const lora_band_profile_t *profile = lora_bands_get_profile(i);
+            const lora_hardware_t *profile = lora_hardware_get_profile(i);
             if (profile && strcmp(profile->id, config.band_id) == 0) {
                 if (radio->selected_items) {
                     ((int *)radio->selected_items)[0] = i;
@@ -86,7 +86,7 @@ void screen_lora_band_select(void)
     if (!radio)
         return;
 
-    const lora_band_profile_t *profile = lora_bands_get_profile(radio->selected_index);
+    const lora_hardware_t *profile = lora_hardware_get_profile(radio->selected_index);
     if (profile) {
         lora_config_t config;
         lora_get_config(&config);

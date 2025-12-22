@@ -2,7 +2,7 @@
 #include "ui_strings.h"
 #include "esp_log.h"
 #include "input_manager.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lvgl.h"
 #include "screens.h"
 #include "system_events.h"
@@ -28,7 +28,7 @@ void screen_device_mode_create(lv_obj_t *parent)
             radio->selected_index = preserved_index;
         } else {
             general_config_t config;
-            general_config_get(&config);
+            config_manager_get_general(&config);
             int current_mode_idx  = (config.device_mode == DEVICE_MODE_PRESENTER) ? 0 : 1;
             radio->selected_index = current_mode_idx;
         }
@@ -36,7 +36,7 @@ void screen_device_mode_create(lv_obj_t *parent)
         // Set the saved/committed value (filled radio)
         if (radio->selected_items) {
             general_config_t config;
-            general_config_get(&config);
+            config_manager_get_general(&config);
             int current_mode_idx              = (config.device_mode == DEVICE_MODE_PRESENTER) ? 0 : 1;
             ((int *)radio->selected_items)[0] = current_mode_idx;
         }
@@ -64,13 +64,13 @@ void screen_device_mode_select(void)
         return;
 
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     device_mode_t new_mode = (radio->selected_index == 0) ? DEVICE_MODE_PRESENTER : DEVICE_MODE_PC;
 
     if (new_mode != config.device_mode) {
         config.device_mode = new_mode;
-        general_config_set(&config);
+        config_manager_set_general(&config);
 
         // Update the saved/committed value (filled radio)
         if (radio->selected_items) {

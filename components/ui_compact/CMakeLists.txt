@@ -38,7 +38,7 @@ idf_component_register(
     REQUIRES 
         ui_lvgl
         input_manager
-        general_config
+        config_manager
         power_mgmt
         ble
         bsp

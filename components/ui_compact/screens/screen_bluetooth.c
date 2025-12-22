@@ -3,7 +3,7 @@
 #include "ble.h"
 #include "input_manager.h"
 #include "esp_log.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lvgl.h"
 #include "screens.h"
 #include "ui_components.h"
@@ -21,7 +21,7 @@ void screen_bluetooth_create(lv_obj_t *parent)
     ui_create_footer(parent);
 
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     static char bt_text[32], pair_text[32];
     snprintf(bt_text, sizeof(bt_text), "Bluetooth: %s", config.bluetooth_enabled ? "ON" : "OFF");
@@ -39,7 +39,7 @@ void screen_bluetooth_navigate_down(void)
     menu->selected_index = (menu->selected_index + 1) % 2;
 
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     static char bt_text[32], pair_text[32];
     snprintf(bt_text, sizeof(bt_text), "Bluetooth: %s", config.bluetooth_enabled ? "ON" : "OFF");
@@ -56,7 +56,7 @@ void screen_bluetooth_navigate_up(void)
     menu->selected_index = (menu->selected_index + 1) % 2; // Only 2 items, so up = down
 
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     static char bt_text[32], pair_text[32];
     snprintf(bt_text, sizeof(bt_text), "Bluetooth: %s", config.bluetooth_enabled ? "ON" : "OFF");
@@ -72,7 +72,7 @@ void screen_bluetooth_select(void)
         return;
 
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     if (menu->selected_index == 0) {
         config.bluetooth_enabled = !config.bluetooth_enabled;
@@ -81,7 +81,7 @@ void screen_bluetooth_select(void)
         config.bluetooth_pairing_enabled = !config.bluetooth_pairing_enabled;
     }
 
-    general_config_set(&config);
+    config_manager_set_general(&config);
     ESP_LOGI(TAG, "Bluetooth setting toggled: item %d", menu->selected_index);
 }
 

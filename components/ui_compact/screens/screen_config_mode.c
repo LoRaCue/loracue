@@ -4,7 +4,7 @@
 #include "input_manager.h"
 #include "esp_log.h"
 #include "esp_mac.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lvgl.h"
 #include "screens.h"
 #include "ui_compact_fonts.h"
@@ -29,7 +29,7 @@ static void generate_credentials(void)
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
 
-    uint16_t device_id = general_config_get_device_id();
+    uint16_t device_id = config_manager_get_device_id();
     snprintf(device_ssid, sizeof(device_ssid), "LoRaCue-%04X", device_id);
 
     uint32_t crc        = esp_crc32_le(0, mac, 6);

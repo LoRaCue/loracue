@@ -1,6 +1,6 @@
 #include "esp_log.h"
 #include "ui_strings.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "input_manager.h"
 #include "lvgl.h"
 #include "presenter_mode_manager.h"
@@ -100,7 +100,7 @@ static void screen_main_create_wrapper(lv_obj_t *parent)
     ui_compact_get_status(&status);
 
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     if (config.device_mode == DEVICE_MODE_PC) {
         screen_pc_mode_create(parent, &status);
@@ -121,7 +121,7 @@ static void screen_main_destroy(void)
 static void handle_input_event(input_event_t event)
 {
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
 #if CONFIG_LORACUE_MODEL_ALPHA
     if (config.device_mode == DEVICE_MODE_PRESENTER) {

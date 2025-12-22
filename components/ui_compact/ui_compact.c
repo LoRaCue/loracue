@@ -2,7 +2,7 @@
 #include "ble.h"
 #include "bsp.h"
 #include "esp_log.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "input_manager.h"
 #include "lora_protocol.h"
 #include "screens.h"
@@ -22,7 +22,7 @@ static general_config_t cached_config;
 
 void ui_compact_get_status(statusbar_data_t *status)
 {
-    general_config_get(&cached_config);
+    config_manager_get_general(&cached_config);
 
     // Get USB host connection status from TinyUSB
     status->usb_connected = tud_mounted();
@@ -149,7 +149,7 @@ esp_err_t ui_compact_show_main_screen(void)
 
     // Check device mode and show appropriate screen
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     if (config.device_mode == DEVICE_MODE_PC) {
         ui_navigator_switch_to(UI_SCREEN_PC_MODE);

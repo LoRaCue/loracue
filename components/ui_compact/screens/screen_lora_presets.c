@@ -54,8 +54,9 @@ static int get_current_preset(void)
 
 static int8_t get_tx_power_for_band(const char *band_id)
 {
-    const lora_band_profile_t *band = lora_bands_get_profile_by_id(band_id);
-    return band ? band->max_power_dbm : 14;
+    const lora_hardware_t *hardware = lora_hardware_get_profile_by_id(band_id);
+    // TODO: Should use regulatory compliance rules instead of hardware limits
+    return hardware ? hardware->max_tx_power : 14; // Default power, needs regulatory lookup
 }
 
 static int current_nav_index = 0;

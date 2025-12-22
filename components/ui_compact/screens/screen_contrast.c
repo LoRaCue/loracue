@@ -3,7 +3,7 @@
 #include "bsp.h"
 #include "input_manager.h"
 #include "esp_log.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lv_port_disp.h"
 #include "lvgl.h"
 #include "screens.h"
@@ -32,7 +32,7 @@ void screen_contrast_create(lv_obj_t *parent)
 void screen_contrast_init(void)
 {
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
     contrast_value = config.display_contrast;
     if (screen) {
         screen->edit_mode = false;
@@ -72,9 +72,9 @@ void screen_contrast_select(void)
 
     if (screen->edit_mode) {
         general_config_t config;
-        general_config_get(&config);
+        config_manager_get_general(&config);
         config.display_contrast = contrast_value;
-        general_config_set(&config);
+        config_manager_set_general(&config);
         display_safe_set_contrast(contrast_value);
         ESP_LOGI(TAG, "Contrast saved: %d", contrast_value);
         screen->edit_mode = false;

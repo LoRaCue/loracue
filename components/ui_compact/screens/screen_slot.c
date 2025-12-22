@@ -2,7 +2,7 @@
 #include "ui_strings.h"
 #include "esp_log.h"
 #include "input_manager.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lvgl.h"
 #include "screens.h"
 #include "ui_components.h"
@@ -32,7 +32,7 @@ void screen_slot_create(lv_obj_t *parent)
 void screen_slot_init(void)
 {
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
     selected_slot = config.slot_id - 1;
     if (screen) {
         screen->edit_mode = false;
@@ -60,9 +60,9 @@ void screen_slot_select(void)
 
     if (screen->edit_mode) {
         general_config_t config;
-        general_config_get(&config);
+        config_manager_get_general(&config);
         config.slot_id = selected_slot + 1;
-        general_config_set(&config);
+        config_manager_set_general(&config);
         ESP_LOGI(TAG, "Slot saved: %d", config.slot_id);
         screen->edit_mode = false;
         ESP_LOGI(TAG, "Exiting edit mode");

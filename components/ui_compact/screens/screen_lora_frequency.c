@@ -32,11 +32,11 @@ void screen_lora_frequency_init(void)
     // Initialize current frequency from config
     current_freq_mhz = config.frequency / 1000000.0f;
 
-    // Get limits from band profile
-    const lora_band_profile_t *profile = lora_bands_get_profile_by_id(config.band_id);
+    // Get limits from hardware profile
+    const lora_hardware_t *profile = lora_hardware_get_profile_by_id(config.band_id);
     if (profile) {
-        min_freq_khz = profile->optimal_freq_min_khz;
-        max_freq_khz = profile->optimal_freq_max_khz;
+        min_freq_khz = profile->freq_min_khz;
+        max_freq_khz = profile->freq_max_khz;
     }
 
     if (!input) {
