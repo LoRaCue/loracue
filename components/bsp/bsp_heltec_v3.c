@@ -29,13 +29,13 @@ static const char *TAG = "BSP_HELTEC_V3";
 #define VEXT_CTRL_PIN GPIO_NUM_36 // Controls power to OLED and LoRa
 
 // Alpha+ Dual Buttons
-#define BUTTON_PREV_PIN GPIO_NUM_46
+#define BUTTON_PREV_PIN GPIO_NUM_41
 #define BUTTON_NEXT_PIN GPIO_NUM_0
 
 // Alpha+ Rotary Encoder
-#define ENCODER_CLK_PIN GPIO_NUM_9
-#define ENCODER_DT_PIN GPIO_NUM_10
-#define ENCODER_BTN_PIN GPIO_NUM_12
+#define ENCODER_CLK_PIN GPIO_NUM_38
+#define ENCODER_DT_PIN GPIO_NUM_39
+#define ENCODER_BTN_PIN GPIO_NUM_40
 
 // LoRa SX1262 Pins
 #define LORA_CS_PIN GPIO_NUM_8

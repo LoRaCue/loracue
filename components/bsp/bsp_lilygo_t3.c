@@ -9,8 +9,8 @@
 static const char *TAG = "bsp_lilygo_t3";
 
 // LilyGO T3-S3 Pin Definitions
-// Note: Using GPIO0/46 for Wokwi compatibility (real hardware can use GPIO43/44 via external connector)
-#define PIN_BUTTON_PREV GPIO_NUM_46
+// Note: Using GPIO0/41 for buttons
+#define PIN_BUTTON_PREV GPIO_NUM_41
 #define PIN_BUTTON_NEXT GPIO_NUM_0
 
 // I2C Pins (for optional peripherals like i2console)
@@ -18,9 +18,9 @@ static const char *TAG = "bsp_lilygo_t3";
 #define PIN_I2C_SCL GPIO_NUM_18
 
 // Rotary Encoder Pins (custom hardware addition)
-#define ENCODER_CLK_PIN GPIO_NUM_9
-#define ENCODER_DT_PIN GPIO_NUM_10
-#define ENCODER_BTN_PIN GPIO_NUM_12
+#define ENCODER_CLK_PIN GPIO_NUM_38
+#define ENCODER_DT_PIN GPIO_NUM_39
+#define ENCODER_BTN_PIN GPIO_NUM_40
 
 // LED Pin
 #define PIN_LED GPIO_NUM_37

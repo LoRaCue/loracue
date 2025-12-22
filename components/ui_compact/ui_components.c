@@ -98,7 +98,7 @@ void ui_create_header(lv_obj_t *parent, const char *title)
 void ui_create_footer(lv_obj_t *parent)
 {
     lv_obj_t *bottom_line                     = lv_line_create(parent);
-    static lv_point_precise_t bottom_points[] = {{0, BOTTOM_BAR_Y}, {DISPLAY_WIDTH, BOTTOM_BAR_Y}};
+    static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
     lv_line_set_points(bottom_line, bottom_points, 2);
     lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
     lv_obj_set_style_line_width(bottom_line, 1, 0);
@@ -128,10 +128,10 @@ lv_obj_t *ui_create_main_screen_layout(lv_obj_t *parent, const char *mode_text, 
 
     // Menu button bottom right
 #if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    ui_draw_icon_text(parent, &rotary_button_long, UI_STR_MENU, DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
+    ui_draw_icon_text(parent, &rotary_button_long, UI_STR_MENU, DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, SEPARATOR_Y_BOTTOM + 2,
                       UI_ALIGN_RIGHT);
 #else
-    ui_draw_icon_text(parent, &button_long_press, UI_STR_MENU, DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, BOTTOM_BAR_Y + 2,
+    ui_draw_icon_text(parent, &button_long_press, UI_STR_MENU, DISPLAY_WIDTH - TEXT_MARGIN_RIGHT, SEPARATOR_Y_BOTTOM + 2,
                       UI_ALIGN_RIGHT);
 #endif
 
@@ -203,6 +203,16 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
         menu->scroll_offset = menu->selected_index - UI_MENU_VISIBLE_ITEMS + 1;
     }
 
+    // Create content container with clipping at separator line
+    lv_obj_t *content = lv_obj_create(menu->screen);
+    lv_obj_set_size(content, DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM);
+    lv_obj_set_pos(content, 0, 0);
+    lv_obj_set_style_bg_opa(content, LV_OPA_TRANSP, 0);
+    lv_obj_set_style_border_width(content, 0, 0);
+    lv_obj_set_style_pad_all(content, 0, 0);
+    lv_obj_set_style_clip_corner(content, true, 0);
+    lv_obj_clear_flag(content, LV_OBJ_FLAG_SCROLLABLE);
+
     // Render visible items with highlights
     for (int i = 0; i < UI_MENU_VISIBLE_ITEMS; i++) {
         int item_index = menu->scroll_offset + i;
@@ -216,7 +226,7 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
 
             // Create rounded highlight box for selected item
             if (item_index == menu->selected_index) {
-                lv_obj_t *highlight = lv_obj_create(menu->screen);
+                lv_obj_t *highlight = lv_obj_create(content);
                 lv_obj_set_size(highlight, lightbar_width, UI_MENU_ITEM_HEIGHT - 2);
                 lv_obj_set_pos(highlight, 0, y + 1);
                 lv_obj_set_style_bg_color(highlight, lv_color_white(), 0);
@@ -226,7 +236,7 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
             }
 
             // Create label
-            menu->items[i] = lv_label_create(menu->screen);
+            menu->items[i] = lv_label_create(content);
             lv_obj_add_style(menu->items[i], &style_text, 0);
             lv_label_set_text(menu->items[i], item_names[item_index]);
             lv_obj_set_pos(menu->items[i], UI_MARGIN_LEFT + 2, y + 1 + UI_TEXT_OFFSET_Y);
@@ -261,8 +271,8 @@ void ui_menu_update(ui_menu_t *menu, const char **item_names)
 #endif
 
     // Bottom separator line - draw AFTER bottom bar to prevent overwriting
-    menu->bottom_line_points[0] = (lv_point_precise_t){0, UI_BOTTOM_BAR_LINE_Y};
-    menu->bottom_line_points[1] = (lv_point_precise_t){DISPLAY_WIDTH, UI_BOTTOM_BAR_LINE_Y};
+    menu->bottom_line_points[0] = (lv_point_precise_t){0, SEPARATOR_Y_BOTTOM};
+    menu->bottom_line_points[1] = (lv_point_precise_t){DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM};
     
     lv_obj_t *bottom_line = lv_line_create(menu->screen);
     lv_line_set_points(bottom_line, menu->bottom_line_points, 2);
@@ -738,7 +748,7 @@ void ui_radio_select_render(ui_radio_select_t *radio, lv_obj_t *parent, const ch
 
     // Bottom separator and hints
     lv_obj_t *bottom_line                     = lv_line_create(parent);
-    static lv_point_precise_t bottom_points[] = {{0, UI_BOTTOM_BAR_LINE_Y}, {DISPLAY_WIDTH, UI_BOTTOM_BAR_LINE_Y}};
+    static lv_point_precise_t bottom_points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
     lv_line_set_points(bottom_line, bottom_points, 2);
     lv_obj_set_style_line_color(bottom_line, lv_color_white(), 0);
     lv_obj_set_style_line_width(bottom_line, 1, 0);
@@ -847,7 +857,7 @@ void ui_draw_bottom_bar_alpha_plus(lv_obj_t *parent, const lv_img_dsc_t *icon_le
 {
     // Bottom separator line
     lv_obj_t *line                     = lv_line_create(parent);
-    static lv_point_precise_t points[] = {{0, UI_BOTTOM_BAR_LINE_Y}, {DISPLAY_WIDTH, UI_BOTTOM_BAR_LINE_Y}};
+    static lv_point_precise_t points[] = {{0, SEPARATOR_Y_BOTTOM}, {DISPLAY_WIDTH, SEPARATOR_Y_BOTTOM}};
     lv_line_set_points(line, points, 2);
     lv_obj_set_style_line_color(line, lv_color_white(), 0);
     lv_obj_set_style_line_width(line, 1, 0);

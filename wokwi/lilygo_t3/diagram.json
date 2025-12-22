@@ -13,15 +13,15 @@
     {
       "type": "wokwi-pushbutton",
       "id": "btn_next",
-      "top": 476.6,
-      "left": -67.2,
+      "top": 428.6,
+      "left": 240,
       "attrs": { "color": "red", "label": "NEXT", "key": "ArrowRight", "xray": "" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_prev",
-      "top": 476.6,
-      "left": -259.2,
+      "top": 428.6,
+      "left": 134.4,
       "attrs": { "color": "green", "label": "PREV", "key": "ArrowLeft" }
     },
     {
@@ -34,22 +34,22 @@
     {
       "type": "wokwi-led",
       "id": "led_power",
-      "top": 236.4,
-      "left": 128.6,
+      "top": 380.4,
+      "left": 195.8,
       "attrs": { "color": "blue", "label": "Power", "flip": "" }
     },
     {
       "type": "wokwi-resistor",
       "id": "r_power",
       "top": 235.2,
-      "left": 143.45,
+      "left": 201.05,
       "rotate": 90,
       "attrs": { "value": "220" }
     },
     {
       "type": "chip-sx1262",
       "id": "lora",
-      "top": -7.5,
+      "top": -17.1,
       "left": -80.48,
       "rotate": 270,
       "attrs": {}
@@ -57,45 +57,45 @@
     {
       "type": "wokwi-ky-040",
       "id": "encoder",
-      "top": 445.4,
-      "left": -405.3,
+      "top": 330.2,
+      "left": 103.5,
       "rotate": 270,
       "attrs": {}
     },
-    { "type": "chip-ssd1681", "id": "ssd1681", "top": 289.02, "left": -312, "attrs": {} }
+    { "type": "chip-ssd1681", "id": "ssd1681", "top": 327.42, "left": -158.4, "attrs": {} }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
     [ "esp:1", "battery_sim:SIG", "orange", [] ],
     [ "esp:GND.2", "battery_sim:GND", "black", [] ],
-    [ "esp:37", "r_power:1", "yellow", [] ],
-    [ "r_power:2", "led_power:A", "yellow", [ "v22" ] ],
+    [ "esp:37", "r_power:1", "gold", [] ],
+    [ "r_power:2", "led_power:A", "gold", [ "v22" ] ],
     [ "esp:7", "lora:CS", "purple", [] ],
-    [ "esp:5", "lora:SCK", "blue", [] ],
+    [ "esp:5", "lora:SCK", "violet", [] ],
     [ "esp:6", "lora:MOSI", "green", [] ],
     [ "esp:3", "lora:MISO", "brown", [] ],
     [ "esp:34", "lora:BUSY", "orange", [] ],
-    [ "esp:8", "lora:RESET", "red", [] ],
+    [ "esp:8", "lora:RESET", "blue", [ "h-62.68", "v-230.77" ] ],
     [ "battery_sim:VCC", "esp:3V3.1", "red", [ "v0" ] ],
     [ "esp:GND.4", "led_power:C", "black", [ "h0" ] ],
-    [ "esp:10", "encoder:DT", "yellow", [ "h0" ] ],
-    [ "encoder:CLK", "esp:9", "violet", [ "v0" ] ],
-    [ "encoder:SW", "esp:12", "yellow", [ "v0" ] ],
-    [ "encoder:VCC", "esp:3V3.2", "red", [ "v0" ] ],
-    [ "encoder:GND", "esp:GND.1", "black", [ "v0" ] ],
-    [ "btn_prev:2.r", "esp:46", "yellow", [ "h0.2", "v48.2", "h211.2", "v-192" ] ],
-    [ "btn_prev:1.r", "btn_next:1.l", "black", [ "v0" ] ],
-    [ "ssd1681:GND", "encoder:GND", "black", [ "h0" ] ],
-    [ "ssd1681:VCC", "encoder:VCC", "red", [ "h0" ] ],
-    [ "ssd1681:CLK", "esp:14", "magenta", [ "h-9.6", "v-57.6" ] ],
-    [ "ssd1681:CS", "esp:15", "gold", [ "h-19.2", "v-144" ] ],
-    [ "ssd1681:DIN", "esp:11", "gold", [ "v0", "h11.24", "v-96" ] ],
-    [ "ssd1681:BUSY", "esp:48", "gold", [ "h49.64", "v28.8", "h115.2", "v-115.2" ] ],
-    [ "ssd1681:RST", "esp:47", "gold", [ "h40.04", "v28.8", "h134.4", "v-115.2" ] ],
+    [ "esp:38", "encoder:CLK", "violet", [ "h0" ] ],
+    [ "esp:39", "encoder:DT", "gold", [ "h0" ] ],
+    [ "esp:40", "encoder:SW", "orange", [ "h0" ] ],
+    [ "ssd1681:CLK", "esp:14", "magenta", [ "h172.8", "v-103.42" ] ],
+    [ "ssd1681:CS", "esp:15", "gold", [ "h144", "v-209.02" ] ],
+    [ "ssd1681:DIN", "esp:11", "gold", [ "h11.24", "v-38.4", "h-105.6", "v-93.82" ] ],
+    [ "ssd1681:BUSY", "esp:48", "gold", [ "h88.04", "v-113.02" ] ],
+    [ "ssd1681:RST", "esp:47", "gold", [ "h97.64", "v-113.02" ] ],
     [ "ssd1681:DC", "esp:16", "gold", [ "h20.84", "v-134.4" ] ],
-    [ "esp:0", "btn_next:2.r", "gold", [ "h33.37", "v103.42" ] ],
-    [ "esp:GND.1", "btn_next:1.r", "black", [ "h0" ] ]
+    [ "esp:3V3.1", "ssd1681:VCC", "red", [ "h52.52", "v257.02" ] ],
+    [ "esp:41", "btn_prev:1.l", "gold", [ "h33.37", "v324.22" ] ],
+    [ "ssd1681:GND", "esp:GND.1", "black", [ "h0" ] ],
+    [ "encoder:GND", "esp:GND.4", "black", [ "v0" ] ],
+    [ "led_power:C", "btn_next:2.l", "black", [ "v0" ] ],
+    [ "btn_prev:2.r", "btn_next:2.l", "black", [ "h0" ] ],
+    [ "btn_next:1.l", "esp:0", "gold", [ "h0", "v-230.4" ] ],
+    [ "encoder:VCC", "battery_sim:VCC", "red", [ "v0" ] ]
   ],
   "dependencies": {}
 }

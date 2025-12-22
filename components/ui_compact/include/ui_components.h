@@ -42,10 +42,9 @@
     #define UI_BACK_ICON_X_OFFSET -4
 #endif
 
-// Bottom bar constants (aligned with main screen)
-#define UI_BOTTOM_BAR_LINE_Y BOTTOM_BAR_Y
-#define UI_BOTTOM_BAR_ICON_Y (BOTTOM_BAR_Y + 3)
-#define UI_BOTTOM_BAR_TEXT_Y (BOTTOM_BAR_Y + 2)
+// Bottom bar constants
+#define UI_BOTTOM_BAR_ICON_Y (SEPARATOR_Y_BOTTOM + 3)
+#define UI_BOTTOM_BAR_TEXT_Y (SEPARATOR_Y_BOTTOM + 2)
 
 // Menu constants (calculated from display dimensions)
 #define UI_MENU_VISIBLE_ITEMS (SEPARATOR_Y_BOTTOM / UI_MENU_ITEM_HEIGHT)

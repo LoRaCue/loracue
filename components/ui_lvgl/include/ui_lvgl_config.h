@@ -9,7 +9,7 @@
     #define HEADER_HEIGHT 18
     #define FOOTER_HEIGHT 20
     #define SEPARATOR_Y_TOP 18
-    #define SEPARATOR_Y_BOTTOM (DISPLAY_HEIGHT - FOOTER_HEIGHT - 2)
+    #define SEPARATOR_Y_BOTTOM (DISPLAY_HEIGHT - FOOTER_HEIGHT - 4)
     
     #define RF_ICON_X 196
     #define RF_ICON_Y 2
@@ -25,8 +25,7 @@
     #define BUTTON_HINTS_Y 76
     #define BUTTON_TEXT_Y 74
     
-    #define BOTTOM_BAR_Y (DISPLAY_HEIGHT - FOOTER_HEIGHT - 4)
-    #define BOTTOM_TEXT_Y (BOTTOM_BAR_Y + 2)
+    #define BOTTOM_TEXT_Y (SEPARATOR_Y_BOTTOM + 2)
 #else
     // OLED display (128x64) - Alpha/Alpha+
     #define DISPLAY_WIDTH 128
@@ -35,7 +34,7 @@
     #define HEADER_HEIGHT 9
     #define FOOTER_HEIGHT 10
     #define SEPARATOR_Y_TOP 10
-    #define SEPARATOR_Y_BOTTOM (DISPLAY_HEIGHT - FOOTER_HEIGHT - 1)
+    #define SEPARATOR_Y_BOTTOM (DISPLAY_HEIGHT - FOOTER_HEIGHT - 4)
     
     #define RF_ICON_X 98
     #define RF_ICON_Y 1
@@ -51,8 +50,7 @@
     #define BUTTON_HINTS_Y 39
     #define BUTTON_TEXT_Y 38
     
-    #define BOTTOM_BAR_Y (DISPLAY_HEIGHT - FOOTER_HEIGHT - 4)
-    #define BOTTOM_TEXT_Y (BOTTOM_BAR_Y + 1)
+    #define BOTTOM_TEXT_Y (SEPARATOR_Y_BOTTOM + 1)
 #endif
 
 // Content area (calculated from separators)
