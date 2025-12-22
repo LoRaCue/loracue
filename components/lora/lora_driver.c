@@ -15,8 +15,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "lora_bands.h"
-#include "nvs.h"
-#include "nvs_flash.h"
 #include "sx126x.h"
 #include "task_config.h"
 #include <string.h>
@@ -153,10 +151,10 @@ esp_err_t lora_driver_init(void)
         return ESP_ERR_NO_MEM;
     }
 
-    // Initialize band profiles from JSON
-    esp_err_t ret = lora_bands_init();
+    // Initialize regulatory system from JSON
+    esp_err_t ret = lora_regulatory_init();
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize band profiles");
+        ESP_LOGE(TAG, "Failed to initialize regulatory system");
         return ret;
     }
 
@@ -305,41 +303,15 @@ esp_err_t lora_get_config(lora_config_t *config)
 
 esp_err_t lora_load_config_from_nvs(void)
 {
-    nvs_handle_t nvs_handle;
-    esp_err_t ret = nvs_open("lora_config", NVS_READONLY, &nvs_handle);
+    esp_err_t ret = config_manager_get_lora(&current_config);
     if (ret != ESP_OK) {
-        ESP_LOGI(TAG, "No LoRa config in NVS, using defaults");
-        // Generate random AES key on first boot
-        esp_fill_random(current_config.aes_key, 32);
-        ESP_LOGI(TAG, "Generated random AES-256 key");
-        return ESP_OK; // Use defaults
+        ESP_LOGI(TAG, "Failed to load LoRa config, using defaults");
+        return ret;
     }
 
-    size_t required_size = sizeof(lora_config_t);
-    ret                  = nvs_get_blob(nvs_handle, "config", &current_config, &required_size);
-    nvs_close(nvs_handle);
-
-    if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "Loaded LoRa config from NVS: %lu Hz, SF%d, %d kHz, %d dBm", current_config.frequency,
-                 current_config.spreading_factor, current_config.bandwidth, current_config.tx_power);
-        // Check if AES key is all zeros (old config without key)
-        bool key_is_zero = true;
-        for (int i = 0; i < 32; i++) {
-            if (current_config.aes_key[i] != 0) {
-                key_is_zero = false;
-                break;
-            }
-        }
-        if (key_is_zero) {
-            ESP_LOGI(TAG, "AES key not set, generating random key");
-            esp_fill_random(current_config.aes_key, 32);
-        }
-    } else {
-        ESP_LOGI(TAG, "Failed to load LoRa config from NVS, using defaults");
-        esp_fill_random(current_config.aes_key, 32);
-        ESP_LOGI(TAG, "Generated random AES-256 key");
-    }
-
+    ESP_LOGI(TAG, "Loaded LoRa config: %lu Hz, SF%d, %d kHz, %d dBm", current_config.frequency,
+             current_config.spreading_factor, current_config.bandwidth, current_config.tx_power);
+    
     return ESP_OK;
 }
 
@@ -351,13 +323,11 @@ esp_err_t lora_set_config(const lora_config_t *config)
 
     current_config = *config;
 
-    // Save to NVS
-    nvs_handle_t nvs_handle;
-    esp_err_t ret = nvs_open("lora_config", NVS_READWRITE, &nvs_handle);
-    if (ret == ESP_OK) {
-        nvs_set_blob(nvs_handle, "config", config, sizeof(lora_config_t));
-        nvs_commit(nvs_handle);
-        nvs_close(nvs_handle);
+    // Save via config_manager
+    esp_err_t ret = config_manager_set_lora(config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save LoRa config");
+        return ret;
     }
 
     ESP_LOGI(TAG, "LoRa config updated: %lu Hz, SF%d, %d kHz, %d dBm", config->frequency, config->spreading_factor,

@@ -10,9 +10,7 @@
 
 #pragma once
 
-#include "esp_err.h"
-#include <stdbool.h>
-#include <stdint.h>
+#include "config_manager.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,19 +34,6 @@ typedef enum {
     LORA_BW_250KHZ   = 250, ///< 250 kHz
     LORA_BW_500KHZ   = 500  ///< 500 kHz (low latency)
 } lora_bandwidth_t;
-
-/**
- * @brief LoRa configuration for low latency
- */
-typedef struct {
-    uint32_t frequency;       ///< Frequency in Hz (e.g., 915000000 for 915MHz)
-    uint8_t spreading_factor; ///< SF7 for low latency
-    uint16_t bandwidth;       ///< 500kHz for low latency
-    uint8_t coding_rate;      ///< 4/5 for minimal overhead
-    int8_t tx_power;          ///< TX power in dBm
-    char band_id[16];         ///< Hardware band ID (e.g., "HW_868")
-    uint8_t aes_key[32];      ///< AES-256 encryption key
-} lora_config_t;
 
 /**
  * @brief Initialize LoRa driver

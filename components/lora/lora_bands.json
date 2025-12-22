@@ -8,7 +8,6 @@
       "optimal_center_khz": 433000,
       "optimal_freq_min_khz": 430000,
       "optimal_freq_max_khz": 440000,
-      "notes": "Hardware optimized for peak performance around 433 MHz.",
       "public_bands": [
         {
           "id": "EU433",
@@ -36,6 +35,15 @@
           "power_dbm": 17,
           "airtime_type": "fhss",
           "airtime_limit": 5000
+        },
+        {
+          "id": "US433_MANUAL",
+          "region": "US",
+          "freq_min_khz": 433500,
+          "freq_max_khz": 434500,
+          "power_dbm": -14,
+          "airtime_type": "manual_5s_limit",
+          "airtime_limit": 5000
         }
       ]
     },
@@ -47,7 +55,6 @@
       "optimal_center_khz": 868000,
       "optimal_freq_min_khz": 863000,
       "optimal_freq_max_khz": 870000,
-      "notes": "Hardware specifically tuned for peak performance across the EU868 bands.",
       "public_bands": [
         {
           "id": "EU868_GEN",
@@ -75,6 +82,15 @@
           "power_dbm": 27,
           "airtime_type": "duty_cycle",
           "airtime_limit": 10
+        },
+        {
+          "id": "IN865",
+          "region": "IN",
+          "freq_min_khz": 865000,
+          "freq_max_khz": 867000,
+          "power_dbm": 30,
+          "airtime_type": "duty_cycle",
+          "airtime_limit": 1
         }
       ]
     },
@@ -86,7 +102,6 @@
       "optimal_center_khz": 915000,
       "optimal_freq_min_khz": 902000,
       "optimal_freq_max_khz": 928000,
-      "notes": "Hardware specifically tuned for peak performance across the US915 band.",
       "public_bands": [
         {
           "id": "US915",
@@ -96,6 +111,53 @@
           "power_dbm": 30,
           "airtime_type": "fhss",
           "airtime_limit": 400
+        },
+        {
+          "id": "AU915",
+          "region": "AU",
+          "freq_min_khz": 915000,
+          "freq_max_khz": 928000,
+          "power_dbm": 30,
+          "airtime_type": "none",
+          "airtime_limit": 100
+        },
+        {
+          "id": "JP923",
+          "region": "JP",
+          "freq_min_khz": 920600,
+          "freq_max_khz": 928000,
+          "power_dbm": 13,
+          "airtime_type": "lbt",
+          "airtime_limit": 4000
+        },
+        {
+          "id": "BR915",
+          "region": "BR",
+          "freq_min_khz": 902000,
+          "freq_max_khz": 907500,
+          "power_dbm": 30,
+          "airtime_type": "fhss",
+          "airtime_limit": 400
+        }
+      ]
+    },
+    {
+      "id": "HW_2400",
+      "name": "2.4GHz ISM Band",
+      "physical_freq_min_khz": 2400000,
+      "physical_freq_max_khz": 2483500,
+      "optimal_center_khz": 2441750,
+      "optimal_freq_min_khz": 2400000,
+      "optimal_freq_max_khz": 2483500,
+      "public_bands": [
+        {
+          "id": "GLOBAL_2400",
+          "region": "GLOBAL",
+          "freq_min_khz": 2400000,
+          "freq_max_khz": 2483500,
+          "power_dbm": 10,
+          "airtime_type": "none",
+          "airtime_limit": 100
         }
       ]
     }

@@ -1,6 +1,6 @@
 /**
  * @file lora_bands.c
- * @brief LoRa hardware band profiles from embedded JSON
+ * @brief LoRa regulatory compliance and hardware profiles
  */
 
 #include "lora_bands.h"
@@ -8,120 +8,213 @@
 #include "esp_log.h"
 #include <string.h>
 
-static const char *TAG = "LORA_BANDS";
+static const char *TAG = "LORA_REGULATORY";
 
 // Embedded JSON file
-extern const uint8_t lora_bands_json_start[] asm("_binary_lora_bands_json_start");
-extern const uint8_t lora_bands_json_end[] asm("_binary_lora_bands_json_end");
+extern const uint8_t lora_regulatory_json_start[] asm("_binary_lora_regulatory_json_start");
+extern const uint8_t lora_regulatory_json_end[] asm("_binary_lora_regulatory_json_end");
 
-static lora_band_profile_t band_profiles[LORA_MAX_BANDS];
-static int band_count         = 0;
-static bool bands_initialized = false;
+static lora_hardware_t hardware_profiles[LORA_MAX_HARDWARE];
+static lora_region_t regions[LORA_MAX_REGIONS];
+static lora_compliance_t compliance_rules[LORA_MAX_COMPLIANCE];
+static int hardware_count = 0;
+static int region_count = 0;
+static int compliance_count = 0;
+static bool regulatory_initialized = false;
 
-esp_err_t lora_bands_init(void)
+esp_err_t lora_regulatory_init(void)
 {
-    if (bands_initialized) {
+    if (regulatory_initialized) {
         return ESP_OK;
     }
 
-    ESP_LOGI(TAG, "Parsing embedded lora_bands.json");
+    ESP_LOGI(TAG, "Parsing embedded lora_regulatory.json");
 
-    cJSON *root = cJSON_Parse((const char *)lora_bands_json_start);
+    cJSON *root = cJSON_Parse((const char *)lora_regulatory_json_start);
     if (!root) {
         ESP_LOGE(TAG, "Failed to parse JSON");
         return ESP_FAIL;
     }
 
-    cJSON *profiles = cJSON_GetObjectItem(root, "HardwareProfiles");
-    if (!cJSON_IsArray(profiles)) {
-        ESP_LOGE(TAG, "HardwareProfiles not found");
-        cJSON_Delete(root);
-        return ESP_FAIL;
+    // Parse hardware profiles
+    cJSON *hardware_array = cJSON_GetObjectItem(root, "hardware");
+    if (cJSON_IsArray(hardware_array)) {
+        hardware_count = 0;
+        cJSON *hw = NULL;
+        cJSON_ArrayForEach(hw, hardware_array) {
+            if (hardware_count >= LORA_MAX_HARDWARE) break;
+            
+            cJSON *id = cJSON_GetObjectItem(hw, "id");
+            cJSON *name = cJSON_GetObjectItem(hw, "name");
+            cJSON *freq_min = cJSON_GetObjectItem(hw, "freq_min_khz");
+            cJSON *freq_max = cJSON_GetObjectItem(hw, "freq_max_khz");
+            cJSON *optimal = cJSON_GetObjectItem(hw, "optimal_khz");
+            
+            if (cJSON_IsString(id) && cJSON_IsString(name) && 
+                cJSON_IsNumber(freq_min) && cJSON_IsNumber(freq_max) && cJSON_IsNumber(optimal)) {
+                
+                strncpy(hardware_profiles[hardware_count].id, id->valuestring, sizeof(hardware_profiles[hardware_count].id) - 1);
+                strncpy(hardware_profiles[hardware_count].name, name->valuestring, sizeof(hardware_profiles[hardware_count].name) - 1);
+                hardware_profiles[hardware_count].freq_min_khz = freq_min->valueint;
+                hardware_profiles[hardware_count].freq_max_khz = freq_max->valueint;
+                hardware_profiles[hardware_count].optimal_khz = optimal->valueint;
+                hardware_count++;
+            }
+        }
     }
 
-    band_count     = 0;
-    cJSON *profile = NULL;
-    cJSON_ArrayForEach(profile, profiles)
-    {
-        if (band_count >= LORA_MAX_BANDS)
-            break;
-
-        cJSON *id             = cJSON_GetObjectItem(profile, "id");
-        cJSON *name           = cJSON_GetObjectItem(profile, "name");
-        cJSON *optimal_center = cJSON_GetObjectItem(profile, "optimal_center_khz");
-        cJSON *optimal_min    = cJSON_GetObjectItem(profile, "optimal_freq_min_khz");
-        cJSON *optimal_max    = cJSON_GetObjectItem(profile, "optimal_freq_max_khz");
-
-        if (cJSON_IsString(id) && cJSON_IsString(name) && cJSON_IsNumber(optimal_center) &&
-            cJSON_IsNumber(optimal_min) && cJSON_IsNumber(optimal_max)) {
-
-            strncpy(band_profiles[band_count].id, id->valuestring, sizeof(band_profiles[band_count].id) - 1);
-            strncpy(band_profiles[band_count].name, name->valuestring, sizeof(band_profiles[band_count].name) - 1);
-            band_profiles[band_count].optimal_center_khz   = optimal_center->valueint;
-            band_profiles[band_count].optimal_freq_min_khz = optimal_min->valueint;
-            band_profiles[band_count].optimal_freq_max_khz = optimal_max->valueint;
-
-            // Get max power from first public_bands entry
-            cJSON *public_bands = cJSON_GetObjectItem(profile, "public_bands");
-            if (cJSON_IsArray(public_bands) && cJSON_GetArraySize(public_bands) > 0) {
-                cJSON *first_band = cJSON_GetArrayItem(public_bands, 0);
-                cJSON *power_dbm  = cJSON_GetObjectItem(first_band, "power_dbm");
-                if (cJSON_IsNumber(power_dbm)) {
-                    band_profiles[band_count].max_power_dbm = power_dbm->valueint;
-                } else {
-                    band_profiles[band_count].max_power_dbm = 20; // Default
-                }
-            } else {
-                band_profiles[band_count].max_power_dbm = 20; // Default
+    // Parse regions
+    cJSON *regions_array = cJSON_GetObjectItem(root, "regions");
+    if (cJSON_IsArray(regions_array)) {
+        region_count = 0;
+        cJSON *region = NULL;
+        cJSON_ArrayForEach(region, regions_array) {
+            if (region_count >= LORA_MAX_REGIONS) break;
+            
+            cJSON *id = cJSON_GetObjectItem(region, "id");
+            cJSON *name = cJSON_GetObjectItem(region, "name");
+            
+            if (cJSON_IsString(id) && cJSON_IsString(name)) {
+                strncpy(regions[region_count].id, id->valuestring, sizeof(regions[region_count].id) - 1);
+                strncpy(regions[region_count].name, name->valuestring, sizeof(regions[region_count].name) - 1);
+                region_count++;
             }
+        }
+    }
 
-            ESP_LOGI(TAG, "Loaded band: %s (%s) - %d-%d kHz, max %d dBm", band_profiles[band_count].id,
-                     band_profiles[band_count].name, band_profiles[band_count].optimal_freq_min_khz,
-                     band_profiles[band_count].optimal_freq_max_khz, band_profiles[band_count].max_power_dbm);
-
-            band_count++;
+    // Parse compliance rules
+    cJSON *compliance_array = cJSON_GetObjectItem(root, "compliance");
+    if (cJSON_IsArray(compliance_array)) {
+        compliance_count = 0;
+        cJSON *rule = NULL;
+        cJSON_ArrayForEach(rule, compliance_array) {
+            if (compliance_count >= LORA_MAX_COMPLIANCE) break;
+            
+            cJSON *region = cJSON_GetObjectItem(rule, "region");
+            cJSON *hardware = cJSON_GetObjectItem(rule, "hardware");
+            cJSON *freq_min = cJSON_GetObjectItem(rule, "freq_min_khz");
+            cJSON *freq_max = cJSON_GetObjectItem(rule, "freq_max_khz");
+            cJSON *max_power = cJSON_GetObjectItem(rule, "max_power_dbm");
+            
+            if (cJSON_IsString(region) && cJSON_IsString(hardware) && 
+                cJSON_IsNumber(freq_min) && cJSON_IsNumber(freq_max) && cJSON_IsNumber(max_power)) {
+                
+                strncpy(compliance_rules[compliance_count].region_id, region->valuestring, sizeof(compliance_rules[compliance_count].region_id) - 1);
+                strncpy(compliance_rules[compliance_count].hardware_id, hardware->valuestring, sizeof(compliance_rules[compliance_count].hardware_id) - 1);
+                compliance_rules[compliance_count].freq_min_khz = freq_min->valueint;
+                compliance_rules[compliance_count].freq_max_khz = freq_max->valueint;
+                compliance_rules[compliance_count].max_power_dbm = max_power->valueint;
+                
+                // Optional fields
+                cJSON *duty_cycle = cJSON_GetObjectItem(rule, "duty_cycle_percent");
+                compliance_rules[compliance_count].duty_cycle_percent = cJSON_IsNumber(duty_cycle) ? duty_cycle->valueint : 0;
+                
+                cJSON *fhss = cJSON_GetObjectItem(rule, "fhss_required");
+                compliance_rules[compliance_count].fhss_required = cJSON_IsTrue(fhss);
+                
+                cJSON *lbt = cJSON_GetObjectItem(rule, "lbt_required");
+                compliance_rules[compliance_count].lbt_required = cJSON_IsTrue(lbt);
+                
+                compliance_count++;
+            }
         }
     }
 
     cJSON_Delete(root);
-    bands_initialized = true;
+    regulatory_initialized = true;
 
-    ESP_LOGI(TAG, "Loaded %d band profiles", band_count);
+    ESP_LOGI(TAG, "Loaded %d hardware profiles, %d regions, %d compliance rules", 
+             hardware_count, region_count, compliance_count);
     return ESP_OK;
 }
 
-int lora_bands_get_count(void)
+int lora_hardware_get_count(void)
 {
-    return band_count;
+    return hardware_count;
 }
 
-const lora_band_profile_t *lora_bands_get_profile(int index)
+const lora_hardware_t *lora_hardware_get_profile(int index)
 {
-    if (index < 0 || index >= band_count) {
+    if (index < 0 || index >= hardware_count) {
         return NULL;
     }
-    return &band_profiles[index];
+    return &hardware_profiles[index];
 }
 
-const lora_band_profile_t *lora_bands_get_profile_by_id(const char *id)
+const lora_hardware_t *lora_hardware_get_profile_by_id(const char *id)
 {
-    for (int i = 0; i < band_count; i++) {
-        if (strcmp(band_profiles[i].id, id) == 0) {
-            return &band_profiles[i];
+    for (int i = 0; i < hardware_count; i++) {
+        if (strcmp(hardware_profiles[i].id, id) == 0) {
+            return &hardware_profiles[i];
         }
     }
     return NULL;
 }
 
-int lora_bands_get_index_by_frequency(uint32_t frequency_hz)
+int lora_hardware_get_index_by_frequency(uint32_t frequency_hz)
 {
     uint32_t freq_khz = frequency_hz / 1000;
 
-    for (int i = 0; i < band_count; i++) {
-        if (freq_khz >= band_profiles[i].optimal_freq_min_khz && freq_khz <= band_profiles[i].optimal_freq_max_khz) {
+    for (int i = 0; i < hardware_count; i++) {
+        if (freq_khz >= hardware_profiles[i].freq_min_khz && freq_khz <= hardware_profiles[i].freq_max_khz) {
             return i;
         }
     }
 
-    return -1; // Not in any band
+    return -1;
+}
+
+int lora_regulatory_get_region_count(void)
+{
+    return region_count;
+}
+
+const lora_region_t *lora_regulatory_get_region(int index)
+{
+    if (index < 0 || index >= region_count) {
+        return NULL;
+    }
+    return &regions[index];
+}
+
+const lora_region_t *lora_regulatory_get_region_by_id(const char *region_id)
+{
+    for (int i = 0; i < region_count; i++) {
+        if (strcmp(regions[i].id, region_id) == 0) {
+            return &regions[i];
+        }
+    }
+    return NULL;
+}
+
+const lora_compliance_t *lora_regulatory_get_compliance(const char *region_id, const char *hardware_id)
+{
+    for (int i = 0; i < compliance_count; i++) {
+        if (strcmp(compliance_rules[i].region_id, region_id) == 0 && 
+            strcmp(compliance_rules[i].hardware_id, hardware_id) == 0) {
+            return &compliance_rules[i];
+        }
+    }
+    return NULL;
+}
+
+int lora_regulatory_get_available_hardware(const char *region_id, const char **hardware_ids, int max_count)
+{
+    int count = 0;
+    for (int i = 0; i < compliance_count && count < max_count; i++) {
+        if (strcmp(compliance_rules[i].region_id, region_id) == 0) {
+            // Check if already added
+            bool already_added = false;
+            for (int j = 0; j < count; j++) {
+                if (strcmp(hardware_ids[j], compliance_rules[i].hardware_id) == 0) {
+                    already_added = true;
+                    break;
+                }
+            }
+            if (!already_added) {
+                hardware_ids[count++] = compliance_rules[i].hardware_id;
+            }
+        }
+    }
+    return count;
 }

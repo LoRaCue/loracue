@@ -15,7 +15,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lora_driver.h"
 #include "mbedtls/aes.h"
 #include "mbedtls/md.h"
@@ -550,7 +550,7 @@ static void protocol_rx_task(void *arg)
 
             // Update activity for display sleep (PC mode only)
             general_config_t config;
-            if (general_config_get(&config) == ESP_OK && config.device_mode == DEVICE_MODE_PC) {
+            if (config_manager_get_general(&config) == ESP_OK && config.device_mode == DEVICE_MODE_PC) {
                 power_mgmt_update_activity();
             }
 
