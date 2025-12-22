@@ -51,19 +51,19 @@ void screen_pairing_create(lv_obj_t *parent)
     msg1 = lv_label_create(parent);
     lv_label_set_text(msg1, "Connect other LoRaCue");
     lv_obj_set_style_text_color(msg1, lv_color_white(), 0);
-    lv_obj_set_style_text_font(msg1, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(msg1, UI_FONT_BODY, 0);
     lv_obj_align(msg1, LV_ALIGN_CENTER, 0, -5);
 
     msg2 = lv_label_create(parent);
     lv_label_set_text(msg2, "device by USB-C.");
     lv_obj_set_style_text_color(msg2, lv_color_white(), 0);
-    lv_obj_set_style_text_font(msg2, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(msg2, UI_FONT_BODY, 0);
     lv_obj_align(msg2, LV_ALIGN_CENTER, 0, 5);
 
     // Status label for pairing feedback (initially hidden)
     status_label = lv_label_create(parent);
     lv_obj_set_style_text_color(status_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(status_label, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(status_label, UI_FONT_BODY, 0);
     lv_obj_add_flag(status_label, LV_OBJ_FLAG_HIDDEN);
 
     // Start USB pairing
@@ -82,7 +82,7 @@ void screen_pairing_create(lv_obj_t *parent)
 
         lv_obj_t *error_detail = lv_label_create(parent);
         lv_obj_set_style_text_color(error_detail, lv_color_white(), 0);
-        lv_obj_set_style_text_font(error_detail, &lv_font_pixolletta_10, 0);
+        lv_obj_set_style_text_font(error_detail, UI_FONT_BODY, 0);
         lv_obj_align(error_detail, LV_ALIGN_CENTER, 0, 5);
 
         if (ret == ESP_ERR_INVALID_STATE) {

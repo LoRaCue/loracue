@@ -408,7 +408,7 @@ uint8_t ReadBuffer(uint8_t *rxData, int16_t rxDataLen);
 void WriteBuffer(const uint8_t *txData, int16_t txDataLen);
 void WriteRegister(uint16_t reg, uint8_t *data, uint8_t numBytes);
 void ReadRegister(uint16_t reg, uint8_t *data, uint8_t numBytes);
-void WriteCommand(uint8_t cmd, uint8_t *data, uint8_t numBytes);
+void WriteCommand(uint8_t cmd, const uint8_t *data, uint8_t numBytes);
 uint8_t WriteCommand2(uint8_t cmd, const uint8_t *data, uint8_t numBytes);
 void ReadCommand(uint8_t cmd, uint8_t *data, uint8_t numBytes);
 void SPItransfer(uint8_t cmd, bool write, uint8_t *dataOut, uint8_t *dataIn, uint8_t numBytes, bool waitForBusy);

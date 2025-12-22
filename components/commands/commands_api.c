@@ -13,6 +13,14 @@
 
 static const char *TAG = "CMD_API";
 
+#define LORA_FREQ_STEP_HZ 100000
+#define LORA_SF_MIN 7
+#define LORA_SF_MAX 12
+#define LORA_CR_MIN 5
+#define LORA_CR_MAX 8
+#define LORA_TX_POWER_MIN 2
+#define LORA_TX_POWER_MAX 22
+
 // External dependency
 extern esp_err_t ui_data_provider_reload_config(void) __attribute__((weak));
 
@@ -99,24 +107,24 @@ esp_err_t cmd_set_lora_config(const lora_config_t *config)
     }
 
     // Validate frequency
-    if (config->frequency % 100000 != 0) { // 100kHz steps
+    if (config->frequency % LORA_FREQ_STEP_HZ != 0) { // 100kHz steps
         // Original code checked % 100 == 0 on kHz, so % 100000 on Hz
         ESP_LOGE(TAG, "Frequency must be multiple of 100kHz");
         return ESP_ERR_INVALID_ARG;
     }
 
     // Validate SF
-    if (config->spreading_factor < 7 || config->spreading_factor > 12) {
+    if (config->spreading_factor < LORA_SF_MIN || config->spreading_factor > LORA_SF_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
 
     // Validate CR
-    if (config->coding_rate < 5 || config->coding_rate > 8) {
+    if (config->coding_rate < LORA_CR_MIN || config->coding_rate > LORA_CR_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
 
     // Validate Power
-    if (config->tx_power < 2 || config->tx_power > 22) {
+    if (config->tx_power < LORA_TX_POWER_MIN || config->tx_power > LORA_TX_POWER_MAX) {
         return ESP_ERR_INVALID_ARG;
     }
 

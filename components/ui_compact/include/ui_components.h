@@ -6,32 +6,49 @@
 #include <stdbool.h>
 
 // Layout constants
-#define UI_MARGIN_TOP 2
-#define UI_MARGIN_BOTTOM 2
-#define UI_MARGIN_LEFT 2
-#define UI_MARGIN_RIGHT 2
-#define UI_LINE_HEIGHT 10
-#define UI_ICON_SIZE 8
-#define UI_PROGRESS_BAR_HEIGHT 6
+#if CONFIG_LORACUE_MODEL_BETA || CONFIG_LORACUE_MODEL_GAMMA
+    #define UI_MARGIN_TOP 4
+    #define UI_MARGIN_BOTTOM 4
+    #define UI_MARGIN_LEFT 4
+    #define UI_MARGIN_RIGHT 4
+    #define UI_LINE_HEIGHT 18
+    #define UI_ICON_SIZE 16
+    #define UI_PROGRESS_BAR_HEIGHT 12
+    #define UI_TEXT_OFFSET_Y -2
+    
+    #define UI_MENU_ITEM_HEIGHT 19
+    #define UI_MENU_BOTTOM_BAR_HEIGHT 20
+    #define UI_MENU_ARROW_Y_UP 6
+    #define UI_MENU_ARROW_Y_DOWN (SEPARATOR_Y_BOTTOM - 14)
+    
+    #define UI_NAV_ARROW_X 234
+    #define UI_BACK_ICON_X_OFFSET -8
+#else
+    #define UI_MARGIN_TOP 2
+    #define UI_MARGIN_BOTTOM 2
+    #define UI_MARGIN_LEFT 2
+    #define UI_MARGIN_RIGHT 2
+    #define UI_LINE_HEIGHT 12
+    #define UI_ICON_SIZE 8
+    #define UI_PROGRESS_BAR_HEIGHT 6
+    #define UI_TEXT_OFFSET_Y 0
+    
+    #define UI_MENU_ITEM_HEIGHT 13
+    #define UI_MENU_BOTTOM_BAR_HEIGHT 11
+    #define UI_MENU_ARROW_Y_UP 3
+    #define UI_MENU_ARROW_Y_DOWN (SEPARATOR_Y_BOTTOM - 7)
+    
+    #define UI_NAV_ARROW_X 120
+    #define UI_BACK_ICON_X_OFFSET -4
+#endif
 
-// Bottom bar constants (aligned with main screen)
-#define UI_BOTTOM_BAR_LINE_Y SEPARATOR_Y_BOTTOM
+// Bottom bar constants
 #define UI_BOTTOM_BAR_ICON_Y (SEPARATOR_Y_BOTTOM + 3)
 #define UI_BOTTOM_BAR_TEXT_Y (SEPARATOR_Y_BOTTOM + 2)
 
-// Menu constants
-#define UI_MENU_ITEM_HEIGHT 13
-#define UI_MENU_BOTTOM_BAR_HEIGHT 11
-#define UI_MENU_VISIBLE_ITEMS                                                                                          \
-    (SEPARATOR_Y_BOTTOM / UI_MENU_ITEM_HEIGHT) // Menu without heading: 4 items on 64px (53/13=4)
-#define UI_RADIO_VISIBLE_ITEMS                                                                                         \
-    ((SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP - 2) / UI_MENU_ITEM_HEIGHT) // With heading: 3 items on 64px
-#define UI_MENU_ARROW_Y_UP 3
-#define UI_MENU_ARROW_Y_DOWN (SEPARATOR_Y_BOTTOM - 7)
-
-// Icon positions
-#define UI_NAV_ARROW_X 120
-#define UI_BACK_ICON_X_OFFSET -4
+// Menu constants (calculated from display dimensions)
+#define UI_MENU_VISIBLE_ITEMS (SEPARATOR_Y_BOTTOM / UI_MENU_ITEM_HEIGHT)
+#define UI_RADIO_VISIBLE_ITEMS ((SEPARATOR_Y_BOTTOM - SEPARATOR_Y_TOP - 2) / UI_MENU_ITEM_HEIGHT)
 
 // LVGL styles
 extern lv_style_t style_title;
@@ -61,6 +78,7 @@ typedef struct {
     int total_items;
     int selected_index;
     int scroll_offset;
+    lv_point_precise_t bottom_line_points[2];  // Persistent storage for line coordinates
 } ui_menu_t;
 
 ui_menu_t *ui_menu_create(lv_obj_t *parent, const char **item_names, int count);

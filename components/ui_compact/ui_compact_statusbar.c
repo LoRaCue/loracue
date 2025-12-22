@@ -42,7 +42,7 @@ lv_obj_t *ui_compact_statusbar_create(lv_obj_t *parent)
     lv_obj_t *brand = lv_label_create(statusbar);
     lv_label_set_text(brand, "LORACUE");
     lv_obj_set_style_text_color(brand, lv_color_white(), 0);
-    lv_obj_set_style_text_font(brand, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(brand, UI_FONT_BODY, 0);
     lv_obj_set_pos(brand, TEXT_MARGIN_LEFT, 0);
 
     // Create USB icon (hidden by default)

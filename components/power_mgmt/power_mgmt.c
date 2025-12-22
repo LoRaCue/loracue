@@ -36,6 +36,14 @@ static bool display_sleeping         = false;
 #define POWER_MGMT_DEFAULT_DISPLAY_SLEEP_MS 10000 // 10 seconds
 #define POWER_MGMT_DEFAULT_LIGHT_SLEEP_MS 30000   // 30 seconds
 #define POWER_MGMT_DEFAULT_DEEP_SLEEP_MS 300000   // 5 minutes
+#define CPU_FREQ_DEFAULT_MHZ 80
+#define CPU_FREQ_MIN_MHZ 10
+#define MS_TO_US 1000ULL
+#define BATTERY_CAPACITY_MAH 1000.0f
+#define CURRENT_ACTIVE_MA 10.0f
+#define CURRENT_DISPLAY_SLEEP_MA 8.0f
+#define CURRENT_LIGHT_SLEEP_MA 1.0f
+#define CURRENT_DEEP_SLEEP_MA 0.01f
 
 // Default configuration
 static const power_config_t default_config = {
@@ -45,7 +53,7 @@ static const power_config_t default_config = {
     .enable_auto_display_sleep = true,
     .enable_auto_light_sleep   = true,
     .enable_auto_deep_sleep    = true,
-    .cpu_freq_mhz              = 80, // 80MHz for power efficiency
+    .cpu_freq_mhz              = CPU_FREQ_DEFAULT_MHZ, // 80MHz for power efficiency
 };
 
 esp_err_t power_mgmt_init(const power_config_t *config)
@@ -61,7 +69,7 @@ esp_err_t power_mgmt_init(const power_config_t *config)
 
     // Configure power management
     esp_pm_config_t pm_config = {.max_freq_mhz       = current_config.cpu_freq_mhz,
-                                 .min_freq_mhz       = 10, // Minimum frequency for power saving
+                                 .min_freq_mhz       = CPU_FREQ_MIN_MHZ, // Minimum frequency for power saving
                                  .light_sleep_enable = current_config.enable_auto_light_sleep};
 
     esp_err_t ret = esp_pm_configure(&pm_config);
@@ -266,12 +274,13 @@ esp_err_t power_mgmt_get_stats(power_stats_t *stats)
 
     // Estimate battery life (rough calculation)
     // Assumptions: 1000mAh battery, 10mA active, 8mA display sleep, 1mA light sleep, 0.01mA deep sleep
-    float avg_current_ma = (stats->active_time_ms * 10.0f + stats->display_sleep_time_ms * 8.0f +
-                            stats->light_sleep_time_ms * 1.0f + stats->deep_sleep_time_ms * 0.01f) /
-                           (stats->active_time_ms + stats->display_sleep_time_ms + stats->light_sleep_time_ms +
-                            stats->deep_sleep_time_ms + 1);
+    float avg_current_ma =
+        (stats->active_time_ms * CURRENT_ACTIVE_MA + stats->display_sleep_time_ms * CURRENT_DISPLAY_SLEEP_MA +
+         stats->light_sleep_time_ms * CURRENT_LIGHT_SLEEP_MA + stats->deep_sleep_time_ms * CURRENT_DEEP_SLEEP_MA) /
+        (stats->active_time_ms + stats->display_sleep_time_ms + stats->light_sleep_time_ms + stats->deep_sleep_time_ms +
+         1);
 
-    stats->estimated_battery_hours = 1000.0f / avg_current_ma; // mAh / mA = hours
+    stats->estimated_battery_hours = BATTERY_CAPACITY_MAH / avg_current_ma; // mAh / mA = hours
 
     return ESP_OK;
 }
@@ -289,8 +298,9 @@ esp_err_t power_mgmt_set_cpu_freq(uint8_t freq_mhz)
 
     current_config.cpu_freq_mhz = freq_mhz;
 
-    esp_pm_config_t pm_config = {
-        .max_freq_mhz = freq_mhz, .min_freq_mhz = 10, .light_sleep_enable = current_config.enable_auto_light_sleep};
+    esp_pm_config_t pm_config = {.max_freq_mhz       = freq_mhz,
+                                 .min_freq_mhz       = CPU_FREQ_MIN_MHZ,
+                                 .light_sleep_enable = current_config.enable_auto_light_sleep};
 
     esp_err_t ret = esp_pm_configure(&pm_config);
     if (ret == ESP_OK) {

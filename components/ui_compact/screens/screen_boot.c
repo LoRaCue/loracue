@@ -4,28 +4,49 @@
 #include "ui_compact_fonts.h"
 #include "ui_navigator.h"
 #include "version.h"
+#include "bsp.h"
 
-// External declaration for generated boot logo
-LV_IMG_DECLARE(boot_logo);
+// External declarations for generated boot logos
+LV_IMG_DECLARE(boot_logo_128x64);
+LV_IMG_DECLARE(boot_logo_250x122);
 
 void screen_boot_create(lv_obj_t *parent)
 {
     // Set black background
     lv_obj_set_style_bg_color(parent, lv_color_black(), 0);
 
-    // Boot logo at top
-    lv_obj_t *logo = lv_img_create(parent);
-    lv_img_set_src(logo, &boot_logo);
-    lv_obj_set_pos(logo, (128 - boot_logo.header.w) / 2, 0); // Centered horizontally, Y=0
+    // Select logo based on display type
+    const lv_img_dsc_t *logo_img;
+    uint16_t screen_width;
+    uint16_t screen_height;
+    
+    if (bsp_get_display_type() == BSP_DISPLAY_TYPE_EPAPER_SSD1681) {
+        logo_img = &boot_logo_250x122;
+        screen_width = 250;
+        screen_height = 122;
+    } else {
+        logo_img = &boot_logo_128x64;
+        screen_width = 128;
+        screen_height = 64;
+    }
 
-    // Version at bottom center with micro font
+    // Boot logo centered
+    lv_obj_t *logo = lv_img_create(parent);
+    lv_img_set_src(logo, logo_img);
+    lv_obj_set_pos(logo, (screen_width - logo_img->header.w) / 2, 0);
+
+    // Version at bottom - aligned to bottom edge with proper font height consideration
     lv_obj_t *version = lv_label_create(parent);
     lv_label_set_text(version, LORACUE_VERSION_FULL);
     lv_obj_set_style_text_color(version, lv_color_white(), 0);
-    lv_obj_set_style_text_font(version, &lv_font_micro_10, 0);
+    lv_obj_set_style_text_font(version, UI_FONT_SMALL, 0);
     lv_obj_set_style_text_align(version, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(version, 128);
-    lv_obj_set_pos(version, 0, 64 - 10); // Full width, bottom of screen
+    lv_obj_set_width(version, screen_width);
+    
+    // Position at bottom: screen_height - font_line_height
+    // OLED: 64 - 12 = 52, E-Paper: 122 - 15 - 2 = 105
+    int version_y = screen_height - (bsp_get_display_type() == BSP_DISPLAY_TYPE_EPAPER_SSD1681 ? 17 : 12);
+    lv_obj_set_pos(version, 0, version_y);
 }
 static void handle_input_event(input_event_t event)
 {

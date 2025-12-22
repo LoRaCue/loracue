@@ -29,13 +29,13 @@ static const char *TAG = "BSP_HELTEC_V3";
 #define VEXT_CTRL_PIN GPIO_NUM_36 // Controls power to OLED and LoRa
 
 // Alpha+ Dual Buttons
-#define BUTTON_PREV_PIN GPIO_NUM_46
+#define BUTTON_PREV_PIN GPIO_NUM_41
 #define BUTTON_NEXT_PIN GPIO_NUM_0
 
 // Alpha+ Rotary Encoder
-#define ENCODER_CLK_PIN GPIO_NUM_4
-#define ENCODER_DT_PIN GPIO_NUM_5
-#define ENCODER_BTN_PIN GPIO_NUM_6
+#define ENCODER_CLK_PIN GPIO_NUM_38
+#define ENCODER_DT_PIN GPIO_NUM_39
+#define ENCODER_BTN_PIN GPIO_NUM_40
 
 // LoRa SX1262 Pins
 #define LORA_CS_PIN GPIO_NUM_8
@@ -441,15 +441,6 @@ esp_err_t bsp_i2c_init_default(void)
 const char *bsp_get_board_id(void)
 {
     return "heltec_v3";
-}
-
-const char *bsp_get_model_name(void)
-{
-#if CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
-    return "LC-Alpha+";
-#else
-    return "LC-Alpha";
-#endif
 }
 
 const char *bsp_get_model_name(void)

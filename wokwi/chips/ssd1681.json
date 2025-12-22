@@ -1,0 +1,20 @@
+{
+  "name": "chip-ssd1681",
+  "author": "Fabian Schmieder",
+  "pins": [
+    "VCC",
+    "GND",
+    "CS",
+    "CLK",
+    "DIN",
+    "DC",
+    "RST",
+    "BUSY"
+  ],
+    "display": {
+    "width": 250,
+    "height": 122
+  },
+  "controls": [
+  ]
+}

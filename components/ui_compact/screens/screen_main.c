@@ -56,14 +56,14 @@ void screen_main_create(lv_obj_t *parent, const statusbar_data_t *initial_status
     lv_obj_t *prev_label = lv_label_create(parent);
     lv_label_set_text(prev_label, "PREV");
     lv_obj_set_style_text_color(prev_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(prev_label, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(prev_label, UI_FONT_BODY, 0);
     lv_obj_set_pos(prev_label, BUTTON_MARGIN + button_double_press.header.w + 2, BUTTON_TEXT_Y);
 
     // Button hints: "NEXT" + short-press icon on right
     lv_obj_t *next_label = lv_label_create(parent);
     lv_label_set_text(next_label, "NEXT");
     lv_obj_set_style_text_color(next_label, lv_color_white(), 0);
-    lv_obj_set_style_text_font(next_label, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(next_label, UI_FONT_BODY, 0);
     lv_obj_set_pos(next_label, DISPLAY_WIDTH - BUTTON_MARGIN - button_short_press.header.w - 24 - 2, BUTTON_TEXT_Y);
 
     lv_obj_t *short_press_img = lv_img_create(parent);

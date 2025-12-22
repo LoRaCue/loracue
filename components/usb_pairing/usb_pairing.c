@@ -33,7 +33,18 @@ static bool host_mode_active                  = false;
 
 #define PAIRING_TIMEOUT_MS 30000
 #define ESP32_VID 0x303A
+#define PAIRING_TIMEOUT_MS 30000
+#define ESP32_VID 0x303A
 #define ESP32_PID 0x4002
+#define USB_CONNECT_TIMEOUT_MS 5000
+#define USB_OUT_BUFFER_SIZE 512
+#define USB_PHY_DELAY_MS 500
+#define USB_HOST_TASK_STACK_SIZE 3072
+#define USB_HOST_TASK_PRIORITY 5
+#define CDC_HOST_TASK_STACK_SIZE 4096
+#define CDC_HOST_TASK_PRIORITY 10
+#define CDC_TX_TIMEOUT_MS 1000
+#define PAIRING_POLL_DELAY_MS 50
 
 static void usb_host_lib_task(void *arg)
 {
@@ -79,8 +90,8 @@ static void new_dev_callback(usb_device_handle_t usb_dev)
     ESP_LOGI(TAG, "USB device detected");
 
     const cdc_acm_host_device_config_t dev_config = {
-        .connection_timeout_ms = 5000,
-        .out_buffer_size       = 512,
+        .connection_timeout_ms = USB_CONNECT_TIMEOUT_MS,
+        .out_buffer_size       = USB_OUT_BUFFER_SIZE,
         .event_cb              = NULL,
         .data_cb               = (cdc_acm_data_callback_t)cdc_rx_callback,
         .user_arg              = NULL,
@@ -102,7 +113,9 @@ static esp_err_t switch_to_host_mode(void)
 
     // Wait longer for USB PHY to be fully released
     ESP_LOGW(TAG, "=== Waiting 500ms for USB PHY release ===");
-    vTaskDelay(pdMS_TO_TICKS(500));
+    // Wait longer for USB PHY to be fully released
+    ESP_LOGW(TAG, "=== Waiting 500ms for USB PHY release ===");
+    vTaskDelay(pdMS_TO_TICKS(USB_PHY_DELAY_MS));
 
     ESP_LOGW(TAG, "=== Installing USB host mode ===");
     const usb_host_config_t host_config = {
@@ -120,7 +133,8 @@ static esp_err_t switch_to_host_mode(void)
         return ret;
 
     host_mode_active = true;
-    if (xTaskCreate(usb_host_lib_task, "usb_host", 3072, NULL, 5, &usb_host_task_handle) != pdPASS) {
+    if (xTaskCreate(usb_host_lib_task, "usb_host", USB_HOST_TASK_STACK_SIZE, NULL, USB_HOST_TASK_PRIORITY,
+                    &usb_host_task_handle) != pdPASS) {
         usb_host_uninstall();
         return ESP_ERR_NO_MEM;
     }
@@ -143,8 +157,8 @@ static esp_err_t switch_to_host_mode(void)
 
     ESP_LOGW(TAG, "=== Installing CDC ACM host driver ===");
     const cdc_acm_host_driver_config_t driver_config = {
-        .driver_task_stack_size = 4096,
-        .driver_task_priority   = 10,
+        .driver_task_stack_size = CDC_HOST_TASK_STACK_SIZE,
+        .driver_task_priority   = CDC_HOST_TASK_PRIORITY,
         .xCoreID                = 0,
         .new_dev_cb             = new_dev_callback,
     };
@@ -192,7 +206,9 @@ static esp_err_t switch_to_device_mode(void)
 
     // Wait for USB PHY to be fully released
     ESP_LOGW(TAG, "Waiting 500ms for USB PHY release");
-    vTaskDelay(pdMS_TO_TICKS(500));
+    // Wait for USB PHY to be fully released
+    ESP_LOGW(TAG, "Waiting 500ms for USB PHY release");
+    vTaskDelay(pdMS_TO_TICKS(USB_PHY_DELAY_MS));
 
     // esp_tinyusb 1.7.6+ API
     ESP_LOGW(TAG, "Reinstalling TinyUSB device mode");
@@ -218,7 +234,7 @@ static void pairing_task(void *arg)
 {
     uint32_t start_time = esp_timer_get_time() / 1000;
     while (!cdc_device && (esp_timer_get_time() / 1000 - start_time) < PAIRING_TIMEOUT_MS) {
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(PAIRING_POLL_DELAY_MS));
     }
 
     if (!cdc_device) {
@@ -285,7 +301,9 @@ static void pairing_task(void *arg)
 
     snprintf(command, len + 2, "%s\n", json_string);
 
-    esp_err_t ret = cdc_acm_host_data_tx_blocking(cdc_device, (uint8_t *)command, strlen(command), 1000);
+    snprintf(command, len + 2, "%s\n", json_string);
+
+    esp_err_t ret = cdc_acm_host_data_tx_blocking(cdc_device, (uint8_t *)command, strlen(command), CDC_TX_TIMEOUT_MS);
     free(command);
     free(json_string);
     cJSON_Delete(request);
@@ -301,7 +319,7 @@ static void pairing_task(void *arg)
 
     start_time = esp_timer_get_time() / 1000;
     while (pairing_active && !pairing_success && (esp_timer_get_time() / 1000 - start_time) < PAIRING_TIMEOUT_MS) {
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(PAIRING_POLL_DELAY_MS));
     }
 
     pairing_active = false;
@@ -334,7 +352,8 @@ esp_err_t usb_pairing_start(usb_pairing_callback_t callback)
         return ret;
     }
 
-    if (xTaskCreate(pairing_task, "usb_pairing", 3072, NULL, 5, NULL) != pdPASS) {
+    if (xTaskCreate(pairing_task, "usb_pairing", USB_HOST_TASK_STACK_SIZE, NULL, USB_HOST_TASK_PRIORITY, NULL) !=
+        pdPASS) {
         switch_to_device_mode();
         pairing_active = false;
         return ESP_ERR_NO_MEM;

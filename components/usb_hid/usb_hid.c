@@ -4,13 +4,13 @@
  */
 
 #include "usb_hid.h"
-#include "input_manager.h"
 #include "cJSON.h"
 #include "class/cdc/cdc_device.h"
 #include "class/hid/hid_device.h"
 #include "device_registry.h"
 #include "esp_log.h"
 #include "general_config.h"
+#include "input_manager.h"
 #include "tinyusb.h"
 #include "tusb.h"
 #include "usb_cdc.h"
@@ -28,9 +28,12 @@ static void send_key(uint8_t keycode, uint8_t modifier)
     uint8_t keycodes[6] = {0};
     keycodes[0]         = keycode;
 
+#define KEY_PRESS_DELAY_MS 5
+#define USB_STRING_DESC_COUNT 6
+
     // Send key press
     tud_hid_keyboard_report(0, modifier, keycodes);
-    vTaskDelay(pdMS_TO_TICKS(5));
+    vTaskDelay(pdMS_TO_TICKS(KEY_PRESS_DELAY_MS));
 
     // Send key release
     tud_hid_keyboard_report(0, 0, NULL);

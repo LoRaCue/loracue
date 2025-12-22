@@ -30,6 +30,14 @@ static const char *TAG = "LORA_PROTOCOL";
 static EventGroupHandle_t ack_event_group = NULL;
 static uint16_t pending_ack_sequence      = 0;
 static SemaphoreHandle_t ack_mutex        = NULL;
+static SemaphoreHandle_t crypto_mutex     = NULL;
+
+#define RX_TIMEOUT_MS 1000
+#define RX_TASK_DELAY_MS 5
+#define SEMAPHORE_WAIT_MS 10
+#define WINDOW_SIZE_LARGE 64
+#define WINDOW_SIZE_SMALL 32
+#define MAC_DATA_BUFFER_SIZE 18
 
 // Protocol state
 static bool protocol_initialized = false;
@@ -97,6 +105,14 @@ esp_err_t lora_protocol_init(uint16_t device_id, const uint8_t *key)
         }
     }
 
+    if (crypto_mutex == NULL) {
+        crypto_mutex = xSemaphoreCreateMutex();
+        if (crypto_mutex == NULL) {
+            ESP_LOGE(TAG, "Failed to create crypto mutex");
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
     // Initialize sequence counter with random value
     sequence_counter = esp_random() & 0xFFFF;
 
@@ -131,6 +147,16 @@ static esp_err_t calculate_mac(const uint8_t *data, size_t data_len, const uint8
     return ESP_OK;
 }
 
+static esp_err_t calculate_mac_safe(const uint8_t *data, size_t data_len, const uint8_t *key, uint8_t *mac_out)
+{
+    if (xSemaphoreTake(crypto_mutex, portMAX_DELAY) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+    esp_err_t ret = calculate_mac(data, data_len, key, mac_out);
+    xSemaphoreGive(crypto_mutex);
+    return ret;
+}
+
 static esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_t *payload, uint8_t payload_length)
 {
     lora_packet_t packet;
@@ -155,7 +181,9 @@ static esp_err_t lora_protocol_send_command(lora_command_t command, const uint8_
     mac_data[0] = (packet.device_id >> 8) & 0xFF;
     mac_data[1] = packet.device_id & 0xFF;
     memcpy(&mac_data[2], packet.encrypted_data, 16);
-    calculate_mac(mac_data, 18, local_device_key, packet.mac);
+
+    // Protect shared HMAC context
+    calculate_mac_safe(mac_data, MAC_DATA_BUFFER_SIZE, local_device_key, packet.mac);
 
     sequence_counter++;
     connection_stats.packets_sent++;
@@ -236,7 +264,7 @@ esp_err_t lora_protocol_send_reliable(lora_command_t command, const uint8_t *pay
 
         if (bits & ACK_RECEIVED_BIT) {
             // Check if ACK matches expected sequence
-            if (xSemaphoreTake(ack_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            if (xSemaphoreTake(ack_mutex, pdMS_TO_TICKS(SEMAPHORE_WAIT_MS)) == pdTRUE) {
                 if (pending_ack_sequence == expected_ack_seq) {
                     xSemaphoreGive(ack_mutex);
                     connection_stats.acks_received++;
@@ -298,7 +326,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
              mac_data[15], mac_data[16], mac_data[17]);
 
     uint8_t calculated_mac[LORA_MAC_SIZE];
-    ret = calculate_mac(mac_data, 18, sender_device.aes_key, calculated_mac);
+    ret = calculate_mac_safe(mac_data, MAC_DATA_BUFFER_SIZE, sender_device.aes_key, calculated_mac);
 
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "MAC calculation failed");
@@ -352,7 +380,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
 
     if (seq_diff > 0) {
         // New packet, higher than anything seen
-        if (seq_diff < 64) {
+        if (seq_diff < WINDOW_SIZE_LARGE) {
             // Shift bitmap and mark this packet
             sender_device.recent_bitmap <<= seq_diff;
             sender_device.recent_bitmap |= 1;
@@ -368,7 +396,7 @@ esp_err_t lora_protocol_receive_packet(lora_packet_data_t *packet_data, uint32_t
         ESP_LOGW(TAG, "Duplicate packet from 0x%04X: seq %d", packet_data->device_id, packet_data->sequence_num);
         return ESP_ERR_INVALID_STATE;
 
-    } else if (seq_diff > -32) {
+    } else if (seq_diff > -WINDOW_SIZE_SMALL) {
         // Within recent window (out-of-order packet)
         uint8_t bit_pos = -seq_diff;
         if (sender_device.recent_bitmap & (1ULL << bit_pos)) {
@@ -502,7 +530,7 @@ static void protocol_rx_task(void *arg)
 
     while (protocol_rx_task_running) {
         lora_packet_data_t packet_data;
-        esp_err_t ret = lora_protocol_receive_packet(&packet_data, 1000);
+        esp_err_t ret = lora_protocol_receive_packet(&packet_data, RX_TIMEOUT_MS);
 
         if (ret == ESP_OK) {
             ESP_LOGD(TAG, "RX task: packet received, processing");
@@ -511,7 +539,7 @@ static void protocol_rx_task(void *arg)
             if (packet_data.command == CMD_ACK && packet_data.payload_length == 2) {
                 uint16_t ack_seq = (packet_data.payload[0] << 8) | packet_data.payload[1];
 
-                if (xSemaphoreTake(ack_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+                if (xSemaphoreTake(ack_mutex, pdMS_TO_TICKS(SEMAPHORE_WAIT_MS)) == pdTRUE) {
                     pending_ack_sequence = ack_seq;
                     xEventGroupSetBits(ack_event_group, ACK_RECEIVED_BIT);
                     xSemaphoreGive(ack_mutex);
@@ -548,7 +576,7 @@ static void protocol_rx_task(void *arg)
             ESP_LOGD(TAG, "RX task: receive error: %s", esp_err_to_name(ret));
         }
 
-        vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(pdMS_TO_TICKS(RX_TASK_DELAY_MS));
     }
 
     ESP_LOGI(TAG, "Protocol RX task stopped");

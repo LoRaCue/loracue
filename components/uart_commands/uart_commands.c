@@ -29,6 +29,12 @@ static const char *TAG = "UART_CMD";
 #define UART_TX_BUF_SIZE 8192   // Large TX buffer for JSON responses
 #define CMD_MAX_LENGTH 2048     // Max single command length
 #define RX_FLOW_CTRL_THRESH 100 // De-assert RTS when hardware FIFO reaches 100 bytes (max 127)
+#define UART_READ_TIMEOUT_MS 20
+#define CMD_QUEUE_TIMEOUT_MS 100
+#define UART_RX_TASK_STACK_SIZE 3072
+#define UART_RX_TASK_PRIORITY 10
+#define CMD_PROC_TASK_STACK_SIZE 4096
+#define CMD_PROC_TASK_PRIORITY 5
 
 static TaskHandle_t uart_rx_task_handle       = NULL;
 static TaskHandle_t cmd_processor_task_handle = NULL;
@@ -63,7 +69,7 @@ static void uart_rx_task(void *pvParameters)
     ESP_LOGI(TAG, "UART RX task started (high priority)");
 
     while (uart_running) {
-        int len = uart_read_bytes(uart_num, data, sizeof(data), pdMS_TO_TICKS(20));
+        int len = uart_read_bytes(uart_num, data, sizeof(data), pdMS_TO_TICKS(UART_READ_TIMEOUT_MS));
 
         for (int i = 0; i < len; i++) {
             char c = (char)data[i];
@@ -105,7 +111,7 @@ static void cmd_processor_task(void *pvParameters)
     ESP_LOGI(TAG, "Command processor task started");
 
     while (uart_running) {
-        if (xQueueReceive(cmd_queue, &cmd, pdMS_TO_TICKS(100)) == pdTRUE) {
+        if (xQueueReceive(cmd_queue, &cmd, pdMS_TO_TICKS(CMD_QUEUE_TIMEOUT_MS)) == pdTRUE) {
             ESP_LOGI(TAG, "Processing: %s", cmd);
             commands_execute(cmd, send_response);
             free(cmd);
@@ -186,7 +192,8 @@ esp_err_t uart_commands_start(void)
     uart_running = true;
 
     // High-priority RX task (priority 10) - must always be responsive
-    BaseType_t ret = xTaskCreate(uart_rx_task, "uart_rx", 3072, NULL, 10, &uart_rx_task_handle);
+    BaseType_t ret = xTaskCreate(uart_rx_task, "uart_rx", UART_RX_TASK_STACK_SIZE, NULL, UART_RX_TASK_PRIORITY,
+                                 &uart_rx_task_handle);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create UART RX task");
         uart_running = false;
@@ -195,7 +202,8 @@ esp_err_t uart_commands_start(void)
     }
 
     // Lower-priority command processor (priority 5) - can be preempted
-    BaseType_t ret = xTaskCreate(cmd_processor_task, "cmd_proc", 4096, NULL, 5, &cmd_processor_task_handle);
+    BaseType_t ret = xTaskCreate(cmd_processor_task, "cmd_proc", CMD_PROC_TASK_STACK_SIZE, NULL, CMD_PROC_TASK_PRIORITY,
+                                 &cmd_processor_task_handle);
     if (ret != pdPASS) {
         ESP_LOGE(TAG, "Failed to create command processor task");
         uart_running = false;

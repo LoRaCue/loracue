@@ -9,8 +9,21 @@
 static const char *TAG = "bsp_lilygo_t3";
 
 // LilyGO T3-S3 Pin Definitions
-#define PIN_BUTTON_PREV GPIO_NUM_43
-#define PIN_BUTTON_NEXT GPIO_NUM_44
+// Note: Using GPIO0/41 for buttons
+#define PIN_BUTTON_PREV GPIO_NUM_41
+#define PIN_BUTTON_NEXT GPIO_NUM_0
+
+// I2C Pins (for optional peripherals like i2console)
+#define PIN_I2C_SDA GPIO_NUM_17
+#define PIN_I2C_SCL GPIO_NUM_18
+
+// Rotary Encoder Pins (custom hardware addition)
+#define ENCODER_CLK_PIN GPIO_NUM_38
+#define ENCODER_DT_PIN GPIO_NUM_39
+#define ENCODER_BTN_PIN GPIO_NUM_40
+
+// LED Pin
+#define PIN_LED GPIO_NUM_37
 
 // E-Paper Display Pins
 #define PIN_EPAPER_MOSI GPIO_NUM_11
@@ -36,13 +49,22 @@ esp_err_t bsp_init(void)
     ESP_LOGI(TAG, "Initializing LilyGO T3-S3 BSP");
 
     // Initialize buttons
+    ESP_LOGI(TAG, "Initializing buttons...");
     ESP_ERROR_CHECK(bsp_init_buttons());
+    ESP_LOGI(TAG, "Buttons initialized");
+
+    // Initialize I2C for optional peripherals (i2console)
+    ESP_LOGI(TAG, "Initializing I2C...");
+    ESP_ERROR_CHECK(bsp_i2c_init_default());
+    ESP_LOGI(TAG, "I2C initialized");
 
     // Initialize SPI for E-Paper
+    ESP_LOGI(TAG, "Initializing SPI bus for E-Paper...");
     ESP_ERROR_CHECK(
-        bsp_spi_init_bus(SPI2_HOST, PIN_EPAPER_MOSI, GPIO_NUM_NC, PIN_EPAPER_CLK, SPI_TRANSFER_SIZE_EPAPER));
-    ESP_ERROR_CHECK(bsp_spi_add_device(SPI2_HOST, PIN_EPAPER_CS, DISPLAY_SSD1681_SPI_SPEED, SPI_MODE_DEFAULT,
-                                       SPI_QUEUE_SIZE_DEFAULT, &spi_epaper));
+        bsp_spi_init_bus(SPI3_HOST, PIN_EPAPER_MOSI, GPIO_NUM_NC, PIN_EPAPER_CLK, SPI_TRANSFER_SIZE_EPAPER));
+
+    // Note: We don't add a device here - the esp_lcd driver will create its own device
+    ESP_LOGI(TAG, "SPI bus initialized, esp_lcd will add its own device");
 
     ESP_LOGI(TAG, "LilyGO T3-S3 BSP initialized");
     return ESP_OK;
@@ -78,7 +100,9 @@ bsp_display_type_t bsp_get_display_type(void)
 
 void *bsp_get_spi_device(void)
 {
-    return spi_epaper;
+    // For E-Paper displays using esp_lcd, return the SPI host number
+    // The esp_lcd driver will create its own device on this bus
+    return (void *)(intptr_t)SPI3_HOST;
 }
 
 const bsp_epaper_pins_t *bsp_get_epaper_pins(void)
@@ -90,7 +114,17 @@ const bsp_epaper_pins_t *bsp_get_epaper_pins(void)
 
 i2c_master_bus_handle_t bsp_get_i2c_bus(void)
 {
-    return NULL; // No I2C on T3-S3
+    return bsp_i2c_get_bus();
+}
+
+esp_err_t bsp_i2c_init_default(void)
+{
+    return bsp_i2c_init(I2C_NUM_0, PIN_I2C_SDA, PIN_I2C_SCL, 400000);
+}
+
+gpio_num_t bsp_get_led_gpio(void)
+{
+    return PIN_LED;
 }
 
 const char *bsp_get_board_id(void)
@@ -109,6 +143,32 @@ bool bsp_battery_is_charging(void)
     return false;
 }
 
+gpio_num_t bsp_get_encoder_clk_gpio(void)
+{
+    return ENCODER_CLK_PIN;
+}
+
+gpio_num_t bsp_get_encoder_dt_gpio(void)
+{
+    return ENCODER_DT_PIN;
+}
+
+gpio_num_t bsp_get_encoder_btn_gpio(void)
+{
+    return ENCODER_BTN_PIN;
+}
+
+gpio_num_t bsp_get_button_prev_gpio(void)
+{
+    return PIN_BUTTON_PREV;
+}
+
+gpio_num_t bsp_get_button_next_gpio(void)
+{
+    return PIN_BUTTON_NEXT;
+}
+
+// cppcheck-suppress unknownMacro
 BSP_DEFINE_LORA_PINS(PIN_LORA_MISO, PIN_LORA_MOSI, PIN_LORA_SCLK, PIN_LORA_CS, PIN_LORA_RST, PIN_LORA_BUSY,
                      PIN_LORA_DIO1)
 
@@ -118,7 +178,6 @@ BSP_STUB_OK(bsp_init_battery, void)
 BSP_STUB_RETURN(bsp_read_battery, float, BSP_STUB_BATTERY_VOLTAGE, void)
 BSP_STUB_VOID(bsp_set_led, bool state)
 BSP_STUB_VOID(bsp_toggle_led, void)
-BSP_STUB_RETURN(bsp_get_led_gpio, gpio_num_t, GPIO_NUM_NC, void)
 BSP_STUB_OK(bsp_enter_sleep, void)
 BSP_STUB_OK(bsp_init_spi, void)
 BSP_STUB_RETURN(bsp_sx1262_read_register, uint8_t, 0, uint16_t reg)

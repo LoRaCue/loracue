@@ -19,6 +19,7 @@ idf_component_register(
         lvgl__lvgl
         esp_timer
         espressif__esp_lvgl_port
+        espressif__esp_lcd_ssd1681
 )
 
 target_compile_definitions(${COMPONENT_LIB} PRIVATE LV_LVGL_H_INCLUDE_SIMPLE)

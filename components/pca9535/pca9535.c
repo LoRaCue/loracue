@@ -13,6 +13,9 @@ static const char *TAG = "pca9535";
 #define PCA9535_INVERT_PORT1 0x05
 #define PCA9535_CONFIG_PORT0 0x06
 #define PCA9535_CONFIG_PORT1 0x07
+#define PCA9535_I2C_FREQ_HZ 400000
+#define I2C_TIMEOUT_MS 100
+#define PCA9535_CONFIG_OUTPUT_ALL 0x00
 
 static i2c_master_dev_handle_t pca_handle = NULL;
 static uint8_t pca_addr; // Stored for use by other functions
@@ -21,35 +24,37 @@ static uint16_t direction_state = 0xFFFF; // All inputs by default
 
 static esp_err_t pca9535_write_reg(uint8_t reg, uint8_t value)
 {
-    if (!pca_handle) return ESP_ERR_INVALID_STATE;
+    if (!pca_handle)
+        return ESP_ERR_INVALID_STATE;
     uint8_t data[2] = {reg, value};
-    return i2c_master_transmit(pca_handle, data, 2, 100);
+    return i2c_master_transmit(pca_handle, data, 2, I2C_TIMEOUT_MS);
 }
 
 static esp_err_t pca9535_read_reg(uint8_t reg, uint8_t *value)
 {
-    if (!pca_handle) return ESP_ERR_INVALID_STATE;
-    return i2c_master_transmit_receive(pca_handle, &reg, 1, value, 1, 100);
+    if (!pca_handle)
+        return ESP_ERR_INVALID_STATE;
+    return i2c_master_transmit_receive(pca_handle, &reg, 1, value, 1, I2C_TIMEOUT_MS);
 }
 
 esp_err_t pca9535_init(uint8_t addr)
 {
-    pca_addr     = addr; // Store address for use in helper functions
+    pca_addr = addr; // Store address for use in helper functions
 
     ESP_LOGI(TAG, "Initializing PCA9535 at 0x%02X", addr);
-    esp_err_t ret = bsp_i2c_add_device(pca_addr, 400000, &pca_handle); // Default to 400kHz
+    esp_err_t ret = bsp_i2c_add_device(pca_addr, PCA9535_I2C_FREQ_HZ, &pca_handle); // Default to 400kHz
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to add PCA9535 I2C device: %s", esp_err_to_name(ret));
         return ret;
     }
 
     // Set all pins as outputs initially
-    ret = pca9535_write_reg(PCA9535_CONFIG_PORT0, 0x00);
+    ret = pca9535_write_reg(PCA9535_CONFIG_PORT0, PCA9535_CONFIG_OUTPUT_ALL);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to initialize PCA9535");
         return ret;
     }
-    ret = pca9535_write_reg(PCA9535_CONFIG_PORT1, 0x00);
+    ret = pca9535_write_reg(PCA9535_CONFIG_PORT1, PCA9535_CONFIG_OUTPUT_ALL);
 
     return ret;
 }

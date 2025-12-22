@@ -99,14 +99,22 @@ static void handle_input_event(input_event_t event)
 #elif CONFIG_LORACUE_INPUT_HAS_DUAL_BUTTONS
     switch (event) {
         case INPUT_EVENT_PREV_SHORT:
-        case INPUT_EVENT_ENCODER_BUTTON_SHORT:
             ui_navigator_switch_to(UI_SCREEN_MENU);
             break;
         case INPUT_EVENT_ENCODER_CW:
-        case INPUT_EVENT_NEXT_SHORT:
             screen_lora_submenu_navigate_down();
             break;
-        case INPUT_EVENT_ENCODER_BUTTON_LONG: {
+        case INPUT_EVENT_ENCODER_CCW:
+            if (menu) {
+                int new_index = (menu->selected_index - 1 + LORA_MENU_COUNT) % LORA_MENU_COUNT;
+                if (new_index != menu->selected_index) {
+                    menu->selected_index = new_index;
+                    ui_menu_update(menu, LORA_MENU_ITEMS);
+                }
+            }
+            break;
+        case INPUT_EVENT_NEXT_SHORT:
+        case INPUT_EVENT_ENCODER_BUTTON_SHORT: {
             screen_lora_submenu_select();
             int selected = screen_lora_submenu_get_selected();
             switch (selected) {

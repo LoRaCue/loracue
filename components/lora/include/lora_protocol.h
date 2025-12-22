@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "common_types.h"
 #include "esp_err.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -70,16 +71,6 @@ typedef enum {
 typedef void (*lora_protocol_rx_callback_t)(uint16_t device_id, uint16_t sequence_num, lora_command_t command,
                                             const uint8_t *payload, uint8_t payload_length, int16_t rssi,
                                             void *user_ctx);
-
-/**
- * @brief HID device types
- */
-typedef enum {
-    HID_TYPE_NONE     = 0x0, ///< No HID device
-    HID_TYPE_KEYBOARD = 0x1, ///< Keyboard
-    HID_TYPE_MOUSE    = 0x2, ///< Mouse
-    HID_TYPE_MEDIA    = 0x3, ///< Media keys
-} lora_hid_type_t;
 
 /**
  * @brief Keyboard HID report (5 bytes)

@@ -217,7 +217,7 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
     mode_label = ui_create_main_screen_layout(parent, UI_STR_PC_MODE, device_name);
 
     // Calculate dynamic layout
-    int line_height = 9;
+    int line_height = UI_LINE_HEIGHT;
     int start_y = SEPARATOR_Y_TOP + 1;
 
     // Create history display elements (4 lines)
@@ -236,20 +236,24 @@ void screen_pc_mode_create(lv_obj_t *parent, const statusbar_data_t *initial_sta
 
         // Text label
         history_labels[i] = lv_label_create(parent);
-        lv_obj_set_style_text_font(history_labels[i], &lv_font_unscii_8, 0);
+        lv_obj_set_style_text_font(history_labels[i], UI_FONT_SMALL, 0);
         lv_obj_set_style_text_color(history_labels[i], lv_color_white(), 0);
         lv_obj_set_pos(history_labels[i], 2, y + 1);
         lv_obj_add_flag(history_labels[i], LV_OBJ_FLAG_HIDDEN);
     }
 
-    // Waiting message - single line at PC MODE text + 10px
+    // Waiting message - centered in content area
     waiting_label1 = lv_label_create(parent);
     lv_label_set_text(waiting_label1, "Waiting for commands...");
     lv_obj_set_style_text_color(waiting_label1, lv_color_white(), 0);
-    lv_obj_set_style_text_font(waiting_label1, &lv_font_pixolletta_10, 0);
+    lv_obj_set_style_text_font(waiting_label1, UI_FONT_BODY, 0);
     lv_obj_set_style_text_align(waiting_label1, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(waiting_label1, DISPLAY_WIDTH);
+#if CONFIG_LORACUE_MODEL_BETA || CONFIG_LORACUE_MODEL_GAMMA
+    lv_obj_set_pos(waiting_label1, 0, SEPARATOR_Y_TOP + 30);
+#else
     lv_obj_set_pos(waiting_label1, 0, 37); // PRESENTER_TEXT_Y (27) + 10
+#endif
 
     // Subscribe to HID events
     esp_event_loop_handle_t loop = system_events_get_loop();

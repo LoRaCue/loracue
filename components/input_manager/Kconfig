@@ -2,19 +2,19 @@ menu "Input Manager"
 
     config LORACUE_INPUT_HAS_DUAL_BUTTONS
         bool
-        default y if LORACUE_MODEL_ALPHA_PLUS
+        default y if LORACUE_MODEL_ALPHA_PLUS || LORACUE_MODEL_BETA
         default n
         help
             Enable dual button support (PREV + NEXT buttons).
-            Automatically enabled for Alpha+ model.
+            Automatically enabled for Alpha+ and Beta models.
 
     config LORACUE_INPUT_HAS_ENCODER
         bool
-        default y if LORACUE_MODEL_ALPHA_PLUS
+        default y if LORACUE_MODEL_ALPHA_PLUS || LORACUE_MODEL_BETA
         default n
         help
             Enable rotary encoder support.
-            Automatically enabled for Alpha+ model.
+            Automatically enabled for Alpha+ and Beta models.
 
     config LORACUE_INPUT_DEBOUNCE_MS
         int "Button debounce time (ms)"
