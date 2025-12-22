@@ -12,6 +12,10 @@
 - **[HIGH]** USB-CDC firmware upgrade - Implemented but not working (XMODEM-1K and command handler exist)
 - **[MEDIUM]** LilyGo T5 Pro support - Implemented but not fully functional (basic firmware works, UX is missing completely, so device is not usable at the moment). This is WIP and will be improved in future releases.
 
+### Regulatory Compliance
+
+- **[HIGH]** Duty cycle management for 433/868/915MHz bands - Not implemented. Required for regulatory compliance in EU (1% duty cycle on 868MHz) and other regions. Not needed for 2.4GHz band operations.
+
 <!-- 
 Example format:
 
