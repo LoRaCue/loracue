@@ -13,7 +13,7 @@ typedef struct {
     uint32_t deep_sleep_timeout_ms;
     bool auto_sleep_enabled;
     uint8_t contrast_level;
-} power_mgmt_config_t;
+} power_config_t;
 
 // Default values
 #define DEFAULT_SLEEP_TIMEOUT_MS 30000
@@ -31,7 +31,7 @@ void tearDown(void)
 
 void test_config_structure_size(void)
 {
-    power_mgmt_config_t config;
+    power_config_t config;
     TEST_ASSERT_LESS_THAN(256, sizeof(config));
 }
 
@@ -56,7 +56,7 @@ void test_contrast_range(void)
 
 void test_config_initialization(void)
 {
-    power_mgmt_config_t config = {
+    power_config_t config = {
         .sleep_timeout_ms = DEFAULT_SLEEP_TIMEOUT_MS,
         .deep_sleep_timeout_ms = DEFAULT_DEEP_SLEEP_TIMEOUT_MS,
         .auto_sleep_enabled = true,
@@ -69,7 +69,7 @@ void test_config_initialization(void)
 
 void test_auto_sleep_toggle(void)
 {
-    power_mgmt_config_t config = {0};
+    power_config_t config = {0};
     
     config.auto_sleep_enabled = false;
     TEST_ASSERT_FALSE(config.auto_sleep_enabled);
@@ -98,14 +98,14 @@ void test_timeout_validation(void)
 
 void test_config_copy(void)
 {
-    power_mgmt_config_t src = {
+    power_config_t src = {
         .sleep_timeout_ms = 60000,
         .deep_sleep_timeout_ms = 600000,
         .auto_sleep_enabled = true,
         .contrast_level = 75
     };
     
-    power_mgmt_config_t dst = src;
+    power_config_t dst = src;
     
     TEST_ASSERT_EQUAL(src.sleep_timeout_ms, dst.sleep_timeout_ms);
     TEST_ASSERT_EQUAL(src.contrast_level, dst.contrast_level);

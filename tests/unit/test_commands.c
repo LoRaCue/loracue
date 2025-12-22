@@ -1,6 +1,6 @@
 #include "unity.h"
 #include "commands_api.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
 
@@ -14,7 +14,7 @@ void setUp(void) {
         nvs_flash_erase();
         nvs_flash_init();
     }
-    general_config_init();
+    config_manager_init();
 }
 
 void tearDown(void) {
