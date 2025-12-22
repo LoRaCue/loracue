@@ -9,10 +9,8 @@
 
 #pragma once
 
-#include "esp_err.h"
+#include "config_manager.h"
 #include "esp_sleep.h"
-#include <stdbool.h>
-#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,20 +34,6 @@ typedef enum {
     CPU_FREQ_160MHZ = 160, ///< 160 MHz (balanced)
     CPU_FREQ_240MHZ = 240  ///< 240 MHz (maximum performance)
 } cpu_freq_t;
-
-/**
- * @brief Power management configuration
- */
-// cppcheck-suppress unusedStructMember
-typedef struct {
-    uint32_t display_sleep_timeout_ms; ///< Timeout for display sleep (default: 10s)
-    uint32_t light_sleep_timeout_ms;   ///< Timeout for light sleep (default: 30s)
-    uint32_t deep_sleep_timeout_ms;    ///< Timeout for deep sleep (default: 5min)
-    bool enable_auto_display_sleep;    ///< Enable automatic display sleep
-    bool enable_auto_light_sleep;      ///< Enable automatic light sleep
-    bool enable_auto_deep_sleep;       ///< Enable automatic deep sleep
-    uint8_t cpu_freq_mhz;              ///< CPU frequency in MHz (80/160/240)
-} power_config_t;
 
 /**
  * @brief Power statistics
