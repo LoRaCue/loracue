@@ -1,5 +1,5 @@
 idf_component_register(
     SRCS "system_events.c"
     INCLUDE_DIRS "include"
-    REQUIRES esp_event common_types general_config
+    REQUIRES esp_event common_types config_manager
 )

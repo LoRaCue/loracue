@@ -24,7 +24,7 @@
 #include "esp_efuse.h"
 #include "esp_log.h"
 #include "esp_random.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "sdkconfig.h"
 #include "version.h"
 #include <inttypes.h>
@@ -405,7 +405,7 @@ static void ble_advertise(void)
 
     // Get device configuration for name
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     // Build advertising name: "LoRaCue <device_name>" (max 31 bytes for BLE)
     char adv_name[32];
@@ -669,7 +669,7 @@ esp_err_t ble_init(void)
 
     // Set device name from configuration (max 31 bytes for BLE)
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
     char gap_name[32];
     snprintf(gap_name, sizeof(gap_name), "LoRaCue %.22s", config.device_name);
     ble_svc_gap_device_name_set(gap_name);

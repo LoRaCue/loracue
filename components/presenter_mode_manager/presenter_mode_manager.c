@@ -8,7 +8,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lora_protocol.h"
 
 static const char *TAG = "PRESENTER_MGR";
@@ -40,7 +40,7 @@ esp_err_t presenter_mode_manager_handle_input(input_event_t event)
 
     // Get configuration
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     esp_err_t ret = ESP_OK;
 

@@ -3,7 +3,7 @@
 #include "common_types.h"
 #include "esp_err.h"
 #include "esp_event.h"
-#include "general_config.h" // For device_mode_t
+#include "config_manager.h" // For device_mode_t
 #include <stdbool.h>
 #include <stdint.h>
 

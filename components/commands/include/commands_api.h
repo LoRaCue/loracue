@@ -2,9 +2,8 @@
 
 #include "device_registry.h"
 #include "esp_err.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lora_driver.h"
-#include "power_mgmt_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,8 +14,8 @@ esp_err_t cmd_get_general_config(general_config_t *config);
 esp_err_t cmd_set_general_config(const general_config_t *config);
 
 // Power Management
-esp_err_t cmd_get_power_config(power_mgmt_config_t *config);
-esp_err_t cmd_set_power_config(const power_mgmt_config_t *config);
+esp_err_t cmd_get_power_config(power_config_t *config);
+esp_err_t cmd_set_power_config(const power_config_t *config);
 
 // LoRa Configuration
 esp_err_t cmd_get_lora_config(lora_config_t *config);

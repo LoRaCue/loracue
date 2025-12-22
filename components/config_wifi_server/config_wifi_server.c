@@ -14,10 +14,9 @@
 #include "esp_partition.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lora_driver.h"
 #include "ota_engine.h"
-#include "power_mgmt_config.h"
 #include "version.h"
 #include <string.h>
 #include <sys/stat.h>
@@ -82,7 +81,7 @@ static void generate_wifi_credentials(char *ssid, size_t ssid_len, char *passwor
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
 
     // Generate SSID: LoRaCue-XXXX
-    uint16_t device_id = general_config_get_device_id();
+    uint16_t device_id = config_manager_get_device_id();
     snprintf(ssid, ssid_len, "LoRaCue-%04X", device_id);
 
     // Generate password from MAC CRC32
@@ -227,7 +226,7 @@ static esp_err_t api_devices_post_handler(httpd_req_t *req)
         uint8_t mac_bytes[6];
         if (sscanf(mac->valuestring, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx", &mac_bytes[0], &mac_bytes[1],
                    &mac_bytes[2], &mac_bytes[3], &mac_bytes[4], &mac_bytes[5]) == 6) {
-            uint16_t device_id = general_config_get_device_id();
+            uint16_t device_id = config_manager_get_device_id();
             paired_device_t existing;
             is_update = (device_registry_get(device_id, &existing) == ESP_OK);
         }
@@ -349,7 +348,7 @@ static esp_err_t factory_reset_handler(httpd_req_t *req)
     httpd_resp_send(req, "{\"status\":\"ok\",\"message\":\"Factory reset initiated\"}", 52);
 
     vTaskDelay(pdMS_TO_TICKS(RESTART_DELAY_MS));
-    general_config_factory_reset();
+    config_manager_factory_reset();
     return ESP_OK;
 }
 

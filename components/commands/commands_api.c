@@ -1,10 +1,12 @@
 #include "commands_api.h"
 #include "ble.h"
 #include "bsp.h"
+#include "config_manager.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "lora_bands.h"
 #include "lv_port_disp.h"
 #include "nvs_flash.h"
 #include "ota_engine.h"
@@ -26,13 +28,13 @@ extern esp_err_t ui_data_provider_reload_config(void) __attribute__((weak));
 
 esp_err_t cmd_get_general_config(general_config_t *config)
 {
-    return general_config_get(config);
+    return config_manager_get_general(config);
 }
 
 esp_err_t cmd_set_general_config(const general_config_t *new_config)
 {
     general_config_t current_config;
-    esp_err_t ret = general_config_get(&current_config);
+    esp_err_t ret = config_manager_get_general(&current_config);
     if (ret != ESP_OK)
         return ret;
 
@@ -52,7 +54,7 @@ esp_err_t cmd_set_general_config(const general_config_t *new_config)
     }
 
     // Save config
-    ret = general_config_set(new_config);
+    ret = config_manager_set_general(new_config);
     if (ret != ESP_OK)
         return ret;
 
@@ -74,14 +76,14 @@ esp_err_t cmd_set_general_config(const general_config_t *new_config)
     return ESP_OK;
 }
 
-esp_err_t cmd_get_power_config(power_mgmt_config_t *config)
+esp_err_t cmd_get_power_config(power_config_t *config)
 {
-    return power_mgmt_config_get(config);
+    return config_manager_get_power(config);
 }
 
-esp_err_t cmd_set_power_config(const power_mgmt_config_t *config)
+esp_err_t cmd_set_power_config(const power_config_t *config)
 {
-    return power_mgmt_config_set(config);
+    return config_manager_set_power(config);
 }
 
 esp_err_t cmd_get_lora_config(lora_config_t *config)
@@ -128,11 +130,12 @@ esp_err_t cmd_set_lora_config(const lora_config_t *config)
         return ESP_ERR_INVALID_ARG;
     }
 
-    // Validate Band limits
-    extern const void *lora_bands_get_profile_by_id(const char *band_id); // minimal stub
-    // Actually, we need lora_bands.h
-    // But for now, let's assume the caller (adapter) did semantic validation or we trust lora_set_config?
-    // The original code did heavy validation in the command handler.
+    // Validate hardware profile exists
+    const lora_hardware_t *hardware = lora_hardware_get_profile_by_id(config->band_id);
+    if (!hardware) {
+        ESP_LOGW(TAG, "Invalid hardware profile: %s", config->band_id);
+        return ESP_ERR_INVALID_ARG;
+    }
     // I should keep it here or in lora_driver.
     // ideally lora_set_config should validate.
     // For now, I'll rely on basic validation.

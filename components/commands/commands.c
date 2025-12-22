@@ -198,18 +198,18 @@ static void handle_set_general(cJSON *config_json)
 
 static void handle_get_power_management(void)
 {
-    power_mgmt_config_t config;
+    power_config_t config;
     if (cmd_get_power_config(&config) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get power config");
         return;
     }
 
     cJSON *response = cJSON_CreateObject();
-    cJSON_AddBoolToObject(response, "display_sleep_enabled", config.display_sleep_enabled);
+    cJSON_AddBoolToObject(response, "display_sleep_enabled", config.enable_auto_display_sleep);
     cJSON_AddNumberToObject(response, "display_sleep_timeout_ms", config.display_sleep_timeout_ms);
-    cJSON_AddBoolToObject(response, "light_sleep_enabled", config.light_sleep_enabled);
+    cJSON_AddBoolToObject(response, "light_sleep_enabled", config.enable_auto_light_sleep);
     cJSON_AddNumberToObject(response, "light_sleep_timeout_ms", config.light_sleep_timeout_ms);
-    cJSON_AddBoolToObject(response, "deep_sleep_enabled", config.deep_sleep_enabled);
+    cJSON_AddBoolToObject(response, "deep_sleep_enabled", config.enable_auto_deep_sleep);
     cJSON_AddNumberToObject(response, "deep_sleep_timeout_ms", config.deep_sleep_timeout_ms);
 
     send_jsonrpc_result(response);
@@ -217,7 +217,7 @@ static void handle_get_power_management(void)
 
 static void handle_set_power_management(cJSON *config_json)
 {
-    power_mgmt_config_t config;
+    power_config_t config;
     if (cmd_get_power_config(&config) != ESP_OK) {
         send_jsonrpc_error(JSONRPC_INTERNAL_ERROR, "Failed to get current power config");
         return;
@@ -225,15 +225,15 @@ static void handle_set_power_management(cJSON *config_json)
 
     cJSON *item;
     if ((item = cJSON_GetObjectItem(config_json, "display_sleep_enabled")) && cJSON_IsBool(item))
-        config.display_sleep_enabled = cJSON_IsTrue(item);
+        config.enable_auto_display_sleep = cJSON_IsTrue(item);
     if ((item = cJSON_GetObjectItem(config_json, "display_sleep_timeout_ms")) && cJSON_IsNumber(item))
         config.display_sleep_timeout_ms = item->valueint;
     if ((item = cJSON_GetObjectItem(config_json, "light_sleep_enabled")) && cJSON_IsBool(item))
-        config.light_sleep_enabled = cJSON_IsTrue(item);
+        config.enable_auto_light_sleep = cJSON_IsTrue(item);
     if ((item = cJSON_GetObjectItem(config_json, "light_sleep_timeout_ms")) && cJSON_IsNumber(item))
         config.light_sleep_timeout_ms = item->valueint;
     if ((item = cJSON_GetObjectItem(config_json, "deep_sleep_enabled")) && cJSON_IsBool(item))
-        config.deep_sleep_enabled = cJSON_IsTrue(item);
+        config.enable_auto_deep_sleep = cJSON_IsTrue(item);
     if ((item = cJSON_GetObjectItem(config_json, "deep_sleep_timeout_ms")) && cJSON_IsNumber(item))
         config.deep_sleep_timeout_ms = item->valueint;
 

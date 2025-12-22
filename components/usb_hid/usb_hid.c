@@ -9,7 +9,7 @@
 #include "class/hid/hid_device.h"
 #include "device_registry.h"
 #include "esp_log.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "input_manager.h"
 #include "tinyusb.h"
 #include "tusb.h"

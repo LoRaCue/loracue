@@ -12,7 +12,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "lora_driver.h"
 #include "tinyusb.h"
 #include "usb/cdc_acm_host.h"
@@ -247,7 +247,7 @@ static void pairing_task(void *arg)
     }
 
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     lora_config_t lora_cfg;
     lora_get_config(&lora_cfg);

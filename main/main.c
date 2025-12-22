@@ -18,7 +18,7 @@
 #include "esp_task_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "general_config.h"
+#include "config_manager.h"
 #include "i2console.h"
 #include "input_manager.h"
 #include "led_manager.h"
@@ -29,7 +29,6 @@
 #include "ota_engine.h"
 #include "pc_mode_manager.h"
 #include "power_mgmt.h"
-#include "power_mgmt_config.h"
 #include "presenter_mode_manager.h"
 #include "system_events.h"
 #include "uart_commands.h"
@@ -151,7 +150,7 @@ static void lora_rx_handler(uint16_t device_id, uint16_t sequence_num, lora_comm
                             uint8_t payload_length, int16_t rssi, void *user_ctx)
 {
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     // In presenter mode, only accept ACKs
     if (config.device_mode == DEVICE_MODE_PRESENTER) {
@@ -252,7 +251,7 @@ void app_main(void)
 
     // Initialize device configuration
     ESP_LOGI(TAG, "Initializing device configuration system...");
-    ret = general_config_init();
+    ret = config_manager_init();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Device config initialization failed: %s", esp_err_to_name(ret));
         return;
@@ -260,22 +259,16 @@ void app_main(void)
 
     // Get device config for power management settings
     general_config_t config;
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
-    // Initialize power management with settings from NVS
+    // Initialize power management with settings from config_manager
     ESP_LOGI(TAG, "Initializing power management...");
-    power_mgmt_config_t pwr_cfg;
-    power_mgmt_config_get(&pwr_cfg);
-
-    power_config_t power_config = {
-        .display_sleep_timeout_ms  = pwr_cfg.display_sleep_timeout_ms,
-        .light_sleep_timeout_ms    = pwr_cfg.light_sleep_timeout_ms,
-        .deep_sleep_timeout_ms     = pwr_cfg.deep_sleep_timeout_ms,
-        .enable_auto_display_sleep = pwr_cfg.display_sleep_enabled,
-        .enable_auto_light_sleep   = pwr_cfg.light_sleep_enabled,
-        .enable_auto_deep_sleep    = pwr_cfg.deep_sleep_enabled,
-        .cpu_freq_mhz              = 80,
-    };
+    power_config_t power_config;
+    ret = config_manager_get_power(&power_config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to get power config: %s", esp_err_to_name(ret));
+        return;
+    }
 
     ESP_LOGI(TAG, "Power config: display_sleep=%s, light_sleep=%s, deep_sleep=%s",
              power_config.enable_auto_display_sleep ? "enabled" : "disabled",
@@ -396,10 +389,10 @@ void app_main(void)
     }
 
     // Get device mode from NVS (reuse config from contrast setting)
-    general_config_get(&config);
+    config_manager_get_general(&config);
 
     // Get device ID from MAC address (static identity)
-    uint16_t device_id = general_config_get_device_id();
+    uint16_t device_id = config_manager_get_device_id();
 
     ESP_LOGI(TAG, "Device mode: %s, Static ID: 0x%04X", device_mode_to_string(config.device_mode), device_id);
 
