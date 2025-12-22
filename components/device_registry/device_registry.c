@@ -1,91 +1,35 @@
 /**
  * @file device_registry.c
- * @brief Device registry implementation with NVS storage
- *
- * CONTEXT: Multi-sender management for LoRaCue PC receiver
- * STORAGE: NVS namespace "devices" for persistent storage
+ * @brief Simplified device registry implementation using config_manager
  */
 
 #include "device_registry.h"
 #include "esp_log.h"
-#include "esp_timer.h"
-#include "nvs.h"
-#include "nvs_flash.h"
 #include <string.h>
 
-static const char *TAG           = "DEVICE_REGISTRY";
-static const char *NVS_NAMESPACE = "devices";
+static const char *TAG = "DEVICE_REGISTRY";
 
-static bool registry_initialized = false;
-static nvs_handle_t registry_nvs_handle;
+// Runtime sequence tracking (RAM-only, not persisted)
+static paired_device_t runtime_devices[MAX_PAIRED_DEVICES];
+static bool runtime_loaded = false;
 
-// RAM cache for fast lookups
-static paired_device_t device_cache[MAX_PAIRED_DEVICES];
-static size_t cached_device_count = 0;
-static bool cache_loaded          = false;
-
-static void generate_device_key(uint16_t device_id, char *key_name, size_t key_name_size)
+static void load_runtime_data(void)
 {
-    snprintf(key_name, key_name_size, "dev_%04X", device_id);
-}
-
-static void load_cache_from_nvs(void)
-{
-    if (cache_loaded)
-        return;
-
-    cached_device_count = 0;
-
-    if (registry_nvs_handle == 0) {
-        cache_loaded = true;
-        return;
+    if (runtime_loaded) return;
+    
+    device_registry_config_t config;
+    esp_err_t ret = config_manager_get_device_registry(&config);
+    if (ret == ESP_OK) {
+        size_t count = (config.device_count < MAX_PAIRED_DEVICES) ? config.device_count : MAX_PAIRED_DEVICES;
+        memcpy(runtime_devices, config.devices, count * sizeof(paired_device_t));
     }
-
-    nvs_iterator_t it = NULL;
-    esp_err_t res     = nvs_entry_find(NVS_DEFAULT_PART_NAME, NVS_NAMESPACE, NVS_TYPE_BLOB, &it);
-
-    while (res == ESP_OK && cached_device_count < MAX_PAIRED_DEVICES) {
-        nvs_entry_info_t info;
-        nvs_entry_info(it, &info);
-
-        if (strncmp(info.key, "dev_", 4) == 0) {
-            uint16_t device_id;
-            if (sscanf(info.key + 4, "%04hx", &device_id) == 1) {
-                char key_name[16];
-                generate_device_key(device_id, key_name, sizeof(key_name));
-                size_t size = sizeof(paired_device_t);
-                if (nvs_get_blob(registry_nvs_handle, key_name, &device_cache[cached_device_count], &size) == ESP_OK) {
-                    cached_device_count++;
-                }
-            }
-        }
-        res = nvs_entry_next(&it);
-    }
-
-    if (it)
-        nvs_release_iterator(it);
-
-    cache_loaded = true;
-    ESP_LOGI(TAG, "Loaded %d devices into cache", cached_device_count);
+    runtime_loaded = true;
 }
 
 esp_err_t device_registry_init(void)
 {
-    ESP_LOGI(TAG, "Initializing device registry");
-
-    esp_err_t ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &registry_nvs_handle);
-    if (ret == ESP_ERR_NVS_NOT_FOUND) {
-        ESP_LOGI(TAG, "NVS namespace not found, will be created on first device pairing");
-        registry_initialized = true;
-        return ESP_OK;
-    } else if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    registry_initialized = true;
-    ESP_LOGI(TAG, "Device registry initialized with existing data");
-
+    ESP_LOGI(TAG, "Initializing simplified device registry (max %d devices)", MAX_PAIRED_DEVICES);
+    load_runtime_data();
     return ESP_OK;
 }
 
@@ -93,94 +37,78 @@ esp_err_t device_registry_add(uint16_t device_id, const char *device_name, const
                               const uint8_t *aes_key)
 {
     if (!device_name || !mac_address || !aes_key) {
-        ESP_LOGE(TAG, "Invalid parameters: null pointer");
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!registry_initialized) {
-        ESP_LOGE(TAG, "Registry not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    load_runtime_data();
 
-    // Open NVS handle if not already open (lazy initialization)
-    if (registry_nvs_handle == 0) {
-        esp_err_t ret = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &registry_nvs_handle);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to open NVS: %s", esp_err_to_name(ret));
-            return ret;
-        }
-    }
-
-    ESP_LOGI(TAG, "Adding device 0x%04X: %s", device_id, device_name);
-
-    // Check if device already exists
-    if (device_registry_is_paired(device_id)) {
-        ESP_LOGW(TAG, "Device 0x%04X already paired, updating", device_id);
-    }
-
-    // Create device entry
-    paired_device_t device = {
-        .device_id        = device_id,
-        .highest_sequence = 0,
-        .recent_bitmap    = 0,
-    };
-
-    strncpy(device.device_name, device_name, DEVICE_NAME_MAX_LEN - 1);
-    device.device_name[DEVICE_NAME_MAX_LEN - 1] = '\0';
-
-    memcpy(device.mac_address, mac_address, DEVICE_MAC_ADDR_LEN);
-    memcpy(device.aes_key, aes_key, DEVICE_AES_KEY_LEN);
-
-    // Store in NVS
-    char key_name[16];
-    generate_device_key(device_id, key_name, sizeof(key_name));
-
-    esp_err_t ret = nvs_set_blob(registry_nvs_handle, key_name, &device, sizeof(device));
+    // Get current config
+    device_registry_config_t config;
+    esp_err_t ret = config_manager_get_device_registry(&config);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to store device: %s", esp_err_to_name(ret));
-        return ret;
+        memset(&config, 0, sizeof(config));
     }
 
-    ret = nvs_commit(registry_nvs_handle);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to commit NVS: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    // Update cache - replace if exists, add if new
-    bool found = false;
-    for (size_t i = 0; i < cached_device_count; i++) {
-        if (device_cache[i].device_id == device_id) {
-            memcpy(&device_cache[i], &device, sizeof(paired_device_t));
-            found = true;
+    // Check if device already exists (update case)
+    int existing_index = -1;
+    for (size_t i = 0; i < config.device_count; i++) {
+        if (config.devices[i].device_id == device_id) {
+            existing_index = i;
             break;
         }
     }
-    if (!found && cached_device_count < MAX_PAIRED_DEVICES) {
-        memcpy(&device_cache[cached_device_count], &device, sizeof(paired_device_t));
-        cached_device_count++;
+
+    if (existing_index >= 0) {
+        // Update existing device
+        strncpy(config.devices[existing_index].device_name, device_name, DEVICE_NAME_MAX_LEN - 1);
+        config.devices[existing_index].device_name[DEVICE_NAME_MAX_LEN - 1] = '\0';
+        memcpy(config.devices[existing_index].mac_address, mac_address, DEVICE_MAC_ADDR_LEN);
+        memcpy(config.devices[existing_index].aes_key, aes_key, DEVICE_AES_KEY_LEN);
+    } else {
+        // Add new device
+        if (config.device_count >= MAX_PAIRED_DEVICES) {
+            ESP_LOGE(TAG, "Registry full (max %d devices)", MAX_PAIRED_DEVICES);
+            return ESP_ERR_NO_MEM;
+        }
+
+        paired_device_t *new_device = &config.devices[config.device_count];
+        new_device->device_id = device_id;
+        strncpy(new_device->device_name, device_name, DEVICE_NAME_MAX_LEN - 1);
+        new_device->device_name[DEVICE_NAME_MAX_LEN - 1] = '\0';
+        memcpy(new_device->mac_address, mac_address, DEVICE_MAC_ADDR_LEN);
+        memcpy(new_device->aes_key, aes_key, DEVICE_AES_KEY_LEN);
+        new_device->highest_sequence = 0;
+        new_device->recent_bitmap = 0;
+        config.device_count++;
     }
 
-    ESP_LOGI(TAG, "Device 0x%04X added successfully", device_id);
+    // Save to NVS
+    ret = config_manager_set_device_registry(&config);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to save device registry");
+        return ret;
+    }
+
+    // Update runtime data
+    memcpy(runtime_devices, config.devices, config.device_count * sizeof(paired_device_t));
+
+    ESP_LOGI(TAG, "Device 0x%04X (%s) %s", device_id, device_name, 
+             (existing_index >= 0) ? "updated" : "added");
     return ESP_OK;
 }
 
 esp_err_t device_registry_get(uint16_t device_id, paired_device_t *device)
 {
-    if (!registry_initialized) {
-        ESP_LOGE(TAG, "Registry not initialized");
-        return ESP_ERR_INVALID_STATE;
+    if (!device) {
+        return ESP_ERR_INVALID_ARG;
     }
 
-    // Load cache on first access
-    if (!cache_loaded) {
-        load_cache_from_nvs();
-    }
+    load_runtime_data();
 
-    // Fast lookup in RAM cache
-    for (size_t i = 0; i < cached_device_count; i++) {
-        if (device_cache[i].device_id == device_id) {
-            memcpy(device, &device_cache[i], sizeof(paired_device_t));
+    // Linear search through runtime data (includes sequence tracking)
+    for (size_t i = 0; i < MAX_PAIRED_DEVICES; i++) {
+        if (runtime_devices[i].device_id == device_id && runtime_devices[i].device_id != 0) {
+            memcpy(device, &runtime_devices[i], sizeof(paired_device_t));
             return ESP_OK;
         }
     }
@@ -190,81 +118,77 @@ esp_err_t device_registry_get(uint16_t device_id, paired_device_t *device)
 
 esp_err_t device_registry_update_sequence(uint16_t device_id, uint16_t highest_sequence, uint64_t recent_bitmap)
 {
-    // Update cache only (RAM-only, not persisted to NVS)
-    // SECURITY NOTE: Replay protection state is lost on reboot.
-    // While not ideal, persisting every sequence update to NVS would wear out flash memory rapidly.
-    // The risk is mitigated by the fact that an attacker would need to capture a valid packet
-    // and replay it AFTER a reboot but BEFORE the legitimate device sends a new packet with a higher sequence number.
-    for (size_t i = 0; i < cached_device_count; i++) {
-        if (device_cache[i].device_id == device_id) {
-            device_cache[i].highest_sequence = highest_sequence;
-            device_cache[i].recent_bitmap    = recent_bitmap;
+    load_runtime_data();
+
+    // Update runtime data only (not persisted to save flash wear)
+    for (size_t i = 0; i < MAX_PAIRED_DEVICES; i++) {
+        if (runtime_devices[i].device_id == device_id) {
+            runtime_devices[i].highest_sequence = highest_sequence;
+            runtime_devices[i].recent_bitmap = recent_bitmap;
             return ESP_OK;
         }
     }
+
     return ESP_ERR_NOT_FOUND;
 }
 
 esp_err_t device_registry_remove(uint16_t device_id)
 {
-    if (!registry_initialized) {
-        ESP_LOGE(TAG, "Registry not initialized");
-        return ESP_ERR_INVALID_STATE;
-    }
+    load_runtime_data();
 
-    // If NVS handle not open, device doesn't exist
-    if (registry_nvs_handle == 0) {
-        return ESP_ERR_NOT_FOUND;
-    }
-
-    ESP_LOGI(TAG, "Removing device 0x%04X", device_id);
-
-    char key_name[16];
-    generate_device_key(device_id, key_name, sizeof(key_name));
-
-    esp_err_t ret = nvs_erase_key(registry_nvs_handle, key_name);
-    if (ret != ESP_OK && ret != ESP_ERR_NVS_NOT_FOUND) {
-        ESP_LOGE(TAG, "Failed to remove device: %s", esp_err_to_name(ret));
-        return ret;
-    }
-
-    ret = nvs_commit(registry_nvs_handle);
+    device_registry_config_t config;
+    esp_err_t ret = config_manager_get_device_registry(&config);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to commit NVS: %s", esp_err_to_name(ret));
         return ret;
     }
 
-    // Remove from cache
-    for (size_t i = 0; i < cached_device_count; i++) {
-        if (device_cache[i].device_id == device_id) {
+    // Find and remove device
+    bool found = false;
+    for (size_t i = 0; i < config.device_count; i++) {
+        if (config.devices[i].device_id == device_id) {
             // Shift remaining devices
-            memmove(&device_cache[i], &device_cache[i + 1], (cached_device_count - i - 1) * sizeof(paired_device_t));
-            cached_device_count--;
+            memmove(&config.devices[i], &config.devices[i + 1], 
+                    (config.device_count - i - 1) * sizeof(paired_device_t));
+            config.device_count--;
+            found = true;
             break;
         }
     }
 
-    ESP_LOGI(TAG, "Device 0x%04X removed successfully", device_id);
+    if (!found) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    // Save updated config
+    ret = config_manager_set_device_registry(&config);
+    if (ret != ESP_OK) {
+        return ret;
+    }
+
+    // Update runtime data
+    memset(runtime_devices, 0, sizeof(runtime_devices));
+    memcpy(runtime_devices, config.devices, config.device_count * sizeof(paired_device_t));
+
+    ESP_LOGI(TAG, "Device 0x%04X removed", device_id);
     return ESP_OK;
 }
 
 esp_err_t device_registry_list(paired_device_t *devices, size_t max_devices, size_t *count)
 {
-    if (!registry_initialized) {
-        ESP_LOGE(TAG, "Registry not initialized");
-        return ESP_ERR_INVALID_STATE;
+    if (!devices || !count) {
+        return ESP_ERR_INVALID_ARG;
     }
 
-    // Load cache on first access
-    if (!cache_loaded) {
-        load_cache_from_nvs();
+    device_registry_config_t config;
+    esp_err_t ret = config_manager_get_device_registry(&config);
+    if (ret != ESP_OK) {
+        *count = 0;
+        return ESP_OK;
     }
 
-    // Copy from cache
-    *count = (cached_device_count < max_devices) ? cached_device_count : max_devices;
-    memcpy(devices, device_cache, *count * sizeof(paired_device_t));
+    *count = (config.device_count < max_devices) ? config.device_count : max_devices;
+    memcpy(devices, config.devices, *count * sizeof(paired_device_t));
 
-    ESP_LOGI(TAG, "Listed %d paired devices", *count);
     return ESP_OK;
 }
 
@@ -276,12 +200,9 @@ bool device_registry_is_paired(uint16_t device_id)
 
 size_t device_registry_get_count(void)
 {
-    paired_device_t devices[MAX_PAIRED_DEVICES];
-    size_t count;
-
-    if (device_registry_list(devices, MAX_PAIRED_DEVICES, &count) == ESP_OK) {
-        return count;
+    device_registry_config_t config;
+    if (config_manager_get_device_registry(&config) != ESP_OK) {
+        return 0;
     }
-
-    return 0;
+    return config.device_count;
 }

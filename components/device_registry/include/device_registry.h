@@ -1,17 +1,15 @@
 /**
  * @file device_registry.h
- * @brief Device registry for managing multiple paired STAGE devices
+ * @brief Simplified device registry for managing up to 4 paired presenters
  *
- * CONTEXT: Ticket 3.2 - Multi-Sender Management
+ * CONTEXT: Simplified for typical use case of max 4 presenters
  * PURPOSE: Store and manage paired devices with per-device AES keys
- * STORAGE: NVS for persistent device registry
+ * STORAGE: Single NVS blob via config_manager
  */
 
 #pragma once
 
-#include "esp_err.h"
-#include <stdbool.h>
-#include <stdint.h>
+#include "config_manager.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,20 +18,7 @@ extern "C" {
 #define DEVICE_NAME_MAX_LEN 32
 #define DEVICE_AES_KEY_LEN 32 // AES-256 requires 32 bytes
 #define DEVICE_MAC_ADDR_LEN 6
-#define MAX_PAIRED_DEVICES 32 // Optimal for 100KB NVS (~3.5KB storage)
-
-/**
- * @brief Paired device information
- */
-typedef struct {
-    uint16_t device_id;                       ///< Unique device ID
-    char device_name[DEVICE_NAME_MAX_LEN];    ///< User-assigned device name
-    uint8_t mac_address[DEVICE_MAC_ADDR_LEN]; ///< Hardware MAC address
-    uint8_t aes_key[DEVICE_AES_KEY_LEN];      ///< Per-device AES key
-    // Deduplication tracking (RAM-only, not persisted to NVS)
-    uint16_t highest_sequence; ///< Highest sequence number seen
-    uint64_t recent_bitmap;    ///< Bitmap of last 64 packets (for out-of-order handling)
-} paired_device_t;
+#define MAX_PAIRED_DEVICES 4 // Simplified for typical presentation use case
 
 /**
  * @brief Initialize device registry
