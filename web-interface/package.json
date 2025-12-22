@@ -8,8 +8,8 @@
     "a11y": "axe http://localhost:3000 --exit"
   },
   "dependencies": {
-    "lucide-react": "^0.555.0",
-    "next": "^16.0.6",
+    "lucide-react": "^0.562.0",
+    "next": "^16.0.10",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -19,8 +19,8 @@
   },
   "devDependencies": {
     "@axe-core/cli": "^4.11.0",
-    "@tailwindcss/postcss": "^4.1.17",
-    "@types/node": "^24.10.1",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^25.0.3",
     "@types/react": "19.2.7",
     "@types/react-dom": "^19.2.3",
     "postcss": "^8.0.0",
