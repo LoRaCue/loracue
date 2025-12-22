@@ -245,6 +245,30 @@ static esp_err_t api_devices_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t api_regulatory_get_handler(httpd_req_t *req)
+{
+    extern const uint8_t lora_regulatory_json_start[] asm("_binary_lora_regulatory_json_start");
+    extern const uint8_t lora_regulatory_json_end[] asm("_binary_lora_regulatory_json_end");
+    
+    size_t json_size = lora_regulatory_json_end - lora_regulatory_json_start;
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, (const char*)lora_regulatory_json_start, json_size);
+    return ESP_OK;
+}
+
+static esp_err_t api_bands_get_handler(httpd_req_t *req)
+{
+    extern const uint8_t lora_bands_json_start[] asm("_binary_lora_bands_json_start");
+    extern const uint8_t lora_bands_json_end[] asm("_binary_lora_bands_json_end");
+    
+    size_t json_size = lora_bands_json_end - lora_bands_json_start;
+    
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, (const char*)lora_bands_json_start, json_size);
+    return ESP_OK;
+}
+
 static esp_err_t api_devices_delete_handler(httpd_req_t *req)
 {
     char content[512];
@@ -445,6 +469,14 @@ esp_err_t config_wifi_server_start(void)
         httpd_uri_t api_device_info = {
             .uri = "/api/device/info", .method = HTTP_GET, .handler = api_device_info_handler};
         httpd_register_uri_handler(server, &api_device_info);
+
+        httpd_uri_t api_regulatory_get = {
+            .uri = "/api/lora/regulatory", .method = HTTP_GET, .handler = api_regulatory_get_handler};
+        httpd_register_uri_handler(server, &api_regulatory_get);
+
+        httpd_uri_t api_bands_get = {
+            .uri = "/api/lora/bands", .method = HTTP_GET, .handler = api_bands_get_handler};
+        httpd_register_uri_handler(server, &api_bands_get);
 
         // Streaming firmware upload (OTA engine)
         httpd_uri_t fw_upload_uri = {

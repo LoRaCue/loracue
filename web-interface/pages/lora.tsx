@@ -22,9 +22,39 @@ interface Band {
   max_power_dbm: number
 }
 
+interface HardwareProfile {
+  id: string
+  name: string
+  optimal_center_khz: number
+  optimal_freq_min_khz: number
+  optimal_freq_max_khz: number
+  max_power_dbm: number
+}
+
 interface Region {
   id: string
   name: string
+}
+
+interface ComplianceRule {
+  region: string
+  hardware: string
+  freq_min_khz: number
+  freq_max_khz: number
+  max_power_dbm: number
+}
+
+interface RegulatoryData {
+  regions: Region[]
+  compliance: ComplianceRule[]
+}
+
+interface ComplianceRule {
+  region: string
+  hardware: string
+  freq_min_khz: number
+  freq_max_khz: number
+  max_power_dbm: number
 }
 
 export default function LoRaPage() {
@@ -39,18 +69,14 @@ export default function LoRaPage() {
     regulatory_domain: ''
   })
   const [bands, setBands] = useState<Band[]>([])
-  const [regions] = useState<Region[]>([
-    { id: 'EU', name: 'European Union' },
-    { id: 'US', name: 'United States' },
-    { id: 'CA', name: 'Canada' },
-    { id: 'AU', name: 'Australia/New Zealand' },
-    { id: 'JP', name: 'Japan' },
-    { id: 'BR', name: 'Brazil' },
-    { id: 'IN', name: 'India' },
-    { id: 'CN', name: 'China' },
-    { id: 'KR', name: 'South Korea' },
-    { id: 'RU', name: 'Russia' },
-    { id: 'UA', name: 'Ukraine' }
+  const [regulatoryData, setRegulatoryData] = useState<RegulatoryData | null>(null)
+  const [complianceRules] = useState<ComplianceRule[]>([
+    { region: 'EU', hardware: 'HW_433', freq_min_khz: 433050, freq_max_khz: 434790, max_power_dbm: 10 },
+    { region: 'EU', hardware: 'HW_868', freq_min_khz: 863000, freq_max_khz: 868000, max_power_dbm: 14 },
+    { region: 'EU', hardware: 'HW_2400', freq_min_khz: 2400000, freq_max_khz: 2483500, max_power_dbm: 10 },
+    { region: 'US', hardware: 'HW_433', freq_min_khz: 433500, freq_max_khz: 434500, max_power_dbm: -14 },
+    { region: 'US', hardware: 'HW_915', freq_min_khz: 902000, freq_max_khz: 928000, max_power_dbm: 30 },
+    { region: 'US', hardware: 'HW_2400', freq_min_khz: 2400000, freq_max_khz: 2483500, max_power_dbm: 30 }
   ])
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
@@ -84,24 +110,94 @@ export default function LoRaPage() {
       .then(data => setSettings(data))
       .catch(() => {})
     
+    // Fetch regulatory data
+    fetch('/api/lora/regulatory')
+      .then(res => res.ok ? res.json() : Promise.reject())
+      .then(data => setRegulatoryData(data))
+      .catch(() => {})
+    
     // Fetch available bands
     fetch('/api/lora/bands')
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(data => {
-
-        setBands(data)
+        // Convert HardwareProfiles to Band format
+        const convertedBands = data.HardwareProfiles.map((profile: HardwareProfile) => ({
+          id: profile.id,
+          name: profile.name,
+          center_khz: profile.optimal_center_khz,
+          min_khz: profile.optimal_freq_min_khz,
+          max_khz: profile.optimal_freq_max_khz,
+          max_power_dbm: profile.max_power_dbm
+        }))
+        setBands(convertedBands)
       })
       .catch((err) => {
         // Fallback to default bands if API not available
         setBands([
           { id: 'HW_433', name: '433 MHz Band', center_khz: 433000, min_khz: 430000, max_khz: 440000, max_power_dbm: 10 },
           { id: 'HW_868', name: '868 MHz Band', center_khz: 868000, min_khz: 863000, max_khz: 870000, max_power_dbm: 14 },
-          { id: 'HW_915', name: '915 MHz Band', center_khz: 915000, min_khz: 902000, max_khz: 928000, max_power_dbm: 20 }
+          { id: 'HW_915', name: '915 MHz Band', center_khz: 915000, min_khz: 902000, max_khz: 928000, max_power_dbm: 20 },
+          { id: 'HW_2400', name: '2.4 GHz Band', center_khz: 2441750, min_khz: 2400000, max_khz: 2483500, max_power_dbm: 30 }
         ])
       })
   }, [])
 
+  const getRegulatoryLimits = (domain: string, hardware: string) => {
+    if (!regulatoryData || !domain) return null
+    return regulatoryData.compliance.find(rule => 
+      rule.region === domain && rule.hardware === hardware
+    )
+  }
+
+  const getFrequencyLimits = () => {
+    const band = bands.find(b => b.id === settings.band_id)
+    const regulatory = getRegulatoryLimits(settings.regulatory_domain, settings.band_id)
+    
+    if (regulatory && band) {
+      return {
+        min: Math.max(band.min_khz, regulatory.freq_min_khz) / 1000,
+        max: Math.min(band.max_khz, regulatory.freq_max_khz) / 1000
+      }
+    }
+    
+    // Fallback to hardware limits only (no regulatory domain or no regulatory rule)
+    return {
+      min: (band?.min_khz || 0) / 1000,
+      max: (band?.max_khz || Infinity) / 1000
+    }
+  }
+
+  const getPowerLimits = () => {
+    const band = bands.find(b => b.id === settings.band_id)
+    const regulatory = getRegulatoryLimits(settings.regulatory_domain, settings.band_id)
+    
+    if (regulatory && band) {
+      return {
+        max: Math.min(band.max_power_dbm, regulatory.max_power_dbm)
+      }
+    }
+    
+    // Fallback to hardware limits only (no regulatory domain or no regulatory rule)
+    return {
+      max: band?.max_power_dbm || 30
+    }
+  }
+
   const handleSave = async () => {
+    // Check regulatory compliance
+    const regulatory = getRegulatoryLimits(settings.regulatory_domain, settings.band_id)
+    if (regulatory) {
+      const freqMHz = settings.frequency / 1000000
+      const freqLimits = getFrequencyLimits()
+      const powerLimits = getPowerLimits()
+      
+      if (freqMHz < freqLimits.min || freqMHz > freqLimits.max || settings.txPower > powerLimits.max) {
+        setStatus('error')
+        setTimeout(() => setStatus('idle'), 3000)
+        return
+      }
+    }
+    
     setLoading(true)
     setStatus('idle')
     
@@ -284,7 +380,7 @@ export default function LoRaPage() {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
               >
                 <option value="Unknown">Unknown</option>
-                {regions.map(region => (
+                {regulatoryData?.regions.map(region => (
                   <option key={region.id} value={region.id}>
                     {region.name}
                   </option>
@@ -329,12 +425,29 @@ export default function LoRaPage() {
                   onChange={(e) => setSettings({ ...settings, frequency: Math.round(parseFloat(e.target.value) * 1000000) })}
                   className="input"
                   step="0.1"
-                  min={(bands.find(b => b.id === settings.band_id)?.min_khz || 430000) / 1000}
-                  max={(bands.find(b => b.id === settings.band_id)?.max_khz || 440000) / 1000}
+                  min={getFrequencyLimits().min}
+                  max={getFrequencyLimits().max}
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  0.1 MHz resolution (e.g., 868.1 MHz)
-                </p>
+                {(() => {
+                  const limits = getFrequencyLimits()
+                  const currentMHz = settings.frequency / 1000000
+                  const regulatory = getRegulatoryLimits(settings.regulatory_domain, settings.band_id)
+                  
+                  if (regulatory && (currentMHz < limits.min || currentMHz > limits.max)) {
+                    return (
+                      <p className="text-sm text-red-600 dark:text-red-400 mt-1 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        Violates {settings.regulatory_domain} regulatory limits ({limits.min}-{limits.max} MHz)
+                      </p>
+                    )
+                  }
+                  
+                  return (
+                    <p className="text-sm text-gray-500 mt-1">
+                      {regulatory ? `${settings.regulatory_domain} limits: ${limits.min}-${limits.max} MHz` : '0.1 MHz resolution (e.g., 868.1 MHz)'}
+                    </p>
+                  )
+                })()}
               </div>
 
               <div>
@@ -393,12 +506,16 @@ export default function LoRaPage() {
                     TX Power (dBm)
                   </label>
                   {(() => {
-                    const currentBand = bands.find(b => b.id === settings.band_id);
-                    if (currentBand && settings.txPower > currentBand.max_power_dbm) {
+                    const powerLimits = getPowerLimits()
+                    const regulatory = getRegulatoryLimits(settings.regulatory_domain, settings.band_id)
+                    
+                    if (settings.txPower > powerLimits.max) {
                       return (
-                        <div className="text-xs text-amber-600 dark:text-amber-400 flex items-center space-x-1">
+                        <div className="text-xs text-red-600 dark:text-red-400 flex items-center space-x-1">
                           <AlertCircle size={14} />
-                          <span>Exceeds {currentBand.name} limit ({currentBand.max_power_dbm} dBm)</span>
+                          <span>
+                            Exceeds {regulatory ? `${settings.regulatory_domain} regulatory` : 'hardware'} limit ({powerLimits.max} dBm)
+                          </span>
                         </div>
                       );
                     }
@@ -408,7 +525,7 @@ export default function LoRaPage() {
                 <input
                   type="range"
                   min="2"
-                  max="20"
+                  max={getPowerLimits().max}
                   value={settings.txPower}
                   onChange={(e) => setSettings({ ...settings, txPower: Number(e.target.value) })}
                   className="w-full"
@@ -416,7 +533,7 @@ export default function LoRaPage() {
                 <div className="flex justify-between text-sm text-gray-500 mt-1">
                   <span>2 dBm</span>
                   <span className="font-medium">{settings.txPower} dBm</span>
-                  <span>20 dBm</span>
+                  <span>{getPowerLimits().max} dBm max</span>
                 </div>
               </div>
             </div>
