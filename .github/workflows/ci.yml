@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 permissions:
   contents: read
@@ -282,11 +282,23 @@ jobs:
 
   summary:
     runs-on: ubuntu-latest
-    needs: [version, build-hardware, host-tests]
+    needs: [code-quality, version, build-hardware, security-scan, host-tests]
     if: always()
     name: Build Summary
-    
+
     steps:
+    # Dieser Job ist der Aggregat-Check und damit der einzige, den die Branch
+    # Protection als Pflichtcheck fuehren muss. Ohne dieses Gate meldete er
+    # Erfolg, waehrend vorangehende Jobs scheitern: im Lauf vom 22.12.2025
+    # stand er auf success, obwohl Host Unit Tests und beide Hardware-Builds
+    # auf failure standen. "skipped" bleibt zulaessig, damit uebersprungene
+    # Jobs den Aggregat nicht faelschlich rot faerben.
+    - name: Jeder vorangehende Job muss erfolgreich oder uebersprungen sein
+      run: |
+        set -euo pipefail
+        printf '%s\n' '${{ toJSON(needs) }}' |
+          jq -e 'all(.[]; .result == "success" or .result == "skipped")'
+
     - name: Generate build summary
       run: |
         echo "# LoRaCue Build Summary" >> $GITHUB_STEP_SUMMARY
